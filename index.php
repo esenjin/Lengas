@@ -37,7 +37,9 @@ if ($search_term) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lengas - La mangathèque d'Esenjin</title>
+    <title>Lengas - La mangathèque d'Esenjin !</title>
+    <meta name="description" content="Lengas - Gestion de la collection de mangas d'Esenjin.">
+    <link rel="icon" href="logo.png" type="image/png">
     <link rel="stylesheet" href="styles.css">
     <style>
         /* Style pour les cartes cliquables */

@@ -251,6 +251,8 @@ if ($search_term) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion de ma collection</title>
+    <meta name="description" content="Lengas - Gestion de la collection de mangas d'Esenjin.">
+    <link rel="icon" href="logo.png" type="image/png">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -283,7 +285,8 @@ if ($search_term) {
             <button id="open-add-series-modal">Ajouter une série</button>
             <button id="open-add-volume-modal">Ajouter un tome</button>
             <button id="open-add-multiple-volumes-modal">Ajouter plusieurs tomes</button>
-            <a href="stats.php" class="button" target="_blank">Statistiques ↗</a>
+            <a href="index.php" class="button menu-button" target="_blank">Accueil ↗</a>
+            <a href="stats.php" class="button menu-button" target="_blank">Statistiques ↗</a>
         </div>
 
         <!-- Modales -->

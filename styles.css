@@ -406,6 +406,22 @@ form {
     background-color: #b35467;
 }
 
+.menu-button {
+    display: inline-block;
+    background-color: #626d74;
+    color: #121212;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.menu-button:hover {
+    background-color: #444b50;
+    text-decoration: none;
+}
+
 /* Plage de tomes */
 .volume-range {
     display: flex;
