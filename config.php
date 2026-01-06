@@ -30,7 +30,12 @@ function check_password($password) {
 
 // Fonction pour uploader une image
 function upload_image($file) {
-    $target_file = UPLOAD_DIR . basename($file["name"]);
+    $target_dir = UPLOAD_DIR;
+    $original_name = basename($file["name"]);
+    $imageFileType = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+    $unique_name = uniqid() . '.' . $imageFileType;
+    $target_file = $target_dir . $unique_name;
+
     if (move_uploaded_file($file["tmp_name"], $target_file)) {
         return $target_file;
     }
