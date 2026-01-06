@@ -26,14 +26,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $name = trim($_POST['name'] ?? '');
     $author = trim($_POST['author'] ?? '');
     $publisher = trim($_POST['publisher'] ?? '');
+    $categories = trim($_POST['categories'] ?? '');
     $image = upload_image($_FILES['image'] ?? []);
 
-    if ($image && $name && $author && $publisher) {
+    if ($image && $name && $author && $publisher && $categories) {
         $data[] = [
             'id' => generate_uuid(),
             'name' => $name,
             'author' => $author,
             'publisher' => $publisher,
+            'categories' => explode(',', $categories),
             'image' => $image,
             'volumes' => [
                 [
@@ -163,15 +165,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $name = trim($_POST['edit_name'] ?? '');
     $author = trim($_POST['edit_author'] ?? '');
     $publisher = trim($_POST['edit_publisher'] ?? '');
+    $categories = trim($_POST['edit_categories'] ?? '');
     $remove_image = !empty($_POST['remove_image']);
 
     $series = find_series_by_id($data, $series_id);
-    if ($series && $name && $author && $publisher) {
+    if ($series && $name && $author && $publisher && $categories) {
         $series_index = $series['index'];
 
         $data[$series_index]['name'] = $name;
         $data[$series_index]['author'] = $author;
         $data[$series_index]['publisher'] = $publisher;
+        $data[$series_index]['categories'] = explode(',', $categories);
 
         if ($remove_image) {
             if (file_exists($data[$series_index]['image'])) {
@@ -226,6 +230,12 @@ function sort_series(&$data, $sort_by, $sort_order) {
             return $sort_order === 'asc'
                 ? count($a['volumes']) - count($b['volumes'])
                 : count($b['volumes']) - count($a['volumes']);
+        } elseif ($sort_by === 'categories') {
+            $a_categories = implode(', ', $a['categories'] ?? []);
+            $b_categories = implode(', ', $b['categories'] ?? []);
+            return $sort_order === 'asc'
+                ? strcasecmp($a_categories, $b_categories)
+                : strcasecmp($b_categories, $a_categories);
         } else {
             return $sort_order === 'asc'
                 ? strcasecmp($a[$sort_by], $b[$sort_by])
@@ -240,7 +250,8 @@ if ($search_term) {
     $data = array_filter($data, function($series) use ($search_term) {
         return stripos($series['name'], $search_term) !== false ||
                stripos($series['author'], $search_term) !== false ||
-               stripos($series['publisher'], $search_term) !== false;
+               stripos($series['publisher'], $search_term) !== false ||
+               (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false);
     });
 }
 ?>
@@ -269,6 +280,7 @@ if ($search_term) {
                         <option value="name" <?= $sort_by === 'name' ? 'selected' : '' ?>>Trier par nom</option>
                         <option value="author" <?= $sort_by === 'author' ? 'selected' : '' ?>>Trier par auteur</option>
                         <option value="publisher" <?= $sort_by === 'publisher' ? 'selected' : '' ?>>Trier par éditeur</option>
+                        <option value="categories" <?= $sort_by === 'categories' ? 'selected' : '' ?>>Trier par catégories</option>
                         <option value="volumes" <?= $sort_by === 'volumes' ? 'selected' : '' ?>>Trier par nombre de tomes</option>
                     </select>
                     <select name="sort_order">
@@ -299,6 +311,7 @@ if ($search_term) {
                     <input type="text" name="name" placeholder="Nom de la série" required>
                     <input type="text" name="author" placeholder="Auteur" required>
                     <input type="text" name="publisher" placeholder="Éditeur" required>
+                    <input type="text" name="categories" placeholder="Catégories (séparées par des virgules)" required>
                     <input type="file" name="image" accept="image/*" required>
                     <button type="submit" name="add_series">Ajouter</button>
                 </form>
@@ -407,6 +420,7 @@ if ($search_term) {
                     <input type="text" name="edit_name" id="edit-series-name" placeholder="Nom de la série" required>
                     <input type="text" name="edit_author" id="edit-series-author" placeholder="Auteur" required>
                     <input type="text" name="edit_publisher" id="edit-series-publisher" placeholder="Éditeur" required>
+                    <input type="text" name="edit_categories" id="edit-series-categories" placeholder="Catégories (séparées par des virgules)" required>
                     <div class="current-image-container">
                         <p>Image actuelle :</p>
                         <img id="current-series-image" src="" alt="Image actuelle" style="max-width: 100px; margin-bottom: 10px;">
@@ -438,6 +452,7 @@ if ($search_term) {
                             </div>
                             <p><strong>Auteur :</strong> <?= $series['author'] ?></p>
                             <p><strong>Éditeur :</strong> <?= $series['publisher'] ?></p>
+                            <p><strong>Catégories :</strong> <?= isset($series['categories']) ? implode(', ', $series['categories']) : '' ?></p>
                             <p><strong>Tomes :</strong> <?= count($series['volumes']) ?></p>
                             <h3>Liste des tomes :</h3>
                             <ul class="volumes-list">
@@ -576,6 +591,7 @@ if ($search_term) {
                     document.getElementById('edit-series-name').value = series.name;
                     document.getElementById('edit-series-author').value = series.author;
                     document.getElementById('edit-series-publisher').value = series.publisher;
+                    document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
                     document.getElementById('current-series-image').src = series.image;
 
                     modals['edit-series'].modal.classList.add('modal-active');

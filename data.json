@@ -4,6 +4,9 @@
         "name": "Fullmetal Alchemist",
         "author": "Hiromu Arakawa",
         "publisher": "Kurokawa",
+        "categories": [
+            "Manga"
+        ],
         "image": "uploads\/695d8e63d0362.jpg",
         "volumes": [
             {

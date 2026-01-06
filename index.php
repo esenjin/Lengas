@@ -13,6 +13,12 @@ function sort_series(&$data, $sort_by, $sort_order) {
             return $sort_order === 'asc'
                 ? count($a['volumes']) - count($b['volumes'])
                 : count($b['volumes']) - count($a['volumes']);
+        } elseif ($sort_by === 'categories') {
+            $a_categories = implode(', ', $a['categories'] ?? []);
+            $b_categories = implode(', ', $b['categories'] ?? []);
+            return $sort_order === 'asc'
+                ? strcasecmp($a_categories, $b_categories)
+                : strcasecmp($b_categories, $a_categories);
         } else {
             return $sort_order === 'asc'
                 ? strcasecmp($a[$sort_by], $b[$sort_by])
@@ -27,7 +33,8 @@ if ($search_term) {
     $data = array_filter($data, function($series) use ($search_term) {
         return stripos($series['name'], $search_term) !== false ||
                stripos($series['author'], $search_term) !== false ||
-               stripos($series['publisher'], $search_term) !== false;
+               stripos($series['publisher'], $search_term) !== false ||
+               (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false);
     });
 }
 ?>
@@ -75,6 +82,7 @@ if ($search_term) {
                         <option value="name" <?= $sort_by === 'name' ? 'selected' : '' ?>>Trier par nom</option>
                         <option value="author" <?= $sort_by === 'author' ? 'selected' : '' ?>>Trier par auteur</option>
                         <option value="publisher" <?= $sort_by === 'publisher' ? 'selected' : '' ?>>Trier par éditeur</option>
+                        <option value="categories" <?= $sort_by === 'categories' ? 'selected' : '' ?>>Trier par catégories</option>
                         <option value="volumes" <?= $sort_by === 'volumes' ? 'selected' : '' ?>>Trier par nombre de tomes</option>
                     </select>
                     <select name="sort_order">
@@ -123,6 +131,7 @@ if ($search_term) {
                         <div class="modal-series-info">
                             <p><strong>Auteur :</strong> <span id="modal-series-author"></span></p>
                             <p><strong>Éditeur :</strong> <span id="modal-series-publisher"></span></p>
+                            <p><strong>Catégories :</strong> <span id="modal-series-categories"></span></p>
                             <div class="series-stats" id="modal-series-stats"></div>
                         </div>
                     </div>
@@ -148,6 +157,7 @@ if ($search_term) {
                 document.getElementById('modal-series-image').src = series.image;
                 document.getElementById('modal-series-author').textContent = series.author;
                 document.getElementById('modal-series-publisher').textContent = series.publisher;
+                document.getElementById('modal-series-categories').textContent = series.categories ? series.categories.join(', ') : '';
 
                 // Calculer les stats
                 const totalVolumes = series.volumes.length;
