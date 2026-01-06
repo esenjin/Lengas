@@ -8,10 +8,10 @@ Lengas est une application web légère pour gérer et suivre votre collection d
 - Consulter des statistiques sur votre collection
 
 ## Fonctionnalités
-✅ **Gestion des séries** : Ajout, modification et suppression
-✅ **Suivi des tomes** : Statut (à lire, en cours, terminé), tomes collectors
-✅ **Statistiques** : Nombre de séries, tomes, répartition par statut
-✅ **Interface intuitive** : Design sombre et responsive
+- **Gestion des séries** : Ajout, modification et suppression
+- **Suivi des tomes** : Statut (à lire, en cours, terminé), tomes collectors
+- **Statistiques** : Nombre de séries, tomes, répartition par statut
+- **Interface intuitive** : Design sombre et responsive
 
 ## Aperçu visuel
 
