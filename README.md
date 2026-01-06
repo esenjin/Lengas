@@ -23,13 +23,14 @@ Lengas est une application web légère pour gérer et suivre votre collection d
 - PHP 7.4 ou supérieur
 
 ## Installation
-1. Copier les fichiers sur votre serveur
-2. Créer un dossier `uploads/` et le rendre accessible en écriture
-3. Accéder à `index.php` pour la partie publique
-4. Accéder à `admin.php` pour la gestion (mot de passe requis)
+1. Télécharger le dépôt
+2. Éditer le mot de passe dans `config.php`
+3. (optionnel) Modifier les différentes informations à votre convenance (titre des pages, etc.)
+4. Téléverser les fichiers sur votre serveur
 
 ## Structure des fichiers
 
+```
 lengas/
 ├── index.php          # Page publique
 ├── admin.php          # Interface d'administration
@@ -38,6 +39,7 @@ lengas/
 ├── styles.css         # Styles CSS
 ├── data.json          # Base de données
 └── uploads/           # Images des séries
+```
 
 ## Configuration
 Modifiez `config.php` pour :
