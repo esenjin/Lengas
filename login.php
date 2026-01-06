@@ -20,6 +20,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <title>Connexion</title>
+    <meta name="description" content="Lengas - Gestion de la collection de mangas d'Esenjin.">
+    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        form {
+            max-width: 350px;
+            margin: auto;
+            padding: 1em;
+        }
+    </style>
 </head>
 <body>
     <h1>Connexion</h1>
