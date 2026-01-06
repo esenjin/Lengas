@@ -15,8 +15,8 @@ Lengas est une application web légère pour gérer et suivre votre collection d
 
 ## Aperçu visuel
 
-![Lengas admin](https://url.img)
-![Lengas public](https://url.img)
+![Lengas admin](https://concepts.esenjin.xyz/cyla/fichiers/695d6fdbe1f96_1767731163.png)
+![Lengas public](https://concepts.esenjin.xyz/cyla/fichiers/695d6fdbe8e9a_1767731163.png)
 
 ## Prérequis
 - Serveur web (Apache, Nginx)
