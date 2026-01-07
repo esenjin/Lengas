@@ -16,9 +16,25 @@ $status_counts = [
 $collector_counts = 0;
 $completed_series = 0;
 
+// Initialiser des tableaux pour suivre les auteurs et éditeurs uniques
+$unique_authors = [];
+$unique_publishers = [];
+
 foreach ($data as $series) {
     $has_last_volume = false;
     $last_volume_completed = false;
+
+    // Ajouter l'auteur et l'éditeur aux tableaux s'ils ne sont pas déjà présents
+    $author = $series['author'];
+    $publisher = $series['publisher'];
+
+    if (!in_array($author, $unique_authors)) {
+        $unique_authors[] = $author;
+    }
+
+    if (!in_array($publisher, $unique_publishers)) {
+        $unique_publishers[] = $publisher;
+    }
 
     foreach ($series['volumes'] as $volume) {
         $status_counts[$volume['status']]++;
@@ -44,6 +60,10 @@ $percentages = [
     'terminé' => $total_volumes > 0 ? round(($status_counts['terminé'] / $total_volumes) * 100) : 0
 ];
 
+// Calculer le nombre total d'auteurs et d'éditeurs uniques
+$total_unique_authors = count($unique_authors);
+$total_unique_publishers = count($unique_publishers);
+
 // Données pour le graphique
 $chart_labels = ['À lire', 'En cours', 'Terminé'];
 $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_counts['terminé']];
@@ -54,6 +74,8 @@ $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_
 <head>
     <meta charset="UTF-8">
     <title>Statistiques de Lengas</title>
+    <meta name="description" content="Lengas - Gestion de la collection de mangas d'Esenjin.">
+    <link rel="icon" href="logo.png" type="image/png">
     <link rel="stylesheet" href="styles.css">
     <style>
         .stats-container {
@@ -123,6 +145,14 @@ $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_
                 <div class="stat-item">
                     <span>Séries terminées :</span>
                     <span class="stat-value"><?= $completed_series ?></span>
+                </div>
+                <div class="stat-item">
+                    <span>Nombre total d'auteurs :</span>
+                    <span class="stat-value"><?= $total_unique_authors ?></span>
+                </div>
+                <div class="stat-item">
+                    <span>Nombre total d'éditeurs :</span>
+                    <span class="stat-value"><?= $total_unique_publishers ?></span>
                 </div>
             </div>
 
