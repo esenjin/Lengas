@@ -489,6 +489,27 @@ form {
     overflow-y: auto;
 }
 
+/* Notifications */
+.issues-list {
+    color: #ff9800;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.warning-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+}
+
+.issues-text {
+    font-style: italic;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .series-list {

@@ -24,7 +24,11 @@ document.querySelectorAll('.series-card').forEach(card => {
         const volumesList = document.getElementById('modal-volumes-list');
         volumesList.innerHTML = '';
 
-        series.volumes.forEach(volume => {
+        // Trier les tomes par numéro
+        const sortedVolumes = [...series.volumes].sort((a, b) => a.number - b.number);
+
+        // Afficher les tomes triés
+        sortedVolumes.forEach(volume => {
             const li = document.createElement('li');
             li.className = `status-${volume.status.replace(' ', '-')} ${volume.collector ? 'volume-collector' : ''} ${volume.last ? 'volume-last' : ''}`;
             li.textContent = volume.number;

@@ -244,6 +244,52 @@ function sort_series(&$data, $sort_by, $sort_order) {
     });
 }
 
+// Fonction pour trier les tomes par numéro
+function sort_volumes(&$volumes) {
+    usort($volumes, function($a, $b) {
+        return $a['number'] - $b['number'];
+    });
+}
+
+// Fonction pour générer les notifications
+function generate_notifications($volumes) {
+    $notifications = [];
+    $numbers = array_map(function($v) { return $v['number']; }, $volumes);
+    $min = min($numbers);
+    $max = max($numbers);
+    $last_volumes = array_filter($volumes, function($v) { return $v['last']; });
+
+    // Vérifier les tomes manquants
+    $missing = [];
+    for ($i = $min; $i <= $max; $i++) {
+        if (!in_array($i, $numbers)) {
+            $missing[] = $i;
+        }
+    }
+    if (!empty($missing)) {
+        if (count($missing) == 1) {
+            $notifications[] = "Attention, le tome " . implode(', ', $missing) . " est manquant.";
+        } else {
+            $notifications[] = "Attention, les tomes " . implode(', ', $missing) . " sont manquants.";
+        }
+    }
+
+    // Vérifier si le tome étiqueté comme dernier est correct
+    if (!empty($last_volumes)) {
+        $last_numbers = array_map(function($v) { return $v['number']; }, $last_volumes);
+        $actual_last = $max;
+        foreach ($last_numbers as $num) {
+            if ($num != $actual_last) {
+                $notifications[] = "Attention, le tome tagué dernier ($num) est incorrect.";
+            }
+        }
+        if (count($last_volumes) > 1) {
+            $notifications[] = "Attention, plusieurs tomes sont tagués comme dernier (" . implode(', ', $last_numbers) . ").";
+        }
+    }
+    return $notifications;
+}
+
 sort_series($data, $sort_by, $sort_order);
 
 if ($search_term) {
@@ -455,6 +501,21 @@ if ($search_term) {
                             <p><strong>Catégories :</strong> <?= isset($series['categories']) ? implode(', ', $series['categories']) : '' ?></p>
                             <p><strong>Tomes :</strong> <?= count($series['volumes']) ?></p>
                             <h3>Liste des tomes :</h3>
+                            <?php
+                            // Trier les tomes par numéro
+                            sort_volumes($series['volumes']);
+
+                            // Générer les notifications
+                            $notifications = generate_notifications($series['volumes']);
+
+                            // Afficher les notifications si nécessaire
+                            if (!empty($notifications)) {
+                                echo '<div class="issues-list">';
+                                echo '<span class="warning-icon">�</span>';
+                                echo '<span class="issues-text">' . implode(' ', $notifications) . '</span>';
+                                echo '</div>';
+                            }
+                            ?>
                             <ul class="volumes-list">
                                 <?php foreach ($series['volumes'] as $volume_index => $volume): ?>
                                     <li class="<?= 'status-' . str_replace(' ', '-', strtolower($volume['status'])) .
