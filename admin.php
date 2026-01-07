@@ -91,12 +91,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_volume']) || iss
                         'collector' => $is_collector,
                         'last' => $is_last
                     ];
+                } else {
+                    // Ajouter un message d'erreur pour indiquer que le tome existe déjà
+                    $_SESSION['error_message'] = "Le tome $volume_number existe déjà.";
                 }
             }
         } elseif (isset($_POST['add_multiple_volumes'])) {
             $start = (int)($_POST['start_volume'] ?? 0);
             $end = (int)($_POST['end_volume'] ?? 0);
             if ($start > 0 && $end >= $start) {
+                $existing_volumes = [];
                 for ($i = $start; $i <= $end; $i++) {
                     $volume_exists = false;
                     foreach ($data[$series_index]['volumes'] as $volume) {
@@ -113,7 +117,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_volume']) || iss
                             'collector' => $is_collector,
                             'last' => ($i == $end) ? $is_last : false
                         ];
+                    } else {
+                        $existing_volumes[] = $i;
                     }
+                }
+                if (!empty($existing_volumes)) {
+                    $_SESSION['error_message'] = "Les tomes " . implode(', ', $existing_volumes) . " existent déjà.";
                 }
             }
         }
@@ -154,9 +163,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_volume'])) {
     if ($series && isset($data[$series['index']]['volumes'][$volume_index])) {
         array_splice($data[$series['index']]['volumes'], $volume_index, 1);
         save_data($data);
-        header("Location: admin.php");
-        exit;
+        $_SESSION['success_message'] = "Tome supprimé avec succès";
+    } else {
+        $_SESSION['error_message'] = "Série ou volume introuvable";
     }
+
+    header("Location: admin.php");
+    exit;
 }
 
 // Mettre à jour une série
@@ -313,6 +326,13 @@ if ($search_term) {
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <?php if (isset($_SESSION['error_message'])): ?>
+        <div id="error-message" class="error-message">
+            <?= $_SESSION['error_message'] ?>
+        </div>
+        <?php unset($_SESSION['error_message']); ?>
+    <?php endif; ?>
+
     <div class="container">
         <h1>Gestion de ma collection</h1>
 
@@ -511,7 +531,7 @@ if ($search_term) {
                             // Afficher les notifications si nécessaire
                             if (!empty($notifications)) {
                                 echo '<div class="issues-list">';
-                                echo '<span class="warning-icon">�</span>';
+                                echo '<span class="warning-icon">!</span>';
                                 echo '<span class="issues-text">' . implode(' ', $notifications) . '</span>';
                                 echo '</div>';
                             }

@@ -88,15 +88,15 @@ document.getElementById('delete-volume-btn').addEventListener('click', function(
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: `delete_volume=true&series_id=${encodeURIComponent(seriesId)}&volume_index=${volumeIndex}`
         })
-        .then(() => {
+        .then(response => {
             window.location.reload();
         })
         .catch(error => {
-            console.error('Erreur:', error);
-            alert('Une erreur est survenue lors de la suppression.');
+            alert('Une erreur est survenue: ' + error.message);
         });
     }
 });
@@ -152,3 +152,11 @@ window.addEventListener('click', (e) => {
         }
     });
 });
+
+// Masquer le message d'erreur après 3 secondes
+setTimeout(function() {
+    var errorMessage = document.getElementById('error-message');
+    if (errorMessage) {
+        errorMessage.style.display = 'none';
+    }
+}, 3000);
