@@ -9,6 +9,116 @@ if (!($_SESSION['logged_in'] ?? false)) {
 
 $data = load_data();
 
+// Charger la liste d'envies depuis le fichier JSON
+function load_wishlist() {
+    if (file_exists('list.json')) {
+        $wishlist = json_decode(file_get_contents('list.json'), true);
+        return $wishlist ?: [];
+    }
+    return [];
+}
+
+// Sauvegarder la liste d'envies dans le fichier JSON
+function save_wishlist($wishlist) {
+    file_put_contents('list.json', json_encode($wishlist, JSON_PRETTY_PRINT));
+}
+
+// Charger la liste d'envies
+$wishlist = load_wishlist();
+
+// Ajouter une série à la liste d'envies
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_wishlist'])) {
+    $name = trim($_POST['wishlist_name'] ?? '');
+    $author = trim($_POST['wishlist_author'] ?? '');
+    $publisher = trim($_POST['wishlist_publisher'] ?? '');
+
+    // Vérifier si la série est déjà présente dans la liste d'envies
+    $series_exists = false;
+    foreach ($wishlist as $item) {
+        if (strcasecmp($item['name'], $name) === 0) {
+            $series_exists = true;
+            break;
+        }
+    }
+
+    if (!$series_exists && $name && $author && $publisher) {
+        $wishlist[] = [
+            'name' => $name,
+            'author' => $author,
+            'publisher' => $publisher
+        ];
+        save_wishlist($wishlist);
+        echo json_encode(['success' => true, 'wishlist' => $wishlist]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'La série est déjà présente dans la liste d\'envies.']);
+    }
+    exit;
+}
+
+// Supprimer une série de la liste d'envies
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_from_wishlist'])) {
+    $index = $_POST['index'] ?? 0;
+    if (isset($wishlist[$index])) {
+        array_splice($wishlist, $index, 1);
+        save_wishlist($wishlist);
+        echo json_encode(['success' => true, 'wishlist' => $wishlist]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Index invalide.']);
+    }
+    exit;
+}
+
+// Ajouter une série à la collection principale depuis la liste d'envies
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_from_wishlist'])) {
+    $index = $_POST['index'] ?? 0;
+    if (isset($wishlist[$index])) {
+        $series = $wishlist[$index];
+        $name = $series['name'];
+        $author = $series['author'];
+        $publisher = $series['publisher'];
+
+        // Vérifier si une série avec le même nom existe déjà dans la collection principale
+        $series_exists = false;
+        foreach ($data as $existing_series) {
+            if (strcasecmp($existing_series['name'], $name) === 0) {
+                $series_exists = true;
+                break;
+            }
+        }
+
+        if (!$series_exists) {
+            // Ajouter la série à la collection principale
+            $data[] = [
+                'id' => generate_uuid(),
+                'name' => $name,
+                'author' => $author,
+                'publisher' => $publisher,
+                'categories' => [''], // Catégorie par défaut, à modifier par l'utilisateur
+                'image' => '', // Image par défaut, à modifier par l'utilisateur
+                'volumes' => [
+                    [
+                        'number' => 1,
+                        'status' => 'à lire',
+                        'collector' => false,
+                        'last' => false
+                    ]
+                ]
+            ];
+            save_data($data);
+
+            // Supprimer la série de la liste d'envies
+            array_splice($wishlist, $index, 1);
+            save_wishlist($wishlist);
+            echo json_encode(['success' => true, 'wishlist' => $wishlist]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Une série avec ce nom existe déjà dans votre collection.']);
+        }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Index invalide.']);
+    }
+    exit;
+}
+
 // Générer un UUID unique
 function generate_uuid() {
     return sprintf(
@@ -385,6 +495,7 @@ if ($search_term) {
             <button id="open-add-series-modal">Ajouter une série</button>
             <button id="open-add-volume-modal">Ajouter un tome</button>
             <button id="open-add-multiple-volumes-modal">Ajouter plusieurs tomes</button>
+            <button id="open-wishlist-modal">Liste d'envies</button>
             <a href="index.php" class="button menu-button" target="_blank">Accueil ↗</a>
             <a href="stats.php" class="button menu-button" target="_blank">Statistiques ↗</a>
         </div>
@@ -396,9 +507,9 @@ if ($search_term) {
                 <span class="close-modal" id="close-add-series-modal">&times;</span>
                 <h2>Ajouter une série</h2>
                 <form method="post" enctype="multipart/form-data">
-                    <input type="text" name="name" placeholder="Nom de la série" required>
-                    <input type="text" name="author" placeholder="Auteur" required>
-                    <input type="text" name="publisher" placeholder="Éditeur" required>
+                    <input type="text" name="name" id="add-series-name" placeholder="Nom de la série" required>
+                    <input type="text" name="author" id="add-series-author" placeholder="Auteur" required>
+                    <input type="text" name="publisher" id="add-series-publisher" placeholder="Éditeur" required>
                     <input type="text" name="categories" placeholder="Catégories (séparées par des virgules)" required>
                     <input type="file" name="image" accept="image/*" required>
                     <button type="submit" name="add_series">Ajouter</button>
@@ -521,6 +632,35 @@ if ($search_term) {
             </div>
         </div>
 
+        <!-- Modale pour la liste d'envies -->
+        <div class="modal" id="wishlist-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-wishlist-modal">&times;</span>
+                <h2>Liste d'envies</h2>
+                <div class="wishlist-container">
+                    <div class="wishlist-header">
+                        <input type="text" id="wishlist-name" placeholder="Nom de la série" required>
+                        <input type="text" id="wishlist-author" placeholder="Auteur" required>
+                        <input type="text" id="wishlist-publisher" placeholder="Éditeur" required>
+                        <button id="add-to-wishlist-btn">Ajouter à la liste</button>
+                    </div>
+                    <div class="wishlist-list" id="wishlist-list">
+                        <?php foreach ($wishlist as $index => $item): ?>
+                            <div class="wishlist-item" data-index="<?= $index ?>">
+                                <span class="wishlist-series-name"><?= $item['name'] ?></span>
+                                <span class="wishlist-series-author"><?= $item['author'] ?></span>
+                                <span class="wishlist-series-publisher"><?= $item['publisher'] ?></span>
+                                <div class="wishlist-item-actions">
+                                    <button class="add-from-wishlist-btn" data-index="<?= $index ?>">+</button>
+                                    <button class="remove-from-wishlist-btn" data-index="<?= $index ?>">x</button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Liste des séries -->
         <div class="series-list">
             <?php if (empty($data)): ?>
@@ -579,6 +719,7 @@ if ($search_term) {
     <script>
         // Données des séries pour JavaScript
         const seriesData = <?= json_encode($data) ?>;
+        const wishlistData = <?= json_encode($wishlist) ?>;
     </script>
     <script src="scripts/admin.js"></script>
 
