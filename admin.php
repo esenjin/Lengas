@@ -29,7 +29,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $categories = trim($_POST['categories'] ?? '');
     $image = upload_image($_FILES['image'] ?? []);
 
-    if ($image && $name && $author && $publisher && $categories) {
+    // Vérifier si une série avec le même nom existe déjà
+    $series_exists = false;
+    foreach ($data as $series) {
+        if (strcasecmp($series['name'], $name) === 0) {
+            $series_exists = true;
+            break;
+        }
+    }
+
+    if ($series_exists) {
+        $_SESSION['error_message'] = "Une série avec ce nom existe déjà.";
+    } elseif ($image && $name && $author && $publisher && $categories) {
         $data[] = [
             'id' => generate_uuid(),
             'name' => $name,
@@ -47,9 +58,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
             ]
         ];
         save_data($data);
-        header("Location: admin.php");
-        exit;
+        $_SESSION['success_message'] = "Série ajoutée avec succès";
+    } else {
+        $_SESSION['error_message'] = "Veuillez remplir tous les champs correctement.";
     }
+
+    header("Location: admin.php");
+    exit;
 }
 
 // Trouver une série par son ID
@@ -331,6 +346,13 @@ if ($search_term) {
             <?= $_SESSION['error_message'] ?>
         </div>
         <?php unset($_SESSION['error_message']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['success_message'])): ?>
+        <div id="success-message" class="success-message">
+            <?= $_SESSION['success_message'] ?>
+        </div>
+        <?php unset($_SESSION['success_message']); ?>
     <?php endif; ?>
 
     <div class="container">
