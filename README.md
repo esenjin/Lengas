@@ -38,6 +38,7 @@ lengas/
 ├── config.php         # Configuration
 ├── styles.css         # Styles CSS
 ├── data.json          # Base de données
+├── scripts/           # Scripts JS
 └── uploads/           # Images des séries
 ```
 
