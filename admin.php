@@ -357,6 +357,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_series'])) {
     }
 }
 
+// Mettre à jour les options du site
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
+    $site_name = trim($_POST['site_name'] ?? '');
+    $site_description = trim($_POST['site_description'] ?? '');
+    $index_page_title = trim($_POST['index_page_title'] ?? '');
+    $admin_page_title = trim($_POST['admin_page_title'] ?? '');
+    $stats_page_title = trim($_POST['stats_page_title'] ?? '');
+    $admin_password = trim($_POST['admin_password'] ?? '');
+
+    if ($site_name && $site_description && $index_page_title && $admin_page_title && $stats_page_title) {
+        // Échapper les caractères spéciaux
+        $site_name = addslashes($site_name);
+        $site_description = addslashes($site_description);
+        $index_page_title = addslashes($index_page_title);
+        $admin_page_title = addslashes($admin_page_title);
+        $stats_page_title = addslashes($stats_page_title);
+
+        // Mettre à jour les constantes dans le fichier de configuration
+        $config_content = file_get_contents('config.php');
+        $config_content = preg_replace("/define\('SITE_NAME', '.*?'\)/", "define('SITE_NAME', '$site_name')", $config_content);
+        $config_content = preg_replace("/define\('SITE_DESCRIPTION', '.*?'\)/", "define('SITE_DESCRIPTION', '$site_description')", $config_content);
+        $config_content = preg_replace("/define\('INDEX_PAGE_TITLE', '.*?'\)/", "define('INDEX_PAGE_TITLE', '$index_page_title')", $config_content);
+        $config_content = preg_replace("/define\('ADMIN_PAGE_TITLE', '.*?'\)/", "define('ADMIN_PAGE_TITLE', '$admin_page_title')", $config_content);
+        $config_content = preg_replace("/define\('STATS_PAGE_TITLE', '.*?'\)/", "define('STATS_PAGE_TITLE', '$stats_page_title')", $config_content);
+
+        // Mettre à jour le mot de passe uniquement s'il n'est pas vide
+        if (!empty($admin_password)) {
+            // Limiter les caractères autorisés pour le mot de passe
+            if (preg_match('/^[a-zA-Z0-9_!@#$%^&*()\-+=\[\]{};:\'"\\|,.<>\/?]+$/', $admin_password)) {
+                $admin_password = addslashes($admin_password);
+                $config_content = preg_replace("/define\('ADMIN_PASSWORD', '.*?'\)/", "define('ADMIN_PASSWORD', '$admin_password')", $config_content);
+            } else {
+                $_SESSION['error_message'] = "Le mot de passe contient des caractères non autorisés.";
+                header("Location: admin.php");
+                exit;
+            }
+        }
+
+        file_put_contents('config.php', $config_content);
+
+        // Recharger la configuration
+        $_SESSION['success_message'] = "Options mises à jour avec succès";
+    } else {
+        $_SESSION['error_message'] = "Veuillez remplir tous les champs obligatoires.";
+    }
+
+    header("Location: admin.php");
+    exit;
+}
+
 // Gestion du tri, filtre et recherche
 $sort_by = $_GET['sort_by'] ?? 'name';
 $sort_order = $_GET['sort_order'] ?? 'asc';
@@ -445,8 +495,8 @@ if ($search_term) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestion de ma collection</title>
-    <meta name="description" content="Lengas - Gestion de la collection de mangas d'Esenjin.">
+    <title><?= ADMIN_PAGE_TITLE ?> - version <?= SITE_VERSION ?></title>
+    <meta name="description" content="<?= SITE_DESCRIPTION ?>">
     <link rel="icon" href="logo.png" type="image/png">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -466,7 +516,7 @@ if ($search_term) {
     <?php endif; ?>
 
     <div class="container">
-        <h1>Gestion de ma collection</h1>
+        <h1><?= ADMIN_PAGE_TITLE ?></h1>
 
         <!-- Barre de filtres et recherche -->
         <div class="filters">
@@ -496,6 +546,7 @@ if ($search_term) {
             <button id="open-add-volume-modal">Ajouter un tome</button>
             <button id="open-add-multiple-volumes-modal">Ajouter plusieurs tomes</button>
             <button id="open-wishlist-modal">Liste d'envies</button>
+            <button id="open-options-modal">Options</button>
             <a href="index.php" class="button menu-button" target="_blank">Accueil ↗</a>
             <a href="stats.php" class="button menu-button" target="_blank">Statistiques ↗</a>
         </div>
@@ -658,6 +709,36 @@ if ($search_term) {
                         <?php endforeach; ?>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Modale pour les options du site -->
+        <div class="modal" id="options-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-options-modal">&times;</span>
+                <h2>Options du site</h2>
+                <form id="options-form" method="post">
+                    <label for="site-name">Nom du site</label>
+                    <input type="text" name="site_name" id="site-name" placeholder="Nom du site" value="<?= htmlspecialchars(SITE_NAME) ?>" required>
+
+                    <label for="site-description">Description du site</label>
+                    <input type="text" name="site_description" id="site-description" placeholder="Description du site" value="<?= htmlspecialchars(SITE_DESCRIPTION) ?>" required>
+
+                    <label for="index-page-title">Titre de la page d'accueil</label>
+                    <input type="text" name="index_page_title" id="index-page-title" placeholder="Titre de la page d'accueil" value="<?= htmlspecialchars(INDEX_PAGE_TITLE) ?>" required>
+
+                    <label for="admin-page-title">Titre de la page d'administration</label>
+                    <input type="text" name="admin_page_title" id="admin-page-title" placeholder="Titre de la page d'administration" value="<?= htmlspecialchars(ADMIN_PAGE_TITLE) ?>" required>
+
+                    <label for="stats-page-title">Titre de la page de statistiques</label>
+                    <input type="text" name="stats_page_title" id="stats-page-title" placeholder="Titre de la page de statistiques" value="<?= htmlspecialchars(STATS_PAGE_TITLE) ?>" required>
+
+                    <label for="admin-password">Mot de passe admin</label>
+                    <input type="password" name="admin_password" id="admin-password" placeholder="Mot de passe admin">
+                    <p class="password-hint">Laisser vide pour ne pas modifier.</p> 
+
+                    <button type="submit" name="update_options">Mettre à jour</button>
+                </form>
             </div>
         </div>
 

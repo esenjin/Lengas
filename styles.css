@@ -245,6 +245,30 @@ select:focus {
     font-size: 1.5em;
 }
 
+/* Style pour les labels dans la modale des options */
+#options-modal label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+#options-modal input {
+    margin-bottom: 15px;
+}
+
+.hint {
+    font-size: 0.8em;
+    color: #bb86fc;
+    margin-top: -10px;
+    margin-bottom: 15px;
+    font-style: italic;
+}
+
+.hint a {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+}
+
 /* Formulaires admin */
 form {
     display: flex;

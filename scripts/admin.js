@@ -5,7 +5,8 @@ const modals = {
     'add-multiple-volumes': { modal: document.getElementById('add-multiple-volumes-modal'), closeBtn: document.getElementById('close-add-multiple-volumes-modal') },
     'edit-volume': { modal: document.getElementById('edit-volume-modal'), closeBtn: document.getElementById('close-edit-volume-modal') },
     'edit-series': { modal: document.getElementById('edit-series-modal'), closeBtn: document.getElementById('close-edit-series-modal') },
-    'wishlist': { modal: document.getElementById('wishlist-modal'), closeBtn: document.getElementById('close-wishlist-modal') }
+    'wishlist': { modal: document.getElementById('wishlist-modal'), closeBtn: document.getElementById('close-wishlist-modal') },
+    'options': { modal: document.getElementById('options-modal'), closeBtn: document.getElementById('close-options-modal') }
 };
 
 // Ouverture des modales
@@ -20,6 +21,9 @@ document.getElementById('open-add-multiple-volumes-modal').addEventListener('cli
 });
 document.getElementById('open-wishlist-modal').addEventListener('click', () => {
     modals['wishlist'].modal.classList.add('modal-active');
+});
+document.getElementById('open-options-modal').addEventListener('click', () => {
+    modals['options'].modal.classList.add('modal-active');
 });
 
 // Fermeture des modales via la croix

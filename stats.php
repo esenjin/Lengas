@@ -73,8 +73,8 @@ $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Statistiques de Lengas</title>
-    <meta name="description" content="Lengas - Gestion de la collection de mangas d'Esenjin.">
+    <title><?= STATS_PAGE_TITLE ?></title>
+    <meta name="description" content="<?= SITE_DESCRIPTION ?>">
     <link rel="icon" href="logo.png" type="image/png">
     <link rel="stylesheet" href="styles.css">
     <style>
@@ -115,7 +115,7 @@ $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_
 </head>
 <body>
     <div class="container">
-        <h1>Statistiques de Lengas</h1>
+        <h1><?= STATS_PAGE_TITLE ?></h1>
         <div class="stats-container">
             <div class="stats-grid">
                 <div class="stat-item">
