@@ -6,7 +6,8 @@ const modals = {
     'edit-volume': { modal: document.getElementById('edit-volume-modal'), closeBtn: document.getElementById('close-edit-volume-modal') },
     'edit-series': { modal: document.getElementById('edit-series-modal'), closeBtn: document.getElementById('close-edit-series-modal') },
     'wishlist': { modal: document.getElementById('wishlist-modal'), closeBtn: document.getElementById('close-wishlist-modal') },
-    'options': { modal: document.getElementById('options-modal'), closeBtn: document.getElementById('close-options-modal') }
+    'options': { modal: document.getElementById('options-modal'), closeBtn: document.getElementById('close-options-modal') },
+    'incomplete-series': { modal: document.getElementById('incomplete-series-modal'), closeBtn: document.getElementById('close-incomplete-series-modal') }
 };
 
 // Ouverture des modales
@@ -25,15 +26,204 @@ document.getElementById('open-wishlist-modal').addEventListener('click', () => {
 document.getElementById('open-options-modal').addEventListener('click', () => {
     modals['options'].modal.classList.add('modal-active');
 });
+document.getElementById('open-incomplete-series-modal').addEventListener('click', () => {
+    modals['incomplete-series'].modal.classList.add('modal-active');
+});
 
 // Fermeture des modales via la croix
 Object.values(modals).forEach(({ closeBtn, modal }) => {
     if (closeBtn && modal) {
         closeBtn.addEventListener('click', () => {
             modal.classList.remove('modal-active');
+            // condition pour la modale des séries incomplètes
+            if (modal === document.getElementById('incomplete-series-modal')) {
+                location.reload();
+            }
         });
     }
 });
+
+// Fermeture des modales en cliquant à l'extérieur
+window.addEventListener('click', (e) => {
+    Object.values(modals).forEach(({ modal }) => {
+        if (e.target === modal) {
+            modal.classList.remove('modal-active');
+            // condition pour la modale des séries incomplètes
+            if (modal === document.getElementById('incomplete-series-modal')) {
+                location.reload();
+            }
+        }
+    });
+});
+
+// Recherche des séries incomplètes
+document.getElementById('search-incomplete-series').addEventListener('click', function() {
+    const resultsDiv = document.getElementById('incomplete-series-results');
+    resultsDiv.innerHTML = '<p>Recherche en cours...</p>';
+
+    fetch('admin.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'action=get_incomplete_series'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.text(); // D'abord, obtenez le texte de la réponse
+    })
+    .then(text => {
+        console.log('Raw response:', text); // Affichez la réponse brute dans la console
+        try {
+            const data = JSON.parse(text); // Ensuite, parsez le texte en JSON
+            if (data.success) {
+                displayIncompleteSeries(data.incomplete_series);
+            } else {
+                resultsDiv.innerHTML = '<p>Une erreur est survenue lors de la recherche des séries incomplètes.</p>';
+            }
+        } catch (error) {
+            console.error('Erreur de parsing JSON:', error);
+            resultsDiv.innerHTML = '<p>Une erreur est survenue lors de la recherche des séries incomplètes.</p>';
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        resultsDiv.innerHTML = '<p>Une erreur est survenue lors de la recherche des séries incomplètes.</p>';
+    });
+});
+
+// Affichage des séries incomplètes
+function displayIncompleteSeries(incomplete_series) {
+    const resultsDiv = document.getElementById('incomplete-series-results');
+    resultsDiv.innerHTML = '';
+
+    if (incomplete_series.length === 0) {
+        resultsDiv.innerHTML = '<p>Aucune série incomplète trouvée.</p>';
+        return;
+    }
+
+    incomplete_series.forEach(series => {
+        const seriesDiv = document.createElement('div');
+        seriesDiv.className = 'incomplete-series-item';
+
+        let html = `
+            <h3>${series.name}</h3>
+            <p><strong>Auteur :</strong> ${series.author}</p>
+            <p><strong>Éditeur :</strong> ${series.publisher}</p>
+            <p><strong>Tomes possédés :</strong> ${series.volumes.length}</p>
+            <p><strong>Tomes manquants :</strong> ${series.missing_volumes.join(', ')}</p>
+            <div class="missing-volumes-actions">
+        `;
+
+        series.missing_volumes.forEach(volume => {
+            html += `
+                <button class="add-missing-volume" data-series-id="${series.id}" data-volume-number="${volume}">
+                    + Tome ${volume}
+                </button>
+            `;
+        });
+
+        html += `
+            <button class="add-all-missing-volumes" data-series-id="${series.id}" data-missing-volumes="${series.missing_volumes.join(',')}">
+                Tout ajouter
+            </button>
+            </div>
+        `;
+
+        seriesDiv.innerHTML = html;
+        resultsDiv.appendChild(seriesDiv);
+    });
+
+    // Ajouter les événements aux boutons
+    document.querySelectorAll('.add-missing-volume').forEach(button => {
+        button.addEventListener('click', function() {
+            const seriesId = this.dataset.seriesId;
+            const volumeNumber = parseInt(this.dataset.volumeNumber);
+
+            fetch('admin.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `action=add_missing_volume&series_id=${seriesId}&volume_number=${volumeNumber}`
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    alert('Tome ajouté avec succès !');
+                    // Recharger les séries incomplètes pour mettre à jour l'affichage
+                    fetch('admin.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: 'action=get_incomplete_series'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            displayIncompleteSeries(data.incomplete_series);
+                        }
+                    });
+                } else {
+                    alert('Une erreur est survenue lors de l\'ajout du tome.');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                alert('Une erreur est survenue lors de l\'ajout du tome.');
+            });
+        });
+    });
+
+    document.querySelectorAll('.add-all-missing-volumes').forEach(button => {
+        button.addEventListener('click', function() {
+            const seriesId = this.dataset.seriesId;
+            const missingVolumes = this.dataset.missingVolumes.split(',').map(Number);
+
+            fetch('admin.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `action=add_all_missing_volumes&series_id=${seriesId}&missing_volumes=${missingVolumes.join(',')}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Tomes ajoutés avec succès !');
+                    // Recharger les séries incomplètes pour mettre à jour l'affichage
+                    fetch('admin.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: 'action=get_incomplete_series'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            displayIncompleteSeries(data.incomplete_series);
+                        }
+                    });
+                } else {
+                    alert('Une erreur est survenue lors de l\'ajout des tomes.');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                alert('Une erreur est survenue lors de l\'ajout des tomes.');
+            });
+        });
+    });
+}
 
 // Recherche de série
 function setupSeriesSearch(inputId, resultsId) {
@@ -121,6 +311,7 @@ document.querySelectorAll('.edit-series-btn').forEach(button => {
             document.getElementById('edit-series-author').value = series.author;
             document.getElementById('edit-series-publisher').value = series.publisher;
             document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
+            document.getElementById('edit-series-anilist-id').value = series.anilist_id || '';
             document.getElementById('current-series-image').src = series.image;
 
             modals['edit-series'].modal.classList.add('modal-active');
@@ -148,15 +339,6 @@ document.querySelectorAll('.delete-series-btn').forEach(button => {
                 console.error('Erreur:', error);
                 alert('Une erreur est survenue lors de la suppression.');
             });
-        }
-    });
-});
-
-// Fermeture des modales en cliquant à l'extérieur
-window.addEventListener('click', (e) => {
-    Object.values(modals).forEach(({ modal }) => {
-        if (e.target === modal) {
-            modal.classList.remove('modal-active');
         }
     });
 });

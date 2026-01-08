@@ -446,6 +446,22 @@ form {
     text-decoration: none;
 }
 
+.button-otl {
+    display: inline-block;
+    background-color: #c142b3;
+    color: #121212;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.button-otl:hover {
+    background-color: #96338a;
+    text-decoration: none;
+}
+
 .button-opt {
     display: inline-block;
     background-color: #ae644d;
@@ -577,6 +593,54 @@ form {
 @keyframes fadeOut {
     0% { opacity: 1; }
     100% { opacity: 0; }
+}
+
+/* Styles pour la modale des séries incomplètes */
+#incomplete-series-modal .modal-content {
+    width: 80%;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+#incomplete-series-results {
+    max-height: 60vh;
+    overflow-y: auto;
+    margin-top: 15px;
+    padding-right: 10px;
+}
+
+.incomplete-series-item {
+    background-color: #2d2d2d;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+.missing-volumes-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.add-missing-volume, .add-all-missing-volumes {
+    background-color: #bb86fc;
+    color: #121212;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.add-missing-volume:hover, .add-all-missing-volumes:hover {
+    background-color: #9a67ea;
+}
+
+#search-incomplete-series {
+    margin-top: 15px;
+    margin-bottom: 15px;
 }
 
 /* Modale de la liste d'envies */

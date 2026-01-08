@@ -1,5 +1,6 @@
 <?php
 require 'config.php';
+require 'anilist.php';
 session_start();
 
 if (!($_SESSION['logged_in'] ?? false)) {
@@ -8,6 +9,51 @@ if (!($_SESSION['logged_in'] ?? false)) {
 }
 
 $data = load_data();
+
+// Gérer les actions pour les séries incomplètes
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $action = $_POST['action'];
+    $response = ['success' => false];
+
+    switch ($action) {
+        case 'get_incomplete_series':
+            $incomplete_series = get_incomplete_series($data);
+            $response['success'] = true;
+            $response['incomplete_series'] = $incomplete_series;
+            break;
+
+        case 'add_missing_volume':
+            $series_id = $_POST['series_id'] ?? '';
+            $volume_number = (int)($_POST['volume_number'] ?? 0);
+
+            if ($series_id && $volume_number > 0) {
+                $success = add_volume_to_series($data, $series_id, $volume_number);
+                if ($success) {
+                    save_data($data);
+                    $response['success'] = true;
+                }
+            }
+            break;
+
+        case 'add_all_missing_volumes':
+            $series_id = $_POST['series_id'] ?? '';
+            $missing_volumes = isset($_POST['missing_volumes']) ? explode(',', $_POST['missing_volumes']) : [];
+            $missing_volumes = array_map('intval', $missing_volumes);
+
+            if ($series_id && !empty($missing_volumes)) {
+                $success = add_all_missing_volumes_to_series($data, $series_id, $missing_volumes);
+                if ($success) {
+                    save_data($data);
+                    $response['success'] = true;
+                }
+            }
+            break;
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit;
+}
 
 // Charger la liste d'envies depuis le fichier JSON
 function load_wishlist() {
@@ -138,6 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $publisher = trim($_POST['publisher'] ?? '');
     $categories = trim($_POST['categories'] ?? '');
     $image = upload_image($_FILES['image'] ?? []);
+    $anilist_id = trim($_POST['anilist_id'] ?? '');
 
     // Vérifier si une série avec le même nom existe déjà
     $series_exists = false;
@@ -158,6 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
             'publisher' => $publisher,
             'categories' => explode(',', $categories),
             'image' => $image,
+            'anilist_id' => $anilist_id,
             'volumes' => [
                 [
                     'number' => 1,
@@ -304,6 +352,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $author = trim($_POST['edit_author'] ?? '');
     $publisher = trim($_POST['edit_publisher'] ?? '');
     $categories = trim($_POST['edit_categories'] ?? '');
+    $anilist_id = trim($_POST['edit_anilist_id'] ?? '');
     $remove_image = !empty($_POST['remove_image']);
 
     $series = find_series_by_id($data, $series_id);
@@ -314,6 +363,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         $data[$series_index]['author'] = $author;
         $data[$series_index]['publisher'] = $publisher;
         $data[$series_index]['categories'] = explode(',', $categories);
+        $data[$series_index]['anilist_id'] = $anilist_id;
 
         if ($remove_image) {
             if (file_exists($data[$series_index]['image'])) {
@@ -545,7 +595,8 @@ if ($search_term) {
             <button id="open-add-series-modal">Ajouter une série</button>
             <button id="open-add-volume-modal">Ajouter un tome</button>
             <button id="open-add-multiple-volumes-modal">Ajouter plusieurs tomes</button>
-            <button id="open-wishlist-modal">Liste d'envies</button>
+            <button id="open-incomplete-series-modal" class="button button-otl">Séries incomplètes</button>
+            <button id="open-wishlist-modal" class="button button-otl">Liste d'envies</button>
             <button id="open-options-modal" class="button button-opt">Options</button>
             <a href="index.php" class="button button-ext" target="_blank">Accueil ↗</a>
             <a href="stats.php" class="button button-ext" target="_blank">Statistiques ↗</a>
@@ -562,9 +613,25 @@ if ($search_term) {
                     <input type="text" name="author" id="add-series-author" placeholder="Auteur" required>
                     <input type="text" name="publisher" id="add-series-publisher" placeholder="Éditeur" required>
                     <input type="text" name="categories" placeholder="Catégories (séparées par des virgules)" required>
+                    <input type="text" name="anilist_id" placeholder="ID Anilist (facultatif)">
                     <input type="file" name="image" accept="image/*" required>
                     <button type="submit" name="add_series">Ajouter</button>
                 </form>
+            </div>
+        </div>
+
+                <!-- Modale pour les séries incomplètes -->
+        <div class="modal" id="incomplete-series-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-incomplete-series-modal">&times;</span>
+                <h2>Séries incomplètes</h2>
+                <p>Cet outil vous permet de trouver les séries qui son terminées, pour lesquelles il vous manque des tomes.</p>
+                <p>Attention, nous utilisons l'API d'Anilist, qui se base sur les dates des publications japonaises uniquement, il peut y avoir un décalage de sortie avec la France.</p>
+                <p>Merci de noter qu'à cause des limitations de l'API d'Anilist, nous ne pouvons pas identifier les tomes manquants des séries en cours de publication.</p>
+                <button id="search-incomplete-series">Rechercher les séries incomplètes</button>
+                <div id="incomplete-series-results">
+                    <!-- Les résultats seront affichés ici -->
+                </div>
             </div>
         </div>
 
@@ -671,6 +738,7 @@ if ($search_term) {
                     <input type="text" name="edit_author" id="edit-series-author" placeholder="Auteur" required>
                     <input type="text" name="edit_publisher" id="edit-series-publisher" placeholder="Éditeur" required>
                     <input type="text" name="edit_categories" id="edit-series-categories" placeholder="Catégories (séparées par des virgules)" required>
+                    <input type="text" name="edit_anilist_id" id="edit-series-anilist-id" placeholder="ID Anilist (facultatif)">
                     <div class="current-image-container">
                         <p>Image actuelle :</p>
                         <img id="current-series-image" src="" alt="Image actuelle" style="max-width: 100px; margin-bottom: 10px;">
@@ -763,6 +831,7 @@ if ($search_term) {
                             <p><strong>Auteur :</strong> <?= $series['author'] ?></p>
                             <p><strong>Éditeur :</strong> <?= $series['publisher'] ?></p>
                             <p><strong>Catégories :</strong> <?= isset($series['categories']) ? implode(', ', $series['categories']) : '' ?></p>
+                            <p><strong>ID Anilist :</strong> <?= $series['anilist_id'] ?? 'Non défini' ?></p>
                             <p><strong>Tomes :</strong> <?= count($series['volumes']) ?></p>
                             <h3>Liste des tomes :</h3>
                             <?php
