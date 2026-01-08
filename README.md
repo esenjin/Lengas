@@ -19,7 +19,7 @@ Lengas est une application web légère pour gérer et suivre votre collection d
 - **Interface intuitive** : Design sombre et responsive, modales pour les actions, tri et filtrage des séries.
 
 ## Aperçu visuel
-
+Captures effectuées en v.1.2.0
 ![Lengas public](https://concepts.esenjin.xyz/cyla/fichiers/695eea647c951_1767828068.png)
 ![Lengas stats](https://concepts.esenjin.xyz/cyla/fichiers/695eea6469f6f_1767828068.png)
 ![Lengas admin](https://concepts.esenjin.xyz/cyla/fichiers/695eea648a362_1767828068.png)
