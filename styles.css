@@ -177,8 +177,8 @@ select:focus {
 }
 
 .volumes-list li.status-terminé {
-    background-color: rgba(3, 218, 198, 0.15);
-    border-left-color: #03dac6;
+    background-color: rgba(61, 126, 210, 0.15);
+    border-left-color: #4270dd;
 }
 
 /* Indicateur "collector" */
@@ -193,7 +193,7 @@ select:focus {
 .volumes-list li.volume-last::after {
     content: "☑";
     margin-left: 5px;
-    color: rgb(77, 144, 221);
+    color: rgb(77, 221, 100);
     font-size: 0.9em;
 }
 
@@ -430,7 +430,7 @@ form {
     background-color: #b35467;
 }
 
-.menu-button {
+.button-ext {
     display: inline-block;
     background-color: #626d74;
     color: #121212;
@@ -441,8 +441,24 @@ form {
     transition: background-color 0.3s;
 }
 
-.menu-button:hover {
+.button-ext:hover {
     background-color: #444b50;
+    text-decoration: none;
+}
+
+.button-opt {
+    display: inline-block;
+    background-color: #ae644d;
+    color: #121212;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.button-opt:hover {
+    background-color: #814a39;
     text-decoration: none;
 }
 

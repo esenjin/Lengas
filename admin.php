@@ -495,7 +495,7 @@ if ($search_term) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= ADMIN_PAGE_TITLE ?> - version <?= SITE_VERSION ?></title>
+    <title><?= ADMIN_PAGE_TITLE ?></title>
     <meta name="description" content="<?= SITE_DESCRIPTION ?>">
     <link rel="icon" href="logo.png" type="image/png">
     <link rel="stylesheet" href="styles.css">
@@ -546,9 +546,9 @@ if ($search_term) {
             <button id="open-add-volume-modal">Ajouter un tome</button>
             <button id="open-add-multiple-volumes-modal">Ajouter plusieurs tomes</button>
             <button id="open-wishlist-modal">Liste d'envies</button>
-            <button id="open-options-modal">Options</button>
-            <a href="index.php" class="button menu-button" target="_blank">Accueil ↗</a>
-            <a href="stats.php" class="button menu-button" target="_blank">Statistiques ↗</a>
+            <button id="open-options-modal" class="button button-opt">Options</button>
+            <a href="index.php" class="button button-ext" target="_blank">Accueil ↗</a>
+            <a href="stats.php" class="button button-ext" target="_blank">Statistiques ↗</a>
         </div>
 
         <!-- Modales -->
@@ -717,6 +717,7 @@ if ($search_term) {
             <div class="modal-content">
                 <span class="close-modal" id="close-options-modal">&times;</span>
                 <h2>Options du site</h2>
+                <p class="hint">Site en version <?= SITE_VERSION ?>. <a href="<?= URL_GITEA ?>" target="_blank">Accéder au dépôt Gitéa</a>.</p>
                 <form id="options-form" method="post">
                     <label for="site-name">Nom du site</label>
                     <input type="text" name="site_name" id="site-name" placeholder="Nom du site" value="<?= htmlspecialchars(SITE_NAME) ?>" required>
@@ -735,7 +736,7 @@ if ($search_term) {
 
                     <label for="admin-password">Mot de passe admin</label>
                     <input type="password" name="admin_password" id="admin-password" placeholder="Mot de passe admin">
-                    <p class="password-hint">Laisser vide pour ne pas modifier.</p> 
+                    <p class="hint">Laisser vide pour ne pas modifier.</p> 
 
                     <button type="submit" name="update_options">Mettre à jour</button>
                 </form>
