@@ -6,7 +6,7 @@ define('INDEX_PAGE_TITLE', 'Lengas - La mangathèque d\'Esenjin !');
 define('ADMIN_PAGE_TITLE', 'Gestion de ma collection');
 define('STATS_PAGE_TITLE', 'Statistiques de Lengas');
 define('ADMIN_PASSWORD', 'mot_de_passe');
-define('SITE_VERSION', '1.3.0');
+define('SITE_VERSION', '1.3.1');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Chemin vers le fichier JSON
