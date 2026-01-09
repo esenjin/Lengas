@@ -12,6 +12,7 @@ document.querySelectorAll('.series-card').forEach(card => {
         document.getElementById('modal-series-author').textContent = series.author;
         document.getElementById('modal-series-publisher').textContent = series.publisher;
         document.getElementById('modal-series-categories').textContent = series.categories ? series.categories.join(', ') : '';
+        document.getElementById('modal-series-genres').textContent = series.genres ? series.genres.join(', ') : '';
 
         // Calculer les stats
         const totalVolumes = series.volumes.length;

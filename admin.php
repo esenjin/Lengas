@@ -183,6 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $author = trim($_POST['author'] ?? '');
     $publisher = trim($_POST['publisher'] ?? '');
     $categories = trim($_POST['categories'] ?? '');
+    $genres = trim($_POST['genres'] ?? '');
     $image = upload_image($_FILES['image'] ?? []);
     $anilist_id = trim($_POST['anilist_id'] ?? '');
 
@@ -204,6 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
             'author' => $author,
             'publisher' => $publisher,
             'categories' => explode(',', $categories),
+            'genres' => explode(',', $genres),
             'image' => $image,
             'anilist_id' => $anilist_id,
             'volumes' => [
@@ -352,6 +354,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $author = trim($_POST['edit_author'] ?? '');
     $publisher = trim($_POST['edit_publisher'] ?? '');
     $categories = trim($_POST['edit_categories'] ?? '');
+    $genres = trim($_POST['edit_genres'] ?? '');
     $anilist_id = trim($_POST['edit_anilist_id'] ?? '');
     $remove_image = !empty($_POST['remove_image']);
 
@@ -363,6 +366,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         $data[$series_index]['author'] = $author;
         $data[$series_index]['publisher'] = $publisher;
         $data[$series_index]['categories'] = explode(',', $categories);
+        $data[$series_index]['genres'] = explode(',', $genres);
         $data[$series_index]['anilist_id'] = $anilist_id;
 
         if ($remove_image) {
@@ -557,7 +561,8 @@ if ($search_term) {
         return stripos($series['name'], $search_term) !== false ||
                stripos($series['author'], $search_term) !== false ||
                stripos($series['publisher'], $search_term) !== false ||
-               (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false);
+               (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false) ||
+               (isset($series['genres']) && stripos(implode(', ', $series['genres']), $search_term) !== false);
     });
 }
 ?>
@@ -635,6 +640,7 @@ if ($search_term) {
                     <input type="text" name="author" id="add-series-author" placeholder="Auteur" required>
                     <input type="text" name="publisher" id="add-series-publisher" placeholder="Éditeur" required>
                     <input type="text" name="categories" placeholder="Catégories (séparées par des virgules)" required>
+                    <input type="text" name="genres" placeholder="Genres (séparés par des virgules)">
                     <input type="text" name="anilist_id" placeholder="ID Anilist (facultatif)">
                     <p class="hint"><a tabindex="0" data-hint="L'ID Anilist est utilisé pour trouver les tomes manquants des sériées terminées, plus d'infos dans l'outil « Séries incomplètes ». Pour trouver cet identifiant, rendez-vous sur anilist.co, recherchez votre série et accédez à sa fiche, l'ID est la suite de chiffres avant le nom dans l'url.">À quoi ça sert ? Où le trouver ?</a>.</p>
                     <input type="file" name="image" accept="image/*" required>
@@ -761,6 +767,7 @@ if ($search_term) {
                     <input type="text" name="edit_author" id="edit-series-author" placeholder="Auteur" required>
                     <input type="text" name="edit_publisher" id="edit-series-publisher" placeholder="Éditeur" required>
                     <input type="text" name="edit_categories" id="edit-series-categories" placeholder="Catégories (séparées par des virgules)" required>
+                    <input type="text" name="edit_genres" id="edit-series-genres" placeholder="Genres (séparés par des virgules)">
                     <input type="text" name="edit_anilist_id" id="edit-series-anilist-id" placeholder="ID Anilist (facultatif)">
                     <div class="current-image-container">
                         <p>Image actuelle :</p>
@@ -856,6 +863,7 @@ if ($search_term) {
                             <p><strong>Auteur :</strong> <?= $series['author'] ?></p>
                             <p><strong>Éditeur :</strong> <?= $series['publisher'] ?></p>
                             <p><strong>Catégories :</strong> <?= isset($series['categories']) ? implode(', ', $series['categories']) : '' ?></p>
+                            <p><strong>Genres :</strong> <?= isset($series['genres']) ? implode(', ', $series['genres']) : '' ?></p>
                             <p><strong>ID Anilist :</strong> 
                                 <?php if (isset($series['anilist_id']) && !empty($series['anilist_id'])): ?>
                                     <a href="https://anilist.co/manga/<?= htmlspecialchars($series['anilist_id']) ?>" target="_blank"><?= htmlspecialchars($series['anilist_id']) ?></a>

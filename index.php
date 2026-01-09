@@ -34,7 +34,8 @@ if ($search_term) {
         return stripos($series['name'], $search_term) !== false ||
                stripos($series['author'], $search_term) !== false ||
                stripos($series['publisher'], $search_term) !== false ||
-               (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false);
+               (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false) ||
+               (isset($series['genres']) && stripos(implode(', ', $series['genres']), $search_term) !== false);
     });
 }
 ?>
@@ -132,6 +133,7 @@ if ($search_term) {
                             <p><strong>Auteur :</strong> <span id="modal-series-author"></span></p>
                             <p><strong>Éditeur :</strong> <span id="modal-series-publisher"></span></p>
                             <p><strong>Catégories :</strong> <span id="modal-series-categories"></span></p>
+                            <p><strong>Genres :</strong> <span id="modal-series-genres"></span></p>
                             <div class="series-stats" id="modal-series-stats"></div>
                         </div>
                     </div>
