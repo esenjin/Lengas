@@ -114,6 +114,17 @@ select:focus {
     transform: translateY(-5px);
 }
 
+.series-card.mature .series-image {
+    filter: blur(10px);
+}
+
+.series-card .series-image-container {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    overflow: hidden;
+}
+
 .series-image {
     width: 150px;
     height: 150px;
@@ -232,6 +243,8 @@ select:focus {
     border-radius: 10px;
     width: 90%;
     max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 

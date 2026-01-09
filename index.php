@@ -101,23 +101,25 @@ if ($search_term) {
                 <p>Aucune série trouvée.</p>
             <?php else: ?>
                 <?php foreach ($data as $series_index => $series): ?>
-                    <?php
-                    $total_volumes = count($series['volumes']);
-                    $read_volumes = count(array_filter($series['volumes'], fn($v) => $v['status'] === 'terminé'));
-                    ?>
-                    <div class="series-card" data-series-index="<?= $series_index ?>">
-                        <img class="series-image" src="<?= $series['image'] ?>" alt="<?= $series['name'] ?>">
-                        <div class="series-info">
-                            <h2><?= $series['name'] ?></h2>
-                            <p><strong>Auteur :</strong> <?= $series['author'] ?></p>
-                            <p><strong>Éditeur :</strong> <?= $series['publisher'] ?></p>
-                            <div class="series-stats">
-                                <?= $total_volumes ?> tome<?= $total_volumes > 1 ? 's' : '' ?> possédé<?= $total_volumes > 1 ? 's' : '' ?>
-                                (<?= $read_volumes ?> lu<?= $read_volumes > 1 ? 's' : '' ?>)
-                            </div>
+                <?php
+                $total_volumes = count($series['volumes']);
+                $read_volumes = count(array_filter($series['volumes'], fn($v) => $v['status'] === 'terminé'));
+                ?>
+                <div class="series-card <?= isset($series['mature']) && $series['mature'] ? 'mature' : '' ?>" data-series-index="<?= $series_index ?>">
+                    <img class="series-image" src="<?= $series['image'] ?>" alt="<?= $series['name'] ?>">
+                    <?php if (isset($series['mature']) && $series['mature']): ?>
+                    <?php endif; ?>
+                    <div class="series-info">
+                        <h2><?= $series['name'] ?></h2>
+                        <p><strong>Auteur :</strong> <?= $series['author'] ?></p>
+                        <p><strong>Éditeur :</strong> <?= $series['publisher'] ?></p>
+                        <div class="series-stats">
+                            <?= $total_volumes ?> tome<?= $total_volumes > 1 ? 's' : '' ?> possédé<?= $total_volumes > 1 ? 's' : '' ?>
+                            (<?= $read_volumes ?> lu<?= $read_volumes > 1 ? 's' : '' ?>)
                         </div>
                     </div>
-                <?php endforeach; ?>
+                </div>
+            <?php endforeach; ?>
             <?php endif; ?>
         </div>
 

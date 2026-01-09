@@ -186,6 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $genres = trim($_POST['genres'] ?? '');
     $image = upload_image($_FILES['image'] ?? []);
     $anilist_id = trim($_POST['anilist_id'] ?? '');
+    $mature = !empty($_POST['mature']);
 
     // Vérifier si une série avec le même nom existe déjà
     $series_exists = false;
@@ -208,6 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
             'genres' => explode(',', $genres),
             'image' => $image,
             'anilist_id' => $anilist_id,
+            'mature' => $mature,
             'volumes' => [
                 [
                     'number' => 1,
@@ -356,6 +358,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $categories = trim($_POST['edit_categories'] ?? '');
     $genres = trim($_POST['edit_genres'] ?? '');
     $anilist_id = trim($_POST['edit_anilist_id'] ?? '');
+    $mature = !empty($_POST['edit_mature']);
     $remove_image = !empty($_POST['remove_image']);
 
     $series = find_series_by_id($data, $series_id);
@@ -368,6 +371,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         $data[$series_index]['categories'] = explode(',', $categories);
         $data[$series_index]['genres'] = explode(',', $genres);
         $data[$series_index]['anilist_id'] = $anilist_id;
+        $data[$series_index]['mature'] = $mature;
 
         if ($remove_image) {
             if (file_exists($data[$series_index]['image'])) {
@@ -649,6 +653,9 @@ if ($search_term) {
                     <p>ID Anilist (facultatif) :</p>
                     <input type="text" name="anilist_id" placeholder="ID Anilist (facultatif)">
                     <p class="hint"><a tabindex="0" data-hint="L'ID Anilist est utilisé pour trouver les tomes manquants des sériées terminées, plus d'infos dans l'outil « Séries incomplètes ». Pour trouver cet identifiant, rendez-vous sur anilist.co, recherchez votre série et accédez à sa fiche, l'ID est la suite de chiffres avant le nom dans l'url.">À quoi ça sert ? Où le trouver ?</a>.</p>
+                    <label>
+                        <input type="checkbox" name="mature"> Contenu mature
+                    </label>
                     <p>Vignette :</p>
                     <input type="file" name="image" accept="image/*" required>
                     <button type="submit" name="add_series">Ajouter</button>
@@ -790,6 +797,9 @@ if ($search_term) {
                     <input type="text" name="edit_genres" id="edit-series-genres" placeholder="Genres (séparés par des virgules)">
                     <p>ID Anilist (facultatif) :</p>
                     <input type="text" name="edit_anilist_id" id="edit-series-anilist-id" placeholder="ID Anilist (facultatif)">
+                    <label>
+                        <input type="checkbox" name="edit_mature" id="edit-series-mature"> Contenu mature
+                    </label>
                     <div class="current-image-container">
                         <p>Vignette actuelle :</p>
                         <img id="current-series-image" src="" alt="Image actuelle" style="max-width: 100px; margin-bottom: 10px;">
