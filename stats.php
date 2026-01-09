@@ -7,6 +7,25 @@ $total_volumes = array_sum(array_map(function($series) {
     return count($series['volumes']);
 }, $data));
 
+// Fonction pour convertir les minutes en format lisible
+function convertMinutesToReadableTime($minutes) {
+    $hours = floor($minutes / 60);
+    $remainingMinutes = $minutes % 60;
+    $days = floor($hours / 24);
+    $remainingHours = $hours % 24;
+    $parts = [];
+    if ($days > 0) {
+        $parts[] = "$days jour" . ($days > 1 ? "s" : "");
+    }
+    if ($remainingHours > 0) {
+        $parts[] = "$remainingHours heure" . ($remainingHours > 1 ? "s" : "");
+    }
+    if ($remainingMinutes > 0) {
+        $parts[] = "$remainingMinutes minute" . ($remainingMinutes > 1 ? "s" : "");
+    }
+    return implode(' et ', $parts);
+}
+
 $status_counts = [
     'à lire' => 0,
     'en cours' => 0,
@@ -64,6 +83,30 @@ $percentages = [
 $total_unique_authors = count($unique_authors);
 $total_unique_publishers = count($unique_publishers);
 
+// Calculer le temps de lecture pour chaque statut
+$reading_time_by_status = [
+    'à lire' => 0,
+    'en cours' => 0,
+    'terminé' => 0
+];
+
+foreach ($data as $series) {
+    foreach ($series['volumes'] as $volume) {
+        $reading_time_by_status[$volume['status']] += 40; // 40 minutes par tome
+    }
+}
+
+// Convertir les temps de lecture en format lisible
+$reading_time_by_status_readable = [
+    'à lire' => convertMinutesToReadableTime($reading_time_by_status['à lire']),
+    'en cours' => convertMinutesToReadableTime($reading_time_by_status['en cours']),
+    'terminé' => convertMinutesToReadableTime($reading_time_by_status['terminé'])
+];
+
+// Calcul du temps de lecture total
+$total_reading_time_minutes = $total_volumes * 40; // 40 minutes par tome
+$total_reading_time = convertMinutesToReadableTime($total_reading_time_minutes);
+
 // Données pour le graphique
 $chart_labels = ['À lire', 'En cours', 'Terminé'];
 $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_counts['terminé']];
@@ -111,6 +154,20 @@ $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_
             font-weight: bold;
             color: #bb86fc;
         }
+
+        .reading-time-container {
+            display: flex;
+            flex-direction: column;
+            margin-top: 20px;
+        }
+
+        .reading-time-item {
+            text-align: center;
+            padding: 10px;
+            background-color: #2d2d2d;
+            border-radius: 5px;
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
@@ -157,57 +214,40 @@ $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_
             </div>
 
             <h2>Répartition par statut</h2>
-            <div class="chart-container">
-                <canvas id="statusChart"></canvas>
+            <div style="display: flex; justify-content: space-between;">
+                <div class="chart-container">
+                    <canvas id="statusChart"></canvas>
+                </div>
+                <div class="reading-time-container">
+                    <div class="reading-time-item">
+                        <span>Temps de lecture total :</span>
+                        <span class="stat-value"><?= $total_reading_time ?></span>
+                    </div>
+                    <div class="reading-time-item">
+                        <span>Temps de lecture à lire :</span>
+                        <span class="stat-value"><?= $reading_time_by_status_readable['à lire'] ?></span>
+                    </div>
+                    <div class="reading-time-item">
+                        <span>Temps de lecture en cours :</span>
+                        <span class="stat-value"><?= $reading_time_by_status_readable['en cours'] ?></span>
+                    </div>
+                    <div class="reading-time-item">
+                        <span>Temps de lecture terminé :</span>
+                        <span class="stat-value"><?= $reading_time_by_status_readable['terminé'] ?></span>
+                    </div>
+                    <p><i>* Pour un temps moyen de 40 min par tome.</i></p>
+                </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const ctx = document.getElementById('statusChart').getContext('2d');
-
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: <?php echo json_encode($chart_labels); ?>,
-                    datasets: [{
-                        data: <?php echo json_encode($chart_values); ?>,
-                        backgroundColor: [
-                            'rgba(207, 102, 121, 0.4)',
-                            'rgba(187, 134, 252, 0.4)',
-                            'rgba(3, 218, 198, 0.4)'
-                        ],
-                        borderColor: [
-                            '#cf6679',
-                            '#bb86fc',
-                            '#03dac6'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.raw || 0;
-                                    const total = <?= $total_volumes ?>;
-                                    const percentage = Math.round((value / total) * 100);
-                                    return `${label}: ${value} tomes (${percentage}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        });
+        // Définir les données nécessaires pour le graphique
+        var chartLabels = <?php echo json_encode($chart_labels); ?>;
+        var chartValues = <?php echo json_encode($chart_values); ?>;
+        var totalVolumes = <?= $total_volumes ?>;
     </script>
+    <script src="scripts/stats.js"></script>
 </body>
 </html>
