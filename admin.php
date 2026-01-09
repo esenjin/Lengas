@@ -595,8 +595,8 @@ if ($search_term) {
             <button id="open-add-series-modal">Ajouter une série</button>
             <button id="open-add-volume-modal">Ajouter un tome</button>
             <button id="open-add-multiple-volumes-modal">Ajouter plusieurs tomes</button>
-            <button id="open-incomplete-series-modal" class="button button-otl">Séries incomplètes</button>
-            <button id="open-wishlist-modal" class="button button-otl">Liste d'envies</button>
+            <button id="open-incomplete-series-modal" class="button button-ext">Séries incomplètes</button>
+            <button id="open-wishlist-modal" class="button button-ext">Liste d'envies</button>
             <button id="open-options-modal" class="button button-opt">Options</button>
             <a href="index.php" class="button button-ext" target="_blank">Accueil ↗</a>
             <a href="stats.php" class="button button-ext" target="_blank">Statistiques ↗</a>
@@ -831,7 +831,13 @@ if ($search_term) {
                             <p><strong>Auteur :</strong> <?= $series['author'] ?></p>
                             <p><strong>Éditeur :</strong> <?= $series['publisher'] ?></p>
                             <p><strong>Catégories :</strong> <?= isset($series['categories']) ? implode(', ', $series['categories']) : '' ?></p>
-                            <p><strong>ID Anilist :</strong> <?= $series['anilist_id'] ?? 'Non défini' ?></p>
+                            <p><strong>ID Anilist :</strong> 
+                                <?php if (isset($series['anilist_id']) && !empty($series['anilist_id'])): ?>
+                                    <a href="https://anilist.co/manga/<?= htmlspecialchars($series['anilist_id']) ?>" target="_blank"><?= htmlspecialchars($series['anilist_id']) ?></a>
+                                <?php else: ?>
+                                    Non défini
+                                <?php endif; ?>
+                            </p>
                             <p><strong>Tomes :</strong> <?= count($series['volumes']) ?></p>
                             <h3>Liste des tomes :</h3>
                             <?php
