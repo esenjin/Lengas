@@ -262,11 +262,74 @@ select:focus {
     margin-top: -10px;
     margin-bottom: 15px;
     font-style: italic;
+    position: relative;
+    display: inline-block;
 }
 
 .hint a {
     text-decoration: underline;
     text-decoration-style: dotted;
+    color: inherit;
+}
+
+/* Seulement les liens avec data-hint */
+.hint a[data-hint] {
+    cursor: help;
+    position: relative;
+    outline: none;
+}
+
+/* Tooltip */
+.hint a[data-hint]::after {
+    content: attr(data-hint);
+    position: absolute;
+    bottom: 130%;
+    left: 50%;
+    transform: translateX(-50%) translateY(6px);
+
+    background: #2a2a2a;
+    color: #bb86fc;
+
+    padding: 8px 12px;
+    border-radius: 8px;
+
+    font-size: 0.85em;
+    font-style: normal;
+    line-height: 1.4;
+
+    width: max-content;
+    max-width: 260px;   /* largeur max du rectangle */
+    white-space: normal;
+    text-align: left;
+
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+    z-index: 10;
+}
+
+/* Flèche */
+.hint a[data-hint]::before {
+    content: "";
+    position: absolute;
+    bottom: 118%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 7px solid transparent;
+    border-top-color: #2a2a2a;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+/* Hover / focus */
+.hint a[data-hint]:hover::after,
+.hint a[data-hint]:hover::before,
+.hint a[data-hint]:focus::after,
+.hint a[data-hint]:focus::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }
 
 /* Formulaires admin */

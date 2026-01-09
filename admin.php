@@ -614,6 +614,7 @@ if ($search_term) {
                     <input type="text" name="publisher" id="add-series-publisher" placeholder="Éditeur" required>
                     <input type="text" name="categories" placeholder="Catégories (séparées par des virgules)" required>
                     <input type="text" name="anilist_id" placeholder="ID Anilist (facultatif)">
+                    <p class="hint"><a tabindex="0" data-hint="L'ID Anilist est utilisé pour trouver les tomes manquants des sériées terminées, plus d'infos dans l'outil « Séries incomplètes ». Pour trouver cet identifiant, rendez-vous sur anilist.co, recherchez votre série et accédez à sa fiche, l'ID est la suite de chiffres avant le nom dans l'url.">À quoi ça sert ? Où le trouver ?</a>.</p>
                     <input type="file" name="image" accept="image/*" required>
                     <button type="submit" name="add_series">Ajouter</button>
                 </form>
