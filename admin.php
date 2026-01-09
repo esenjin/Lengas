@@ -636,13 +636,20 @@ if ($search_term) {
                 <span class="close-modal" id="close-add-series-modal">&times;</span>
                 <h2>Ajouter une série</h2>
                 <form method="post" enctype="multipart/form-data">
+                    <p>Nom :</p>
                     <input type="text" name="name" id="add-series-name" placeholder="Nom de la série" required>
+                    <p>Auteur :</p>
                     <input type="text" name="author" id="add-series-author" placeholder="Auteur" required>
+                    <p>Éditeur :</p>
                     <input type="text" name="publisher" id="add-series-publisher" placeholder="Éditeur" required>
+                    <p>Catégories :</p>
                     <input type="text" name="categories" placeholder="Catégories (séparées par des virgules)" required>
+                    <p>Genres :</p>
                     <input type="text" name="genres" placeholder="Genres (séparés par des virgules)">
+                    <p>ID Anilist (facultatif) :</p>
                     <input type="text" name="anilist_id" placeholder="ID Anilist (facultatif)">
                     <p class="hint"><a tabindex="0" data-hint="L'ID Anilist est utilisé pour trouver les tomes manquants des sériées terminées, plus d'infos dans l'outil « Séries incomplètes ». Pour trouver cet identifiant, rendez-vous sur anilist.co, recherchez votre série et accédez à sa fiche, l'ID est la suite de chiffres avant le nom dans l'url.">À quoi ça sert ? Où le trouver ?</a>.</p>
+                    <p>Vignette :</p>
                     <input type="file" name="image" accept="image/*" required>
                     <button type="submit" name="add_series">Ajouter</button>
                 </form>
@@ -670,6 +677,7 @@ if ($search_term) {
                 <span class="close-modal" id="close-add-volume-modal">&times;</span>
                 <h2>Ajouter un tome</h2>
                 <form method="post">
+                    <p>Choisir une série :</p>
                     <input type="text" id="series-search" class="series-search" placeholder="Rechercher une série...">
                     <div class="series-results" id="series-results">
                         <?php foreach ($data as $series): ?>
@@ -677,7 +685,9 @@ if ($search_term) {
                         <?php endforeach; ?>
                     </div>
                     <input type="hidden" name="series_id" id="selected-series-id" required>
+                    <p>Numéro du tome à ajouter :</p>
                     <input type="number" name="volume_number" placeholder="Numéro du tome" min="1" required>
+                    <p>Statut du tome :</p>
                     <select name="status" required>
                         <option value="à lire">À lire</option>
                         <option value="en cours">En cours</option>
@@ -700,18 +710,21 @@ if ($search_term) {
                 <span class="close-modal" id="close-add-multiple-volumes-modal">&times;</span>
                 <h2>Ajouter plusieurs tomes</h2>
                 <form method="post">
+                    <p>Choisir une série :</p>
                     <input type="text" id="multiple-series-search" class="series-search" placeholder="Rechercher une série...">
                     <div class="series-results" id="multiple-series-results">
                         <?php foreach ($data as $series): ?>
                             <div data-id="<?= $series['id'] ?>"><?= $series['name'] ?></div>
                         <?php endforeach; ?>
                     </div>
+                    <p>Tomes à ajouter :</p>
                     <input type="hidden" name="series_id" id="multiple-selected-series-id" required>
                     <div class="volume-range">
                         <input type="number" name="start_volume" placeholder="Numéro de début" min="1" required>
                         <span>à</span>
                         <input type="number" name="end_volume" placeholder="Numéro de fin" min="1" required>
                     </div>
+                    <p>Statut des tomes :</p>
                     <select name="status" required>
                         <option value="à lire">À lire</option>
                         <option value="en cours">En cours</option>
@@ -720,9 +733,11 @@ if ($search_term) {
                     <label>
                         <input type="checkbox" name="is_collector"> Collector
                     </label>
+                    <p class="hint">Tous seront tagués ainsi.</p>
                     <label>
                         <input type="checkbox" name="is_last"> Dernier tome
                     </label>
+                    <p class="hint">Seul le dernier sera tagué comme tel.</p>
                     <button type="submit" name="add_multiple_volumes">Ajouter</button>
                 </form>
             </div>
@@ -763,14 +778,20 @@ if ($search_term) {
                 <h2>Modifier la série</h2>
                 <form method="post" enctype="multipart/form-data" id="edit-series-form">
                     <input type="hidden" name="series_id" id="edit-series-id-input">
+                    <p>Nom :</p>
                     <input type="text" name="edit_name" id="edit-series-name" placeholder="Nom de la série" required>
+                    <p>Auteur :</p>
                     <input type="text" name="edit_author" id="edit-series-author" placeholder="Auteur" required>
+                    <p>Éditeur :</p>
                     <input type="text" name="edit_publisher" id="edit-series-publisher" placeholder="Éditeur" required>
+                    <p>Catégories :</p>
                     <input type="text" name="edit_categories" id="edit-series-categories" placeholder="Catégories (séparées par des virgules)" required>
+                    <p>Genres :</p>
                     <input type="text" name="edit_genres" id="edit-series-genres" placeholder="Genres (séparés par des virgules)">
+                    <p>ID Anilist (facultatif) :</p>
                     <input type="text" name="edit_anilist_id" id="edit-series-anilist-id" placeholder="ID Anilist (facultatif)">
                     <div class="current-image-container">
-                        <p>Image actuelle :</p>
+                        <p>Vignette actuelle :</p>
                         <img id="current-series-image" src="" alt="Image actuelle" style="max-width: 100px; margin-bottom: 10px;">
                         <input type="checkbox" name="remove_image" id="remove-image-checkbox">
                         <label for="remove-image-checkbox">Supprimer l'image</label>
