@@ -99,6 +99,18 @@ function add_volume_to_series(&$data, $series_id, $volume_number, $status = 'à 
                 'collector' => $is_collector,
                 'last' => $is_last
             ];
+
+            // Trier les tomes par numéro
+            usort($series['volumes'], function($a, $b) {
+                return $a['number'] - $b['number'];
+            });
+
+            // Marquer le dernier tome comme 'dernier'
+            $last_volume = end($series['volumes']);
+            foreach ($series['volumes'] as &$volume) {
+                $volume['last'] = ($volume['number'] == $last_volume['number']);
+            }
+
             return true;
         }
     }
