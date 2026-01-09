@@ -595,8 +595,8 @@ if ($search_term) {
             <button id="open-add-series-modal">Ajouter une série</button>
             <button id="open-add-volume-modal">Ajouter un tome</button>
             <button id="open-add-multiple-volumes-modal">Ajouter plusieurs tomes</button>
-            <button id="open-incomplete-series-modal" class="button button-ext">Séries incomplètes</button>
-            <button id="open-wishlist-modal" class="button button-ext">Liste d'envies</button>
+            <button id="open-incomplete-series-modal" class="button button-otl">Séries incomplètes</button>
+            <button id="open-wishlist-modal" class="button button-otl">Liste d'envies</button>
             <button id="open-options-modal" class="button button-opt">Options</button>
             <a href="index.php" class="button button-ext" target="_blank">Accueil ↗</a>
             <a href="stats.php" class="button button-ext" target="_blank">Statistiques ↗</a>
