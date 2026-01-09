@@ -16,7 +16,7 @@ Lengas est une application web légère pour gérer et suivre votre collection d
 - **Liste d'envies** : Ajout et suppression de séries dans une liste d'envies, possibilité d'ajouter une série de la liste d'envies à votre collection.
 - **Statistiques** : Nombre de séries, tomes, répartition par statut.
 - **Notifications** : Alertes pour les tomes manquants ou incorrectement étiquetés.
-- **Séries incomplètes** : Recherche des séries (termiées) incomplètes.
+- **Séries incomplètes** : Recherche des séries (terminées) incomplètes.
 - **Interface intuitive** : Design sombre et responsive, modales pour les actions, tri et filtrage des séries.
 
 ## Aperçu visuel
