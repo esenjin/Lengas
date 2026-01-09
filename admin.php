@@ -629,7 +629,7 @@ if ($search_term) {
                 <p>Cet outil vous permet de trouver les séries qui son terminées, pour lesquelles il vous manque des tomes.</p>
                 <p>Attention, nous utilisons l'API d'Anilist, qui se base sur les dates des publications japonaises uniquement, il peut y avoir un décalage de sortie avec la France.</p>
                 <p>Merci de noter qu'à cause des limitations de l'API d'Anilist, nous ne pouvons pas identifier les tomes manquants des séries en cours de publication.</p>
-                <button id="search-incomplete-series">Rechercher les séries incomplètes</button>
+                <button id="search-incomplete-series" class="button button-otl">Rechercher les séries incomplètes</button>
                 <div id="incomplete-series-results">
                     <!-- Les résultats seront affichés ici -->
                 </div>
@@ -762,7 +762,7 @@ if ($search_term) {
                         <input type="text" id="wishlist-name" placeholder="Nom de la série" required>
                         <input type="text" id="wishlist-author" placeholder="Auteur" required>
                         <input type="text" id="wishlist-publisher" placeholder="Éditeur" required>
-                        <button id="add-to-wishlist-btn">Ajouter à la liste</button>
+                        <button id="add-to-wishlist-btn" class="button button-otl">Ajouter à la liste</button>
                     </div>
                     <div class="wishlist-list" id="wishlist-list">
                         <?php foreach ($wishlist as $index => $item): ?>
@@ -807,7 +807,9 @@ if ($search_term) {
                     <input type="password" name="admin_password" id="admin-password" placeholder="Mot de passe admin">
                     <p class="hint">Laisser vide pour ne pas modifier.</p> 
 
-                    <button type="submit" name="update_options">Mettre à jour</button>
+                    <button type="submit" name="update_options" class="button button-opt">Mettre à jour</button>
+                    <p style="visibility: hidden;">_</p>
+                    <p class="hint">Merci de recharger la page après l'application des modifications, afin d'actualiser les champs des paramètres ci-dessus.</p>
                 </form>
             </div>
         </div>
