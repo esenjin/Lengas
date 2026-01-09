@@ -118,7 +118,7 @@ $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_
     <meta charset="UTF-8">
     <title><?= STATS_PAGE_TITLE ?></title>
     <meta name="description" content="<?= SITE_DESCRIPTION ?>">
-    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="styles.css">
     <style>
         .stats-container {
