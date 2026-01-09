@@ -16,6 +16,7 @@ Lengas est une application web légère pour gérer et suivre votre collection d
 - **Liste d'envies** : Ajout et suppression de séries dans une liste d'envies, possibilité d'ajouter une série de la liste d'envies à votre collection.
 - **Statistiques** : Nombre de séries, tomes, répartition par statut.
 - **Notifications** : Alertes pour les tomes manquants ou incorrectement étiquetés.
+- **Séries incomplètes** : Recherche des séries (termiées) incomplètes.
 - **Interface intuitive** : Design sombre et responsive, modales pour les actions, tri et filtrage des séries.
 
 ## Aperçu visuel
@@ -28,11 +29,10 @@ Captures effectuées en v.1.2.0
 - Serveur web (Apache, Nginx)
 - PHP 7.4 ou supérieur
 
-## Installation
-1. Télécharger le dépôt
+## Installation / mise à jour
+1. Télécharger la dernière publication
 2. Éditer le mot de passe dans `config.php`
-3. (Optionnel) Modifier les différentes informations à votre convenance (titre des pages, etc.)
-4. Téléverser les fichiers sur votre serveur
+3. Téléverser les fichiers sur votre serveur (écraser dans le cas d'une màj)
 
 ## Structure des fichiers
 
