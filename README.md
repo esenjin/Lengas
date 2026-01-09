@@ -29,10 +29,16 @@ Captures effectuées en v.1.2.0
 - Serveur web (Apache, Nginx)
 - PHP 7.4 ou supérieur
 
-## Installation / mise à jour
+## Installation
 1. Télécharger la dernière publication
 2. Éditer le mot de passe dans `config.php`
-3. Téléverser les fichiers sur votre serveur (écraser dans le cas d'une màj)
+3. Téléverser les fichiers sur votre serveur
+
+## Mise à jour
+1. Télécharger la dernière publication
+2. Éditer le mot de passe dans `config.php`
+3. Supprimez le fichier `data.json`
+3. Téléverser les fichiers sur votre serveur (écraser ceux présents)
 
 ## Structure des fichiers
 
