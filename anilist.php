@@ -60,6 +60,7 @@ function get_series_volumes_from_anilist($anilist_id) {
 // Fonction pour obtenir les séries incomplètes
 function get_incomplete_series($data) {
     $incomplete_series = [];
+    $series_with_more_volumes = [];
 
     foreach ($data as $series) {
         if (isset($series['anilist_id']) && !empty($series['anilist_id'])) {
@@ -73,12 +74,24 @@ function get_incomplete_series($data) {
                     }
                     $series['missing_volumes'] = $missing_volumes;
                     $incomplete_series[] = $series;
+                } elseif ($owned_volumes > $anilist_volumes) {
+                    $series['has_more_volumes'] = true;
+                    $series['missing_volumes'] = []; // Ajouter une propriété vide pour éviter les erreurs
+                    $series_with_more_volumes[] = $series;
                 }
             }
         }
     }
 
-    return $incomplete_series;
+    // Fusionner les tableaux tout en s'assurant que chaque série a une propriété missing_volumes
+    $result = array_merge($incomplete_series, $series_with_more_volumes);
+    foreach ($result as &$serie) {
+        if (!isset($serie['missing_volumes'])) {
+            $serie['missing_volumes'] = [];
+        }
+    }
+
+    return $result;
 }
 
 // Fonction pour ajouter un tome à une série

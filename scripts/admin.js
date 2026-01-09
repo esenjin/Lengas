@@ -113,24 +113,34 @@ function displayIncompleteSeries(incomplete_series) {
             <p><strong>Auteur :</strong> ${series.author}</p>
             <p><strong>Éditeur :</strong> ${series.publisher}</p>
             <p><strong>Tomes possédés :</strong> ${series.volumes.length}</p>
-            <p><strong>Tomes manquants :</strong> ${series.missing_volumes.join(', ')}</p>
-            <div class="missing-volumes-actions">
         `;
 
-        series.missing_volumes.forEach(volume => {
+        if (series.missing_volumes && series.missing_volumes.length > 0) {
+            html += `<p><strong>Tomes manquants :</strong> ${series.missing_volumes.join(', ')}</p>`;
+        } else if (series.has_more_volumes) {
+            html += `<p><strong>Tomes manquants :</strong> Aucun</p>`;
+            html += `<p class="issues-list"><strong>Attention :</strong> Votre série contient plus de tomes que ce qui est indiqué sur Anilist.</p>`;
+        }
+
+        html += `<div class="missing-volumes-actions">`;
+
+        if (series.missing_volumes && series.missing_volumes.length > 0) {
+            series.missing_volumes.forEach(volume => {
+                html += `
+                    <button class="add-missing-volume" data-series-id="${series.id}" data-volume-number="${volume}">
+                        + Tome ${volume}
+                    </button>
+                `;
+            });
+
             html += `
-                <button class="add-missing-volume" data-series-id="${series.id}" data-volume-number="${volume}">
-                    + Tome ${volume}
+                <button class="add-all-missing-volumes" data-series-id="${series.id}" data-missing-volumes="${series.missing_volumes.join(',')}">
+                    Tout ajouter
                 </button>
             `;
-        });
+        }
 
-        html += `
-            <button class="add-all-missing-volumes" data-series-id="${series.id}" data-missing-volumes="${series.missing_volumes.join(',')}">
-                Tout ajouter
-            </button>
-            </div>
-        `;
+        html += `</div>`;
 
         seriesDiv.innerHTML = html;
         resultsDiv.appendChild(seriesDiv);
@@ -149,12 +159,7 @@ function displayIncompleteSeries(incomplete_series) {
                 },
                 body: `action=add_missing_volume&series_id=${seriesId}&volume_number=${volumeNumber}`
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     alert('Tome ajouté avec succès !');

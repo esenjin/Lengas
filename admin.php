@@ -490,12 +490,16 @@ function sort_volumes(&$volumes) {
 }
 
 // Fonction pour générer les notifications
-function generate_notifications($volumes) {
+function generate_notifications($volumes, $anilist_volumes = null) {
     $notifications = [];
+    if (empty($volumes)) {
+        return $notifications;
+    }
+
     $numbers = array_map(function($v) { return $v['number']; }, $volumes);
     $min = min($numbers);
     $max = max($numbers);
-    $last_volumes = array_filter($volumes, function($v) { return $v['last']; });
+    $last_volumes = array_filter($volumes, function($v) { return !empty($v['last']); });
 
     // Vérifier les tomes manquants
     $missing = [];
@@ -525,6 +529,24 @@ function generate_notifications($volumes) {
             $notifications[] = "Attention, plusieurs tomes sont tagués comme dernier (" . implode(', ', $last_numbers) . ").";
         }
     }
+
+    // Vérifier si la bibliothèque a plus de tomes que sur Anilist
+    if ($anilist_volumes !== null && $max > $anilist_volumes) {
+        $notifications[] = "Attention, votre série contient plus de tomes que ce qui est indiqué sur Anilist.";
+    }
+
+    // Vérifier si la série est complète selon Anilist mais qu'il y a des tomes manquants
+    if ($anilist_volumes !== null && $max < $anilist_volumes) {
+        if (!empty($last_volumes)) {
+            $notifications[] = "Attention, cette série est marquée comme terminée mais il semble y avoir plus de tomes sur Anilist.";
+        }
+    }
+
+    // Vérifier si le nombre de tomes est égal à Anilist mais que le dernier tome n'est pas tagué comme tel
+    if ($anilist_volumes !== null && $max == $anilist_volumes && empty($last_volumes)) {
+        $notifications[] = "Attention, cette série semble complète mais le dernier tome n'est pas tagué comme tel.";
+    }
+
     return $notifications;
 }
 
@@ -849,6 +871,11 @@ if ($search_term) {
 
                             // Générer les notifications
                             $notifications = generate_notifications($series['volumes']);
+                            $anilist_volumes = null;
+                            if (isset($series['anilist_id']) && !empty($series['anilist_id'])) {
+                                $anilist_volumes = get_series_volumes_from_anilist($series['anilist_id']);
+                            }
+                            $notifications = generate_notifications($series['volumes'], $anilist_volumes);
 
                             // Afficher les notifications si nécessaire
                             if (!empty($notifications)) {

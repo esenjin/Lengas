@@ -653,6 +653,21 @@ form {
     animation: fadeOut 3s ease-in-out;
 }
 
+.incomplete-series-item {
+    background-color: #2d2d2d;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+.more-volumes-than-anilist {
+    border-left: 4px solid #cf6679;
+}
+
+.less-volumes-than-anilist {
+    border-left: 4px solid #bb86fc;
+}
+
 @keyframes fadeOut {
     0% { opacity: 1; }
     100% { opacity: 0; }
