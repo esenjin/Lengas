@@ -62,5 +62,5 @@ Modifiez `config.php` pour :
 4. Utilisez les options de tri et de recherche pour naviguer dans votre collection.
 
 ## Crédits
-Développé avec l'aide de [Mistral](https://chat.mistral.ai/)
-Utilise l'API d'[Anilist](https://docs.anilist.co/)
+- Développé avec l'aide de [Mistral](https://chat.mistral.ai/)
+- Utilise l'API d'[Anilist](https://docs.anilist.co/)
