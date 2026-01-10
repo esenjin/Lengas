@@ -18,6 +18,7 @@ Lengas est une application web légère pour gérer et suivre votre collection d
 - **Notifications** : Alertes pour les tomes manquants ou incorrectement étiquetés.
 - **Séries incomplètes** : Recherche des séries (terminées) incomplètes.
 - **Interface intuitive** : Design sombre et responsive, modales pour les actions, tri et filtrage des séries.
+- **Mode privé** : Pour cacher votre bibliothèque.
 
 ## Aperçu visuel
 Captures effectuées en v.1.2.0
@@ -37,7 +38,7 @@ Captures effectuées en v.1.2.0
 ## Mise à jour
 1. Télécharger la dernière publication
 2. Éditer le mot de passe dans `config.php`
-3. Supprimez le fichier `data.json`
+3. Supprimez les fichiers `data.json` et `options.json`
 3. Téléverser les fichiers sur votre serveur (écraser ceux présents)
 
 ## Structure des fichiers
@@ -51,6 +52,7 @@ lengas/
 ├── styles.css         # Styles CSS
 ├── data.json          # Base de données des séries et tomes (chmod 666)
 ├── list.json          # Base de données de la liste d'envies (chmod 666)
+├── options.json       # Options principales éditables (chmod 666)
 ├── scripts/           # Scripts JS
 └── uploads/           # Images des séries (chmod 777)
 ```
