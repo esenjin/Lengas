@@ -1,8 +1,4 @@
 <?php
-// Activer l'affichage des erreurs PHP
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 // Configuration du site
 define('ADMIN_PASSWORD', 'mot_de_passe');
 define('SITE_VERSION', '1.3.2');
