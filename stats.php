@@ -17,8 +17,8 @@ if ($options['private_mode']) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title><?= STATS_PAGE_TITLE ?></title>
-        <meta name="description" content="<?= SITE_DESCRIPTION ?>">
+        <title><?= htmlspecialchars($options['index_page_title']) ?></title>
+        <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
         <link rel="icon" type="image/x-icon" href="favicon.ico">
         <link rel="stylesheet" href="styles.css">
     </head>
@@ -142,8 +142,8 @@ $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title><?= STATS_PAGE_TITLE ?></title>
-    <meta name="description" content="<?= SITE_DESCRIPTION ?>">
+    <title><?= htmlspecialchars($options['index_page_title']) ?></title>
+    <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="styles.css">
     <style>
@@ -198,7 +198,7 @@ $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_
 </head>
 <body>
     <div class="container">
-        <h1><?= STATS_PAGE_TITLE ?></h1>
+        <h1><?= htmlspecialchars($options['index_page_title']) ?></h1>
         <div class="stats-container">
             <div class="stats-grid">
                 <div class="stat-item">

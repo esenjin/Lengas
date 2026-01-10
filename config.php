@@ -1,10 +1,9 @@
 <?php
+// Activer l'affichage des erreurs PHP
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // Configuration du site
-define('SITE_NAME', 'Lengas');
-define('SITE_DESCRIPTION', 'Gestion de la collection de mangas d\'Esenjin.');
-define('INDEX_PAGE_TITLE', 'Lengas - La mangathèque d\'Esenjin !');
-define('ADMIN_PAGE_TITLE', 'Gestion de ma collection');
-define('STATS_PAGE_TITLE', 'Statistiques de Lengas');
 define('ADMIN_PASSWORD', 'mot_de_passe');
 define('SITE_VERSION', '1.3.2');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
@@ -25,7 +24,15 @@ if (!file_exists(DATA_FILE)) {
 
 // Initialisation du fichier de configuration des options si inexistant
 if (!file_exists(OPTIONS_FILE)) {
-    file_put_contents(OPTIONS_FILE, json_encode(['private_mode' => false, 'hide_mature' => false]));
+    file_put_contents(OPTIONS_FILE, json_encode([
+        'site_name' => 'Lengas',
+        'site_description' => 'Gestion de la collection de mangas d\'Esenjin.',
+        'index_page_title' => 'Lengas - La mangathèque d\'Esenjin !',
+        'admin_page_title' => 'Gestion de ma collection',
+        'stats_page_title' => 'Statistiques de Lengas',
+        'private_mode' => false,
+        'hide_mature' => false
+    ]));
 }
 
 // Fonction pour charger les données
@@ -43,7 +50,15 @@ function load_options() {
     if (file_exists(OPTIONS_FILE)) {
         return json_decode(file_get_contents(OPTIONS_FILE), true);
     }
-    return ['private_mode' => false, 'hide_mature' => false];
+    return [
+        'site_name' => 'Lengas',
+        'site_description' => 'Gestion de la collection de mangas d\'Esenjin.',
+        'index_page_title' => 'Lengas - La mangathèque d\'Esenjin !',
+        'admin_page_title' => 'Gestion de ma collection',
+        'stats_page_title' => 'Statistiques de Lengas',
+        'private_mode' => false,
+        'hide_mature' => false
+    ];
 }
 
 // Fonction pour sauvegarder les options

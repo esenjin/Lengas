@@ -1,4 +1,9 @@
 {
+    "site_name": "Lengas",
+    "site_description": "Gestion de la collection de mangas d'Esenjin.",
+    "index_page_title": "Lengas - La mangath\u00e8que d'Esenjin !",
+    "admin_page_title": "Gestion de ma collection",
+    "stats_page_title": "Statistiques de Lengas",
     "private_mode": false,
     "hide_mature": false
 }

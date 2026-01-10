@@ -3,11 +3,6 @@ require 'config.php';
 $data = load_data();
 $options = load_options();
 
-// Initialisation des variables
-$sort_by = $_GET['sort_by'] ?? 'name';
-$sort_order = $_GET['sort_order'] ?? 'asc';
-$search_term = $_GET['search'] ?? '';
-
 // Vérifier si le mode privé est activé
 if ($options['private_mode']) {
     // Afficher un message informatif avec la structure HTML complète
@@ -17,14 +12,14 @@ if ($options['private_mode']) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title><?= INDEX_PAGE_TITLE ?></title>
-        <meta name="description" content="<?= SITE_DESCRIPTION ?>">
+        <title><?= htmlspecialchars($options['index_page_title']) ?></title>
+        <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
         <link rel="icon" type="image/x-icon" href="favicon.ico">
         <link rel="stylesheet" href="styles.css">
     </head>
     <body>
         <div class="container">
-            <h1><?= INDEX_PAGE_TITLE ?></h1>
+            <h1><?= htmlspecialchars($options['index_page_title']) ?></h1>
             <p>Le site est en mode privé. La bibliothèque n'est pas accessible au public.</p>
         </div>
     </body>
@@ -39,6 +34,11 @@ if ($options['hide_mature']) {
         return !($series['mature'] ?? false);
     });
 }
+
+// Gestion du tri, filtre et recherche
+$sort_by = $_GET['sort_by'] ?? 'name';
+$sort_order = $_GET['sort_order'] ?? 'asc';
+$search_term = $_GET['search'] ?? '';
 
 function sort_series(&$data, $sort_by, $sort_order) {
     usort($data, function($a, $b) use ($sort_by, $sort_order) {
@@ -78,8 +78,8 @@ if (!empty($search_term)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= INDEX_PAGE_TITLE ?></title>
-    <meta name="description" content="<?= SITE_DESCRIPTION ?>">
+    <title><?= htmlspecialchars($options['index_page_title']) ?></title>
+    <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="styles.css">
     <style>
@@ -97,7 +97,7 @@ if (!empty($search_term)) {
 </head>
 <body>
     <div class="container">
-        <h1><?= INDEX_PAGE_TITLE ?></h1>
+        <h1><?= htmlspecialchars($options['index_page_title']) ?></h1>
 
         <!-- Menu d'actions -->
         <div class="public-menu">

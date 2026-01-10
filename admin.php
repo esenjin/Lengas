@@ -9,6 +9,7 @@ if (!($_SESSION['logged_in'] ?? false)) {
 }
 
 $data = load_data();
+$options = load_options();
 
 // Gérer les actions pour les séries incomplètes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -417,50 +418,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_series'])) {
 
 // Mettre à jour les options du site
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
-    $site_name = trim($_POST['site_name'] ?? '');
-    $site_description = trim($_POST['site_description'] ?? '');
-    $index_page_title = trim($_POST['index_page_title'] ?? '');
-    $admin_page_title = trim($_POST['admin_page_title'] ?? '');
-    $stats_page_title = trim($_POST['stats_page_title'] ?? '');
+    $options = load_options();
+    $options['site_name'] = trim($_POST['site_name'] ?? '');
+    $options['site_description'] = trim($_POST['site_description'] ?? '');
+    $options['index_page_title'] = trim($_POST['index_page_title'] ?? '');
+    $options['admin_page_title'] = trim($_POST['admin_page_title'] ?? '');
+    $options['stats_page_title'] = trim($_POST['stats_page_title'] ?? '');
+    $options['private_mode'] = !empty($_POST['private_mode']);
+    $options['hide_mature'] = !empty($_POST['hide_mature']);
+
     $admin_password = trim($_POST['admin_password'] ?? '');
-    $private_mode = !empty($_POST['private_mode']);
-    $hide_mature = !empty($_POST['hide_mature']);
 
-    if ($site_name && $site_description && $index_page_title && $admin_page_title && $stats_page_title) {
-        // Échapper les caractères spéciaux
-        $site_name = addslashes($site_name);
-        $site_description = addslashes($site_description);
-        $index_page_title = addslashes($index_page_title);
-        $admin_page_title = addslashes($admin_page_title);
-        $stats_page_title = addslashes($stats_page_title);
-
-        // Mettre à jour les constantes dans le fichier de configuration
-        $config_content = file_get_contents('config.php');
-        $config_content = preg_replace("/define\('SITE_NAME', '.*?'\)/", "define('SITE_NAME', '$site_name')", $config_content);
-        $config_content = preg_replace("/define\('SITE_DESCRIPTION', '.*?'\)/", "define('SITE_DESCRIPTION', '$site_description')", $config_content);
-        $config_content = preg_replace("/define\('INDEX_PAGE_TITLE', '.*?'\)/", "define('INDEX_PAGE_TITLE', '$index_page_title')", $config_content);
-        $config_content = preg_replace("/define\('ADMIN_PAGE_TITLE', '.*?'\)/", "define('ADMIN_PAGE_TITLE', '$admin_page_title')", $config_content);
-        $config_content = preg_replace("/define\('STATS_PAGE_TITLE', '.*?'\)/", "define('STATS_PAGE_TITLE', '$stats_page_title')", $config_content);
-
+    if ($options['site_name'] && $options['site_description'] && $options['index_page_title'] && $options['admin_page_title'] && $options['stats_page_title']) {
         // Mettre à jour le mot de passe uniquement s'il n'est pas vide
         if (!empty($admin_password)) {
             // Limiter les caractères autorisés pour le mot de passe
-            if (preg_match('/^[a-zA-Z0-9_!@#$%^&*()\-+=\[\]{};:\'"\\|,.<>\/?]+$/', $admin_password)) {
-                $admin_password = addslashes($admin_password);
-                $config_content = preg_replace("/define\('ADMIN_PASSWORD', '.*?'\)/", "define('ADMIN_PASSWORD', '$admin_password')", $config_content);
-            } else {
+            if (!preg_match('/^[a-zA-Z0-9_!@#$%^&*()\-+=\[\]{};:\'"\\|,.<>\/?]+$/', $admin_password)) {
                 $_SESSION['error_message'] = "Le mot de passe contient des caractères non autorisés.";
                 header("Location: admin.php");
                 exit;
             }
+
+            // Mettre à jour le mot de passe dans config.php
+            $config_content = file_get_contents('config.php');
+            $admin_password = addslashes($admin_password);
+            $config_content = preg_replace("/define\('ADMIN_PASSWORD', '.*?'\)/", "define('ADMIN_PASSWORD', '$admin_password')", $config_content);
+            file_put_contents('config.php', $config_content);
         }
 
-        file_put_contents('config.php', $config_content);
-
-        // Sauvegarder les options
-        save_options(['private_mode' => $private_mode, 'hide_mature' => $hide_mature]);
-
-        // Recharger la configuration
+        save_options($options);
         $_SESSION['success_message'] = "Options mises à jour avec succès";
     } else {
         $_SESSION['error_message'] = "Veuillez remplir tous les champs obligatoires.";
@@ -581,8 +567,8 @@ if ($search_term) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= ADMIN_PAGE_TITLE ?></title>
-    <meta name="description" content="<?= SITE_DESCRIPTION ?>">
+    <title><?= htmlspecialchars($options['admin_page_title']) ?></title>
+    <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -602,7 +588,7 @@ if ($search_term) {
     <?php endif; ?>
 
     <div class="container">
-        <h1><?= ADMIN_PAGE_TITLE ?></h1>
+        <h1><?= htmlspecialchars($options['admin_page_title']) ?></h1>
 
         <!-- Barre de filtres et recherche -->
         <div class="filters">
@@ -854,19 +840,19 @@ if ($search_term) {
                 <p class="hint">Site en version <?= SITE_VERSION ?>. <a href="<?= URL_GITEA ?>" target="_blank">Accéder au dépôt Gitéa</a>.</p>
                 <form id="options-form" method="post">
                     <label for="site-name">Nom du site</label>
-                    <input type="text" name="site_name" id="site-name" placeholder="Nom du site" value="<?= htmlspecialchars(SITE_NAME) ?>" required>
+                    <input type="text" name="site_name" id="site-name" placeholder="Nom du site" value="<?= htmlspecialchars($options['site_name']) ?>" required>
 
                     <label for="site-description">Description du site</label>
-                    <input type="text" name="site_description" id="site-description" placeholder="Description du site" value="<?= htmlspecialchars(SITE_DESCRIPTION) ?>" required>
+                    <input type="text" name="site_description" id="site-description" placeholder="Description du site" value="<?= htmlspecialchars($options['site_description']) ?>" required>
 
                     <label for="index-page-title">Titre de la page d'accueil</label>
-                    <input type="text" name="index_page_title" id="index-page-title" placeholder="Titre de la page d'accueil" value="<?= htmlspecialchars(INDEX_PAGE_TITLE) ?>" required>
+                    <input type="text" name="index_page_title" id="index-page-title" placeholder="Titre de la page d'accueil" value="<?= htmlspecialchars($options['index_page_title']) ?>" required>
 
                     <label for="admin-page-title">Titre de la page d'administration</label>
-                    <input type="text" name="admin_page_title" id="admin-page-title" placeholder="Titre de la page d'administration" value="<?= htmlspecialchars(ADMIN_PAGE_TITLE) ?>" required>
+                    <input type="text" name="admin_page_title" id="admin-page-title" placeholder="Titre de la page d'administration" value="<?= htmlspecialchars($options['admin_page_title']) ?>" required>
 
                     <label for="stats-page-title">Titre de la page de statistiques</label>
-                    <input type="text" name="stats_page_title" id="stats-page-title" placeholder="Titre de la page de statistiques" value="<?= htmlspecialchars(STATS_PAGE_TITLE) ?>" required>
+                    <input type="text" name="stats_page_title" id="stats-page-title" placeholder="Titre de la page de statistiques" value="<?= htmlspecialchars($options['stats_page_title']) ?>" required>
 
                     <label for="admin-password">Mot de passe admin</label>
                     <input type="password" name="admin_password" id="admin-password" placeholder="Mot de passe admin">
