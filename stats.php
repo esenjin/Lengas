@@ -1,11 +1,37 @@
 <?php
 require 'config.php';
 $data = load_data();
+$options = load_options();
 
 $total_series = count($data);
 $total_volumes = array_sum(array_map(function($series) {
     return count($series['volumes']);
 }, $data));
+
+// Vérifier si le mode privé est activé
+if ($options['private_mode']) {
+    // Afficher un message informatif avec la structure HTML complète
+    ?>
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title><?= STATS_PAGE_TITLE ?></title>
+        <meta name="description" content="<?= SITE_DESCRIPTION ?>">
+        <link rel="icon" type="image/x-icon" href="favicon.ico">
+        <link rel="stylesheet" href="styles.css">
+    </head>
+    <body>
+        <div class="container">
+            <h1><?= INDEX_PAGE_TITLE ?></h1>
+            <p>Le site est en mode privé. Les statistiques ne sont pas accessibles au public.</p>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
 
 // Fonction pour convertir les minutes en format lisible
 function convertMinutesToReadableTime($minutes) {

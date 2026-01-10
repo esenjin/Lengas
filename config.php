@@ -6,7 +6,7 @@ define('INDEX_PAGE_TITLE', 'Lengas - La mangathèque d\'Esenjin !');
 define('ADMIN_PAGE_TITLE', 'Gestion de ma collection');
 define('STATS_PAGE_TITLE', 'Statistiques de Lengas');
 define('ADMIN_PASSWORD', 'mot_de_passe');
-define('SITE_VERSION', '1.3.1');
+define('SITE_VERSION', '1.3.2');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Chemin vers le fichier JSON
@@ -15,9 +15,17 @@ define('DATA_FILE', 'data.json');
 // Chemin vers le dossier d'upload
 define('UPLOAD_DIR', 'uploads/');
 
+// Chemin vers le fichier de configuration des options
+define('OPTIONS_FILE', 'options.json');
+
 // Initialisation du fichier JSON si inexistant
 if (!file_exists(DATA_FILE)) {
     file_put_contents(DATA_FILE, json_encode([]));
+}
+
+// Initialisation du fichier de configuration des options si inexistant
+if (!file_exists(OPTIONS_FILE)) {
+    file_put_contents(OPTIONS_FILE, json_encode(['private_mode' => false, 'hide_mature' => false]));
 }
 
 // Fonction pour charger les données
@@ -28,6 +36,19 @@ function load_data() {
 // Fonction pour sauvegarder les données
 function save_data($data) {
     file_put_contents(DATA_FILE, json_encode($data, JSON_PRETTY_PRINT));
+}
+
+// Fonction pour charger les options
+function load_options() {
+    if (file_exists(OPTIONS_FILE)) {
+        return json_decode(file_get_contents(OPTIONS_FILE), true);
+    }
+    return ['private_mode' => false, 'hide_mature' => false];
+}
+
+// Fonction pour sauvegarder les options
+function save_options($options) {
+    file_put_contents(OPTIONS_FILE, json_encode($options, JSON_PRETTY_PRINT));
 }
 
 // Fonction pour vérifier le mot de passe

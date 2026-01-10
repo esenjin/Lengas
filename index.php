@@ -1,35 +1,68 @@
 <?php
 require 'config.php';
 $data = load_data();
+$options = load_options();
 
-// Gestion du tri, filtre et recherche
+// Initialisation des variables
 $sort_by = $_GET['sort_by'] ?? 'name';
 $sort_order = $_GET['sort_order'] ?? 'asc';
 $search_term = $_GET['search'] ?? '';
 
+// Vérifier si le mode privé est activé
+if ($options['private_mode']) {
+    // Afficher un message informatif avec la structure HTML complète
+    ?>
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title><?= INDEX_PAGE_TITLE ?></title>
+        <meta name="description" content="<?= SITE_DESCRIPTION ?>">
+        <link rel="icon" type="image/x-icon" href="favicon.ico">
+        <link rel="stylesheet" href="styles.css">
+    </head>
+    <body>
+        <div class="container">
+            <h1><?= INDEX_PAGE_TITLE ?></h1>
+            <p>Le site est en mode privé. La bibliothèque n'est pas accessible au public.</p>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
+// Filtrer les séries matures si l'option est activée
+if ($options['hide_mature']) {
+    $data = array_filter($data, function($series) {
+        return !($series['mature'] ?? false);
+    });
+}
+
 function sort_series(&$data, $sort_by, $sort_order) {
     usort($data, function($a, $b) use ($sort_by, $sort_order) {
+        // Vérifier si les clés existent avant de les utiliser
         if ($sort_by === 'volumes') {
-            return $sort_order === 'asc'
-                ? count($a['volumes']) - count($b['volumes'])
-                : count($b['volumes']) - count($a['volumes']);
+            $a_volumes = count($a['volumes'] ?? []);
+            $b_volumes = count($b['volumes'] ?? []);
+            return $sort_order === 'asc' ? $a_volumes - $b_volumes : $b_volumes - $a_volumes;
         } elseif ($sort_by === 'categories') {
             $a_categories = implode(', ', $a['categories'] ?? []);
             $b_categories = implode(', ', $b['categories'] ?? []);
-            return $sort_order === 'asc'
-                ? strcasecmp($a_categories, $b_categories)
-                : strcasecmp($b_categories, $a_categories);
+            return $sort_order === 'asc' ? strcasecmp($a_categories, $b_categories) : strcasecmp($b_categories, $a_categories);
         } else {
-            return $sort_order === 'asc'
-                ? strcasecmp($a[$sort_by], $b[$sort_by])
-                : strcasecmp($b[$sort_by], $a[$sort_by]);
+            $a_value = $a[$sort_by] ?? '';
+            $b_value = $b[$sort_by] ?? '';
+            return $sort_order === 'asc' ? strcasecmp($a_value, $b_value) : strcasecmp($b_value, $a_value);
         }
     });
 }
 
 sort_series($data, $sort_by, $sort_order);
 
-if ($search_term) {
+// Appliquer le filtre de recherche
+if (!empty($search_term)) {
     $data = array_filter($data, function($series) use ($search_term) {
         return stripos($series['name'], $search_term) !== false ||
                stripos($series['author'], $search_term) !== false ||
@@ -69,7 +102,6 @@ if ($search_term) {
         <!-- Menu d'actions -->
         <div class="public-menu">
             <a href="https://esenjin.xyz" class="button" target="_blank">Blog d'Esenjin ↗</a>
-            <a href="https://www.mangacollec.com/user/esenjin/collection" class="button" target="_blank">Profil Mangacollec ↗</a>
             <a href="stats.php" class="button" target="_blank">Statistiques Lengas ↗</a>
         </div>
 
@@ -77,7 +109,7 @@ if ($search_term) {
         <div class="filters">
             <form method="get">
                 <input type="text" name="search" placeholder="Rechercher une série, un auteur ou un éditeur..."
-                       value="<?= htmlspecialchars($search_term) ?>">
+                       value="<?= htmlspecialchars($search_term ?? '') ?>">
                 <div class="sort-options">
                     <select name="sort_by">
                         <option value="name" <?= $sort_by === 'name' ? 'selected' : '' ?>>Trier par nom</option>
@@ -102,17 +134,17 @@ if ($search_term) {
             <?php else: ?>
                 <?php foreach ($data as $series_index => $series): ?>
                 <?php
-                $total_volumes = count($series['volumes']);
-                $read_volumes = count(array_filter($series['volumes'], fn($v) => $v['status'] === 'terminé'));
+                $total_volumes = count($series['volumes'] ?? []);
+                $read_volumes = count(array_filter($series['volumes'] ?? [], fn($v) => $v['status'] === 'terminé'));
                 ?>
                 <div class="series-card <?= isset($series['mature']) && $series['mature'] ? 'mature' : '' ?>" data-series-index="<?= $series_index ?>">
-                    <img class="series-image" src="<?= $series['image'] ?>" alt="<?= $series['name'] ?>">
+                    <img class="series-image" src="<?= $series['image'] ?? '' ?>" alt="<?= $series['name'] ?? '' ?>">
                     <?php if (isset($series['mature']) && $series['mature']): ?>
                     <?php endif; ?>
                     <div class="series-info">
-                        <h2><?= $series['name'] ?></h2>
-                        <p><strong>Auteur :</strong> <?= $series['author'] ?></p>
-                        <p><strong>Éditeur :</strong> <?= $series['publisher'] ?></p>
+                        <h2><?= $series['name'] ?? '' ?></h2>
+                        <p><strong>Auteur :</strong> <?= $series['author'] ?? '' ?></p>
+                        <p><strong>Éditeur :</strong> <?= $series['publisher'] ?? '' ?></p>
                         <div class="series-stats">
                             <?= $total_volumes ?> tome<?= $total_volumes > 1 ? 's' : '' ?> possédé<?= $total_volumes > 1 ? 's' : '' ?>
                             (<?= $read_volumes ?> lu<?= $read_volumes > 1 ? 's' : '' ?>)

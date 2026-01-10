@@ -423,6 +423,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $admin_page_title = trim($_POST['admin_page_title'] ?? '');
     $stats_page_title = trim($_POST['stats_page_title'] ?? '');
     $admin_password = trim($_POST['admin_password'] ?? '');
+    $private_mode = !empty($_POST['private_mode']);
+    $hide_mature = !empty($_POST['hide_mature']);
 
     if ($site_name && $site_description && $index_page_title && $admin_page_title && $stats_page_title) {
         // Échapper les caractères spéciaux
@@ -454,6 +456,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
         }
 
         file_put_contents('config.php', $config_content);
+
+        // Sauvegarder les options
+        save_options(['private_mode' => $private_mode, 'hide_mature' => $hide_mature]);
 
         // Recharger la configuration
         $_SESSION['success_message'] = "Options mises à jour avec succès";
@@ -865,7 +870,16 @@ if ($search_term) {
 
                     <label for="admin-password">Mot de passe admin</label>
                     <input type="password" name="admin_password" id="admin-password" placeholder="Mot de passe admin">
-                    <p class="hint">Laisser vide pour ne pas modifier.</p> 
+                    <p class="hint">Laisser vide pour ne pas modifier.</p>
+
+                    <label>
+                        <input type="checkbox" name="private_mode" <?= load_options()['private_mode'] ? 'checked' : '' ?>> Mode privé
+                    </label>
+                    <p class="hint">Votre bibliothèque ne sera pas visible publiquement.</p>
+
+                    <label>
+                        <input type="checkbox" name="hide_mature" <?= load_options()['hide_mature'] ? 'checked' : '' ?>> Masquer les séries matures
+                    </label>
 
                     <button type="submit" name="update_options" class="button button-opt">Mettre à jour</button>
                     <p style="visibility: hidden;">_</p>
