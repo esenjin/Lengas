@@ -524,7 +524,7 @@ form {
 
 .button-otl {
     display: inline-block;
-    background-color: #c142b3;
+    background-color: #9342c1;
     color: #121212;
     padding: 10px 20px;
     border-radius: 5px;
@@ -534,7 +534,7 @@ form {
 }
 
 .button-otl:hover {
-    background-color: #96338a;
+    background-color: #703294;
     text-decoration: none;
 }
 
