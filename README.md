@@ -38,8 +38,8 @@ Captures effectuées en v.1.4.0
 ## Mise à jour
 1. Télécharger la dernière publication
 2. Éditer le mot de passe dans `config.php`
-3. Supprimez les fichiers `data.json`, `options.json`, `list.json` et `loan.json`
-3. Téléverser les fichiers sur votre serveur (écraser ceux présents)
+3. Supprimez les dossiers `bdd/` et `uploads/`
+3. Téléverser les fichiers/dossiers restants sur votre serveur (écraser ceux présents)
 
 ## Structure des fichiers
 
@@ -47,14 +47,18 @@ Captures effectuées en v.1.4.0
 lengas/
 ├── index.php          # Page publique
 ├── admin.php          # Interface d'administration
-├── stats.php          # Statistiques
-├── config.php         # Configuration
+├── stats.php          # Page des statistiques
+├── config.php         # Configuration du site
+├── anilist.php        # API Anilist
+├── login.php          # Connexion
 ├── styles.css         # Styles CSS
-├── data.json          # Base de données des séries et tomes (chmod 666)
-├── list.json          # Base de données de la liste d'envies (chmod 666)
-├── options.json       # Options principales éditables (chmod 666)
+├── uploads/           # Images des séries (chmod 777)
 ├── scripts/           # Scripts JS
-└── uploads/           # Images des séries (chmod 777)
+└── bdd/               # Fichiers de données (chmod 777)
+   ├── data.json          # Base de données des séries et tomes possédés (chmod 666)
+   ├── list.json          # Base de données de la liste d'envies (chmod 666)
+   ├── loan.json          # Base de données des prêts (chmod 666)
+   └── options.json       # Options principales éditables (chmod 666)
 ```
 
 
