@@ -312,6 +312,69 @@ select:focus {
     font-size: 1.5em;
 }
 
+/* Modale "Livres prêtés" */
+.loan-section {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #333;
+}
+
+.loan-section:last-child {
+    border-bottom: none;
+}
+
+.loan-series-item {
+    background-color: #2d2d2d;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+.loan-volumes-list {
+    list-style-type: none;
+    margin-top: 10px;
+}
+
+.loan-volumes-list li {
+    background-color: #3a3a3a;
+    padding: 8px 12px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.remove-loan-btn {
+    background-color: #cf6679;
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8em;
+}
+
+.remove-loan-btn:hover {
+    background-color: #b35467;
+}
+
+.remove-all-loans-btn {
+    background-color: #cf6679;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    margin-top: 10px;
+    display: block;
+}
+
+.remove-all-loans-btn:hover {
+    background-color: #b35467;
+}
+
 /* Style pour les labels dans la modale des options */
 #options-modal label {
     display: block;

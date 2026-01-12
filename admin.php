@@ -606,6 +606,244 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
     exit;
 }
 
+// Charger les données de prêt
+function load_loans() {
+    if (file_exists('loan.json')) {
+        $loans = json_decode(file_get_contents('loan.json'), true);
+        return $loans ?: [];
+    }
+    return [];
+}
+
+// Sauvegarder les données de prêt
+function save_loans($loans) {
+    file_put_contents('loan.json', json_encode($loans, JSON_PRETTY_PRINT));
+}
+
+// Ajouter un prêt (un seul tome)
+function add_loan($data, $series_id, $volume_number, $borrower_name) {
+    $loans = load_loans();
+
+    // Vérifier si la série existe
+    $series = find_series_by_id($data, $series_id);
+    if (!$series) {
+        return [
+            'success' => false,
+            'error' => 'series_not_found',
+            'message' => 'La série sélectionnée n\'existe pas dans votre base. Veuillez vérifier votre sélection.'
+        ];
+    }
+
+    // Vérifier si le tome est possédé
+    if (!is_volume_owned($data, $series_id, $volume_number)) {
+        return [
+            'success' => false,
+            'error' => 'volume_not_owned',
+            'message' => 'Vous ne possédez pas le tome ' . $volume_number . ' de cette série.'
+        ];
+    }
+
+    $loans[] = [
+        'series_id' => $series_id,
+        'volume_number' => $volume_number,
+        'borrower_name' => $borrower_name,
+        'loan_date' => date('Y-m-d H:i:s')
+    ];
+    save_loans($loans);
+    return ['success' => true];
+}
+
+// Ajouter un prêt (plusieurs tomes)
+function add_multiple_loans($data, $series_id, $start_volume, $end_volume, $borrower_name) {
+    // Vérifier si la série existe
+    $series = find_series_by_id($data, $series_id);
+    if (!$series) {
+        return ['success' => false, 'error' => 'series_not_found', 'message' => 'La série sélectionnée n\'existe pas dans votre base. Veuillez vérifier votre sélection.'];
+    }
+
+    // Vérifier si tous les tomes sont possédés
+    $ownership_check = are_volumes_owned($data, $series_id, $start_volume, $end_volume);
+    if (!$ownership_check['owned']) {
+        return ['success' => false, 'error' => 'volumes_not_owned', 'message' => 'Vous ne possédez pas tous les tomes sélectionnés. Tomes manquants : ' . implode(', ', $ownership_check['missing_volumes']), 'missing_volumes' => $ownership_check['missing_volumes']];
+    }
+
+    $loans = load_loans();
+    for ($i = $start_volume; $i <= $end_volume; $i++) {
+        $loans[] = [
+            'series_id' => $series_id,
+            'volume_number' => $i,
+            'borrower_name' => $borrower_name,
+            'loan_date' => date('Y-m-d H:i:s')
+        ];
+    }
+    save_loans($loans);
+    return ['success' => true];
+}
+
+// Supprimer un prêt
+function remove_loan($series_id, $volume_number) {
+    $loans = load_loans();
+    foreach ($loans as $index => $loan) {
+        if ($loan['series_id'] === $series_id && $loan['volume_number'] == $volume_number) {
+            array_splice($loans, $index, 1);
+            save_loans($loans);
+            return true;
+        }
+    }
+    return false;
+}
+
+// Récupérer les prêts par série
+function get_loans_by_series($data) {
+    $loans = load_loans();
+    $result = [];
+    foreach ($data as $series) {
+        $series_loans = array_filter($loans, function($loan) use ($series) {
+            return $loan['series_id'] === $series['id'];
+        });
+        if (!empty($series_loans)) {
+            $result[] = [
+                'series' => $series,
+                'loans' => $series_loans
+            ];
+        }
+    }
+    return $result;
+}
+
+// Gestion des actions pour les prêts
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_action'])) {
+    $response = ['success' => false];
+    $action = $_POST['loan_action'];
+    $data = load_data();
+
+    switch ($action) {
+        case 'add_single_loan':
+            $series_id = $_POST['series_id'] ?? '';
+            $volume_number = (int)($_POST['volume_number'] ?? 0);
+            $borrower_name = trim($_POST['borrower_name'] ?? '');
+
+            if ($series_id && $volume_number > 0 && $borrower_name) {
+                $response = add_loan($data, $series_id, $volume_number, $borrower_name);
+            } else {
+                $response['message'] = 'La série sélectionnée n\'existe pas dans votre base. Veuillez vérifier votre sélection.';
+            }
+            break;
+
+        case 'add_multiple_loans':
+            $series_id = $_POST['series_id'] ?? '';
+            $start_volume = (int)($_POST['start_volume'] ?? 0);
+            $end_volume = (int)($_POST['end_volume'] ?? 0);
+            $borrower_name = trim($_POST['borrower_name'] ?? '');
+
+            // Vérifier que la série existe avant de continuer
+            $series = find_series_by_id($data, $series_id);
+            if (!$series) {
+                $response = ['success' => false, 'error' => 'series_not_found', 'message' => 'La série sélectionnée n\'existe pas dans votre base. Veuillez vérifier votre sélection.'];
+                break;
+            }
+
+            if ($series_id && $start_volume > 0 && $end_volume >= $start_volume && $borrower_name) {
+                $response = add_multiple_loans($data, $series_id, $start_volume, $end_volume, $borrower_name);
+            }
+            break;
+
+        case 'add_single_loan':
+            $series_id = $_POST['series_id'] ?? '';
+            $volume_number = (int)($_POST['volume_number'] ?? 0);
+            $borrower_name = trim($_POST['borrower_name'] ?? '');
+
+            if ($series_id && $volume_number > 0 && $borrower_name) {
+                add_loan($series_id, $volume_number, $borrower_name);
+                $response['success'] = true;
+            }
+            break;
+
+        case 'add_multiple_loans':
+            $series_id = $_POST['series_id'] ?? '';
+            $start_volume = (int)($_POST['start_volume'] ?? 0);
+            $end_volume = (int)($_POST['end_volume'] ?? 0);
+            $borrower_name = trim($_POST['borrower_name'] ?? '');
+
+            if ($series_id && $start_volume > 0 && $end_volume >= $start_volume && $borrower_name) {
+                add_multiple_loans($series_id, $start_volume, $end_volume, $borrower_name);
+                $response['success'] = true;
+            }
+            break;
+
+        case 'remove_loan':
+            $series_id = $_POST['series_id'] ?? '';
+            $volume_number = (int)($_POST['volume_number'] ?? 0);
+
+            if ($series_id && $volume_number > 0) {
+                $response['success'] = remove_loan($series_id, $volume_number);
+            }
+            break;
+        
+        case 'remove_all_loans':
+            $series_id = $_POST['series_id'] ?? '';
+            if ($series_id) {
+                $response['success'] = remove_all_loans($series_id);
+            }
+            break;
+
+        case 'get_loans':
+            $loans_by_series = get_loans_by_series($data);
+            $response['success'] = true;
+            $response['loans'] = $loans_by_series;
+            break;
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit;
+}
+
+// Supprimer tous les prêts d'une série
+function remove_all_loans($series_id) {
+    $loans = load_loans();
+    $loans = array_filter($loans, function($loan) use ($series_id) {
+        return $loan['series_id'] !== $series_id;
+    });
+    save_loans(array_values($loans));
+    return true;
+}
+
+// Vérifier si un tome est possédé
+function is_volume_owned($data, $series_id, $volume_number) {
+    $series = find_series_by_id($data, $series_id);
+    if (!$series) {
+        return false;
+    }
+    foreach ($series['series']['volumes'] as $volume) {
+        if ($volume['number'] == $volume_number) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Vérifier si plusieurs tomes sont possédés
+function are_volumes_owned($data, $series_id, $start_volume, $end_volume) {
+    $series = find_series_by_id($data, $series_id);
+    if (!$series) {
+        return ['owned' => false, 'error' => 'series_not_found'];
+    }
+
+    $missing_volumes = [];
+    for ($i = $start_volume; $i <= $end_volume; $i++) {
+        if (!is_volume_owned($data, $series_id, $i)) {
+            $missing_volumes[] = $i;
+        }
+    }
+
+    if (empty($missing_volumes)) {
+        return ['owned' => true];
+    } else {
+        return ['owned' => false, 'missing_volumes' => $missing_volumes];
+    }
+}
+
 // Fonction pour récupérer la dernière version depuis Gitea
 function get_latest_version_from_gitea() {
     $url = "https://git.crystalyx.net/api/v1/repos/Esenjin_Asakha/Lengas/releases/latest";
@@ -683,6 +921,7 @@ function get_latest_version_from_gitea() {
             <button id="open-add-volume-modal">Ajouter un tome</button>
             <button id="open-add-multiple-volumes-modal">Ajouter plusieurs tomes</button>
             <button id="open-incomplete-series-modal" class="button button-otl">Séries incomplètes</button>
+            <button id="open-loan-modal" class="button button-otl">Livres prêtés</button>
             <button id="open-wishlist-modal" class="button button-otl">Liste d'envies</button>
             <button id="open-options-modal" class="button button-opt">Options</button>
             <a href="index.php" class="button button-ext" target="_blank">Accueil ↗</a>
@@ -865,6 +1104,66 @@ function get_latest_version_from_gitea() {
                     <input type="file" name="edit_image" id="edit-series-image" accept="image/*">
                     <button type="submit" name="update_series">Mettre à jour</button>
                 </form>
+            </div>
+        </div>
+
+        <!-- Modale pour les livres prêtés -->
+        <div class="modal" id="loan-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-loan-modal">&times;</span>
+                <h2>Livres prêtés</h2>
+
+                <!-- Ajouter un prêt (un seul tome) -->
+                <div class="loan-section">
+                    <h3>Ajouter un tome prêté</h3>
+                    <form id="add-single-loan-form">
+                        <p>Choisir une série :</p>
+                        <input type="text" id="loan-series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
+                        <div class="series-results" id="loan-series-results">
+                            <?php foreach ($data as $series): ?>
+                                <div data-id="<?= $series['id'] ?>"><?= $series['name'] ?></div>
+                            <?php endforeach; ?>
+                        </div>
+                        <input type="hidden" name="series_id" id="loan-selected-series-id" required>
+                        <p>Numéro du tome :</p>
+                        <input type="number" name="volume_number" placeholder="Numéro du tome" min="1" autocomplete="off" required>
+                        <p>Nom de l'emprunteur :</p>
+                        <input type="text" name="borrower_name" placeholder="Nom de l'emprunteur" autocomplete="off" required>
+                        <button type="submit" class="button button-otl">Ajouter</button>
+                    </form>
+                </div>
+
+                <!-- Ajouter un prêt (plusieurs tomes) -->
+                <div class="loan-section">
+                    <h3>Ajouter des tomes prêtés en lot</h3>
+                    <form id="add-multiple-loans-form">
+                        <p>Choisir une série :</p>
+                        <input type="text" id="multiple-loan-series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
+                        <div class="series-results" id="multiple-loan-series-results">
+                            <?php foreach ($data as $series): ?>
+                                <div data-id="<?= $series['id'] ?>"><?= $series['name'] ?></div>
+                            <?php endforeach; ?>
+                        </div>
+                        <input type="hidden" name="series_id" id="multiple-loan-selected-series-id" required>
+                        <p>Plage de tomes :</p>
+                        <div class="volume-range">
+                            <input type="number" name="start_volume" placeholder="Numéro de début" min="1" autocomplete="off" required>
+                            <span>à</span>
+                            <input type="number" name="end_volume" placeholder="Numéro de fin" min="1" autocomplete="off" required>
+                        </div>
+                        <p>Nom de l'emprunteur :</p>
+                        <input type="text" name="borrower_name" placeholder="Nom de l'emprunteur" autocomplete="off" required>
+                        <button type="submit" class="button button-otl">Ajouter</button>
+                    </form>
+                </div>
+
+                <!-- Liste des prêts -->
+                <div class="loan-section">
+                    <h3>Liste des livres prêtés</h3>
+                    <div id="loan-list">
+                        <!-- Les prêts seront affichés ici -->
+                    </div>
+                </div>
             </div>
         </div>
 
