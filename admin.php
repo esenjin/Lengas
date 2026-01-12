@@ -58,8 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
 // Charger la liste d'envies depuis le fichier JSON
 function load_wishlist() {
-    if (file_exists('list.json')) {
-        $wishlist = json_decode(file_get_contents('list.json'), true);
+    if (file_exists('bdd/list.json')) {
+        $wishlist = json_decode(file_get_contents('bdd/list.json'), true);
         return $wishlist ?: [];
     }
     return [];
@@ -67,7 +67,7 @@ function load_wishlist() {
 
 // Sauvegarder la liste d'envies dans le fichier JSON
 function save_wishlist($wishlist) {
-    file_put_contents('list.json', json_encode($wishlist, JSON_PRETTY_PRINT));
+    file_put_contents('bdd/list.json', json_encode($wishlist, JSON_PRETTY_PRINT));
 }
 
 // Charger la liste d'envies
@@ -608,8 +608,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
 
 // Charger les données de prêt
 function load_loans() {
-    if (file_exists('loan.json')) {
-        $loans = json_decode(file_get_contents('loan.json'), true);
+    if (file_exists('bdd/loan.json')) {
+        $loans = json_decode(file_get_contents('bdd/loan.json'), true);
         return $loans ?: [];
     }
     return [];
@@ -617,7 +617,7 @@ function load_loans() {
 
 // Sauvegarder les données de prêt
 function save_loans($loans) {
-    file_put_contents('loan.json', json_encode($loans, JSON_PRETTY_PRINT));
+    file_put_contents('bdd/loan.json', json_encode($loans, JSON_PRETTY_PRINT));
 }
 
 // Ajouter un prêt (un seul tome)
@@ -643,6 +643,17 @@ function add_loan($data, $series_id, $volume_number, $borrower_name) {
         ];
     }
 
+    // Vérifier si le tome est déjà en prêt
+    foreach ($loans as $loan) {
+        if ($loan['series_id'] === $series_id && $loan['volume_number'] == $volume_number) {
+            return [
+                'success' => false,
+                'error' => 'volume_already_loaned',
+                'message' => 'Le tome ' . $volume_number . ' est déjà en prêt.'
+            ];
+        }
+    }
+
     $loans[] = [
         'series_id' => $series_id,
         'volume_number' => $volume_number,
@@ -655,6 +666,8 @@ function add_loan($data, $series_id, $volume_number, $borrower_name) {
 
 // Ajouter un prêt (plusieurs tomes)
 function add_multiple_loans($data, $series_id, $start_volume, $end_volume, $borrower_name) {
+    $loans = load_loans();
+
     // Vérifier si la série existe
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
@@ -667,7 +680,26 @@ function add_multiple_loans($data, $series_id, $start_volume, $end_volume, $borr
         return ['success' => false, 'error' => 'volumes_not_owned', 'message' => 'Vous ne possédez pas tous les tomes sélectionnés. Tomes manquants : ' . implode(', ', $ownership_check['missing_volumes']), 'missing_volumes' => $ownership_check['missing_volumes']];
     }
 
-    $loans = load_loans();
+    // Vérifier si certains tomes sont déjà en prêt
+    $already_loaned = [];
+    for ($i = $start_volume; $i <= $end_volume; $i++) {
+        foreach ($loans as $loan) {
+            if ($loan['series_id'] === $series_id && $loan['volume_number'] == $i) {
+                $already_loaned[] = $i;
+                break;
+            }
+        }
+    }
+
+    if (!empty($already_loaned)) {
+        return [
+            'success' => false,
+            'error' => 'volumes_already_loaned',
+            'message' => 'Les tomes ' . implode(', ', $already_loaned) . ' sont déjà en prêt.',
+            'already_loaned' => $already_loaned
+        ];
+    }
+
     for ($i = $start_volume; $i <= $end_volume; $i++) {
         $loans[] = [
             'series_id' => $series_id,

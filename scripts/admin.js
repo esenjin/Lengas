@@ -753,7 +753,6 @@ document.getElementById('add-single-loan-form').addEventListener('submit', funct
             this.reset();
             loadLoanList();
         } else {
-            // Afficher le message d'erreur renvoyé par le backend
             let errorMessage = 'Une erreur est survenue.';
             if (data.message) {
                 errorMessage = data.message;
@@ -784,7 +783,6 @@ document.getElementById('add-multiple-loans-form').addEventListener('submit', fu
             this.reset();
             loadLoanList();
         } else {
-            // Afficher le message d'erreur renvoyé par le backend
             let errorMessage = 'Une erreur est survenue.';
             if (data.message) {
                 errorMessage = data.message;

@@ -4,14 +4,14 @@ define('ADMIN_PASSWORD', 'mot_de_passe');
 define('SITE_VERSION', '1.4.0');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
-// Chemin vers le fichier JSON
-define('DATA_FILE', 'data.json');
-
 // Chemin vers le dossier d'upload
 define('UPLOAD_DIR', 'uploads/');
 
-// Chemin vers le fichier de configuration des options
-define('OPTIONS_FILE', 'options.json');
+// Chemin vers les fichiers JSON dans le dossier bdd/
+define('DATA_FILE', 'bdd/data.json');
+define('OPTIONS_FILE', 'bdd/options.json');
+define('LOAN_FILE', 'bdd/loan.json');
+define('WISHLIST_FILE', 'bdd/list.json');
 
 // Initialisation du fichier JSON si inexistant
 if (!file_exists(DATA_FILE)) {
