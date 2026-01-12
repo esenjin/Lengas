@@ -101,7 +101,9 @@ if (!empty($search_term)) {
 
         <!-- Menu d'actions -->
         <div class="public-menu">
-            <a href="https://esenjin.xyz" class="button" target="_blank">Blog d'Esenjin ↗</a>
+            <?php if (!empty($options['custom_button_name']) && !empty($options['custom_button_url'])): ?>
+                <a href="<?= htmlspecialchars($options['custom_button_url']) ?>" class="button" target="_blank"><?= htmlspecialchars($options['custom_button_name']) ?> ↗</a>
+            <?php endif; ?>
             <a href="stats.php" class="button" target="_blank">Statistiques Lengas ↗</a>
         </div>
 

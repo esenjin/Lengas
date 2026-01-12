@@ -426,6 +426,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $options['stats_page_title'] = trim($_POST['stats_page_title'] ?? '');
     $options['private_mode'] = !empty($_POST['private_mode']);
     $options['hide_mature'] = !empty($_POST['hide_mature']);
+    $options['custom_button_name'] = trim($_POST['custom_button_name'] ?? '');
+    $options['custom_button_url'] = trim($_POST['custom_button_url'] ?? '');
 
     $admin_password = trim($_POST['admin_password'] ?? '');
 
@@ -853,6 +855,13 @@ if ($search_term) {
 
                     <label for="stats-page-title">Titre de la page de statistiques</label>
                     <input type="text" name="stats_page_title" id="stats-page-title" placeholder="Titre de la page de statistiques" value="<?= htmlspecialchars($options['stats_page_title']) ?>" required>
+
+                    <label for="custom-button-name">Nom du bouton personnalisé</label>
+                    <input type="text" name="custom_button_name" id="custom-button-name" placeholder="Nom du bouton" value="<?= htmlspecialchars($options['custom_button_name'] ?? '') ?>">
+
+                    <label for="custom-button-url">URL du bouton personnalisé</label>
+                    <input type="text" name="custom_button_url" id="custom-button-url" placeholder="URL du bouton" value="<?= htmlspecialchars($options['custom_button_url'] ?? '') ?>">
+                    <p class="hint">Laisser vide pour masquer le bouton.</p>
 
                     <label for="admin-password">Mot de passe admin</label>
                     <input type="password" name="admin_password" id="admin-password" placeholder="Mot de passe admin">

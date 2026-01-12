@@ -5,5 +5,7 @@
     "admin_page_title": "Gestion de ma collection",
     "stats_page_title": "Statistiques de Lengas",
     "private_mode": false,
-    "hide_mature": false
+    "hide_mature": false,
+    "custom_button_name": "Blog d'Esenjin",
+    "custom_button_url": "https:\/\/esenjin.xyz"
 }
