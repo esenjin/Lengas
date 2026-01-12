@@ -208,6 +208,56 @@ select:focus {
     font-size: 0.9em;
 }
 
+/* Style pour les échantillons de légende */
+.legend-sample {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border-left: 3px solid transparent;
+}
+
+/* Réutilisation des couleurs existantes */
+.legend-sample.status-terminé {
+    background-color: rgba(61, 126, 210, 0.15);
+    border-left-color: #4270dd;
+}
+
+.legend-sample.status-en-cours {
+    background-color: rgba(187, 134, 252, 0.15);
+    border-left-color: #bb86fc;
+}
+
+.legend-sample.status-à-lire {
+    background-color: rgba(207, 102, 121, 0.15);
+    border-left-color: #cf6679;
+}
+
+/* Style pour les icônes */
+.legend-icon {
+    font-size: 1.2em;
+    width: 20px;
+    text-align: center;
+    color: gold;
+}
+
+.legend-item .legend-icon:not(.last-icon) {
+    color: gold !important;
+}
+
+.legend-icon.last-icon {
+    color: rgb(77, 221, 100) !important;
+}
+
+/* Style pour la vignette floutée (contenu mature) */
+.mature-thumbnail {
+    width: 75px;
+    height: 75px;
+    object-fit: cover;
+    border-radius: 4px;
+    filter: blur(10px);
+    margin-right: 10px;
+}
+
 /* Menu admin */
 .admin-menu {
     display: flex;

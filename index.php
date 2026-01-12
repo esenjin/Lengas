@@ -105,6 +105,7 @@ if (!empty($search_term)) {
                 <a href="<?= htmlspecialchars($options['custom_button_url']) ?>" class="button" target="_blank"><?= htmlspecialchars($options['custom_button_name']) ?> ↗</a>
             <?php endif; ?>
             <a href="stats.php" class="button" target="_blank">Statistiques Lengas ↗</a>
+            <button class="button" id="open-legend-modal">Légende</button>
         </div>
 
         <!-- Barre de filtres et recherche -->
@@ -175,6 +176,40 @@ if (!empty($search_term)) {
                     </div>
                     <h3>Liste des tomes :</h3>
                     <ul class="volumes-list" id="modal-volumes-list"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale pour la légende -->
+    <div class="modal" id="legend-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-legend-modal">&times;</span>
+            <h2>Légende du site</h2>
+            <div class="legend-content">
+                <div class="legend-item">
+                    <img src="logo.png" alt="Contenu mature" class="mature-thumbnail"><br>
+                    <span>Vignette floutée : Contenu mature</span>
+                </div><br>
+                <div class="legend-item">
+                    <div class="legend-sample status-terminé"></div>
+                    <span>Tome bleu : Fini</span>
+                </div><br>
+                <div class="legend-item">
+                    <div class="legend-sample status-en-cours"></div>
+                    <span>Tome violet : En cours</span>
+                </div><br>
+                <div class="legend-item">
+                    <div class="legend-sample status-à-lire"></div>
+                    <span>Tome rose : À lire</span>
+                </div><br>
+                <div class="legend-item">
+                    <div class="legend-icon">★</div>
+                    <span>Étoile : Collector</span>
+                </div><br>
+                <div class="legend-item">
+                    <div class="legend-icon last-icon">☑</div>
+                    <span>Cochette verte : Dernier tome</span>
                 </div>
             </div>
         </div>

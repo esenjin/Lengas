@@ -53,3 +53,20 @@ window.addEventListener('click', (e) => {
         modal.classList.remove('modal-active');
     }
 });
+
+// Gestion de la modale de légende
+document.getElementById('open-legend-modal').addEventListener('click', function() {
+    document.getElementById('legend-modal').classList.add('modal-active');
+});
+
+document.getElementById('close-legend-modal').addEventListener('click', function() {
+    document.getElementById('legend-modal').classList.remove('modal-active');
+});
+
+// Fermeture de la modale en cliquant à l'extérieur
+window.addEventListener('click', (e) => {
+    const legendModal = document.getElementById('legend-modal');
+    if (e.target === legendModal) {
+        legendModal.classList.remove('modal-active');
+    }
+});
