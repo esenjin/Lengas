@@ -172,6 +172,14 @@
                 "collector": false,
                 "last": true
             }
-        ]
+        ],
+        "genres": [
+            "Shonen",
+            " Action",
+            " Com\u00e9die",
+            " Drame",
+            " Fantastique"
+        ],
+        "mature": false
     }
 ]
