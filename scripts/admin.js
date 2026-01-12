@@ -75,7 +75,6 @@ document.getElementById('search-incomplete-series').addEventListener('click', fu
         return response.text(); // D'abord, obtenez le texte de la réponse
     })
     .then(text => {
-        console.log('Raw response:', text); // Affichez la réponse brute dans la console
         try {
             const data = JSON.parse(text); // Ensuite, parsez le texte en JSON
             if (data.success) {
@@ -542,3 +541,139 @@ function updateWishlist(wishlist) {
         });
     });
 }
+
+// Autocomplétion pour les champs
+function setupAutocomplete(inputId, field) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    // Créer un conteneur pour les suggestions
+    const container = document.createElement('div');
+    container.className = 'autocomplete-container';
+    input.parentNode.insertBefore(container, input);
+    container.appendChild(input);
+
+    // Créer la liste déroulante
+    const suggestionsList = document.createElement('div');
+    suggestionsList.className = 'autocomplete-suggestions';
+    container.appendChild(suggestionsList);
+
+    // Gérer la saisie
+    input.addEventListener('input', function() {
+        const term = this.value.trim();
+        if (term.length < 2) {
+            suggestionsList.style.display = 'none';
+            return;
+        }
+
+        fetch(`admin.php?get_suggestions=true&field=${field}&term=${encodeURIComponent(term)}`)
+            .then(response => response.json())
+            .then(suggestions => {
+                suggestionsList.innerHTML = '';
+                if (suggestions.length > 0) {
+                    suggestions.forEach(suggestion => {
+                        const div = document.createElement('div');
+                        div.textContent = suggestion;
+                        div.addEventListener('click', () => {
+                            input.value = suggestion;
+                            suggestionsList.style.display = 'none';
+                        });
+                        suggestionsList.appendChild(div);
+                    });
+                    suggestionsList.style.display = 'block';
+                } else {
+                    suggestionsList.style.display = 'none';
+                }
+            })
+            .catch(error => console.error('Erreur:', error));
+    });
+
+    // Masquer les suggestions si on clique ailleurs
+    document.addEventListener('click', (e) => {
+        if (e.target !== input) {
+            suggestionsList.style.display = 'none';
+        }
+    });
+}
+
+// Initialiser l'autocomplétion pour les champs concernés
+setupAutocomplete('add-series-author', 'author');
+setupAutocomplete('add-series-publisher', 'publisher');
+setupAutocomplete('edit-series-author', 'author');
+setupAutocomplete('edit-series-publisher', 'publisher');
+setupAutocomplete('wishlist-author', 'author');
+setupAutocomplete('wishlist-publisher', 'publisher');
+
+// Pour les champs "catégories" et "genres", il faut gérer les valeurs séparées par des virgules
+function setupMultiAutocomplete(inputId, field) {
+    const input = document.getElementById(inputId);
+    if (!input) {
+        console.error(`Input avec l'ID ${inputId} non trouvé.`);
+        return;
+    }
+
+    // Créer un conteneur pour les suggestions
+    const container = document.createElement('div');
+    container.className = 'autocomplete-container';
+    input.parentNode.insertBefore(container, input);
+    container.appendChild(input);
+
+    // Créer la liste déroulante
+    const suggestionsList = document.createElement('div');
+    suggestionsList.className = 'autocomplete-suggestions';
+    container.appendChild(suggestionsList);
+
+    // Fonction pour extraire le dernier terme
+    function getLastTerm(value) {
+        const parts = value.split(',').map(part => part.trim());
+        const lastPart = parts[parts.length - 1];
+        return lastPart;
+    }
+
+    // Gérer la saisie
+    input.addEventListener('input', function() {
+        const lastTerm = getLastTerm(this.value);
+
+        if (lastTerm.length < 2) {
+            suggestionsList.style.display = 'none';
+            return;
+        }
+
+        fetch(`admin.php?get_suggestions=true&field=${field}&term=${encodeURIComponent(lastTerm)}`)
+            .then(response => response.json())
+            .then(suggestions => {
+                suggestionsList.innerHTML = '';
+                if (suggestions.length > 0) {
+                    suggestions.forEach(suggestion => {
+                        const div = document.createElement('div');
+                        div.textContent = suggestion;
+                        div.addEventListener('click', () => {
+                            // Remplacer le dernier terme par la suggestion cliquée
+                            const parts = this.value.split(',').map(part => part.trim());
+                            parts[parts.length - 1] = suggestion;
+                            this.value = parts.join(', ');
+                            suggestionsList.style.display = 'none';
+                        });
+                        suggestionsList.appendChild(div);
+                    });
+                    suggestionsList.style.display = 'block';
+                } else {
+                    suggestionsList.style.display = 'none';
+                }
+            })
+            .catch(error => console.error('Erreur lors de la récupération des suggestions :', error));
+    });
+
+    // Masquer les suggestions si on clique ailleurs
+    document.addEventListener('click', (e) => {
+        if (e.target !== input) {
+            suggestionsList.style.display = 'none';
+        }
+    });
+}
+
+// Initialiser pour les champs multiples
+setupMultiAutocomplete('add-series-categories', 'categories');
+setupMultiAutocomplete('add-series-genres', 'genres');
+setupMultiAutocomplete('edit-series-categories', 'categories');
+setupMultiAutocomplete('edit-series-genres', 'genres');

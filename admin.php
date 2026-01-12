@@ -563,6 +563,49 @@ if ($search_term) {
     });
 }
 
+// Fonction pour obtenir les valeurs uniques d'un champ spécifique
+function get_unique_values($data, $field) {
+    $values = [];
+    foreach ($data as $series) {
+        if (isset($series[$field])) {
+            if (is_array($series[$field])) {
+                foreach ($series[$field] as $value) {
+                    $value = trim($value);
+                    if (!empty($value) && !in_array($value, $values, true)) {
+                        $values[] = $value;
+                    }
+                }
+            } else {
+                $value = trim($series[$field]);
+                if (!empty($value) && !in_array($value, $values, true)) {
+                    $values[] = $value;
+                }
+            }
+        }
+    }
+    return $values;
+}
+
+// Gérer les suggestions pour l'auto-complétion
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
+    $field = $_GET['field'] ?? '';
+    $term = strtolower($_GET['term'] ?? '');
+    $suggestions = [];
+
+    if (in_array($field, ['author', 'publisher', 'categories', 'genres'])) {
+        $values = get_unique_values($data, $field);
+        foreach ($values as $value) {
+            if (strpos(strtolower($value), $term) !== false) {
+                $suggestions[] = $value;
+            }
+        }
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode($suggestions);
+    exit;
+}
+
 // Fonction pour récupérer la dernière version depuis Gitea
 function get_latest_version_from_gitea() {
     $url = "https://git.crystalyx.net/api/v1/repos/Esenjin_Asakha/Lengas/releases/latest";
@@ -615,7 +658,7 @@ function get_latest_version_from_gitea() {
         <!-- Barre de filtres et recherche -->
         <div class="filters">
             <form method="get">
-                <input type="text" name="search" placeholder="Rechercher une série, un auteur ou un éditeur..."
+                <input type="text" name="search" autocomplete="off" placeholder="Rechercher une série, un auteur ou un éditeur..."
                        value="<?= htmlspecialchars($search_term) ?>">
                 <div class="sort-options">
                     <select name="sort_by">
@@ -654,17 +697,17 @@ function get_latest_version_from_gitea() {
                 <h2>Ajouter une série</h2>
                 <form method="post" enctype="multipart/form-data">
                     <p>Nom :</p>
-                    <input type="text" name="name" id="add-series-name" placeholder="Nom de la série" required>
+                    <input type="text" name="name" id="add-series-name" placeholder="Nom de la série" autocomplete="off" required>
                     <p>Auteur :</p>
-                    <input type="text" name="author" id="add-series-author" placeholder="Auteur" required>
+                    <input type="text" name="author" id="add-series-author" placeholder="Auteur" autocomplete="off" required>
                     <p>Éditeur :</p>
-                    <input type="text" name="publisher" id="add-series-publisher" placeholder="Éditeur" required>
+                    <input type="text" name="publisher" id="add-series-publisher" placeholder="Éditeur" autocomplete="off" required>
                     <p>Catégories :</p>
-                    <input type="text" name="categories" placeholder="Catégories (séparées par des virgules)" required>
+                    <input type="text" name="categories" id="add-series-categories" placeholder="Catégories (séparées par des virgules)" autocomplete="off" required>
                     <p>Genres :</p>
-                    <input type="text" name="genres" placeholder="Genres (séparés par des virgules)">
+                    <input type="text" name="genres" id="add-series-genres" placeholder="Genres (séparés par des virgules)" autocomplete="off">
                     <p>ID Anilist (facultatif) :</p>
-                    <input type="text" name="anilist_id" placeholder="ID Anilist (facultatif)">
+                    <input type="text" name="anilist_id" placeholder="ID Anilist (facultatif)" autocomplete="off">
                     <p class="hint"><a tabindex="0" data-hint="L'ID Anilist est utilisé pour trouver les tomes manquants des sériées terminées, plus d'infos dans l'outil « Séries incomplètes ». Pour trouver cet identifiant, rendez-vous sur anilist.co, recherchez votre série et accédez à sa fiche, l'ID est la suite de chiffres avant le nom dans l'url.">À quoi ça sert ? Où le trouver ?</a>.</p>
                     <label>
                         <input type="checkbox" name="mature"> Contenu mature
@@ -698,7 +741,7 @@ function get_latest_version_from_gitea() {
                 <h2>Ajouter un tome</h2>
                 <form method="post">
                     <p>Choisir une série :</p>
-                    <input type="text" id="series-search" class="series-search" placeholder="Rechercher une série...">
+                    <input type="text" id="series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
                     <div class="series-results" id="series-results">
                         <?php foreach ($data as $series): ?>
                             <div data-id="<?= $series['id'] ?>"><?= $series['name'] ?></div>
@@ -706,7 +749,7 @@ function get_latest_version_from_gitea() {
                     </div>
                     <input type="hidden" name="series_id" id="selected-series-id" required>
                     <p>Numéro du tome à ajouter :</p>
-                    <input type="number" name="volume_number" placeholder="Numéro du tome" min="1" required>
+                    <input type="number" name="volume_number" placeholder="Numéro du tome" min="1" autocomplete="off" required>
                     <p>Statut du tome :</p>
                     <select name="status" required>
                         <option value="à lire">À lire</option>
@@ -731,7 +774,7 @@ function get_latest_version_from_gitea() {
                 <h2>Ajouter plusieurs tomes</h2>
                 <form method="post">
                     <p>Choisir une série :</p>
-                    <input type="text" id="multiple-series-search" class="series-search" placeholder="Rechercher une série...">
+                    <input type="text" id="multiple-series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
                     <div class="series-results" id="multiple-series-results">
                         <?php foreach ($data as $series): ?>
                             <div data-id="<?= $series['id'] ?>"><?= $series['name'] ?></div>
@@ -740,9 +783,9 @@ function get_latest_version_from_gitea() {
                     <p>Tomes à ajouter :</p>
                     <input type="hidden" name="series_id" id="multiple-selected-series-id" required>
                     <div class="volume-range">
-                        <input type="number" name="start_volume" placeholder="Numéro de début" min="1" required>
+                        <input type="number" name="start_volume" placeholder="Numéro de début" min="1" autocomplete="off" required>
                         <span>à</span>
-                        <input type="number" name="end_volume" placeholder="Numéro de fin" min="1" required>
+                        <input type="number" name="end_volume" placeholder="Numéro de fin" min="1" autocomplete="off" required>
                     </div>
                     <p>Statut des tomes :</p>
                     <select name="status" required>
@@ -799,17 +842,17 @@ function get_latest_version_from_gitea() {
                 <form method="post" enctype="multipart/form-data" id="edit-series-form">
                     <input type="hidden" name="series_id" id="edit-series-id-input">
                     <p>Nom :</p>
-                    <input type="text" name="edit_name" id="edit-series-name" placeholder="Nom de la série" required>
+                    <input type="text" name="edit_name" id="edit-series-name" placeholder="Nom de la série" autocomplete="off" required>
                     <p>Auteur :</p>
-                    <input type="text" name="edit_author" id="edit-series-author" placeholder="Auteur" required>
+                    <input type="text" name="edit_author" id="edit-series-author" placeholder="Auteur" autocomplete="off" required>
                     <p>Éditeur :</p>
-                    <input type="text" name="edit_publisher" id="edit-series-publisher" placeholder="Éditeur" required>
+                    <input type="text" name="edit_publisher" id="edit-series-publisher" placeholder="Éditeur" autocomplete="off" required>
                     <p>Catégories :</p>
-                    <input type="text" name="edit_categories" id="edit-series-categories" placeholder="Catégories (séparées par des virgules)" required>
+                    <input type="text" name="edit_categories" id="edit-series-categories" placeholder="Catégories (séparées par des virgules)" autocomplete="off" required>
                     <p>Genres :</p>
-                    <input type="text" name="edit_genres" id="edit-series-genres" placeholder="Genres (séparés par des virgules)">
+                    <input type="text" name="edit_genres" id="edit-series-genres" placeholder="Genres (séparés par des virgules)" autocomplete="off">
                     <p>ID Anilist (facultatif) :</p>
-                    <input type="text" name="edit_anilist_id" id="edit-series-anilist-id" placeholder="ID Anilist (facultatif)">
+                    <input type="text" name="edit_anilist_id" id="edit-series-anilist-id" placeholder="ID Anilist (facultatif)" autocomplete="off">
                     <label>
                         <input type="checkbox" name="edit_mature" id="edit-series-mature"> Contenu mature
                     </label>
@@ -832,9 +875,9 @@ function get_latest_version_from_gitea() {
                 <h2>Liste d'envies</h2>
                 <div class="wishlist-container">
                     <div class="wishlist-header">
-                        <input type="text" id="wishlist-name" placeholder="Nom de la série" required>
-                        <input type="text" id="wishlist-author" placeholder="Auteur" required>
-                        <input type="text" id="wishlist-publisher" placeholder="Éditeur" required>
+                        <input type="text" id="wishlist-name" placeholder="Nom de la série" autocomplete="off" required>
+                        <input type="text" id="wishlist-author" placeholder="Auteur" autocomplete="off" required>
+                        <input type="text" id="wishlist-publisher" placeholder="Éditeur" autocomplete="off" required>
                         <button id="add-to-wishlist-btn" class="button button-otl">Ajouter à la liste</button>
                     </div>
                     <div class="wishlist-list" id="wishlist-list">
