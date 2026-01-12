@@ -90,7 +90,7 @@ document.getElementById('search-incomplete-series').addEventListener('click', fu
     })
     .catch(error => {
         console.error('Erreur:', error);
-        resultsDiv.innerHTML = '<p>Une erreur est survenue lors de la recherche des séries incomplètes.</p>';
+        resultsDiv.innerHTML = '<p>Une erreur est survenue lors de la recherche des séries incomplètes. Veuillez réessayer plus tard.</p>';
     });
 });
 

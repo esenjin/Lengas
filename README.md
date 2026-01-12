@@ -58,6 +58,7 @@ lengas/
    ├── data.json          # Base de données des séries et tomes possédés (chmod 666)
    ├── list.json          # Base de données de la liste d'envies (chmod 666)
    ├── loan.json          # Base de données des prêts (chmod 666)
+   ├── anilist.json       # Cache des requêtes API Anilist (chmod 666)
    └── options.json       # Options principales éditables (chmod 666)
 ```
 

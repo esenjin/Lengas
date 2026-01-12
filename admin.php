@@ -18,10 +18,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     switch ($action) {
         case 'get_incomplete_series':
-            $incomplete_series = get_incomplete_series($data);
-            $response['success'] = true;
-            $response['incomplete_series'] = $incomplete_series;
+            try {
+                $incomplete_series = get_incomplete_series($data);
+                $response['success'] = true;
+                $response['incomplete_series'] = $incomplete_series;
+            } catch (Exception $e) {
+                $response['success'] = false;
+                $response['message'] = "Impossible de récupérer les séries incomplètes. Veuillez réessayer plus tard.";
+            }
             break;
+
 
         case 'add_missing_volume':
             $series_id = $_POST['series_id'] ?? '';
@@ -537,11 +543,14 @@ function generate_notifications($volumes, $anilist_volumes = null) {
     }
 
     // Vérifier si la série est complète selon Anilist mais qu'il y a des tomes manquants
-    if ($anilist_volumes !== null && $max < $anilist_volumes) {
-        if (!empty($last_volumes)) {
-            $notifications[] = "Attention, cette série est marquée comme terminée mais il semble y avoir plus de tomes sur Anilist.";
+        if ($anilist_volumes !== null && $max < $anilist_volumes) {
+            $missing = range($max + 1, $anilist_volumes);
+            if (count($missing) == 1) {
+                $notifications[] = "Attention, il manque le tome " . implode(', ', $missing) . " pour compléter cette série.";
+            } else {
+                $notifications[] = "Attention, il manque les tomes " . implode(', ', $missing) . " pour compléter cette série.";
+            }
         }
-    }
 
     // Vérifier si le nombre de tomes est égal à Anilist mais que le dernier tome n'est pas tagué comme tel
     if ($anilist_volumes !== null && $max == $anilist_volumes && empty($last_volumes)) {
@@ -1361,11 +1370,7 @@ function get_latest_version_from_gitea() {
                             <?php endif; ?>
                             <h3>Liste des tomes :</h3>
                             <?php
-                            // Trier les tomes par numéro
-                            sort_volumes($series['volumes']);
-
                             // Générer les notifications
-                            $notifications = generate_notifications($series['volumes']);
                             $anilist_volumes = null;
                             if (isset($series['anilist_id']) && !empty($series['anilist_id'])) {
                                 $anilist_volumes = get_series_volumes_from_anilist($series['anilist_id']);
@@ -1375,7 +1380,7 @@ function get_latest_version_from_gitea() {
                             // Afficher les notifications si nécessaire
                             if (!empty($notifications)) {
                                 echo '<div class="issues-list">';
-                                echo '<span class="warning-icon">!</span>';
+                                echo '<span class="warning-icon">⚠️</span>';
                                 echo '<span class="issues-text">' . implode(' ', $notifications) . '</span>';
                                 echo '</div>';
                             }

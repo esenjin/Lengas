@@ -1,41 +1,105 @@
 <?php
 // anilist.php
-
-// Fonction pour faire des requêtes à l'API Anilist
-function fetch_from_anilist($query, $variables = []) {
+function fetch_from_anilist($query, $variables = [], $retry = 3, $delay = 2) {
     $url = 'https://graphql.anilist.co';
+    $attempt = 0;
+    $last_error = null;
 
-    $data = [
-        'query' => $query,
-        'variables' => $variables
-    ];
+    while ($attempt < $retry) {
+        $data = [
+            'query' => $query,
+            'variables' => $variables
+        ];
 
-    $options = [
-        'http' => [
-            'header'  => "Content-type: application/json\r\n",
-            'method'  => 'POST',
-            'content' => json_encode($data),
-        ],
-    ];
+        $options = [
+            'http' => [
+                'header'  => "Content-type: application/json\r\n",
+                'method'  => 'POST',
+                'content' => json_encode($data),
+            ],
+        ];
 
-    $context  = stream_context_create($options);
-    $response = file_get_contents($url, false, $context);
+        $context = stream_context_create($options);
+        $response = @file_get_contents($url, false, $context);
 
-    if ($response === false) {
-        // Gestion des erreurs
-        error_log("Erreur lors de la requête à l'API Anilist");
-        return null;
+        if ($response !== false) {
+            $result = json_decode($response, true);
+            if (isset($result['errors'])) {
+                $last_error = $result['errors'][0]['message'] ?? 'Erreur inconnue de l\'API Anilist.';
+            } else {
+                return $result;
+            }
+        } else {
+            $last_error = 'Impossible de contacter l\'API Anilist.';
+        }
+
+        // Si erreur 429 (Too Many Requests), attendre avant de réessayer
+        if (isset($http_response_header) && strpos($http_response_header[0], '429') !== false) {
+            sleep($delay);
+            $attempt++;
+            continue;
+        }
+
+        break;
     }
 
-    return json_decode($response, true);
+    error_log("Erreur Anilist API: " . $last_error);
+    return null;
 }
 
-// Fonction pour obtenir le nombre de volumes d'une série à partir de son ID Anilist
-function get_series_volumes_from_anilist($anilist_id) {
+// Fonction pour récupérer les volumes de plusieurs séries en une seule requête (par lots)
+function fetch_volumes_for_series_batch($series_ids, $batch_size = 10) {
+    $results = [];
+    $batches = array_chunk($series_ids, $batch_size);
+
+    foreach ($batches as $batch) {
+        $query_parts = [];
+        $variables = [];
+        $i = 0;
+
+        foreach ($batch as $id) {
+            $query_parts[] = "media_$i: Media(id: $id, type: MANGA) { volumes }";
+            $i++;
+        }
+
+        $query = 'query { ' . implode(' ', $query_parts) . ' }';
+        $data = fetch_from_anilist($query, $variables);
+
+        if ($data && isset($data['data'])) {
+            foreach ($batch as $index => $id) {
+                $key = "media_$index";
+                if (isset($data['data'][$key]['volumes'])) {
+                    $results[$id] = $data['data'][$key]['volumes'];
+                }
+            }
+        }
+    }
+
+    return $results;
+}
+
+// Fonction pour récupérer les volumes d'une série (avec cache)
+function get_series_volumes_from_anilist($anilist_id, $force_refresh = false) {
     if (!$anilist_id) {
         return null;
     }
 
+    $cache_file = 'bdd/anilist.json';
+    $cache_key = "media_volumes_$anilist_id";
+    $cache_ttl = 86400; // 24h
+
+    // Charger le cache
+    $cache = file_exists($cache_file) ? json_decode(file_get_contents($cache_file), true) : [];
+
+    // Vérifier si le cache est valide
+    if (isset($cache[$cache_key]) && !$force_refresh) {
+        $entry = $cache[$cache_key];
+        if (time() - $entry['timestamp'] < $cache_ttl) {
+            return $entry['volumes'];
+        }
+    }
+
+    // Sinon, faire la requête
     $query = '
     query ($id: Int) {
         Media (id: $id, type: MANGA) {
@@ -44,27 +108,50 @@ function get_series_volumes_from_anilist($anilist_id) {
     }
     ';
 
-    $variables = [
-        'id' => (int)$anilist_id
-    ];
-
+    $variables = ['id' => (int)$anilist_id];
     $data = fetch_from_anilist($query, $variables);
 
-    if (isset($data['data']['Media']['volumes'])) {
-        return $data['data']['Media']['volumes'];
+    if ($data && isset($data['data']['Media']['volumes'])) {
+        $volumes = $data['data']['Media']['volumes'];
+
+        // Mettre à jour le cache
+        $cache[$cache_key] = [
+            'volumes' => $volumes,
+            'timestamp' => time()
+        ];
+
+        if (!file_exists('bdd')) {
+            mkdir('bdd', 0777, true);
+        }
+
+        file_put_contents($cache_file, json_encode($cache, JSON_PRETTY_PRINT));
+        return $volumes;
     }
 
     return null;
 }
 
-// Fonction pour obtenir les séries incomplètes
+// Fonction pour obtenir les séries incomplètes (optimisée)
 function get_incomplete_series($data) {
     $incomplete_series = [];
     $series_with_more_volumes = [];
+    $anilist_ids = [];
+
+    // Collecter les IDs Anilist uniques
+    foreach ($data as $series) {
+        if (isset($series['anilist_id']) && !empty($series['anilist_id'])) {
+            $anilist_ids[] = $series['anilist_id'];
+        }
+    }
+
+    // Récupérer les volumes par lots
+    $volumes_by_id = fetch_volumes_for_series_batch(array_unique($anilist_ids));
 
     foreach ($data as $series) {
         if (isset($series['anilist_id']) && !empty($series['anilist_id'])) {
-            $anilist_volumes = get_series_volumes_from_anilist($series['anilist_id']);
+            $anilist_id = $series['anilist_id'];
+            $anilist_volumes = $volumes_by_id[$anilist_id] ?? null;
+
             if ($anilist_volumes !== null) {
                 $owned_volumes = count($series['volumes']);
                 if ($owned_volumes < $anilist_volumes) {
@@ -76,14 +163,13 @@ function get_incomplete_series($data) {
                     $incomplete_series[] = $series;
                 } elseif ($owned_volumes > $anilist_volumes) {
                     $series['has_more_volumes'] = true;
-                    $series['missing_volumes'] = []; // Ajouter une propriété vide pour éviter les erreurs
+                    $series['missing_volumes'] = [];
                     $series_with_more_volumes[] = $series;
                 }
             }
         }
     }
 
-    // Fusionner les tableaux tout en s'assurant que chaque série a une propriété missing_volumes
     $result = array_merge($incomplete_series, $series_with_more_volumes);
     foreach ($result as &$serie) {
         if (!isset($serie['missing_volumes'])) {
