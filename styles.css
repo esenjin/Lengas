@@ -375,6 +375,14 @@ select:focus {
     background-color: #b35467;
 }
 
+.loan-series-item h4[style*="color: #cf6679;"] {
+    margin-bottom: 5px;
+}
+
+.loan-series-item p {
+    margin-bottom: 10px;
+}
+
 /* Style pour les labels dans la modale des options */
 #options-modal label {
     display: block;

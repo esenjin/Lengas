@@ -830,13 +830,26 @@ function displayLoanList(loans) {
     loans.forEach(item => {
         const series = item.series;
         const loans = item.loans;
+        const seriesExists = item.series_exists;
 
         const seriesDiv = document.createElement('div');
         seriesDiv.className = 'loan-series-item';
 
-        let html = `
-            <h4>${series.name}</h4>
-            <p><strong>Auteur :</strong> ${series.author}</p>
+        let html = '';
+
+        if (!seriesExists) {
+            html += `
+                <h4 style="color: #cf6679;">Série supprimée de la base</h4>
+                <p>Cette série a été supprimée de votre base, mais des prêts sont encore enregistrés.</p>
+            `;
+        } else {
+            html += `
+                <h4>${series.name}</h4>
+                <p><strong>Auteur :</strong> ${series.author}</p>
+            `;
+        }
+
+        html += `
             <p><strong>Tomes prêtés :</strong></p>
             <ul class="loan-volumes-list">
         `;
@@ -852,10 +865,10 @@ function displayLoanList(loans) {
 
         html += `</ul>`;
 
-        // Ajout du bouton "Tout retirer"
+        // Ajout du bouton "Tout retirer" si plusieurs prêts
         if (loans.length > 1) {
             html += `
-                <button class="remove-all-loans-btn" data-series-id="${series.id}">
+                <button class="remove-all-loans-btn" data-series-id="${loans[0].series_id}">
                     Tout retirer
                 </button>
             `;
@@ -884,12 +897,12 @@ function displayLoanList(loans) {
                     if (data.success) {
                         loadLoanList();
                     } else {
-                        alert('Une erreur est survenue lors du retrait du prêt.');
+                        alert('Une erreur est survenue.');
                     }
                 })
                 .catch(error => {
                     console.error('Erreur:', error);
-                    alert('Une erreur est survenue lors du retrait du prêt.');
+                    alert('Une erreur est survenue.');
                 });
             }
         });
@@ -913,12 +926,12 @@ function displayLoanList(loans) {
                     if (data.success) {
                         loadLoanList();
                     } else {
-                        alert('Une erreur est survenue lors du retrait de tous les prêts.');
+                        alert('Une erreur est survenue.');
                     }
                 })
                 .catch(error => {
                     console.error('Erreur:', error);
-                    alert('Une erreur est survenue lors du retrait de tous les prêts.');
+                    alert('Une erreur est survenue.');
                 });
             }
         });

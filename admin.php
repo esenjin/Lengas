@@ -693,21 +693,37 @@ function remove_loan($series_id, $volume_number) {
     return false;
 }
 
-// Récupérer les prêts par série
+// Récupérer les prêts par série (y compris les séries supprimées)
 function get_loans_by_series($data) {
     $loans = load_loans();
     $result = [];
+    $series_ids = [];
+
+    // Récupérer tous les IDs de séries existantes
     foreach ($data as $series) {
-        $series_loans = array_filter($loans, function($loan) use ($series) {
-            return $loan['series_id'] === $series['id'];
-        });
-        if (!empty($series_loans)) {
-            $result[] = [
-                'series' => $series,
-                'loans' => $series_loans
-            ];
-        }
+        $series_ids[] = $series['id'];
     }
+
+    // Grouper les prêts par série
+    $loans_by_series = [];
+    foreach ($loans as $loan) {
+        $series_id = $loan['series_id'];
+        if (!isset($loans_by_series[$series_id])) {
+            $loans_by_series[$series_id] = [];
+        }
+        $loans_by_series[$series_id][] = $loan;
+    }
+
+    // Créer le résultat
+    foreach ($loans_by_series as $series_id => $loans) {
+        $series = find_series_by_id($data, $series_id);
+        $result[] = [
+            'series' => $series ? $series['series'] : null,
+            'loans' => $loans,
+            'series_exists' => $series !== null
+        ];
+    }
+
     return $result;
 }
 
