@@ -267,8 +267,8 @@ function setupSeriesSelection(resultsId, inputId, searchInputId) {
     });
 }
 
-setupSeriesSelection('series-results', 'selected-series-id');
-setupSeriesSelection('multiple-series-results', 'multiple-selected-series-id');
+setupSeriesSelection('series-results', 'selected-series-id', 'series-search');
+setupSeriesSelection('multiple-series-results', 'multiple-selected-series-id', 'multiple-series-search');
 
 // Édition d'un tome
 document.querySelectorAll('.volumes-list li').forEach(li => {
