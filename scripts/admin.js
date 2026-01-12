@@ -375,6 +375,11 @@ document.getElementById('add-to-wishlist-btn').addEventListener('click', functio
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Vider les champs après l'ajout réussi
+                document.getElementById('wishlist-name').value = '';
+                document.getElementById('wishlist-author').value = '';
+                document.getElementById('wishlist-publisher').value = '';
+
                 updateWishlist(data.wishlist);
             } else {
                 alert(data.message);
