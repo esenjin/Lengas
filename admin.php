@@ -1274,6 +1274,27 @@ function get_latest_version_from_gitea() {
             </div>
         </div>
 
+        <!-- Modale pour les alertes personnalisées -->
+        <div class="modal" id="custom-alert-modal">
+            <div class="modal-content">
+                <h2 id="custom-alert-title">Avertissement</h2>
+                <p id="custom-alert-message"></p>
+                <button id="custom-alert-ok" class="button">OK</button>
+            </div>
+        </div>
+
+        <!-- Modale pour les confirmations personnalisées -->
+        <div class="modal" id="custom-confirm-modal">
+            <div class="modal-content">
+                <h2 id="custom-confirm-title">Confirmation</h2>
+                <p id="custom-confirm-message"></p>
+                <div class="modal-actions">
+                    <button id="custom-confirm-ok" class="button">OK</button>
+                    <button id="custom-confirm-cancel" class="button">Annuler</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Liste des séries -->
         <div class="series-list">
             <?php if (empty($data)): ?>

@@ -295,7 +295,8 @@ document.querySelectorAll('.volumes-list li').forEach(li => {
 
 // Gestion de la suppression d'un tome
 document.getElementById('delete-volume-btn').addEventListener('click', function() {
-    if (confirm('Êtes-vous sûr de vouloir supprimer ce tome ?')) {
+    showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer ce tome ?').then((confirmed) => {
+    if (confirmed) {
         const seriesId = document.getElementById('edit-series-id').value;
         const volumeIndex = document.getElementById('edit-volume-index').value;
 
@@ -313,7 +314,7 @@ document.getElementById('delete-volume-btn').addEventListener('click', function(
         .catch(error => {
             alert('Une erreur est survenue: ' + error.message);
         });
-    }
+    }});
 });
 
 // Gestion du bouton "Modifier" une série
@@ -341,7 +342,8 @@ document.querySelectorAll('.edit-series-btn').forEach(button => {
 // Gestion de la suppression d'une série
 document.querySelectorAll('.delete-series-btn').forEach(button => {
     button.addEventListener('click', function() {
-        if (confirm('Êtes-vous sûr de vouloir supprimer cette série ? Cette action est irréversible.')) {
+        showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer cette série ? ').then((confirmed) => {
+    if (confirmed) {
             const seriesId = this.dataset.seriesId;
             fetch('admin.php', {
                 method: 'POST',
@@ -360,6 +362,7 @@ document.querySelectorAll('.delete-series-btn').forEach(button => {
             });
         }
     });
+});
 });
 
 // Masquer le message d'erreur après 3 secondes
@@ -884,7 +887,8 @@ function displayLoanList(loans) {
             const seriesId = this.dataset.seriesId;
             const volumeNumber = this.dataset.volumeNumber;
 
-            if (confirm('Êtes-vous sûr de vouloir retirer ce prêt ?')) {
+            showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer ce tome ?').then((confirmed) => {
+            if (confirmed) {
                 fetch('admin.php', {
                     method: 'POST',
                     headers: {
@@ -907,13 +911,15 @@ function displayLoanList(loans) {
             }
         });
     });
+    });
 
     // Ajouter les événements aux boutons "Tout retirer"
     document.querySelectorAll('.remove-all-loans-btn').forEach(button => {
         button.addEventListener('click', function() {
             const seriesId = this.dataset.seriesId;
 
-            if (confirm('Êtes-vous sûr de vouloir retirer TOUS les prêts de cette série ?')) {
+            showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer tous les prêts de cette série ?').then((confirmed) => {
+            if (confirmed) {
                 fetch('admin.php', {
                     method: 'POST',
                     headers: {
@@ -936,4 +942,67 @@ function displayLoanList(loans) {
             }
         });
     });
+});
+}
+
+// Fonction pour afficher une alerte personnalisée
+function showCustomAlert(title, message) {
+    const modal = document.getElementById('custom-alert-modal');
+    const titleElement = document.getElementById('custom-alert-title');
+    const messageElement = document.getElementById('custom-alert-message');
+    const okButton = document.getElementById('custom-alert-ok');
+
+    titleElement.textContent = title;
+    messageElement.textContent = message;
+    modal.classList.add('modal-active');
+
+    return new Promise((resolve) => {
+        okButton.onclick = () => {
+            modal.classList.remove('modal-active');
+            resolve();
+        };
+    });
+}
+
+// Fonction pour afficher une confirmation personnalisée
+function showCustomConfirm(title, message) {
+    const modal = document.getElementById('custom-confirm-modal');
+    const titleElement = document.getElementById('custom-confirm-title');
+    const messageElement = document.getElementById('custom-confirm-message');
+    const okButton = document.getElementById('custom-confirm-ok');
+    const cancelButton = document.getElementById('custom-confirm-cancel');
+
+    titleElement.textContent = title;
+    messageElement.textContent = message;
+    modal.classList.add('modal-active');
+
+    return new Promise((resolve) => {
+        okButton.onclick = () => {
+            modal.classList.remove('modal-active');
+            resolve(true);
+        };
+        cancelButton.onclick = () => {
+            modal.classList.remove('modal-active');
+            resolve(false);
+        };
+    });
+}
+
+// Remplacer les alert/confirm natifs
+window.alert = function(message) {
+    showCustomAlert('Avertissement', message);
+};
+
+window.confirm = function(message) {
+    return showCustomConfirm('Confirmation', message);
+};
+
+// Afficher un message d'erreur dans une modale
+function showErrorModal(message) {
+    showCustomAlert('Erreur', message);
+}
+
+// Afficher un message de succès dans une modale
+function showSuccessModal(message) {
+    showCustomAlert('Succès', message);
 }
