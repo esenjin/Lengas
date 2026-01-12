@@ -988,6 +988,9 @@ function get_latest_version_from_gitea() {
                                 <?php endif; ?>
                             </p>
                             <p><strong>Tomes :</strong> <?= count($series['volumes']) ?></p>
+                            <?php if (!empty($series['mature'])): ?>
+                                <span class="mature-badge">🔞 Mature</span>
+                            <?php endif; ?>
                             <h3>Liste des tomes :</h3>
                             <?php
                             // Trier les tomes par numéro

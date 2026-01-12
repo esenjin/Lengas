@@ -149,6 +149,10 @@ select:focus {
     color: #bb86fc;
 }
 
+.mature-badge {
+    color: #dd9cd2;
+}
+
 /* Liste des tomes dans l'admin */
 .volumes-list {
     list-style-type: none;
@@ -488,6 +492,42 @@ form {
 
 .sort-options select {
     min-width: 150px;
+}
+
+/* Style pour la liste déroulante d'autocomplétion */
+.autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 5px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    margin-top: 2px;
+    display: none;
+}
+
+.autocomplete-suggestions div {
+    padding: 10px;
+    cursor: pointer;
+    color: #e0e0e0;
+}
+
+.autocomplete-suggestions div:hover {
+    background-color: #333;
+}
+
+/* Style pour les inputs avec autocomplétion */
+input[list] {
+    position: relative;
+}
+
+/* Conteneur pour les suggestions */
+.autocomplete-container {
+    position: relative;
 }
 
 /* Bouton style uniformisé */
