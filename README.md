@@ -22,9 +22,19 @@ Lengas est une application web légère pour gérer et suivre votre collection d
 - **Mode privé** : Pour cacher votre bibliothèque.
 
 ## Aperçu visuel
-Captures effectuées en v.1.4.0
-![Lengas public](https://concepts.esenjin.xyz/cyla/fichiers/6965222c214b0_1768235564.mp4)
-![Lengas admin](https://concepts.esenjin.xyz/cyla/fichiers/6965223352f1f_1768235571.mp4)
+Publique
+![Lengas p1](https://concepts.esenjin.xyz/cyla/fichiers/69653f4a90bce_1768243018.png)
+![Lengas p2](https://concepts.esenjin.xyz/cyla/fichiers/69653f4a70bf5_1768243018.png)
+![Lengas p3](https://concepts.esenjin.xyz/cyla/fichiers/69653f4a48c53_1768243018.png)
+Administration
+![Lengas a1](https://concepts.esenjin.xyz/cyla/fichiers/696540839be53_1768243331.png)
+![Lengas a2](https://concepts.esenjin.xyz/cyla/fichiers/69654083b56e5_1768243331.png)
+![Lengas a3](https://concepts.esenjin.xyz/cyla/fichiers/6965408390bc3_1768243331.png)
+![Lengas a4](https://concepts.esenjin.xyz/cyla/fichiers/6965408397e85_1768243331.png)
+![Lengas a5](https://concepts.esenjin.xyz/cyla/fichiers/69654083a04e1_1768243331.png)
+![Lengas a6](https://concepts.esenjin.xyz/cyla/fichiers/69654083a5f10_1768243331.png)
+![Lengas a7](https://concepts.esenjin.xyz/cyla/fichiers/69654083a99e8_1768243331.png)
+*Captures effectuées en v.1.4.0*
 
 ## Prérequis
 - Serveur web (Apache, Nginx)
