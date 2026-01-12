@@ -1,5 +1,7 @@
 <?php
 require 'config.php';
+$data = load_data();
+$options = load_options();
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
