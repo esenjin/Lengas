@@ -14,6 +14,7 @@ Lengas est une application web légère pour gérer et suivre votre collection d
 - **Gestion des séries** : Ajout, modification et suppression de séries.
 - **Suivi des tomes** : Ajout, modification et suppression de tomes, statut de lecture, gestion des tomes collectors et des derniers tomes.
 - **Liste d'envies** : Ajout et suppression de séries dans une liste d'envies, possibilité d'ajouter une série de la liste d'envies à votre collection.
+- **Gestion des prêts** : Savoir quels tomes ont été prêtés et à qui.
 - **Statistiques** : Nombre de séries, tomes, répartition par statut.
 - **Notifications** : Alertes pour les tomes manquants ou incorrectement étiquetés.
 - **Séries incomplètes** : Recherche des séries (terminées) incomplètes.
@@ -21,10 +22,9 @@ Lengas est une application web légère pour gérer et suivre votre collection d
 - **Mode privé** : Pour cacher votre bibliothèque.
 
 ## Aperçu visuel
-Captures effectuées en v.1.2.0
-![Lengas public](https://concepts.esenjin.xyz/cyla/fichiers/695eea647c951_1767828068.png)
-![Lengas stats](https://concepts.esenjin.xyz/cyla/fichiers/695eea6469f6f_1767828068.png)
-![Lengas admin](https://concepts.esenjin.xyz/cyla/fichiers/695eea648a362_1767828068.png)
+Captures effectuées en v.1.4.0
+![Lengas public](https://concepts.esenjin.xyz/cyla/fichiers/6965222c214b0_1768235564.mp4)
+![Lengas admin](https://concepts.esenjin.xyz/cyla/fichiers/6965223352f1f_1768235571.mp4)
 
 ## Prérequis
 - Serveur web (Apache, Nginx)
@@ -38,7 +38,7 @@ Captures effectuées en v.1.2.0
 ## Mise à jour
 1. Télécharger la dernière publication
 2. Éditer le mot de passe dans `config.php`
-3. Supprimez les fichiers `data.json` et `options.json`
+3. Supprimez les fichiers `data.json`, `options.json`, `list.json` et `loan.json`
 3. Téléverser les fichiers sur votre serveur (écraser ceux présents)
 
 ## Structure des fichiers
