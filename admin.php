@@ -562,6 +562,26 @@ if ($search_term) {
                (isset($series['genres']) && stripos(implode(', ', $series['genres']), $search_term) !== false);
     });
 }
+
+// Fonction pour récupérer la dernière version depuis Gitea
+function get_latest_version_from_gitea() {
+    $url = "https://git.crystalyx.net/api/v1/repos/Esenjin_Asakha/Lengas/releases/latest";
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_USERAGENT, "Lengas-Version-Checker");
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    if ($response) {
+        $data = json_decode($response, true);
+        if (isset($data['tag_name'])) {
+            return ltrim($data['tag_name'], 'v');
+        }
+    }
+    return null;
+}
 ?>
 
 <!DOCTYPE html>
@@ -839,7 +859,20 @@ if ($search_term) {
             <div class="modal-content">
                 <span class="close-modal" id="close-options-modal">&times;</span>
                 <h2>Options du site</h2>
-                <p class="hint">Site en version <?= SITE_VERSION ?>. <a href="<?= URL_GITEA ?>" target="_blank">Accéder au dépôt Gitéa</a>.</p>
+                <?php
+                $latest_version = get_latest_version_from_gitea();
+                $current_version = SITE_VERSION;
+                $version_class = '';
+                $version_tooltip = '';
+                if ($latest_version && version_compare($current_version, $latest_version, '<')) {
+                    $version_class = 'version-outdated';
+                    $version_tooltip = "Une nouvelle version ($latest_version) est disponible ! Il est recommandé de mettre à jour.";
+                }
+                ?>
+                <p class="hint <?= $version_class ?>" data-tooltip="<?= htmlspecialchars($version_tooltip) ?>">
+                    Site en version <?= $current_version ?>.
+                    <a href="<?= URL_GITEA ?>" target="_blank">Accéder au dépôt Gitéa</a>.
+                </p>
                 <form id="options-form" method="post">
                     <label for="site-name">Nom du site</label>
                     <input type="text" name="site_name" id="site-name" placeholder="Nom du site" value="<?= htmlspecialchars($options['site_name']) ?>" required>
