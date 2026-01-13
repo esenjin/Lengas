@@ -28,6 +28,45 @@ if ($options['private_mode']) {
     exit;
 }
 
+// Pagination
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$per_page_public = 12;
+$offset = ($page - 1) * $per_page_public;
+
+// Endpoint pour la pagination infinie
+if (isset($_GET['get_paginated_series'])) {
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 12;
+    $search_term = $_GET['search'] ?? '';
+    $sort_by = $_GET['sort_by'] ?? 'name';
+    $sort_order = $_GET['sort_order'] ?? 'asc';
+
+    // Applique la recherche et le tri
+    $filtered_data = $data;
+    if (!empty($search_term)) {
+        $filtered_data = array_filter($filtered_data, function($series) use ($search_term) {
+            return stripos($series['name'], $search_term) !== false ||
+                   stripos($series['author'], $search_term) !== false ||
+                   stripos($series['publisher'], $search_term) !== false ||
+                   (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false) ||
+                   (isset($series['genres']) && stripos(implode(', ', $series['genres']), $search_term) !== false);
+        });
+    }
+    sort_series($filtered_data, $sort_by, $sort_order);
+
+    // Paginer les résultats
+    $offset = ($page - 1) * $per_page;
+    $paginated_data = array_slice($filtered_data, $offset, $per_page);
+
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => true,
+        'series' => array_values($paginated_data),
+        'has_more' => ($offset + $per_page) < count($filtered_data)
+    ]);
+    exit;
+}
+
 // Filtrer les séries matures si l'option est activée
 if ($options['hide_mature']) {
     $data = array_filter($data, function($series) {
@@ -131,31 +170,34 @@ if (!empty($search_term)) {
         </div>
 
         <!-- Liste des séries -->
-        <div class="series-list">
+        <div class="series-list" id="series-list">
             <?php if (empty($data)): ?>
                 <p>Aucune série trouvée.</p>
             <?php else: ?>
-                <?php foreach ($data as $series_index => $series): ?>
                 <?php
-                $total_volumes = count($series['volumes'] ?? []);
-                $read_volumes = count(array_filter($series['volumes'] ?? [], fn($v) => $v['status'] === 'terminé'));
+                // Applique la pagination initiale (12 premières séries)
+                $paginated_data = array_slice($data, 0, $per_page_public);
+                foreach ($paginated_data as $series_index => $series):
+                    $total_volumes = count($series['volumes'] ?? []);
+                    $read_volumes = count(array_filter($series['volumes'] ?? [], fn($v) => $v['status'] === 'terminé'));
                 ?>
-                <div class="series-card <?= isset($series['mature']) && $series['mature'] ? 'mature' : '' ?>" data-series-index="<?= $series_index ?>">
-                    <img class="series-image" src="<?= $series['image'] ?? '' ?>" alt="<?= $series['name'] ?? '' ?>" loading="lazy">
-                    <?php if (isset($series['mature']) && $series['mature']): ?>
-                    <?php endif; ?>
-                    <div class="series-info">
-                        <h2><?= $series['name'] ?? '' ?></h2>
-                        <p><strong>Auteur :</strong> <?= $series['author'] ?? '' ?></p>
-                        <p><strong>Éditeur :</strong> <?= $series['publisher'] ?? '' ?></p>
-                        <div class="series-stats">
-                            <?= $total_volumes ?> tome<?= $total_volumes > 1 ? 's' : '' ?> possédé<?= $total_volumes > 1 ? 's' : '' ?>
-                            (<?= $read_volumes ?> lu<?= $read_volumes > 1 ? 's' : '' ?>)
+                    <div class="series-card <?= isset($series['mature']) && $series['mature'] ? 'mature' : '' ?>" data-series-index="<?= $series_index ?>">
+                        <img class="series-image" src="<?= $series['image'] ?? '' ?>" alt="<?= $series['name'] ?? '' ?>" loading="lazy">
+                        <div class="series-info">
+                            <h2><?= $series['name'] ?? '' ?></h2>
+                            <p><strong>Auteur :</strong> <?= $series['author'] ?? '' ?></p>
+                            <p><strong>Éditeur :</strong> <?= $series['publisher'] ?? '' ?></p>
+                            <div class="series-stats">
+                                <?= $total_volumes ?> tome<?= $total_volumes > 1 ? 's' : '' ?> possédé<?= $total_volumes > 1 ? 's' : '' ?>
+                                (<?= $read_volumes ?> lu<?= $read_volumes > 1 ? 's' : '' ?>)
+                            </div>
                         </div>
                     </div>
-                </div>
-            <?php endforeach; ?>
+                <?php endforeach; ?>
             <?php endif; ?>
+        </div>
+        <div class="loading-spinner" id="loading-spinner">
+            <p>Chargement en cours...</p>
         </div>
 
         <!-- Modale pour afficher les détails d'une série -->

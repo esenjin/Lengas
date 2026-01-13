@@ -1064,6 +1064,22 @@ input[list] {
     z-index: 999;
 }
 
+/* Chargement infini */
+.loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    font-size: 18px;
+}
+
+.loading-spinner.active {
+    display: block;
+}
+
+.series-list {
+    min-height: 500px;
+}
+
 /* Responsive */
 /* Menu admin sur mobile */
 @media (max-width: 768px) {

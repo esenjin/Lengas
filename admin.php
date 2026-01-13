@@ -11,6 +11,54 @@ if (!($_SESSION['logged_in'] ?? false)) {
 $data = load_data();
 $options = load_options();
 
+// Pagination
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$per_page_admin = 9;
+$offset = ($page - 1) * $per_page_admin;
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])) {
+    // Récupère les paramètres de pagination et de recherche
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 9;
+    $search_term = $_GET['search'] ?? '';
+    $sort_by = $_GET['sort_by'] ?? 'name';
+    $sort_order = $_GET['sort_order'] ?? 'asc';
+
+    // Applique le tri et la recherche aux données
+    $filtered_data = $data;
+    if (!empty($search_term)) {
+        $filtered_data = array_filter($filtered_data, function($series) use ($search_term) {
+            return stripos($series['name'], $search_term) !== false ||
+                   stripos($series['author'], $search_term) !== false ||
+                   stripos($series['publisher'], $search_term) !== false ||
+                   (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false) ||
+                   (isset($series['genres']) && stripos(implode(', ', $series['genres']), $search_term) !== false);
+        });
+    }
+    sort_series($filtered_data, $sort_by, $sort_order);
+
+    // Génère les notifications pour chaque série
+    foreach ($filtered_data as &$series) {
+        $anilist_volumes = null;
+        if (isset($series['anilist_id']) && !empty($series['anilist_id'])) {
+            $anilist_volumes = get_series_volumes_from_anilist($series['anilist_id']);
+        }
+        $series['notifications'] = generate_notifications($series['volumes'], $anilist_volumes);
+    }
+
+    // Paginer les résultats filtrés
+    $offset = ($page - 1) * $per_page;
+    $paginated_data = array_slice($filtered_data, $offset, $per_page);
+
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => true,
+        'series' => array_values($paginated_data),
+        'has_more' => ($offset + $per_page) < count($filtered_data)
+    ]);
+    exit;
+}
+
 // Gérer les actions pour les séries incomplètes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
@@ -1343,12 +1391,29 @@ function get_latest_version_from_gitea() {
         </div>
 
         <!-- Liste des séries -->
-        <div class="series-list">
+        <div class="series-list" id="series-list">
             <?php if (empty($data)): ?>
                 <p>Aucune série trouvée.</p>
             <?php else: ?>
-                <?php foreach ($data as $series): ?>
-                    <?php if (empty($series['volumes'])) continue; ?>
+                <?php
+                // Applique la recherche et le tri AVANT la pagination
+                $filtered_data = $data;
+                if (!empty($search_term)) {
+                    $filtered_data = array_filter($filtered_data, function($series) use ($search_term) {
+                        return stripos($series['name'], $search_term) !== false ||
+                            stripos($series['author'], $search_term) !== false ||
+                            stripos($series['publisher'], $search_term) !== false ||
+                            (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false) ||
+                            (isset($series['genres']) && stripos(implode(', ', $series['genres']), $search_term) !== false);
+                    });
+                }
+                sort_series($filtered_data, $sort_by, $sort_order);
+
+                // Affiche les 9 premières séries filtrées
+                $paginated_data = array_slice($filtered_data, 0, 9);
+                foreach ($paginated_data as $series):
+                    if (empty($series['volumes'])) continue;
+                ?>
                     <div class="series-card">
                         <img class="series-image" src="<?= $series['image'] ?>" alt="<?= $series['name'] ?>" loading="lazy">
                         <div class="series-info">
@@ -1363,7 +1428,7 @@ function get_latest_version_from_gitea() {
                             <p><strong>Éditeur :</strong> <?= $series['publisher'] ?></p>
                             <p><strong>Catégories :</strong> <?= isset($series['categories']) ? implode(', ', $series['categories']) : '' ?></p>
                             <p><strong>Genres :</strong> <?= isset($series['genres']) ? implode(', ', $series['genres']) : '' ?></p>
-                            <p><strong>ID Anilist :</strong> 
+                            <p><strong>ID Anilist :</strong>
                                 <?php if (isset($series['anilist_id']) && !empty($series['anilist_id'])): ?>
                                     <a href="https://anilist.co/manga/<?= htmlspecialchars($series['anilist_id']) ?>" target="_blank"><?= htmlspecialchars($series['anilist_id']) ?></a>
                                 <?php else: ?>
@@ -1394,8 +1459,8 @@ function get_latest_version_from_gitea() {
                             <ul class="volumes-list">
                                 <?php foreach ($series['volumes'] as $volume_index => $volume): ?>
                                     <li class="<?= 'status-' . str_replace(' ', '-', strtolower($volume['status'])) .
-                                        (!empty($volume['collector']) ? ' volume-collector' : '') .
-                                        (!empty($volume['last']) ? ' volume-last' : '') ?>"
+                                                (!empty($volume['collector']) ? ' volume-collector' : '') .
+                                                (!empty($volume['last']) ? ' volume-last' : '') ?>"
                                         data-series-id="<?= $series['id'] ?>"
                                         data-volume-index="<?= $volume_index ?>">
                                         <?= $volume['number'] ?>
@@ -1407,6 +1472,10 @@ function get_latest_version_from_gitea() {
                 <?php endforeach; ?>
             <?php endif; ?>
         </div>
+        <div class="loading-spinner" id="loading-spinner">
+            <p>Chargement en cours...</p>
+        </div>
+
     </div>
 
     <button id="back-to-top" title="Retour en haut">↑</button>
