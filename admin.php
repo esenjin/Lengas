@@ -61,12 +61,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
 
 // Gérer les actions pour les séries incomplètes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!validate_csrf_token($csrf_token)) {
-        $_SESSION['error_message'] = "Token CSRF invalide.";
-        header("Location: admin.php");
-        exit;
-    }
     $action = $_POST['action'];
     $response = ['success' => false];
 
@@ -135,12 +129,6 @@ $wishlist = load_wishlist();
 
 // Ajouter une série à la liste d'envies
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_wishlist'])) {
-    $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!validate_csrf_token($csrf_token)) {
-        $_SESSION['error_message'] = "Token CSRF invalide.";
-        header("Location: admin.php");
-        exit;
-    }
     $name = trim($_POST['wishlist_name'] ?? '');
     $author = trim($_POST['wishlist_author'] ?? '');
     $publisher = trim($_POST['wishlist_publisher'] ?? '');
@@ -170,12 +158,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_wishlist'])) {
 
 // Supprimer une série de la liste d'envies
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_from_wishlist'])) {
-    $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!validate_csrf_token($csrf_token)) {
-        $_SESSION['error_message'] = "Token CSRF invalide.";
-        header("Location: admin.php");
-        exit;
-    }
     $index = $_POST['index'] ?? 0;
     if (isset($wishlist[$index])) {
         array_splice($wishlist, $index, 1);
@@ -189,12 +171,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_from_wishlist'
 
 // Ajouter une série à la collection principale depuis la liste d'envies
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_from_wishlist'])) {
-    $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!validate_csrf_token($csrf_token)) {
-        $_SESSION['error_message'] = "Token CSRF invalide.";
-        header("Location: admin.php");
-        exit;
-    }
     $index = $_POST['index'] ?? 0;
     if (isset($wishlist[$index])) {
         $series = $wishlist[$index];
@@ -258,18 +234,12 @@ function generate_uuid() {
 
 // Ajouter une série
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
-    $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!validate_csrf_token($csrf_token)) {
-        $_SESSION['error_message'] = "Token CSRF invalide.";
-        header("Location: admin.php");
-        exit;
-    }
-
     $name = trim($_POST['name'] ?? '');
     $author = trim($_POST['author'] ?? '');
     $publisher = trim($_POST['publisher'] ?? '');
     $categories = trim($_POST['categories'] ?? '');
     $genres = trim($_POST['genres'] ?? '');
+    $image = upload_image($_FILES['image'] ?? []);
     $anilist_id = trim($_POST['anilist_id'] ?? '');
     $mature = !empty($_POST['mature']);
     $volumes_count = (int)($_POST['volumes_count'] ?? 1);
@@ -286,17 +256,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
         }
     }
 
-    // Vérifier l'upload de l'image
-    $error_message = null;
-    $image = upload_image($_FILES['image'] ?? [], $error_message);
-
     if ($series_exists) {
         $_SESSION['error_message'] = "Une série avec ce nom existe déjà.";
-    } elseif ($image === false) {
-        $_SESSION['error_message'] = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
-    } elseif (empty($name) || empty($author) || empty($publisher) || empty($categories)) {
-        $_SESSION['error_message'] = "Veuillez remplir tous les champs obligatoires.";
-    } else {
+    } elseif ($image && $name && $author && $publisher && $categories) {
         $volumes = [];
         for ($i = 1; $i <= $volumes_count; $i++) {
             $volumes[] = [
@@ -320,7 +282,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
             'volumes' => $volumes
         ];
         save_data($data);
-        $_SESSION['success_message'] = "Série ajoutée avec succès.";
+        $_SESSION['success_message'] = "Série ajoutée avec succès";
+    } else {
+        $_SESSION['error_message'] = "Veuillez remplir tous les champs correctement.";
     }
 
     header("Location: admin.php");
@@ -339,12 +303,6 @@ function find_series_by_id($data, $series_id) {
 
 // Ajouter un ou plusieurs tomes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_volume']) || isset($_POST['add_multiple_volumes']))) {
-    $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!validate_csrf_token($csrf_token)) {
-        $_SESSION['error_message'] = "Token CSRF invalide.";
-        header("Location: admin.php");
-        exit;
-    }
     $series_id = $_POST['series_id'] ?? '';
     $status = $_POST['status'] ?? 'à lire';
     $is_collector = !empty($_POST['is_collector']);
@@ -415,12 +373,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_volume']) || iss
 
 // Mettre à jour un tome
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
-    $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!validate_csrf_token($csrf_token)) {
-        $_SESSION['error_message'] = "Token CSRF invalide.";
-        header("Location: admin.php");
-        exit;
-    }
     $series_id = $_POST['series_id'] ?? '';
     $volume_index = (int)($_POST['volume_index'] ?? 0);
     $status = $_POST['status'] ?? 'à lire';
@@ -443,12 +395,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
 
 // Supprimer un tome
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_volume'])) {
-    $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!validate_csrf_token($csrf_token)) {
-        $_SESSION['error_message'] = "Token CSRF invalide.";
-        header("Location: admin.php");
-        exit;
-    }
     $series_id = $_POST['series_id'] ?? '';
     $volume_index = (int)($_POST['volume_index'] ?? 0);
 
@@ -467,12 +413,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_volume'])) {
 
 // Mettre à jour une série
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
-    $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!validate_csrf_token($csrf_token)) {
-        $_SESSION['error_message'] = "Token CSRF invalide.";
-        header("Location: admin.php");
-        exit;
-    }
     $series_id = $_POST['series_id'] ?? '';
     $name = trim($_POST['edit_name'] ?? '');
     $author = trim($_POST['edit_author'] ?? '');
@@ -520,12 +460,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
 
 // Supprimer une série
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_series'])) {
-    $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!validate_csrf_token($csrf_token)) {
-        $_SESSION['error_message'] = "Token CSRF invalide.";
-        header("Location: admin.php");
-        exit;
-    }
     $series_id = $_POST['series_id'] ?? '';
 
     $series = find_series_by_id($data, $series_id);
@@ -545,12 +479,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_series'])) {
 
 // Mettre à jour les options du site
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
-    $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!validate_csrf_token($csrf_token)) {
-        $_SESSION['error_message'] = "Token CSRF invalide.";
-        header("Location: admin.php");
-        exit;
-    }
     $options = load_options();
     $options['site_name'] = trim($_POST['site_name'] ?? '');
     $options['site_description'] = trim($_POST['site_description'] ?? '');
@@ -898,12 +826,6 @@ function get_loans_by_series($data) {
 
 // Gestion des actions pour les prêts
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_action'])) {
-    $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!validate_csrf_token($csrf_token)) {
-        $_SESSION['error_message'] = "Token CSRF invalide.";
-        header("Location: admin.php");
-        exit;
-    }
     $response = ['success' => false];
     $action = $_POST['loan_action'];
     $data = load_data();
@@ -1131,7 +1053,6 @@ function get_latest_version_from_gitea() {
                 <span class="close-modal" id="close-add-series-modal">&times;</span>
                 <h2>Ajouter une série</h2>
                 <form method="post" enctype="multipart/form-data">
-                    <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
                     <p>Nom :</p>
                     <input type="text" name="name" id="add-series-name" placeholder="Nom de la série" autocomplete="off" required>
                     <p>Auteur :</p>
@@ -1164,14 +1085,13 @@ function get_latest_version_from_gitea() {
                         <input type="checkbox" name="mature"> Contenu mature
                     </label>
                     <p>Vignette :</p>
-                    <input type="file" name="image" accept="image/jpeg, image/png, image/gif, image/webp" required>
-                    <p class="hint">Extensions autorisées : jpeg, png, gif et webp. Poids maximum : 5 Mo.</p>
+                    <input type="file" name="image" accept="image/*" required>
                     <button type="submit" name="add_series">Ajouter</button>
                 </form>
             </div>
         </div>
 
-        <!-- Modale pour les séries incomplètes -->
+                <!-- Modale pour les séries incomplètes -->
         <div class="modal" id="incomplete-series-modal">
             <div class="modal-content">
                 <span class="close-modal" id="close-incomplete-series-modal">&times;</span>
@@ -1192,7 +1112,6 @@ function get_latest_version_from_gitea() {
                 <span class="close-modal" id="close-add-volume-modal">&times;</span>
                 <h2>Ajouter un tome</h2>
                 <form method="post">
-                <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
                     <p>Choisir une série :</p>
                     <input type="text" id="series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
                     <div class="series-results" id="series-results">
@@ -1226,7 +1145,6 @@ function get_latest_version_from_gitea() {
                 <span class="close-modal" id="close-add-multiple-volumes-modal">&times;</span>
                 <h2>Ajouter des tomes</h2>
                 <form method="post">
-                <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
                     <p>Choisir une série :</p>
                     <input type="text" id="multiple-series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
                     <div class="series-results" id="multiple-series-results">
@@ -1266,7 +1184,6 @@ function get_latest_version_from_gitea() {
                 <span class="close-modal" id="close-edit-volume-modal">&times;</span>
                 <h2>Éditer le tome</h2>
                 <form method="post">
-                <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
                     <input type="hidden" name="series_id" id="edit-series-id">
                     <input type="hidden" name="volume_index" id="edit-volume-index">
                     <p id="edit-volume-number-display" class="volume-number-display"></p>
@@ -1295,7 +1212,6 @@ function get_latest_version_from_gitea() {
                 <span class="close-modal" id="close-edit-series-modal">&times;</span>
                 <h2>Modifier la série</h2>
                 <form method="post" enctype="multipart/form-data" id="edit-series-form">
-                <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
                     <input type="hidden" name="series_id" id="edit-series-id-input">
                     <p>Nom :</p>
                     <input type="text" name="edit_name" id="edit-series-name" placeholder="Nom de la série" autocomplete="off" required>
@@ -1318,8 +1234,7 @@ function get_latest_version_from_gitea() {
                         <input type="checkbox" name="remove_image" id="remove-image-checkbox">
                         <label for="remove-image-checkbox">Supprimer l'image</label>
                     </div>
-                    <input type="file" name="edit_image" id="edit-series-image" accept="image/jpeg, image/png, image/gif, image/webp">
-                    <p class="hint">Extensions autorisées : jpeg, png, gif et webp. Poids maximum : 5 Mo.</p>
+                    <input type="file" name="edit_image" id="edit-series-image" accept="image/*">
                     <button type="submit" name="update_series">Mettre à jour</button>
                 </form>
             </div>
@@ -1335,7 +1250,6 @@ function get_latest_version_from_gitea() {
                 <div class="loan-section">
                     <h3>Ajouter un tome prêté</h3>
                     <form id="add-single-loan-form">
-                    <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
                         <p>Choisir une série :</p>
                         <input type="text" id="loan-series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
                         <div class="series-results" id="loan-series-results">
@@ -1356,7 +1270,6 @@ function get_latest_version_from_gitea() {
                 <div class="loan-section">
                     <h3>Ajouter des tomes prêtés en lot</h3>
                     <form id="add-multiple-loans-form">
-                    <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
                         <p>Choisir une série :</p>
                         <input type="text" id="multiple-loan-series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
                         <div class="series-results" id="multiple-loan-series-results">
@@ -1394,9 +1307,9 @@ function get_latest_version_from_gitea() {
                 <h2>Liste d'envies</h2>
                 <div class="wishlist-container">
                     <div class="wishlist-header">
-                        <input type="text" id="wishlist-name" placeholder="Nom de la série" autocomplete="off" value="<?= generate_csrf_token() ?>" required>
-                        <input type="text" id="wishlist-author" placeholder="Auteur" autocomplete="off" value="<?= generate_csrf_token() ?>" required>
-                        <input type="text" id="wishlist-publisher" placeholder="Éditeur" autocomplete="off" value="<?= generate_csrf_token() ?>" required>
+                        <input type="text" id="wishlist-name" placeholder="Nom de la série" autocomplete="off" required>
+                        <input type="text" id="wishlist-author" placeholder="Auteur" autocomplete="off" required>
+                        <input type="text" id="wishlist-publisher" placeholder="Éditeur" autocomplete="off" required>
                         <button id="add-to-wishlist-btn" class="button button-otl">Ajouter à la liste</button>
                     </div>
                     <div class="wishlist-list" id="wishlist-list">
