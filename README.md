@@ -77,12 +77,6 @@ lengas/
    └── mdp.json           # Contient le mdp hashé (chmod 640)
 ```
 
-
-## Configuration
-Modifiez `config.php` pour :
-- Définir le mot de passe admin
-- Configurer les chemins si nécessaire
-
 ## Utilisation
 1. Connectez-vous à l'interface d'administration via `admin.php`.
 2. Utilisez les modales pour ajouter, modifier ou supprimer des séries et des tomes.
