@@ -44,14 +44,14 @@ Administration
 1. Télécharger la dernière publication
 2. Éditer le fichier `generate_password.php` en y indiquant le mdp souhaité
 3. Téléverser les fichiers sur votre serveur
-4. Éxécuter le fichier `generate_password.php`
+4. Exécuter le fichier `generate_password.php`
 5. SUPPRIMER LE FICHIER `generate_password.php`
 6. C'est tout bon ! Vous pouvez profiter.
 
 ## Mise à jour
 1. Télécharger la dernière publication
 2. SUPPRIMER LE FICHIER `generate_password.php`
-3. Supprimez les dossiers `bdd/` et `uploads/`
+3. Supprimer les dossiers `bdd/` et `uploads/`
 4. Téléverser les fichiers/dossiers restants sur votre serveur (écraser ceux présents)
 5. Bien joué, c'est à jour !
 
