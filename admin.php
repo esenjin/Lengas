@@ -1036,8 +1036,8 @@ function get_latest_version_from_gitea() {
         <!-- Menu d'actions -->
         <div class="admin-menu">
             <button id="open-add-series-modal">Ajouter une série</button>
-            <button id="open-add-volume-modal">Ajouter un tome</button>
-            <button id="open-add-multiple-volumes-modal">Ajouter plusieurs tomes</button>
+            <button id="open-add-volume-modal" style="display: none;">Ajouter un tome</button>
+            <button id="open-add-multiple-volumes-modal">Ajouter des tomes</button>
             <button id="open-incomplete-series-modal" class="button button-otl">Séries incomplètes</button>
             <button id="open-loan-modal" class="button button-otl">Livres prêtés</button>
             <button id="open-wishlist-modal" class="button button-otl">Liste d'envies</button>
@@ -1143,7 +1143,7 @@ function get_latest_version_from_gitea() {
         <div class="modal" id="add-multiple-volumes-modal">
             <div class="modal-content">
                 <span class="close-modal" id="close-add-multiple-volumes-modal">&times;</span>
-                <h2>Ajouter plusieurs tomes</h2>
+                <h2>Ajouter des tomes</h2>
                 <form method="post">
                     <p>Choisir une série :</p>
                     <input type="text" id="multiple-series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
