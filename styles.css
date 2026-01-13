@@ -200,7 +200,7 @@ select:focus {
 
 /* Indicateur "collector" */
 .volumes-list li.volume-collector::before {
-    content: "★";
+    content: "⭐";
     margin-right: 5px;
     color: gold;
     font-size: 0.9em;
@@ -208,7 +208,7 @@ select:focus {
 
 /* Indicateur "dernier tome" */
 .volumes-list li.volume-last::after {
-    content: "☑";
+    content: "✅";
     margin-left: 5px;
     color: rgb(77, 221, 100);
     font-size: 0.9em;

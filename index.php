@@ -204,11 +204,11 @@ if (!empty($search_term)) {
                     <span>Tome rose : À lire</span>
                 </div><br>
                 <div class="legend-item">
-                    <div class="legend-icon">★</div>
+                    <div class="legend-icon">⭐</div>
                     <span>Étoile : Collector</span>
                 </div><br>
                 <div class="legend-item">
-                    <div class="legend-icon last-icon">☑</div>
+                    <div class="legend-icon last-icon">✅</div>
                     <span>Cochette verte : Dernier tome</span>
                 </div>
             </div>
