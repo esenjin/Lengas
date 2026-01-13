@@ -66,15 +66,15 @@ lengas/
 ├── anilist.php        # API Anilist
 ├── login.php          # Connexion
 ├── styles.css         # Styles CSS
-├── uploads/           # Images des séries (chmod 777)
+├── uploads/           # Images des séries (chmod 774)
 ├── scripts/           # Scripts JS
-└── bdd/               # Fichiers de données (chmod 777)
-   ├── data.json          # Base de données des séries et tomes possédés (chmod 666)
-   ├── list.json          # Base de données de la liste d'envies (chmod 666)
-   ├── loan.json          # Base de données des prêts (chmod 666)
-   ├── anilist.json       # Cache des requêtes API Anilist (chmod 666)
-   ├── options.json       # Options principales éditables (chmod 666)
-   └── mdp.json           # Contient le mdp hashé (chmod 640)
+└── bdd/               # Fichiers de données (chmod 774)
+   ├── data.json          # Base de données des séries et tomes possédés (chmod 660)
+   ├── list.json          # Base de données de la liste d'envies (chmod 660)
+   ├── loan.json          # Base de données des prêts (chmod 660)
+   ├── anilist.json       # Cache des requêtes API Anilist (chmod 660)
+   ├── options.json       # Options principales éditables (chmod 660)
+   └── mdp.json           # Contient le mdp hashé (chmod 660)
 ```
 
 ## Utilisation
