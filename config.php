@@ -3,11 +3,6 @@
 define('SITE_VERSION', '1.4.2');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
-// Logs d'erreurs
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 // Chemin vers le fichier de mot de passe
 define('PASSWORD_FILE', 'bdd/mdp.json');
 
