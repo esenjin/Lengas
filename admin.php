@@ -256,9 +256,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
         }
     }
 
+    // Vérifier l'upload de l'image
+    $error_message = null;
+    $image = upload_image($_FILES['image'] ?? [], $error_message);
+
+
     if ($series_exists) {
         $_SESSION['error_message'] = "Une série avec ce nom existe déjà.";
-    } elseif ($image && $name && $author && $publisher && $categories) {
+    } elseif ($image === false) {
+        $_SESSION['error_message'] = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
+    } elseif (empty($name) || empty($author) || empty($publisher) || empty($categories)) {
+        $_SESSION['error_message'] = "Veuillez remplir tous les champs obligatoires.";
+    } else {
         $volumes = [];
         for ($i = 1; $i <= $volumes_count; $i++) {
             $volumes[] = [
@@ -282,9 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
             'volumes' => $volumes
         ];
         save_data($data);
-        $_SESSION['success_message'] = "Série ajoutée avec succès";
-    } else {
-        $_SESSION['error_message'] = "Veuillez remplir tous les champs correctement.";
+        $_SESSION['success_message'] = "Série ajoutée avec succès.";
     }
 
     header("Location: admin.php");
@@ -1085,7 +1092,8 @@ function get_latest_version_from_gitea() {
                         <input type="checkbox" name="mature"> Contenu mature
                     </label>
                     <p>Vignette :</p>
-                    <input type="file" name="image" accept="image/*" required>
+                    <input type="file" name="image" accept="image/jpeg, image/png, image/gif, image/webp" required>
+                    <p class="hint">Extensions autorisées : jpeg, png, gif et webp. Poids maximum : 5 Mo.</p>
                     <button type="submit" name="add_series">Ajouter</button>
                 </form>
             </div>
@@ -1234,7 +1242,8 @@ function get_latest_version_from_gitea() {
                         <input type="checkbox" name="remove_image" id="remove-image-checkbox">
                         <label for="remove-image-checkbox">Supprimer l'image</label>
                     </div>
-                    <input type="file" name="edit_image" id="edit-series-image" accept="image/*">
+                    <input type="file" name="edit_image" id="edit-series-image" accept="image/jpeg, image/png, image/gif, image/webp">
+                    <p class="hint">Extensions autorisées : jpeg, png, gif et webp. Poids maximum : 5 Mo.</p>
                     <button type="submit" name="update_series">Mettre à jour</button>
                 </form>
             </div>
