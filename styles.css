@@ -107,7 +107,8 @@ select:focus {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     transition: transform 0.3s;
     display: flex;
-    overflow: hidden;
+    overflow-y: auto;
+    max-height: 480px;
 }
 
 .series-card:hover {
