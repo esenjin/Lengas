@@ -141,7 +141,7 @@ if (!empty($search_term)) {
                 $read_volumes = count(array_filter($series['volumes'] ?? [], fn($v) => $v['status'] === 'terminé'));
                 ?>
                 <div class="series-card <?= isset($series['mature']) && $series['mature'] ? 'mature' : '' ?>" data-series-index="<?= $series_index ?>">
-                    <img class="series-image" src="<?= $series['image'] ?? '' ?>" alt="<?= $series['name'] ?? '' ?>">
+                    <img class="series-image" src="<?= $series['image'] ?? '' ?>" alt="<?= $series['name'] ?? '' ?>" loading="lazy">
                     <?php if (isset($series['mature']) && $series['mature']): ?>
                     <?php endif; ?>
                     <div class="series-info">

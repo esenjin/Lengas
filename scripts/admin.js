@@ -1004,3 +1004,16 @@ function showErrorModal(message) {
 function showSuccessModal(message) {
     showCustomAlert('Succès', message);
 }
+
+// Bouton "Retour en haut"
+window.addEventListener('scroll', function() {
+    const backToTop = document.getElementById('back-to-top');
+    if (window.pageYOffset > 300) {
+        backToTop.style.display = 'block';
+    } else {
+        backToTop.style.display = 'none';
+    }
+});
+document.getElementById('back-to-top').addEventListener('click', function() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+});

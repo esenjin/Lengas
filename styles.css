@@ -1027,7 +1027,7 @@ input[list] {
     flex: 1;
 }
 
-/* CSS pour le bouton de déconnexion */
+/* Bouton de déconnexion */
 .logout-container {
     position: absolute;
     top: 10px;
@@ -1045,6 +1045,23 @@ input[list] {
 
 .logout-button:hover {
     background: rgba(255, 0, 0, 0.5);
+}
+
+/* Bouton "Retour en haut" */
+#back-to-top {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #bb86fc;
+    color: #121212;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 1.2em;
+    cursor: pointer;
+    z-index: 999;
 }
 
 /* Responsive */

@@ -1051,7 +1051,7 @@ function get_latest_version_from_gitea() {
                     </div>
                     <input type="hidden" name="series_id" id="selected-series-id" required>
                     <p>Numéro du tome à ajouter :</p>
-                    <input type="number" name="volume_number" placeholder="Numéro du tome" min="1" autocomplete="off" required>
+                    <input type="number" inputmode="numeric" name="volume_number" placeholder="Numéro du tome" min="1" autocomplete="off" required>
                     <p>Statut du tome :</p>
                     <select name="status" required>
                         <option value="à lire">À lire</option>
@@ -1085,9 +1085,9 @@ function get_latest_version_from_gitea() {
                     <p>Tomes à ajouter :</p>
                     <input type="hidden" name="series_id" id="multiple-selected-series-id" required>
                     <div class="volume-range">
-                        <input type="number" name="start_volume" placeholder="Numéro de début" min="1" autocomplete="off" required>
+                        <input type="number" inputmode="numeric" name="start_volume" placeholder="Numéro de début" min="1" autocomplete="off" required>
                         <span>à</span>
-                        <input type="number" name="end_volume" placeholder="Numéro de fin" min="1" autocomplete="off" required>
+                        <input type="number" inputmode="numeric" name="end_volume" placeholder="Numéro de fin" min="1" autocomplete="off" required>
                     </div>
                     <p>Statut des tomes :</p>
                     <select name="status" required>
@@ -1189,7 +1189,7 @@ function get_latest_version_from_gitea() {
                         </div>
                         <input type="hidden" name="series_id" id="loan-selected-series-id" required>
                         <p>Numéro du tome :</p>
-                        <input type="number" name="volume_number" placeholder="Numéro du tome" min="1" autocomplete="off" required>
+                        <input type="number" inputmode="numeric" name="volume_number" placeholder="Numéro du tome" min="1" autocomplete="off" required>
                         <p>Nom de l'emprunteur :</p>
                         <input type="text" name="borrower_name" placeholder="Nom de l'emprunteur" autocomplete="off" required>
                         <button type="submit" class="button button-otl">Ajouter</button>
@@ -1210,9 +1210,9 @@ function get_latest_version_from_gitea() {
                         <input type="hidden" name="series_id" id="multiple-loan-selected-series-id" required>
                         <p>Plage de tomes :</p>
                         <div class="volume-range">
-                            <input type="number" name="start_volume" placeholder="Numéro de début" min="1" autocomplete="off" required>
+                            <input type="number" inputmode="numeric" name="start_volume" placeholder="Numéro de début" min="1" autocomplete="off" required>
                             <span>à</span>
-                            <input type="number" name="end_volume" placeholder="Numéro de fin" min="1" autocomplete="off" required>
+                            <input type="number" inputmode="numeric" name="end_volume" placeholder="Numéro de fin" min="1" autocomplete="off" required>
                         </div>
                         <p>Nom de l'emprunteur :</p>
                         <input type="text" name="borrower_name" placeholder="Nom de l'emprunteur" autocomplete="off" required>
@@ -1350,7 +1350,7 @@ function get_latest_version_from_gitea() {
                 <?php foreach ($data as $series): ?>
                     <?php if (empty($series['volumes'])) continue; ?>
                     <div class="series-card">
-                        <img class="series-image" src="<?= $series['image'] ?>" alt="<?= $series['name'] ?>">
+                        <img class="series-image" src="<?= $series['image'] ?>" alt="<?= $series['name'] ?>" loading="lazy">
                         <div class="series-info">
                             <div class="series-header">
                                 <h2><?= $series['name'] ?></h2>
@@ -1408,6 +1408,8 @@ function get_latest_version_from_gitea() {
             <?php endif; ?>
         </div>
     </div>
+
+    <button id="back-to-top" title="Retour en haut">↑</button>
 
     <script>
         // Données des séries pour JavaScript
