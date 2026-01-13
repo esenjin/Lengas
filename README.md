@@ -65,6 +65,7 @@ lengas/
 ├── config.php         # Configuration du site
 ├── anilist.php        # API Anilist
 ├── login.php          # Connexion
+├── logout.php         # Déconnexion
 ├── styles.css         # Styles CSS
 ├── uploads/           # Images des séries (chmod 774)
 ├── scripts/           # Scripts JS
