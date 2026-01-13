@@ -239,7 +239,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $publisher = trim($_POST['publisher'] ?? '');
     $categories = trim($_POST['categories'] ?? '');
     $genres = trim($_POST['genres'] ?? '');
-    $image = upload_image($_FILES['image'] ?? []);
     $anilist_id = trim($_POST['anilist_id'] ?? '');
     $mature = !empty($_POST['mature']);
     $volumes_count = (int)($_POST['volumes_count'] ?? 1);
@@ -259,6 +258,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     // Vérifier l'upload de l'image
     $error_message = null;
     $image = upload_image($_FILES['image'] ?? [], $error_message);
+
+    if ($image === false) {
+        echo $error_message;
+        exit;
+    }
 
 
     if ($series_exists) {
@@ -1092,8 +1096,8 @@ function get_latest_version_from_gitea() {
                         <input type="checkbox" name="mature"> Contenu mature
                     </label>
                     <p>Vignette :</p>
-                    <input type="file" name="image" accept="image/jpeg, image/png, image/gif, image/webp" required>
-                    <p class="hint">Extensions autorisées : jpeg, png, gif et webp. Poids maximum : 5 Mo.</p>
+                    <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp" required>
+                    <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
                     <button type="submit" name="add_series">Ajouter</button>
                 </form>
             </div>
@@ -1242,8 +1246,8 @@ function get_latest_version_from_gitea() {
                         <input type="checkbox" name="remove_image" id="remove-image-checkbox">
                         <label for="remove-image-checkbox">Supprimer l'image</label>
                     </div>
-                    <input type="file" name="edit_image" id="edit-series-image" accept="image/jpeg, image/png, image/gif, image/webp">
-                    <p class="hint">Extensions autorisées : jpeg, png, gif et webp. Poids maximum : 5 Mo.</p>
+                    <input type="file" name="edit_image" id="edit-series-image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp">
+                    <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
                     <button type="submit" name="update_series">Mettre à jour</button>
                 </form>
             </div>

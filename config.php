@@ -80,14 +80,18 @@ function save_options($options) {
 }
 
 // Fonction pour uploader une image
-function upload_image($file, &$error_message = null) {
-    // Vérifier si un fichier a été soumis
-    if (!isset($file) || $file['error'] == UPLOAD_ERR_NO_FILE) {
+function upload_image(array $file, &$error_message = null) {
+
+    // Vérifier la structure du fichier
+    if (
+        !isset($file['error'], $file['tmp_name'], $file['name'], $file['size']) ||
+        $file['error'] === UPLOAD_ERR_NO_FILE
+    ) {
         $error_message = "Aucun fichier n'a été téléversé.";
         return false;
     }
 
-    // Vérifier les erreurs d'upload
+    // Vérifier les erreurs d'upload PHP
     if ($file['error'] !== UPLOAD_ERR_OK) {
         switch ($file['error']) {
             case UPLOAD_ERR_INI_SIZE:
@@ -98,45 +102,79 @@ function upload_image($file, &$error_message = null) {
                 $error_message = "Le fichier n'a été que partiellement téléversé.";
                 break;
             default:
-                $error_message = "Erreur inconnue lors de l'upload du fichier.";
+                $error_message = "Erreur inconnue lors du téléversement.";
         }
         return false;
     }
 
-    // Vérifier le type MIME
-    $allowed_mime_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    $detected_mime_type = mime_content_type($file['tmp_name']);
-    if (!in_array($detected_mime_type, $allowed_mime_types)) {
-        $error_message = "Type de fichier non autorisé. Seuls les fichiers JPEG, PNG, GIF et WebP sont acceptés.";
+    // Vérifier que le fichier est bien un upload PHP
+    if (!is_uploaded_file($file['tmp_name'])) {
+        $error_message = "Fichier invalide ou corrompu.";
         return false;
     }
 
-    // Vérifier l'extension
-    $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    $original_name = basename($file['name']);
-    $file_extension = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
-    if (!in_array($file_extension, $allowed_extensions)) {
-        $error_message = "Extension de fichier non autorisée.";
-        return false;
-    }
-
-    // Vérifier la taille du fichier
+    // Vérifier la taille du fichier (double sécurité)
     $max_file_size = 5 * 1024 * 1024; // 5 Mo
     if ($file['size'] > $max_file_size) {
         $error_message = "Le fichier est trop volumineux (max. 5 Mo).";
         return false;
     }
 
-    // Générer un nom unique et déplacer le fichier
-    $target_dir = UPLOAD_DIR;
-    $unique_name = uniqid() . '.' . $file_extension;
+    // Vérifier le type MIME réel (FileInfo)
+    $allowed_mime_types = [
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'image/webp'
+    ];
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    if ($finfo === false) {
+        $error_message = "Impossible d'initialiser la détection MIME.";
+        return false;
+    }
+
+    $detected_mime_type = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+
+    if ($detected_mime_type === false || !in_array($detected_mime_type, $allowed_mime_types, true)) {
+        $error_message = "Type de fichier non autorisé.";
+        return false;
+    }
+
+    // Vérifier que c'est vraiment une image
+    if (getimagesize($file['tmp_name']) === false) {
+        $error_message = "Le fichier n'est pas une image valide.";
+        return false;
+    }
+
+    // Vérifier l'extension
+    $allowed_extensions = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
+    $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+    if (!in_array($file_extension, $allowed_extensions, true)) {
+        $error_message = "Extension de fichier non autorisée.";
+        return false;
+    }
+
+    // Vérifier le dossier de destination
+    $target_dir = rtrim(UPLOAD_DIR, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+
+    if (!is_dir($target_dir) || !is_writable($target_dir)) {
+        $error_message = "Le dossier de destination est invalide ou non accessible.";
+        return false;
+    }
+
+    // Générer un nom unique sécurisé
+    $unique_name = bin2hex(random_bytes(16)) . '.' . $file_extension;
     $target_file = $target_dir . $unique_name;
 
-    if (move_uploaded_file($file['tmp_name'], $target_file)) {
-        return $target_file;
-    } else {
+    // Déplacer le fichier
+    if (!move_uploaded_file($file['tmp_name'], $target_file)) {
         $error_message = "Impossible de déplacer le fichier téléversé.";
         return false;
     }
+
+    return $target_file;
 }
 ?>
