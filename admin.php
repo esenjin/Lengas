@@ -949,6 +949,11 @@ function get_latest_version_from_gitea() {
     <?php endif; ?>
 
     <div class="container">
+        <div class="logout-container">
+            <a href="logout.php" class="logout-button" title="Déconnexion">
+                <img src="https://api.iconify.design/mdi/logout.svg?color=white" alt="Déconnexion" width="24" height="24">
+            </a>
+        </div>
         <h1><?= htmlspecialchars($options['admin_page_title']) ?></h1>
 
         <!-- Barre de filtres et recherche -->
