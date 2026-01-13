@@ -42,14 +42,18 @@ Administration
 
 ## Installation
 1. Télécharger la dernière publication
-2. Éditer le mot de passe dans `config.php`
+2. Éditer le fichier `generate_password.php` en y indiquant le mdp souhaité
 3. Téléverser les fichiers sur votre serveur
+4. Éxécuter le fichier `generate_password.php`
+5. SUPPRIMER LE FICHIER `generate_password.php`
+6. C'est tout bon ! Vous pouvez profiter.
 
 ## Mise à jour
 1. Télécharger la dernière publication
-2. Éditer le mot de passe dans `config.php`
+2. SUPPRIMER LE FICHIER `generate_password.php`
 3. Supprimez les dossiers `bdd/` et `uploads/`
-3. Téléverser les fichiers/dossiers restants sur votre serveur (écraser ceux présents)
+4. Téléverser les fichiers/dossiers restants sur votre serveur (écraser ceux présents)
+5. Bien joué, c'est à jour !
 
 ## Structure des fichiers
 
@@ -69,7 +73,8 @@ lengas/
    ├── list.json          # Base de données de la liste d'envies (chmod 666)
    ├── loan.json          # Base de données des prêts (chmod 666)
    ├── anilist.json       # Cache des requêtes API Anilist (chmod 666)
-   └── options.json       # Options principales éditables (chmod 666)
+   ├── options.json       # Options principales éditables (chmod 666)
+   └── mdp.json           # Contient le mdp hashé (chmod 640)
 ```
 
 

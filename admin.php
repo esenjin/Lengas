@@ -447,11 +447,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                 exit;
             }
 
-            // Mettre à jour le mot de passe dans config.php
-            $config_content = file_get_contents('config.php');
-            $admin_password = addslashes($admin_password);
-            $config_content = preg_replace("/define\('ADMIN_PASSWORD', '.*?'\)/", "define('ADMIN_PASSWORD', '$admin_password')", $config_content);
-            file_put_contents('config.php', $config_content);
+            // Hasher le mot de passe
+            $password_hash = password_hash($admin_password, PASSWORD_DEFAULT);
+
+            // Sauvegarder le hash dans bdd/mdp.json
+            $password_data = ['admin_password_hash' => $password_hash];
+            file_put_contents(PASSWORD_FILE, json_encode($password_data, JSON_PRETTY_PRINT));
         }
 
         save_options($options);
