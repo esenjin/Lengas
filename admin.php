@@ -242,6 +242,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $image = upload_image($_FILES['image'] ?? []);
     $anilist_id = trim($_POST['anilist_id'] ?? '');
     $mature = !empty($_POST['mature']);
+    $volumes_count = (int)($_POST['volumes_count'] ?? 1);
+    $volumes_status = $_POST['volumes_status'] ?? 'à lire';
+    $all_collector = !empty($_POST['all_collector']);
+    $last_volume = !empty($_POST['last_volume']);
 
     // Vérifier si une série avec le même nom existe déjà
     $series_exists = false;
@@ -255,6 +259,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     if ($series_exists) {
         $_SESSION['error_message'] = "Une série avec ce nom existe déjà.";
     } elseif ($image && $name && $author && $publisher && $categories) {
+        $volumes = [];
+        for ($i = 1; $i <= $volumes_count; $i++) {
+            $volumes[] = [
+                'number' => $i,
+                'status' => $volumes_status,
+                'collector' => $all_collector,
+                'last' => ($last_volume && $i == $volumes_count)
+            ];
+        }
+
         $data[] = [
             'id' => generate_uuid(),
             'name' => $name,
@@ -265,14 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
             'image' => $image,
             'anilist_id' => $anilist_id,
             'mature' => $mature,
-            'volumes' => [
-                [
-                    'number' => 1,
-                    'status' => 'à lire',
-                    'collector' => false,
-                    'last' => false
-                ]
-            ]
+            'volumes' => $volumes
         ];
         save_data($data);
         $_SESSION['success_message'] = "Série ajoutée avec succès";
@@ -1056,6 +1063,21 @@ function get_latest_version_from_gitea() {
                     <input type="text" name="categories" id="add-series-categories" placeholder="Catégories (séparées par des virgules)" autocomplete="off" required>
                     <p>Genres :</p>
                     <input type="text" name="genres" id="add-series-genres" placeholder="Genres (séparés par des virgules)" autocomplete="off">
+                    <p>Nombre de tomes à créer :</p>
+                    <input type="number" name="volumes_count" id="volumes_count" placeholder="Nombre de tomes" min="1" value="1" autocomplete="off">
+                    <p>Statut des tomes :</p>
+                    <select name="volumes_status" id="volumes_status" required>
+                        <option value="à lire">À lire</option>
+                        <option value="en cours">En cours</option>
+                        <option value="terminé">Terminé</option>
+                    </select>
+                    <label>
+                        <input type="checkbox" name="all_collector"> Tous en collector
+                    </label>
+                    <label>
+                        <input type="checkbox" name="last_volume"> Série terminée
+                    </label>
+                    <p class="hint">Le tome final sera tagué comme dernier de la série.</p>
                     <p>ID Anilist (facultatif) :</p>
                     <input type="text" name="anilist_id" placeholder="ID Anilist (facultatif)" autocomplete="off">
                     <p class="hint"><a tabindex="0" data-hint="L'ID Anilist est utilisé pour trouver les tomes manquants des sériées terminées, plus d'infos dans l'outil « Séries incomplètes ». Pour trouver cet identifiant, rendez-vous sur anilist.co, recherchez votre série et accédez à sa fiche, l'ID est la suite de chiffres avant le nom dans l'url.">À quoi ça sert ? Où le trouver ?</a>.</p>
