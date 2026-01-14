@@ -60,6 +60,7 @@ $status_counts = [
 
 $collector_counts = 0;
 $completed_series = 0;
+$complete_series = 0;
 
 // Initialiser des tableaux pour suivre les auteurs et éditeurs uniques
 $unique_authors = [];
@@ -91,6 +92,10 @@ foreach ($data as $series) {
                 $last_volume_completed = true;
             }
         }
+    }
+
+    if ($has_last_volume) {
+        $complete_series++;
     }
 
     if ($has_last_volume && $last_volume_completed) {
@@ -220,6 +225,10 @@ $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_
                 <div class="stat-item">
                     <span>Tomes terminés :</span>
                     <span class="stat-value"><?= $status_counts['terminé'] ?> (<?= $percentages['terminé'] ?>%)</span>
+                </div>
+                <div class="stat-item">
+                    <span>Séries complètes :</span>
+                    <span class="stat-value"><?= $complete_series ?></span>
                 </div>
                 <div class="stat-item">
                     <span>Tomes collectors :</span>
