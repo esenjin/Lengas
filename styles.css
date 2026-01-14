@@ -250,12 +250,13 @@ select:focus {
     color: gold;
 }
 
-.legend-item .legend-icon:not(.last-icon) {
-    color: gold !important;
-}
-
-.legend-icon.last-icon {
-    color: rgb(77, 221, 100) !important;
+.legend-sample.favorite-border {
+    width: 70px;
+    height: 40px;
+    border-radius: 8px;
+    border: 2px solid rgba(236, 190, 103, 0.8);
+    background-color: #2d2d2d;
+    margin-top: 20px;
 }
 
 /* Style pour la vignette floutée (contenu mature) */
