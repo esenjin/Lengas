@@ -69,7 +69,7 @@ lengas/
 ├── styles.css         # Styles CSS
 ├── uploads/           # Images des séries (chmod 774)
 ├── scripts/           # Scripts JS
-├── saves/             # Sauvegardes de la base de données
+├── saves/             # Sauvegardes de la base de données (chmod 774)
 └── bdd/               # Fichiers de données (chmod 774)
    ├── data.json          # Base de données des séries et tomes possédés (chmod 660)
    ├── list.json          # Base de données de la liste d'envies (chmod 660)
