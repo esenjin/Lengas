@@ -349,14 +349,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_volume']) || iss
                 }
             }
         } elseif (isset($_POST['add_multiple_volumes'])) {
-            $start = (int)($_POST['start_volume'] ?? 0);
-            $end = (int)($_POST['end_volume'] ?? 0);
-            if ($start > 0 && $end >= $start) {
+            $volumes_count = (int)($_POST['volumes_count'] ?? 0);
+            if ($volumes_count > 0) {
+                $current_volumes = $data[$series_index]['volumes'];
+                $max_volume_number = !empty($current_volumes) ? max(array_column($current_volumes, 'number')) : 0;
                 $existing_volumes = [];
-                for ($i = $start; $i <= $end; $i++) {
+
+                for ($i = 1; $i <= $volumes_count; $i++) {
+                    $new_volume_number = $max_volume_number + $i;
                     $volume_exists = false;
                     foreach ($data[$series_index]['volumes'] as $volume) {
-                        if ((int)$volume['number'] === $i) {
+                        if ((int)$volume['number'] === $new_volume_number) {
                             $volume_exists = true;
                             break;
                         }
@@ -364,13 +367,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_volume']) || iss
 
                     if (!$volume_exists) {
                         $data[$series_index]['volumes'][] = [
-                            'number' => $i,
+                            'number' => $new_volume_number,
                             'status' => $status,
                             'collector' => $is_collector,
-                            'last' => ($i == $end) ? $is_last : false
+                            'last' => ($i == $volumes_count) ? $is_last : false
                         ];
                     } else {
-                        $existing_volumes[] = $i;
+                        $existing_volumes[] = $new_volume_number;
                     }
                 }
                 if (!empty($existing_volumes)) {
@@ -1535,13 +1538,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action']) && $_P
                             <div data-id="<?= $series['id'] ?>"><?= $series['name'] ?></div>
                         <?php endforeach; ?>
                     </div>
-                    <p>Tomes à ajouter :</p>
                     <input type="hidden" name="series_id" id="multiple-selected-series-id" required>
-                    <div class="volume-range">
-                        <input type="number" inputmode="numeric" name="start_volume" placeholder="Numéro de début" min="1" autocomplete="off" required>
-                        <span>à</span>
-                        <input type="number" inputmode="numeric" name="end_volume" placeholder="Numéro de fin" min="1" autocomplete="off" required>
-                    </div>
+                    <p>Nombre de tomes à ajouter :</p>
+                    <input type="number" name="volumes_count" id="volumes_count" placeholder="Nombre de tomes" min="1" value="1" autocomplete="off">
                     <p>Statut des tomes :</p>
                     <select name="status" required>
                         <option value="à lire">À lire</option>

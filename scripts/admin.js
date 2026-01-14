@@ -801,6 +801,50 @@ document.getElementById('add-multiple-loans-form').addEventListener('submit', fu
     });
 });
 
+// Gestion du formulaire "Ajouter des tomes" (modale add-multiple-volumes)
+document.querySelector('#add-multiple-volumes-modal form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    // Récupère les valeurs du formulaire
+    const seriesId = document.getElementById('multiple-selected-series-id').value;
+    const volumesCount = parseInt(document.querySelector('#add-multiple-volumes-modal [name="volumes_count"]').value);
+    const status = document.querySelector('#add-multiple-volumes-modal [name="status"]').value;
+    const isCollector = document.querySelector('#add-multiple-volumes-modal [name="is_collector"]').checked;
+    const isLast = document.querySelector('#add-multiple-volumes-modal [name="is_last"]').checked;
+
+    // Vérifie que la série est sélectionnée et que le nombre de tomes est valide
+    if (!seriesId || volumesCount <= 0) {
+        alert('Veuillez sélectionner une série et indiquer un nombre de tomes valide.');
+        return;
+    }
+
+    // Prépare les données à envoyer
+    const formData = new FormData();
+    formData.append('series_id', seriesId);
+    formData.append('volumes_count', volumesCount);
+    formData.append('status', status);
+    formData.append('is_collector', isCollector);
+    formData.append('is_last', isLast);
+    formData.append('add_multiple_volumes', true);
+
+    // Envoie la requête au serveur
+    fetch('admin.php', {
+        method: 'POST',
+        body: new URLSearchParams(formData)
+    })
+    .then(response => {
+        if (response.ok) {
+            window.location.reload(); // Recharge la page pour voir les nouveaux tomes
+        } else {
+            alert('Une erreur est survenue.');
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Une erreur est survenue.');
+    });
+});
+
 // Charger la liste des prêts
 function loadLoanList() {
     fetch('admin.php', {
