@@ -990,6 +990,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_action'])) {
 
             $zip = new ZipArchive();
             if ($zip->open($backup_path, ZipArchive::CREATE) === TRUE) {
+                // Ajouter les fichiers JSON
                 $files_to_backup = [
                     'bdd/data.json',
                     'bdd/list.json',
@@ -1000,6 +1001,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_action'])) {
                 foreach ($files_to_backup as $file) {
                     if (file_exists($file)) {
                         $zip->addFile($file, basename($file));
+                    }
+                }
+
+                // Ajouter le dossier uploads/ et ses images
+                $uploads_dir = 'uploads/';
+                if (file_exists($uploads_dir) && is_dir($uploads_dir)) {
+                    $files = new RecursiveIteratorIterator(
+                        new RecursiveDirectoryIterator($uploads_dir),
+                        RecursiveIteratorIterator::LEAVES_ONLY
+                    );
+
+                    foreach ($files as $name => $file) {
+                        if (!$file->isDir()) {
+                            $file_path = $file->getRealPath();
+                            // Récupérer le chemin relatif par rapport au dossier uploads/
+                            $relative_path = substr($file_path, strlen(realpath($uploads_dir)) + 1);
+                            $zip->addFile($file_path, 'uploads/' . $relative_path);
+                        }
                     }
                 }
 
@@ -1500,12 +1519,15 @@ function get_latest_version_from_gitea() {
             <div class="modal-content">
                 <span class="close-modal" id="close-tools-modal">&times;</span>
                 <h2>Outils de sauvegarde</h2>
-                <p>Vous pouvez ici sauvegarder vos données.</p>
+                <p>Vous pouvez ici sauvegarder vos données. Les fichiers concernés sont : la base de données de votre bibliothèque et leurs images, la liste de vos envies, la liste de vos prêts, ainsi que les options du site.</p>
 
                 <div class="tools-section">
                     <h3>Créer une sauvegarde</h3>
                     <p>Crée une archive de vos données actuelles.</p>
-                    <button id="create-backup-btn" class="button button-opt">Créer une sauvegarde</button>
+                    <button id="create-backup-btn" class="button button-opt">
+                        <span id="create-backup-text">Créer une sauvegarde</span>
+                        <span id="create-backup-spinner" class="spinner" style="display: none;"></span>
+                    </button>
                 </div>
 
                 <div class="tools-section">

@@ -1258,6 +1258,15 @@ document.getElementById('close-tools-modal').addEventListener('click', () => {
 
 // Création d'une sauvegarde
 document.getElementById('create-backup-btn').addEventListener('click', () => {
+    const button = document.getElementById('create-backup-btn');
+    const textSpan = document.getElementById('create-backup-text');
+    const spinner = document.getElementById('create-backup-spinner');
+
+    // Désactiver le bouton et afficher le spinner
+    button.disabled = true;
+    textSpan.textContent = 'Création en cours...';
+    spinner.style.display = 'inline-block';
+
     fetch('admin.php', {
         method: 'POST',
         headers: {
@@ -1268,15 +1277,21 @@ document.getElementById('create-backup-btn').addEventListener('click', () => {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(data.message);
+            showSuccessModal(data.message);
             loadBackupsList();
         } else {
-            alert(data.message);
+            showErrorModal(data.message);
         }
     })
     .catch(error => {
         console.error('Erreur:', error);
-        alert('Une erreur est survenue.');
+        showErrorModal('Une erreur est survenue.');
+    })
+    .finally(() => {
+        // Réactiver le bouton et masquer le spinner
+        button.disabled = false;
+        textSpan.textContent = 'Créer une sauvegarde';
+        spinner.style.display = 'none';
     });
 });
 
