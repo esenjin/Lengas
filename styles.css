@@ -127,7 +127,7 @@ select:focus {
 }
 
 .series-card.favorite {
-    box-shadow: 0 0 15px rgba(236, 190, 103, 0.55) !important;
+    box-shadow: 0 4px 8px rgba(236, 190, 103, 0.55) !important;
 }
 
 .series-image {
