@@ -1085,6 +1085,75 @@ input[list] {
     min-height: 500px;
 }
 
+/* Modale "Outils" */
+#tools-modal .modal-content {
+    width: 80%;
+    max-width: 600px;
+}
+
+.tools-section {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #333;
+}
+
+.tools-section:last-child {
+    border-bottom: none;
+}
+
+.backup-item {
+    background-color: #2d2d2d;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.backup-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.backup-actions button {
+    padding: 5px 10px;
+    font-size: 0.9em;
+}
+
+.backup-actions .button-opt {
+    padding: 5px 10px;
+    font-size: 0.9em;
+}
+
+/* Boutons de la modale "Outils" */
+#create-backup-btn {
+    background-color: #4CAF50;
+    color: #121212;
+}
+
+#create-backup-btn:hover {
+    background-color: #45a049;
+}
+
+.backup-actions a.button-opt {
+    background-color: #bb86fc;
+    color: #121212;
+}
+
+.backup-actions a.button-opt:hover {
+    background-color: #9a67ea;
+}
+
+.backup-actions .delete-backup-btn {
+    background-color: #cf6679;
+    color: white;
+}
+
+.backup-actions .delete-backup-btn:hover {
+    background-color: #b35467;
+}
+
 /* Responsive */
 /* Menu admin sur mobile */
 @media (max-width: 768px) {

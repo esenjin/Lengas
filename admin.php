@@ -972,6 +972,86 @@ function are_volumes_owned($data, $series_id, $start_volume, $end_volume) {
     }
 }
 
+// Gestion des sauvegardes
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_action'])) {
+    $action = $_POST['backup_action'];
+    $response = ['success' => false, 'message' => ''];
+
+    switch ($action) {
+        case 'create_backup':
+            $backup_dir = 'saves';
+            if (!file_exists($backup_dir)) {
+                mkdir($backup_dir, 0777, true);
+            }
+
+            $timestamp = time();
+            $backup_name = "save_$timestamp.zip";
+            $backup_path = "$backup_dir/$backup_name";
+
+            $zip = new ZipArchive();
+            if ($zip->open($backup_path, ZipArchive::CREATE) === TRUE) {
+                $files_to_backup = [
+                    'bdd/data.json',
+                    'bdd/list.json',
+                    'bdd/loan.json',
+                    'bdd/options.json'
+                ];
+
+                foreach ($files_to_backup as $file) {
+                    if (file_exists($file)) {
+                        $zip->addFile($file, basename($file));
+                    }
+                }
+
+                $zip->close();
+                $response['success'] = true;
+                $response['message'] = 'Sauvegarde créée avec succès.';
+            } else {
+                $response['message'] = 'Impossible de créer la sauvegarde.';
+            }
+            break;
+
+        case 'delete_backup':
+            $backup_file = $_POST['backup_file'] ?? '';
+            if (!empty($backup_file) && file_exists("saves/$backup_file")) {
+                unlink("saves/$backup_file");
+                $response['success'] = true;
+                $response['message'] = 'Sauvegarde supprimée avec succès.';
+            } else {
+                $response['message'] = 'Fichier de sauvegarde introuvable.';
+            }
+            break;
+
+        case 'list_backups':
+            $backup_dir = 'saves';
+            $backups = [];
+            if (file_exists($backup_dir)) {
+                $files = scandir($backup_dir);
+                foreach ($files as $file) {
+                    if ($file !== '.' && $file !== '..' && pathinfo($file, PATHINFO_EXTENSION) === 'zip') {
+                        $timestamp = str_replace(['save_', '.zip'], '', $file);
+                        $date = date('d/m/Y H:i', $timestamp);
+                        $backups[] = [
+                            'name' => $file,
+                            'date' => $date,
+                            'timestamp' => $timestamp
+                        ];
+                    }
+                }
+                usort($backups, function($a, $b) {
+                    return $b['timestamp'] - $a['timestamp'];
+                });
+            }
+            $response['success'] = true;
+            $response['backups'] = $backups;
+            break;
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit;
+}
+
 // Fonction pour récupérer la dernière version depuis Gitea
 function get_latest_version_from_gitea() {
     $url = "https://git.crystalyx.net/api/v1/repos/Esenjin_Asakha/Lengas/releases/latest";
@@ -1057,6 +1137,7 @@ function get_latest_version_from_gitea() {
             <button id="open-loan-modal" class="button button-otl">Livres prêtés</button>
             <button id="open-wishlist-modal" class="button button-otl">Liste d'envies</button>
             <button id="open-options-modal" class="button button-opt">Options</button>
+            <button id="open-tools-modal" class="button button-opt">Outils</button>
             <a href="index.php" class="button button-ext" target="_blank">Accueil ↗</a>
             <a href="stats.php" class="button button-ext" target="_blank">Statistiques ↗</a>
         </div>
@@ -1110,7 +1191,7 @@ function get_latest_version_from_gitea() {
             </div>
         </div>
 
-                <!-- Modale pour les séries incomplètes -->
+        <!-- Modale pour les séries incomplètes -->
         <div class="modal" id="incomplete-series-modal">
             <div class="modal-content">
                 <span class="close-modal" id="close-incomplete-series-modal">&times;</span>
@@ -1411,6 +1492,29 @@ function get_latest_version_from_gitea() {
                     <p style="visibility: hidden;">_</p>
                     <p class="hint">Merci de recharger la page après l'application des modifications, afin d'actualiser les champs des paramètres ci-dessus.</p>
                 </form>
+            </div>
+        </div>
+
+        <!-- Modale pour les outils de sauvegarde -->
+        <div class="modal" id="tools-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-tools-modal">&times;</span>
+                <h2>Outils de sauvegarde</h2>
+                <p>Vous pouvez ici sauvegarder vos données.</p>
+
+                <div class="tools-section">
+                    <h3>Créer une sauvegarde</h3>
+                    <p>Crée une archive de vos données actuelles.</p>
+                    <button id="create-backup-btn" class="button button-opt">Créer une sauvegarde</button>
+                </div>
+
+                <div class="tools-section">
+                    <h3>Liste des sauvegardes</h3>
+                    <p>Vous pouvez télécharger ou supprimer vos sauvegardes.</p>
+                    <div id="backups-list">
+                        <!-- Les sauvegardes seront affichées ici -->
+                    </div>
+                </div>
             </div>
         </div>
 

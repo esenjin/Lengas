@@ -1243,3 +1243,115 @@ document.querySelector('form[enctype="multipart/form-data"]').addEventListener('
         }
     }
 });
+
+// Ouverture de la modale "Outils"
+document.getElementById('open-tools-modal').addEventListener('click', () => {
+    modals['tools'] = { modal: document.getElementById('tools-modal'), closeBtn: document.getElementById('close-tools-modal') };
+    modals['tools'].modal.classList.add('modal-active');
+    loadBackupsList();
+});
+
+// Fermeture de la modale "Outils"
+document.getElementById('close-tools-modal').addEventListener('click', () => {
+    modals['tools'].modal.classList.remove('modal-active');
+});
+
+// Création d'une sauvegarde
+document.getElementById('create-backup-btn').addEventListener('click', () => {
+    fetch('admin.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'backup_action=create_backup'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            loadBackupsList();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Une erreur est survenue.');
+    });
+});
+
+// Charger la liste des sauvegardes
+function loadBackupsList() {
+    fetch('admin.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'backup_action=list_backups'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayBackupsList(data.backups);
+        } else {
+            console.error('Erreur lors du chargement des sauvegardes.');
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+    });
+}
+
+// Afficher la liste des sauvegardes
+function displayBackupsList(backups) {
+    const backupsListDiv = document.getElementById('backups-list');
+    backupsListDiv.innerHTML = '';
+
+    if (backups.length === 0) {
+        backupsListDiv.innerHTML = '<p>Aucune sauvegarde disponible.</p>';
+        return;
+    }
+
+    backups.forEach(backup => {
+        const backupDiv = document.createElement('div');
+        backupDiv.className = 'backup-item';
+        backupDiv.innerHTML = `
+            <p><strong>${backup.name}</strong> (${backup.date})</p>
+            <div class="backup-actions">
+                <a href="saves/${backup.name}" download class="button button-opt">Télécharger</a>
+                <button class="delete-backup-btn" data-backup-file="${backup.name}">Supprimer</button>
+            </div>
+        `;
+        backupsListDiv.appendChild(backupDiv);
+    });
+
+    // Ajouter les événements aux boutons de suppression
+    document.querySelectorAll('.delete-backup-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const backupFile = this.dataset.backupFile;
+            showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer cette sauvegarde ?').then((confirmed) => {
+                if (confirmed) {
+                    fetch('admin.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `backup_action=delete_backup&backup_file=${encodeURIComponent(backupFile)}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            loadBackupsList();
+                        } else {
+                            alert(data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        alert('Une erreur est survenue.');
+                    });
+                }
+            });
+        });
+    });
+}
