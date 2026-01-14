@@ -436,6 +436,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $mature = !empty($_POST['edit_mature']);
     $favorite = !empty($_POST['edit_favorite']);
     $remove_image = !empty($_POST['remove_image']);
+    $new_volumes_count = (int)($_POST['new_volumes_count'] ?? 0);
+    $new_volumes_status = $_POST['new_volumes_status'] ?? 'à lire';
+    $new_volumes_collector = !empty($_POST['new_volumes_collector']);
+    $new_volumes_last = !empty($_POST['new_volumes_last']);
 
     $series = find_series_by_id($data, $series_id);
     if ($series && $name && $author && $publisher && $categories) {
@@ -449,6 +453,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         $data[$series_index]['anilist_id'] = $anilist_id;
         $data[$series_index]['mature'] = $mature;
         $data[$series_index]['favorite'] = $favorite;
+
+        if ($new_volumes_count > 0) {
+            $current_volumes = $data[$series_index]['volumes'];
+            $max_volume_number = !empty($current_volumes) ? max(array_column($current_volumes, 'number')) : 0;
+
+            for ($i = 1; $i <= $new_volumes_count; $i++) {
+                $new_volume_number = $max_volume_number + $i;
+                $data[$series_index]['volumes'][] = [
+                    'number' => $new_volume_number,
+                    'status' => $new_volumes_status,
+                    'collector' => $new_volumes_collector,
+                    'last' => ($new_volumes_last && $i == $new_volumes_count)
+                ];
+            }
 
         if ($remove_image) {
             if (file_exists($data[$series_index]['image'])) {
@@ -471,6 +489,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         header("Location: admin.php");
         exit;
     }
+}
 }
 
 // Supprimer une série
@@ -1589,6 +1608,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action']) && $_P
                     <input type="text" name="edit_genres" id="edit-series-genres" placeholder="Genres (séparés par des virgules)" autocomplete="off">
                     <p>ID Anilist (facultatif) :</p>
                     <input type="text" name="edit_anilist_id" id="edit-series-anilist-id" placeholder="ID Anilist (facultatif)" autocomplete="off">
+                    <p>Nombre de nouveaux tomes à créer :</p>
+                    <input type="number" name="new_volumes_count" id="edit-series-new-volumes-count" placeholder="Nombre de nouveaux tomes" min="0" value="0" autocomplete="off">
+                    <p>Statut des nouveaux tomes :</p>
+                    <select name="new_volumes_status" id="edit-series-new-volumes-status">
+                        <option value="à lire">À lire</option>
+                        <option value="en cours">En cours</option>
+                        <option value="terminé">Terminé</option>
+                    </select>
+                    <label>
+                        <input type="checkbox" name="new_volumes_collector"> Tous en collector ⭐
+                    </label>
+                    <label>
+                        <input type="checkbox" name="new_volumes_last"> Série terminée ✅
+                    </label>
+                    <p class="hint">Le dernier sera tagué comme le tome final de la série.</p>
                     <label>
                         <input type="checkbox" name="edit_mature" id="edit-series-mature"> Contenu mature 🔞
                     </label>
