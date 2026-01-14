@@ -332,6 +332,7 @@ document.querySelectorAll('.edit-series-btn').forEach(button => {
             document.getElementById('edit-series-genres').value = series.genres ? series.genres.join(', ') : '';
             document.getElementById('edit-series-anilist-id').value = series.anilist_id || '';
             document.getElementById('edit-series-mature').checked = series.mature || false;
+            document.getElementById('edit-series-favorite').checked = series.favorite || false;
             document.getElementById('current-series-image').src = series.image;
 
             modals['edit-series'].modal.classList.add('modal-active');

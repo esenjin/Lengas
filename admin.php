@@ -241,6 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $genres = trim($_POST['genres'] ?? '');
     $anilist_id = trim($_POST['anilist_id'] ?? '');
     $mature = !empty($_POST['mature']);
+    $favorite = !empty($_POST['favorite']);
     $volumes_count = (int)($_POST['volumes_count'] ?? 1);
     $volumes_status = $_POST['volumes_status'] ?? 'à lire';
     $all_collector = !empty($_POST['all_collector']);
@@ -292,6 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
             'image' => $image,
             'anilist_id' => $anilist_id,
             'mature' => $mature,
+            'favorite' => $favorite,
             'volumes' => $volumes
         ];
         save_data($data);
@@ -432,6 +434,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $genres = trim($_POST['edit_genres'] ?? '');
     $anilist_id = trim($_POST['edit_anilist_id'] ?? '');
     $mature = !empty($_POST['edit_mature']);
+    $favorite = !empty($_POST['edit_favorite']);
     $remove_image = !empty($_POST['remove_image']);
 
     $series = find_series_by_id($data, $series_id);
@@ -445,6 +448,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         $data[$series_index]['genres'] = explode(',', $genres);
         $data[$series_index]['anilist_id'] = $anilist_id;
         $data[$series_index]['mature'] = $mature;
+        $data[$series_index]['favorite'] = $favorite;
 
         if ($remove_image) {
             if (file_exists($data[$series_index]['image'])) {
@@ -1095,6 +1099,9 @@ function get_latest_version_from_gitea() {
                     <label>
                         <input type="checkbox" name="mature"> Contenu mature 🔞
                     </label>
+                    <label>
+                        <input type="checkbox" name="favorite"> Série favorite ❤️
+                    </label>
                     <p>Vignette :</p>
                     <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp" required>
                     <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
@@ -1239,6 +1246,9 @@ function get_latest_version_from_gitea() {
                     <input type="text" name="edit_anilist_id" id="edit-series-anilist-id" placeholder="ID Anilist (facultatif)" autocomplete="off">
                     <label>
                         <input type="checkbox" name="edit_mature" id="edit-series-mature"> Contenu mature 🔞
+                    </label>
+                    <label>
+                        <input type="checkbox" name="edit_favorite" id="edit-series-favorite" <?= isset($series['favorite']) && $series['favorite'] ? 'checked' : '' ?>> Série favorite ❤️
                     </label>
                     <div class="current-image-container">
                         <p>Vignette actuelle :</p>
@@ -1449,7 +1459,7 @@ function get_latest_version_from_gitea() {
                 foreach ($paginated_data as $series):
                     if (empty($series['volumes'])) continue;
                 ?>
-                    <div class="series-card">
+                    <div class="series-card <?= isset($series['favorite']) && $series['favorite'] ? 'favorite' : '' ?>">
                         <img class="series-image" src="<?= $series['image'] ?>" alt="<?= $series['name'] ?>" loading="lazy">
                         <div class="series-info">
                             <div class="series-header">

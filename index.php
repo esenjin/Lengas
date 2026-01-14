@@ -181,7 +181,7 @@ if (!empty($search_term)) {
                     $total_volumes = count($series['volumes'] ?? []);
                     $read_volumes = count(array_filter($series['volumes'] ?? [], fn($v) => $v['status'] === 'terminé'));
                 ?>
-                    <div class="series-card <?= isset($series['mature']) && $series['mature'] ? 'mature' : '' ?>" data-series-index="<?= $series_index ?>">
+                    <div class="series-card <?= isset($series['mature']) && $series['mature'] ? 'mature' : '' ?> <?= isset($series['favorite']) && $series['favorite'] ? 'favorite' : '' ?>" data-series-index="<?= $series_index ?>">
                         <img class="series-image" src="<?= $series['image'] ?? '' ?>" alt="<?= $series['name'] ?? '' ?>" loading="lazy">
                         <div class="series-info">
                             <h2><?= $series['name'] ?? '' ?></h2>
