@@ -1083,17 +1083,17 @@ function get_latest_version_from_gitea() {
                         <option value="terminé">Terminé</option>
                     </select>
                     <label>
-                        <input type="checkbox" name="all_collector"> Tous en collector
+                        <input type="checkbox" name="all_collector"> Tous en collector ⭐
                     </label>
                     <label>
-                        <input type="checkbox" name="last_volume"> Série terminée
+                        <input type="checkbox" name="last_volume"> Série terminée ✅
                     </label>
                     <p class="hint">Le tome final sera tagué comme dernier de la série.</p>
                     <p>ID Anilist (facultatif) :</p>
                     <input type="text" name="anilist_id" placeholder="ID Anilist (facultatif)" autocomplete="off">
                     <p class="hint"><a tabindex="0" data-hint="L'ID Anilist est utilisé pour trouver les tomes manquants des sériées terminées, plus d'infos dans l'outil « Séries incomplètes ». Pour trouver cet identifiant, rendez-vous sur anilist.co, recherchez votre série et accédez à sa fiche, l'ID est la suite de chiffres avant le nom dans l'url.">À quoi ça sert ? Où le trouver ?</a>.</p>
                     <label>
-                        <input type="checkbox" name="mature"> Contenu mature
+                        <input type="checkbox" name="mature"> Contenu mature 🔞
                     </label>
                     <p>Vignette :</p>
                     <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp" required>
@@ -1178,11 +1178,11 @@ function get_latest_version_from_gitea() {
                         <option value="terminé">Terminé</option>
                     </select>
                     <label>
-                        <input type="checkbox" name="is_collector"> Collector
+                        <input type="checkbox" name="is_collector"> Collector ⭐
                     </label>
                     <p class="hint">Tous seront tagués ainsi.</p>
                     <label>
-                        <input type="checkbox" name="is_last"> Dernier tome
+                        <input type="checkbox" name="is_last"> Dernier tome ✅
                     </label>
                     <p class="hint">Seul le dernier sera tagué comme tel.</p>
                     <button type="submit" name="add_multiple_volumes">Ajouter</button>
@@ -1205,10 +1205,10 @@ function get_latest_version_from_gitea() {
                         <option value="terminé">Terminé</option>
                     </select>
                     <label>
-                        <input type="checkbox" name="is_collector"> Collector
+                        <input type="checkbox" name="is_collector"> Collector ⭐
                     </label>
                     <label>
-                        <input type="checkbox" name="is_last"> Dernier tome
+                        <input type="checkbox" name="is_last"> Dernier tome ✅
                     </label>
                     <div class="modal-actions">
                         <button type="submit" name="update_volume">Mettre à jour</button>
@@ -1238,7 +1238,7 @@ function get_latest_version_from_gitea() {
                     <p>ID Anilist (facultatif) :</p>
                     <input type="text" name="edit_anilist_id" id="edit-series-anilist-id" placeholder="ID Anilist (facultatif)" autocomplete="off">
                     <label>
-                        <input type="checkbox" name="edit_mature" id="edit-series-mature"> Contenu mature
+                        <input type="checkbox" name="edit_mature" id="edit-series-mature"> Contenu mature 🔞
                     </label>
                     <div class="current-image-container">
                         <p>Vignette actuelle :</p>
