@@ -1001,56 +1001,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_action'])) {
 
     switch ($action) {
         case 'create_backup':
-            $backup_dir = 'saves';
-            if (!file_exists($backup_dir)) {
-                mkdir($backup_dir, 0777, true);
+        $backup_dir = 'saves';
+        // Vérifier si le dossier existe, sinon essayer de le créer
+        if (!file_exists($backup_dir)) {
+            $old_umask = umask(0);
+            $success = mkdir($backup_dir, 0774, true);
+            umask($old_umask);
+
+            if (!$success) {
+                $response['message'] = "Impossible de créer le dossier 'saves/'. Veuillez vérifier les permissions du dossier parent ou créer le dossier manuellement.";
+                break;
             }
+        }
 
-            $timestamp = time();
-            $backup_name = "save_$timestamp.zip";
-            $backup_path = "$backup_dir/$backup_name";
-
-            $zip = new ZipArchive();
-            if ($zip->open($backup_path, ZipArchive::CREATE) === TRUE) {
-                // Ajouter les fichiers JSON
-                $files_to_backup = [
-                    'bdd/data.json',
-                    'bdd/list.json',
-                    'bdd/loan.json',
-                    'bdd/options.json'
-                ];
-
-                foreach ($files_to_backup as $file) {
-                    if (file_exists($file)) {
-                        $zip->addFile($file, basename($file));
-                    }
-                }
-
-                // Ajouter le dossier uploads/ et ses images
-                $uploads_dir = 'uploads/';
-                if (file_exists($uploads_dir) && is_dir($uploads_dir)) {
-                    $files = new RecursiveIteratorIterator(
-                        new RecursiveDirectoryIterator($uploads_dir),
-                        RecursiveIteratorIterator::LEAVES_ONLY
-                    );
-
-                    foreach ($files as $name => $file) {
-                        if (!$file->isDir()) {
-                            $file_path = $file->getRealPath();
-                            // Récupérer le chemin relatif par rapport au dossier uploads/
-                            $relative_path = substr($file_path, strlen(realpath($uploads_dir)) + 1);
-                            $zip->addFile($file_path, 'uploads/' . $relative_path);
-                        }
-                    }
-                }
-
-                $zip->close();
-                $response['success'] = true;
-                $response['message'] = 'Sauvegarde créée avec succès.';
-            } else {
-                $response['message'] = 'Impossible de créer la sauvegarde.';
-            }
+        // Vérifier que le dossier est accessible en écriture
+        if (!is_writable($backup_dir)) {
+            $response['message'] = "Le dossier 'saves/' n'est pas accessible en écriture. Veuillez vérifier les permissions.";
             break;
+        }
+
+        // Suite du code pour créer la sauvegarde...
+        $timestamp = time();
+        $backup_name = "save_$timestamp.zip";
+        $backup_path = "$backup_dir/$backup_name";
+
+        $zip = new ZipArchive();
+        if ($zip->open($backup_path, ZipArchive::CREATE) === TRUE) {
+            // Ajouter les fichiers JSON
+            $files_to_backup = [
+                'bdd/data.json',
+                'bdd/list.json',
+                'bdd/loan.json',
+                'bdd/options.json'
+            ];
+
+            foreach ($files_to_backup as $file) {
+                if (file_exists($file)) {
+                    $zip->addFile($file, basename($file));
+                }
+            }
+
+            // Ajouter le dossier uploads/ et ses images
+            $uploads_dir = 'uploads/';
+            if (file_exists($uploads_dir) && is_dir($uploads_dir)) {
+                $files = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($uploads_dir),
+                    RecursiveIteratorIterator::LEAVES_ONLY
+                );
+
+                foreach ($files as $name => $file) {
+                    if (!$file->isDir()) {
+                        $file_path = $file->getRealPath();
+                        $relative_path = substr($file_path, strlen(realpath($uploads_dir)) + 1);
+                        $zip->addFile($file_path, 'uploads/' . $relative_path);
+                    }
+                }
+            }
+
+            $zip->close();
+            $response['success'] = true;
+            $response['message'] = 'Sauvegarde créée avec succès.';
+        } else {
+            $response['message'] = 'Impossible de créer la sauvegarde.';
+        }
+        break;
 
         case 'delete_backup':
             $backup_file = $_POST['backup_file'] ?? '';
@@ -1150,6 +1164,7 @@ function check_site_integrity()
     $checks = [
         'uploads/' => '0774',
         'bdd/' => '0774',
+        'saves/' => '0774',
         'bdd/data.json' => '0660',
         'bdd/list.json' => '0660',
         'bdd/loan.json' => '0660',
