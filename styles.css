@@ -1172,6 +1172,70 @@ input[list] {
     }
 }
 
+/* Styles pour la vérification d'intégrité */
+.integrity-results {
+    margin-top: 20px;
+}
+
+.integrity-section {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #333;
+}
+
+.integrity-section:last-child {
+    border-bottom: none;
+}
+
+.integrity-section ul {
+    list-style-type: none;
+    margin-top: 10px;
+}
+
+.integrity-section li {
+    padding: 5px 0;
+}
+
+.integrity-section .ok {
+    color: #009e3d;
+    font-weight: bold;
+}
+
+.integrity-section .error {
+    color: #cf6679;
+    font-weight: bold;
+}
+
+/* Styles pour le tableau des permissions */
+.permissions-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.permissions-table th,
+.permissions-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #333;
+}
+
+.permissions-table th {
+    background-color: #2d2d2d;
+}
+
+.integrity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#back-to-tools {
+    padding: 8px 16px;
+    font-size: 0.9em;
+}
+
 /* Responsive */
 /* Menu admin sur mobile */
 @media (max-width: 768px) {

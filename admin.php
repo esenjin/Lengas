@@ -1090,6 +1090,251 @@ function get_latest_version_from_gitea() {
     }
     return null;
 }
+
+// Fonction pour vérifier l'intégrité du site
+function check_site_integrity()
+{
+    global $data;
+    $results = [
+        'file_existence' => [],
+        'forbidden_files' => [],
+        'permissions' => [],
+        'duplicates' => [],
+        'orphaned_images' => [],
+        'version' => null,
+    ];
+
+    // 1. Vérifier l'existence de tous les fichiers/dossiers
+    $required_files = [
+        'index.php', 'admin.php', 'stats.php', 'config.php', 'anilist.php',
+        'login.php', 'logout.php', 'styles.css', 'scripts/', 'uploads/', 'saves/', 'bdd/'
+    ];
+    $required_bdd_files = [
+        'bdd/data.json', 'bdd/list.json', 'bdd/loan.json', 'bdd/anilist.json', 'bdd/options.json', 'bdd/mdp.json'
+    ];
+
+    foreach ($required_files as $file) {
+        $results['file_existence'][$file] = file_exists($file);
+    }
+    foreach ($required_bdd_files as $file) {
+        $results['file_existence'][$file] = file_exists($file);
+    }
+
+    // 2. Vérifier l'absence de generate_password.php
+    $results['forbidden_files']['generate_password.php'] = !file_exists('generate_password.php');
+
+    // 3. Vérifier les permissions des dossiers/fichiers
+    $results['permissions'] = [];
+    $checks = [
+        'uploads/' => '0774',
+        'bdd/' => '0774',
+        'bdd/data.json' => '0660',
+        'bdd/list.json' => '0660',
+        'bdd/loan.json' => '0660',
+        'bdd/anilist.json' => '0660',
+        'bdd/options.json' => '0660',
+        'bdd/mdp.json' => '0660',
+    ];
+    foreach ($checks as $path => $expected) {
+        if (file_exists($path)) {
+            $current = substr(sprintf('%o', fileperms($path)), -4);
+            $results['permissions'][$path] = [
+                'current' => $current,
+                'expected' => $expected,
+                'ok' => ($current === $expected),
+            ];
+        } else {
+            $results['permissions'][$path] = [
+                'current' => 'N/A',
+                'expected' => $expected,
+                'ok' => false,
+            ];
+        }
+    }
+
+    // 4. Vérification des séries doublons (collection, envies, prêts)
+    $wishlist = load_wishlist();
+    $loans = load_loans();
+    $series_names = array_map(function($s) { return strtolower($s['name']); }, $data);
+    $wishlist_names = array_map(function($s) { return strtolower($s['name']); }, $wishlist);
+    $loan_series_ids = array_unique(array_column($loans, 'series_id'));
+
+    // Doublons collection/envies
+    $results['duplicates']['collection_wishlist'] = array_intersect($series_names, $wishlist_names);
+
+    // Doublons collection/prêts (séries supprimées mais encore en prêt)
+    $results['duplicates']['deleted_loans'] = [];
+    foreach ($loan_series_ids as $id) {
+        $found = false;
+        foreach ($data as $series) {
+            if ($series['id'] === $id) {
+                $found = true;
+                break;
+            }
+        }
+        if (!$found) {
+            $results['duplicates']['deleted_loans'][] = $id;
+        }
+    }
+
+    // 5. Vérification que toutes les images (dans uploads) soient attachées à une série
+    $uploaded_images = [];
+    $used_images = [];
+    if (file_exists('uploads/') && is_dir('uploads/')) {
+        $files = scandir('uploads/');
+        foreach ($files as $file) {
+            if ($file !== '.' && $file !== '..' && !is_dir('uploads/' . $file)) {
+                $uploaded_images[] = 'uploads/' . $file;
+            }
+        }
+    }
+    foreach ($data as $series) {
+        if (!empty($series['image'])) {
+            $used_images[] = $series['image'];
+        }
+    }
+    $results['orphaned_images'] = array_values(array_diff($uploaded_images, $used_images));
+
+    // 6. Vérification de la version du site avec la dernière version Gitea
+    $results['version'] = [
+        'current' => SITE_VERSION,
+        'latest' => get_latest_version_from_gitea(),
+    ];
+
+    return $results;
+}
+
+// Nettoyer les doublons
+function clean_duplicates() {
+    global $data;
+    $wishlist = load_wishlist();
+    $loans = load_loans();
+    $messages = [];
+
+    // Nettoyer les doublons collection/envies
+    $series_names = array_map(function($s) { return strtolower($s['name']); }, $data);
+    $wishlist_names = array_map(function($s) { return strtolower($s['name']); }, $wishlist);
+    $duplicates = array_intersect($series_names, $wishlist_names);
+
+    if (!empty($duplicates)) {
+        $new_wishlist = array_filter($wishlist, function($item) use ($series_names) {
+            return !in_array(strtolower($item['name']), $series_names);
+        });
+        save_wishlist(array_values($new_wishlist));
+        $messages[] = "Doublons collection/envies nettoyés.";
+    }
+
+    // Nettoyer les prêts de séries supprimées
+    $series_ids = array_column($data, 'id');
+    $deleted_loans = array_filter($loans, function($loan) use ($series_ids) {
+        return !in_array($loan['series_id'], $series_ids);
+    });
+
+    if (!empty($deleted_loans)) {
+        $new_loans = array_filter($loans, function($loan) use ($series_ids) {
+            return in_array($loan['series_id'], $series_ids);
+        });
+        save_loans(array_values($new_loans));
+        $messages[] = "Prêts de séries supprimées nettoyés.";
+    }
+
+    return [
+        'success' => true,
+        'message' => implode(' ', $messages) ?: 'Aucun doublon à nettoyer.',
+    ];
+}
+
+// Nettoyer les images orphelines
+function clean_orphaned_images() {
+    global $data;
+    $uploaded_images = [];
+    $used_images = [];
+    $deleted_images = [];
+
+    if (file_exists('uploads/') && is_dir('uploads/')) {
+        $files = scandir('uploads/');
+        foreach ($files as $file) {
+            if ($file !== '.' && $file !== '..' && !is_dir('uploads/' . $file)) {
+                $uploaded_images[] = 'uploads/' . $file;
+            }
+        }
+    }
+
+    foreach ($data as $series) {
+        if (!empty($series['image'])) {
+            $used_images[] = $series['image'];
+        }
+    }
+
+    $orphaned_images = array_diff($uploaded_images, $used_images);
+    foreach ($orphaned_images as $image) {
+        if (file_exists($image) && unlink($image)) {
+            $deleted_images[] = $image;
+        }
+    }
+
+    return [
+        'success' => true,
+        'message' => !empty($deleted_images) ?
+            'Images orphelines supprimées : ' . implode(', ', $deleted_images) :
+            'Aucune image orpheline à supprimer.',
+    ];
+}
+
+// Supprimer les fichiers interdits
+function clean_forbidden_files() {
+    $forbidden_files = ['generate_password.php'];
+    $deleted_files = [];
+
+    foreach ($forbidden_files as $file) {
+        if (file_exists($file) && unlink($file)) {
+            $deleted_files[] = $file;
+        }
+    }
+
+    return [
+        'success' => true,
+        'message' => !empty($deleted_files) ?
+            'Fichiers interdits supprimés : ' . implode(', ', $deleted_files) :
+            'Aucun fichier interdit à supprimer.',
+    ];
+}
+
+// Gestion des actions de nettoyage
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
+    $response = ['success' => false, 'message' => 'Action inconnue.'];
+
+    switch ($_POST['tool_action']) {
+        case 'check_integrity':
+            $integrity_results = check_site_integrity();
+            $response = ['success' => true, 'results' => $integrity_results];
+            break;
+
+        case 'clean_duplicates':
+            $response = clean_duplicates();
+            break;
+
+        case 'clean_orphaned_images':
+            $response = clean_orphaned_images();
+            break;
+
+        case 'clean_forbidden_files':
+            $response = clean_forbidden_files();
+            break;
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit;
+}
+
+// Gestion de l'action de vérification d'intégrité
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action']) && $_POST['tool_action'] === 'check_integrity') {
+    $integrity_results = check_site_integrity();
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true, 'results' => $integrity_results]);
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
@@ -1514,7 +1759,8 @@ function get_latest_version_from_gitea() {
             </div>
         </div>
 
-        <!-- Modale pour les outils de sauvegarde -->
+        <!-- Modale pour les outils -->
+        <!-- Sauvegardes -->
         <div class="modal" id="tools-modal">
             <div class="modal-content">
                 <span class="close-modal" id="close-tools-modal">&times;</span>

@@ -1370,3 +1370,318 @@ function displayBackupsList(backups) {
         });
     });
 }
+
+// Fonction pour afficher les résultats de la vérification d'intégrité
+function displayIntegrityResults(results) {
+    const modalContent = document.querySelector('#tools-modal .modal-content');
+    let html = `
+        <div class="integrity-header">
+            <h2>Résultats de la vérification d'intégrité</h2>
+        </div>
+        <div class="integrity-results">
+    `;
+
+    // 1. Vérification de l'existence des fichiers/dossiers
+    html += `
+        <div class="integrity-section">
+            <h3>Existence des fichiers/dossiers</h3>
+            <ul>
+    `;
+    for (const [file, exists] of Object.entries(results.file_existence)) {
+        html += `<li>${file}: <span class="${exists ? 'ok' : 'error'}">${exists ? 'OK' : 'Manquant'}</span></li>`;
+    }
+    html += `</ul></div>`;
+
+    // 2. Vérification de l'absence de generate_password.php
+    html += `
+        <div class="integrity-section">
+            <h3>Fichiers interdits</h3>
+            <ul>
+    `;
+    for (const [file, ok] of Object.entries(results.forbidden_files)) {
+        html += `<li>${file}: <span class="${ok ? 'ok' : 'error'}">${ok ? 'Absent' : 'Présent'}</span></li>`;
+    }
+    html += `</ul>`;
+
+    // Bouton pour supprimer les fichiers interdits
+    if (!results.forbidden_files['generate_password.php']) {
+        html += `
+            <button id="clean-forbidden-files-btn" class="button button-opt">
+                Supprimer les fichiers interdits
+            </button>
+        `;
+    }
+    html += `</div>`;
+
+    // 3. Vérification des permissions
+    html += `
+        <div class="integrity-section">
+            <h3>Permissions des fichiers/dossiers</h3>
+            <table class="permissions-table">
+                <thead>
+                    <tr>
+                        <th>Fichier/Dossier</th>
+                        <th>Permission actuelle</th>
+                        <th>Permission attendue</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    for (const [file, data] of Object.entries(results.permissions)) {
+        html += `
+            <tr>
+                <td>${file}</td>
+                <td>${data.current}</td>
+                <td>${data.expected}</td>
+                <td class="${data.ok ? 'ok' : 'error'}">${data.ok ? 'OK' : 'Incorrect'}</td>
+            </tr>
+        `;
+    }
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    // 4. Vérification des doublons
+    html += `
+        <div class="integrity-section">
+            <h3>Doublons</h3>
+            <ul>
+    `;
+    if (results.duplicates.collection_wishlist.length > 0) {
+        html += `<li>Séries présentes à la fois dans la collection et la liste d'envies: <span class="error">${results.duplicates.collection_wishlist.join(', ')}</span></li>`;
+    } else {
+        html += `<li>Aucun doublon collection/envies</li>`;
+    }
+    if (results.duplicates.deleted_loans.length > 0) {
+        html += `<li>Séries supprimées mais encore en prêt: <span class="error">${results.duplicates.deleted_loans.join(', ')}</span></li>`;
+    } else {
+        html += `<li>Aucune série supprimée en prêt</li>`;
+    }
+    html += `</ul>`;
+
+    // Bouton pour nettoyer les doublons
+    if (results.duplicates.collection_wishlist.length > 0 || results.duplicates.deleted_loans.length > 0) {
+        html += `
+            <button id="clean-duplicates-btn" class="button button-opt">
+                Nettoyer les doublons
+            </button>
+        `;
+    }
+    html += `</div>`;
+
+    // 5. Vérification des images orphelines
+    html += `
+        <div class="integrity-section">
+            <h3>Images orphelines</h3>
+            <ul>
+    `;
+    if (results.orphaned_images.length > 0) {
+        results.orphaned_images.forEach(image => {
+            html += `<li>${image} <span class="error">(orpheline)</span></li>`;
+        });
+    } else {
+        html += `<li>Aucune image orpheline</li>`;
+    }
+    html += `</ul>`;
+
+    // Bouton pour nettoyer les images orphelines
+    if (results.orphaned_images.length > 0) {
+        html += `
+            <button id="clean-orphaned-images-btn" class="button button-opt">
+                Nettoyer les images orphelines
+            </button>
+        `;
+    }
+    html += `</div>`;
+
+    // 6. Vérification de la version
+    html += `
+        <div class="integrity-section">
+            <h3>Version du site</h3>
+            <ul>
+                <li>Version actuelle: ${results.version.current}</li>
+                <li>Dernière version: ${results.version.latest || 'Inconnue'}</li>
+                ${results.version.latest && results.version.current !== results.version.latest ?
+                    `<li class="error">Une nouvelle version est disponible !</li>` : ''}
+            </ul>
+        </div>
+    `;
+
+    html += `</div>`;
+    modalContent.innerHTML = html;
+
+    // Ajout des événements pour les boutons de nettoyage
+    if (results.duplicates.collection_wishlist.length > 0 || results.duplicates.deleted_loans.length > 0) {
+        document.getElementById('clean-duplicates-btn').addEventListener('click', () => {
+            showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir nettoyer les doublons ?').then((confirmed) => {
+                if (confirmed) {
+                    fetch('admin.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: 'tool_action=clean_duplicates'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showSuccessModal(data.message);
+                            // Recharge la page pour actualiser les données
+                            window.location.reload();
+                        } else {
+                            showErrorModal(data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        showErrorModal('Une erreur est survenue.');
+                    });
+                }
+            });
+        });
+    }
+
+    if (results.orphaned_images.length > 0) {
+        document.getElementById('clean-orphaned-images-btn').addEventListener('click', () => {
+            showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer les images orphelines ?').then((confirmed) => {
+                if (confirmed) {
+                    fetch('admin.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: 'tool_action=clean_orphaned_images'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showSuccessModal(data.message);
+                            // Recharge la page pour actualiser les données
+                            window.location.reload();
+                        } else {
+                            showErrorModal(data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        showErrorModal('Une erreur est survenue.');
+                    });
+                }
+            });
+        });
+    }
+
+    if (!results.forbidden_files['generate_password.php']) {
+    document.getElementById('clean-forbidden-files-btn').addEventListener('click', () => {
+        showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer les fichiers interdits ?').then((confirmed) => {
+            if (confirmed) {
+                fetch('admin.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'tool_action=clean_forbidden_files'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showSuccessModal(data.message);
+                        // Recharge la page pour actualiser les données
+                        window.location.reload();
+                    } else {
+                        showErrorModal(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    showErrorModal('Une erreur est survenue.');
+                });
+            }
+        });
+    });
+}
+}
+
+// Ajouter un bouton pour la vérification d'intégrité dans la modale "Outils"
+function addIntegrityCheckButton() {
+    // Vérifie si le bouton existe déjà
+    if (document.getElementById('check-integrity-btn')) return;
+
+    const toolsModalContent = document.querySelector('#tools-modal .modal-content');
+    const integritySection = document.createElement('div');
+    integritySection.className = 'tools-section';
+    integritySection.innerHTML = `
+        <h3>Vérification d'intégrité</h3>
+        <p>Vérifie l'intégrité de votre site et de vos données.</p>
+        <button id="check-integrity-btn" class="button button-opt">
+            <span id="check-integrity-text">Vérifier l'intégrité</span>
+            <span id="check-integrity-spinner" class="spinner" style="display: none;"></span>
+        </button>
+    `;
+    toolsModalContent.appendChild(integritySection);
+
+    document.getElementById('check-integrity-btn').addEventListener('click', () => {
+        const button = document.getElementById('check-integrity-btn');
+        const textSpan = document.getElementById('check-integrity-text');
+        const spinner = document.getElementById('check-integrity-spinner');
+
+        button.disabled = true;
+        textSpan.textContent = 'Vérification en cours...';
+        spinner.style.display = 'inline-block';
+
+        fetch('admin.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'tool_action=check_integrity'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayIntegrityResults(data.results);
+            } else {
+                showErrorModal('Une erreur est survenue lors de la vérification.');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showErrorModal('Une erreur est survenue.');
+        })
+        .finally(() => {
+            button.disabled = false;
+            textSpan.textContent = 'Vérifier l\'intégrité';
+            spinner.style.display = 'none';
+        });
+    });
+}
+
+// Fermeture des modales via la croix ou en cliquant à l'extérieur
+window.addEventListener('click', (e) => {
+    Object.values(modals).forEach(({ modal, closeBtn }) => {
+        if (e.target === modal || e.target === closeBtn) {
+            modal.classList.remove('modal-active');
+            // Recharge la page pour revenir à l'état initial
+            if (modal === document.getElementById('tools-modal')) {
+                window.location.reload();
+            }
+        }
+    });
+});
+
+// Fermeture de la modale "Outils" via la croix
+document.getElementById('close-tools-modal').addEventListener('click', () => {
+    modals['tools'].modal.classList.remove('modal-active');
+    window.location.reload();
+});
+
+// Appeler cette fonction lors de l'ouverture de la modale "Outils"
+document.getElementById('open-tools-modal').addEventListener('click', () => {
+    modals['tools'] = { modal: document.getElementById('tools-modal'), closeBtn: document.getElementById('close-tools-modal') };
+    modals['tools'].modal.classList.add('modal-active');
+    loadBackupsList();
+    addIntegrityCheckButton();
+});
