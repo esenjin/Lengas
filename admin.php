@@ -110,6 +110,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     exit;
 }
 
+// Fonction pour vérifier si une image existe
+function check_image_exists($image_path) {
+    return !empty($image_path) && file_exists($image_path);
+}
+
 // Charger la liste d'envies depuis le fichier JSON
 function load_wishlist() {
     if (file_exists('bdd/list.json')) {
@@ -1880,7 +1885,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action']) && $_P
                     if (empty($series['volumes'])) continue;
                 ?>
                     <div class="series-card <?= isset($series['favorite']) && $series['favorite'] ? 'favorite' : '' ?>">
-                        <img class="series-image" src="<?= $series['image'] ?>" alt="<?= $series['name'] ?>" loading="lazy">
+                        <img class="series-image" src="<?= !empty($series['image']) && file_exists($series['image']) ? $series['image'] : 'logo.png' ?>" alt="<?= $series['name'] ?? '' ?>" loading="lazy">
                         <div class="series-info">
                             <div class="series-header">
                                 <h2><?= $series['name'] ?></h2>
@@ -1912,6 +1917,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action']) && $_P
                                 $anilist_volumes = get_series_volumes_from_anilist($series['anilist_id']);
                             }
                             $notifications = generate_notifications($series['volumes'], $anilist_volumes);
+                            if (!check_image_exists($series['image'])) {
+                                $notifications[] = "Attention, l'image de la série est manquante (logo utilisé par défaut).";
+                            }
 
                             // Afficher les notifications si nécessaire
                             if (!empty($notifications)) {
