@@ -1,0 +1,39 @@
+/* Styles spécifiques à l'interface admin */
+.admin-menu button,
+.admin-menu a.button {
+    padding: 10px 15px;
+    font-size: 0.9em;
+}
+
+.series-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.edit-series-btn {
+    background-color: var(--primary-color);
+    color: var(--background-dark);
+    border: none;
+    padding: 5px 10px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+}
+
+.delete-series-btn {
+    background-color: var(--error-color);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+}
+
+/* Bouton "Créer une sauvegarde" */
+#create-backup-btn {
+    background-color: #4CAF50;
+    color: var(--background-dark);
+}
+
+#create-backup-btn:hover {
+    background-color: #45a049;
+}

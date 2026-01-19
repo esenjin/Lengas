@@ -1,0 +1,93 @@
+/* Réinitialisation et styles de base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--background-dark);
+    color: var(--text-color);
+    line-height: 1.6;
+    padding: 20px;
+}
+
+/* En-têtes */
+h1, h2, h3, h4 {
+    color: #ffffff;
+    margin-bottom: 15px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 2.2em;
+}
+
+h2 {
+    font-size: 1.6em;
+    margin-top: 25px;
+}
+
+h3 {
+    font-size: 1.3em;
+    margin-top: 15px;
+}
+
+/* Liens */
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Boutons de base */
+button, input[type="submit"] {
+    background-color: var(--primary-color);
+    color: var(--background-dark);
+    border: none;
+    padding: 10px 20px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: bold;
+    transition: var(--transition);
+}
+
+button:hover, input[type="submit"]:hover {
+    background-color: #9a67ea;
+}
+
+/* Inputs et formulaires de base */
+input[type="text"],
+input[type="password"],
+input[type="file"],
+input[type="number"],
+select {
+    background-color: var(--background-light);
+    color: var(--text-color);
+    border: 1px solid #333;
+    padding: 10px;
+    border-radius: var(--border-radius);
+    width: 100%;
+    margin-bottom: 15px;
+    font-size: 1em;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="file"]:focus,
+input[type="number"]:focus,
+select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+/* Messages d'erreur */
+.error {
+    color: var(--error-color);
+    font-weight: bold;
+}

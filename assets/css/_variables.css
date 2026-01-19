@@ -1,0 +1,13 @@
+/* Variables globales (couleurs, tailles, polices, etc.) */
+:root {
+    --primary-color: #bb86fc;
+    --error-color: #cf6679;
+    --success-color: #009e3d;
+    --background-dark: #121212;
+    --background-light: #1e1e1e;
+    --text-color: #e0e0e0;
+    --warning-color: #ff9800;
+    --border-radius: 5px;
+    --box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    --transition: all 0.3s ease;
+}

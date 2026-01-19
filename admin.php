@@ -1387,7 +1387,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action']) && $_P
     <title><?= htmlspecialchars($options['admin_page_title']) ?></title>
     <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="assets/css/main.css">
 </head>
 <body>
     <?php if (isset($_SESSION['error_message'])): ?>

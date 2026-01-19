@@ -15,7 +15,7 @@ if ($options['private_mode']) {
         <title><?= htmlspecialchars($options['index_page_title']) ?></title>
         <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
         <link rel="icon" type="image/x-icon" href="favicon.ico">
-        <link rel="stylesheet" href="styles.css">
+        <link rel="stylesheet" href="assets/css/main.css">
     </head>
     <body>
         <div class="container">
@@ -120,7 +120,7 @@ if (!empty($search_term)) {
     <title><?= htmlspecialchars($options['index_page_title']) ?></title>
     <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="assets/css/main.css">
     <style>
         /* Style pour les cartes cliquables */
         .series-card {

@@ -1,0 +1,65 @@
+/* Media queries pour le responsive */
+@media (max-width: 768px) {
+    .series-list {
+        grid-template-columns: 1fr;
+    }
+
+    .series-card {
+        flex-direction: column;
+    }
+
+    .series-info {
+        padding: 15px;
+    }
+
+    .volumes-list {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    }
+
+    .admin-menu {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .admin-menu button,
+    .admin-menu a.button {
+        flex: 1 1 100%;
+        max-width: 200px;
+        padding: 12px;
+        font-size: 0.9em;
+        text-align: center;
+    }
+
+    .button-ext,
+    .button-otl,
+    .button-opt {
+        max-width: 150px;
+    }
+
+    form {
+        width: 100%;
+    }
+
+    .series-search,
+    .filters input[type="text"] {
+        width: 100%;
+    }
+
+    .sort-options {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .sort-options select {
+        width: 100%;
+    }
+
+    .volume-range {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .volume-range input {
+        width: 100%;
+    }
+}

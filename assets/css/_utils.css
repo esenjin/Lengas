@@ -1,0 +1,162 @@
+/* Classes utilitaires et animations */
+.spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    margin-left: 8px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Messages d'erreur/succès */
+.error-message,
+.success-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 10px 20px;
+    border-radius: var(--border-radius);
+    z-index: 1000;
+    animation: fadeOut 3s ease-in-out;
+}
+
+.error-message {
+    background-color: var(--error-color);
+    color: white;
+}
+
+.success-message {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.issues-list {
+    color: var(--warning-color);
+}
+
+@keyframes fadeOut {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* Tooltips */
+.hint {
+    font-size: 0.8em;
+    color: var(--primary-color);
+    margin-top: -10px;
+    margin-bottom: 15px;
+    font-style: italic;
+    position: relative;
+    display: inline-block;
+}
+
+.hint a {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    color: inherit;
+}
+
+.hint a[data-hint] {
+    cursor: help;
+    position: relative;
+    outline: none;
+}
+
+.hint a[data-hint]::after {
+    content: attr(data-hint);
+    position: absolute;
+    bottom: 130%;
+    left: 70%;
+    transform: translateX(-50%) translateY(6px);
+    background: #2a2a2a;
+    color: var(--primary-color);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 1em;
+    font-style: normal;
+    line-height: 1.4;
+    width: max-content;
+    max-width: 260px;
+    white-space: normal;
+    text-align: left;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+    z-index: 10;
+}
+
+.hint a[data-hint]::before {
+    content: "";
+    position: absolute;
+    bottom: 118%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 7px solid transparent;
+    border-top-color: #2a2a2a;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.hint a[data-hint]:hover::after,
+.hint a[data-hint]:hover::before,
+.hint a[data-hint]:focus::after,
+.hint a[data-hint]:focus::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Version outdated */
+.version-outdated {
+    color: #ff9800 !important;
+    position: relative;
+    cursor: help;
+}
+
+.version-outdated[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 130%;
+    left: 75%;
+    transform: translateX(-50%);
+    background: #2a2a2a;
+    color: #ff9800;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.9em;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 10;
+    width: max-content;
+}
+
+.version-outdated[data-tooltip]:hover::after {
+    opacity: 1;
+}
+
+/* Chargement infini */
+.loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    font-size: 18px;
+}
+
+.loading-spinner.active {
+    display: block;
+}
+
+.series-list {
+    min-height: 500px;
+}

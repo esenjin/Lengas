@@ -1,0 +1,151 @@
+/* Styles pour les cartes de séries et les tomes */
+.series-card {
+    background-color: var(--background-light);
+    border-radius: var(--border-radius);
+    padding: 0;
+    box-shadow: var(--box-shadow);
+    display: flex;
+    overflow-y: auto;
+    max-height: 480px;
+}
+
+.series-card:hover {
+    transform: translateY(-5px);
+}
+
+.series-card.mature .series-image {
+    filter: blur(10px);
+}
+
+.series-card.favorite {
+    box-shadow: 0 4px 8px rgba(236, 190, 103, 0.55) !important;
+}
+
+.series-image {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: var(--border-radius);
+}
+
+.series-info {
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.series-info h2 {
+    margin-top: 0;
+}
+
+.series-stats {
+    margin-top: auto;
+    font-style: italic;
+    color: var(--primary-color);
+}
+
+.mature-badge {
+    color: #dd9cd2;
+}
+
+/* Liste des tomes */
+.volumes-list {
+    list-style-type: none;
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    padding-bottom: 15px;
+}
+
+.volumes-list li {
+    background-color: #2d2d2d;
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    text-align: center;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    border-left: 3px solid transparent;
+}
+
+.volumes-list li:hover {
+    background-color: #3a3a3a;
+}
+
+/* Statuts des tomes */
+.volumes-list li.status-à-lire {
+    background-color: rgba(207, 102, 121, 0.15);
+    border-left-color: var(--error-color);
+}
+
+.volumes-list li.status-en-cours {
+    background-color: rgba(187, 134, 252, 0.15);
+    border-left-color: var(--primary-color);
+}
+
+.volumes-list li.status-terminé {
+    background-color: rgba(61, 126, 210, 0.15);
+    border-left-color: #4270dd;
+}
+
+/* Indicateur "collector" et "dernier tome" */
+.volumes-list li.volume-collector::before {
+    content: "⭐";
+    margin-right: 5px;
+    color: gold;
+    font-size: 0.9em;
+}
+
+.volumes-list li.volume-last::after {
+    content: "✅";
+    margin-left: 5px;
+    color: rgb(77, 221, 100);
+    font-size: 0.9em;
+}
+
+/* Style pour les échantillons de légende */
+.legend-sample {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border-left: 3px solid transparent;
+}
+
+.legend-sample.status-terminé {
+    background-color: rgba(61, 126, 210, 0.15);
+    border-left-color: #4270dd;
+}
+
+.legend-sample.status-en-cours {
+    background-color: rgba(187, 134, 252, 0.15);
+    border-left-color: var(--primary-color);
+}
+
+.legend-sample.status-à-lire {
+    background-color: rgba(207, 102, 121, 0.15);
+    border-left-color: var(--error-color);
+}
+
+.legend-sample.favorite-border {
+    width: 70px;
+    height: 40px;
+    border-radius: 8px;
+    border: 2px solid rgba(236, 190, 103, 0.8);
+    background-color: #2d2d2d;
+    margin-top: 20px;
+}
+
+/* Style pour la vignette floutée (contenu mature) */
+.mature-thumbnail {
+    width: 75px;
+    height: 75px;
+    object-fit: cover;
+    border-radius: 4px;
+    filter: blur(10px);
+    margin-right: 10px;
+}
