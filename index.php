@@ -264,6 +264,6 @@ if (!empty($search_term)) {
         // Données des séries pour JavaScript
         const seriesData = <?= json_encode($data) ?>;
     </script>
-    <script src="scripts/public.js"></script>
+    <script src="assets/js/public.js"></script>
 </body>
 </html>

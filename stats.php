@@ -283,6 +283,6 @@ $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_
         var chartValues = <?php echo json_encode($chart_values); ?>;
         var totalVolumes = <?= $total_volumes ?>;
     </script>
-    <script src="scripts/stats.js"></script>
+    <script src="assets/js/stats.js"></script>
 </body>
 </html>

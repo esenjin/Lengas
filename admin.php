@@ -1958,7 +1958,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action']) && $_P
         const seriesData = <?= json_encode($data) ?>;
         const wishlistData = <?= json_encode($wishlist) ?>;
     </script>
-    <script src="scripts/admin.js"></script>
+    <script src="assets/js/admin/modals.js"></script>
+    <script src="assets/js/admin/autocomplete.js"></script>
+    <script src="assets/js/admin/series.js"></script>
+    <script src="assets/js/admin/volumes.js"></script>
+    <script src="assets/js/admin/wishlist.js"></script>
+    <script src="assets/js/admin/loans.js"></script>
+    <script src="assets/js/admin/tools.js"></script>
+    <script src="assets/js/admin/pagination.js"></script>
+    <script src="assets/js/admin/main.js"></script>
 
 </body>
 </html>
