@@ -25,14 +25,19 @@ document.getElementById('open-wishlist-modal').addEventListener('click', () => m
 document.getElementById('open-options-modal').addEventListener('click', () => modals['options'].modal.classList.add('modal-active'));
 document.getElementById('open-incomplete-series-modal').addEventListener('click', () => modals['incomplete-series'].modal.classList.add('modal-active'));
 
+// Fonction pour fermer une modale et recharger la page si c'est la modale d'outils
+function closeModalAndReloadIfTools(modal) {
+    modal.classList.remove('modal-active');
+    if (modal.id === 'tools-modal') {
+        window.location.reload();
+    }
+}
+
 // Fermeture des modales via la croix
 Object.values(modals).forEach(({ closeBtn, modal }) => {
     if (closeBtn && modal) {
         closeBtn.addEventListener('click', () => {
-            modal.classList.remove('modal-active');
-            if (modal === document.getElementById('incomplete-series-modal')) {
-                location.reload();
-            }
+            closeModalAndReloadIfTools(modal);
         });
     }
 });
@@ -41,16 +46,7 @@ Object.values(modals).forEach(({ closeBtn, modal }) => {
 window.addEventListener('click', (e) => {
     Object.values(modals).forEach(({ modal }) => {
         if (e.target === modal) {
-            modal.classList.remove('modal-active');
-            if (modal === document.getElementById('incomplete-series-modal')) {
-                location.reload();
-            }
+            closeModalAndReloadIfTools(modal);
         }
     });
-});
-
-// Fermeture de la modale "Outils" via la croix
-document.getElementById('close-tools-modal').addEventListener('click', () => {
-    modals['tools'].modal.classList.remove('modal-active');
-    window.location.reload();
 });

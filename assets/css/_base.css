@@ -91,3 +91,9 @@ select:focus {
     color: var(--error-color);
     font-weight: bold;
 }
+
+/* Messages de succès */
+.ok {
+    color: var(--success-color);
+    font-weight: bold;
+}

@@ -33,16 +33,41 @@ function check_site_integrity($data)
 
     // 1. Vérifier l'existence de tous les fichiers/dossiers
     $required_files = [
-        'index.php', 'admin.php', 'stats.php', 'config.php', 'anilist.php',
-        'login.php', 'logout.php', 'styles.css', 'scripts/', 'uploads/', 'saves/', 'bdd/'
-    ];
-    $required_bdd_files = [
-        'bdd/data.json', 'bdd/list.json', 'bdd/loan.json', 'bdd/anilist.json', 'bdd/options.json', 'bdd/mdp.json'
+        'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php',
+        'assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js',
+        'assets/js/admin/', 'includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/'
     ];
 
+    // Vérification des fichiers/dossiers principaux
     foreach ($required_files as $file) {
         $results['file_existence'][$file] = file_exists($file);
     }
+
+    // Vérification des fichiers CSS
+    $required_css_files = [
+        'assets/css/_admin.css', 'assets/css/_base.css', 'assets/css/_buttons.css',
+        'assets/css/_forms.css', 'assets/css/_layout.css', 'assets/css/_modals.css',
+        'assets/css/_public.css', 'assets/css/_responsive.css', 'assets/css/_series.css',
+        'assets/css/_utils.css', 'assets/css/_variables.css'
+    ];
+    foreach ($required_css_files as $file) {
+        $results['file_existence'][$file] = file_exists($file);
+    }
+
+    // Vérification des fichiers JS (admin)
+    $required_js_files = [
+        'assets/js/admin/series.js', 'assets/js/admin/volumes.js', 'assets/js/admin/wishlist.js',
+        'assets/js/admin/loans.js', 'assets/js/admin/tools.js', 'assets/js/admin/autocomplete.js',
+        'assets/js/admin/modals.js', 'assets/js/admin/pagination.js', 'assets/js/admin/main.js'
+    ];
+    foreach ($required_js_files as $file) {
+        $results['file_existence'][$file] = file_exists($file);
+    }
+
+    // Vérification des fichiers JSON dans bdd/
+    $required_bdd_files = [
+        'bdd/data.json', 'bdd/list.json', 'bdd/loan.json', 'bdd/anilist.json', 'bdd/options.json', 'bdd/mdp.json'
+    ];
     foreach ($required_bdd_files as $file) {
         $results['file_existence'][$file] = file_exists($file);
     }
