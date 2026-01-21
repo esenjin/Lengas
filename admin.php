@@ -1,12 +1,14 @@
 <?php
 require 'config.php';
-require 'anilist.php';
-session_start();
-
-if (!($_SESSION['logged_in'] ?? false)) {
-    header('Location: login.php');
-    exit;
-}
+require 'includes/auth.php';
+require 'includes/helpers.php';
+require 'includes/anilist.php';
+require 'fonctions/series.php';
+require 'fonctions/volumes.php';
+require 'fonctions/wishlist.php';
+require 'fonctions/loans.php';
+require 'fonctions/options.php';
+require 'fonctions/tools.php';
 
 $data = load_data();
 $options = load_options();
@@ -16,50 +18,7 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $per_page_admin = 9;
 $offset = ($page - 1) * $per_page_admin;
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])) {
-    // Récupère les paramètres de pagination et de recherche
-    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 9;
-    $search_term = $_GET['search'] ?? '';
-    $sort_by = $_GET['sort_by'] ?? 'name';
-    $sort_order = $_GET['sort_order'] ?? 'asc';
-
-    // Applique le tri et la recherche aux données
-    $filtered_data = $data;
-    if (!empty($search_term)) {
-        $filtered_data = array_filter($filtered_data, function($series) use ($search_term) {
-            return stripos($series['name'], $search_term) !== false ||
-                   stripos($series['author'], $search_term) !== false ||
-                   stripos($series['publisher'], $search_term) !== false ||
-                   (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false) ||
-                   (isset($series['genres']) && stripos(implode(', ', $series['genres']), $search_term) !== false);
-        });
-    }
-    sort_series($filtered_data, $sort_by, $sort_order);
-
-    // Génère les notifications pour chaque série
-    foreach ($filtered_data as &$series) {
-        $anilist_volumes = null;
-        if (isset($series['anilist_id']) && !empty($series['anilist_id'])) {
-            $anilist_volumes = get_series_volumes_from_anilist($series['anilist_id']);
-        }
-        $series['notifications'] = generate_notifications($series['volumes'], $anilist_volumes);
-    }
-
-    // Paginer les résultats filtrés
-    $offset = ($page - 1) * $per_page;
-    $paginated_data = array_slice($filtered_data, $offset, $per_page);
-
-    header('Content-Type: application/json');
-    echo json_encode([
-        'success' => true,
-        'series' => array_values($paginated_data),
-        'has_more' => ($offset + $per_page) < count($filtered_data)
-    ]);
-    exit;
-}
-
-// Gérer les actions pour les séries incomplètes
+// Gestion des actions pour les séries incomplètes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
     $response = ['success' => false];
@@ -76,16 +35,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
             break;
 
-
         case 'add_missing_volume':
             $series_id = $_POST['series_id'] ?? '';
             $volume_number = (int)($_POST['volume_number'] ?? 0);
-
             if ($series_id && $volume_number > 0) {
-                $success = add_volume_to_series($data, $series_id, $volume_number);
-                if ($success) {
-                    save_data($data);
+                $result = add_volume_to_series($data, $series_id, $volume_number, 'à lire', false, false);
+                if ($result['success']) {
+                    save_data($result['data']);
                     $response['success'] = true;
+                } else {
+                    $response['message'] = $result['message'];
                 }
             }
             break;
@@ -94,9 +53,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $series_id = $_POST['series_id'] ?? '';
             $missing_volumes = isset($_POST['missing_volumes']) ? explode(',', $_POST['missing_volumes']) : [];
             $missing_volumes = array_map('intval', $missing_volumes);
-
             if ($series_id && !empty($missing_volumes)) {
-                $success = add_all_missing_volumes_to_series($data, $series_id, $missing_volumes);
+                $success = true;
+                foreach ($missing_volumes as $volume) {
+                    $result = add_volume_to_series($data, $series_id, $volume, 'à lire', false, false);
+                    if (!$result['success']) {
+                        $success = false;
+                        break;
+                    }
+                }
                 if ($success) {
                     save_data($data);
                     $response['success'] = true;
@@ -110,134 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     exit;
 }
 
-// Fonction pour vérifier si une image existe
-function check_image_exists($image_path) {
-    return !empty($image_path) && file_exists($image_path);
-}
-
-// Charger la liste d'envies depuis le fichier JSON
-function load_wishlist() {
-    if (file_exists('bdd/list.json')) {
-        $wishlist = json_decode(file_get_contents('bdd/list.json'), true);
-        return $wishlist ?: [];
-    }
-    return [];
-}
-
-// Sauvegarder la liste d'envies dans le fichier JSON
-function save_wishlist($wishlist) {
-    file_put_contents('bdd/list.json', json_encode($wishlist, JSON_PRETTY_PRINT));
-}
-
-// Charger la liste d'envies
-$wishlist = load_wishlist();
-
-// Ajouter une série à la liste d'envies
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_wishlist'])) {
-    $name = trim($_POST['wishlist_name'] ?? '');
-    $author = trim($_POST['wishlist_author'] ?? '');
-    $publisher = trim($_POST['wishlist_publisher'] ?? '');
-
-    // Vérifier si la série est déjà présente dans la liste d'envies
-    $series_exists = false;
-    foreach ($wishlist as $item) {
-        if (strcasecmp($item['name'], $name) === 0) {
-            $series_exists = true;
-            break;
-        }
-    }
-
-    if (!$series_exists && $name && $author && $publisher) {
-        $wishlist[] = [
-            'name' => $name,
-            'author' => $author,
-            'publisher' => $publisher
-        ];
-        save_wishlist($wishlist);
-        echo json_encode(['success' => true, 'wishlist' => $wishlist]);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'La série est déjà présente dans la liste d\'envies.']);
-    }
-    exit;
-}
-
-// Supprimer une série de la liste d'envies
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_from_wishlist'])) {
-    $index = $_POST['index'] ?? 0;
-    if (isset($wishlist[$index])) {
-        array_splice($wishlist, $index, 1);
-        save_wishlist($wishlist);
-        echo json_encode(['success' => true, 'wishlist' => $wishlist]);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Index invalide.']);
-    }
-    exit;
-}
-
-// Ajouter une série à la collection principale depuis la liste d'envies
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_from_wishlist'])) {
-    $index = $_POST['index'] ?? 0;
-    if (isset($wishlist[$index])) {
-        $series = $wishlist[$index];
-        $name = $series['name'];
-        $author = $series['author'];
-        $publisher = $series['publisher'];
-
-        // Vérifier si une série avec le même nom existe déjà dans la collection principale
-        $series_exists = false;
-        foreach ($data as $existing_series) {
-            if (strcasecmp($existing_series['name'], $name) === 0) {
-                $series_exists = true;
-                break;
-            }
-        }
-
-        if (!$series_exists) {
-            // Ajouter la série à la collection principale
-            $data[] = [
-                'id' => generate_uuid(),
-                'name' => $name,
-                'author' => $author,
-                'publisher' => $publisher,
-                'categories' => [''], // Catégorie par défaut, à modifier par l'utilisateur
-                'image' => '', // Image par défaut, à modifier par l'utilisateur
-                'volumes' => [
-                    [
-                        'number' => 1,
-                        'status' => 'à lire',
-                        'collector' => false,
-                        'last' => false
-                    ]
-                ]
-            ];
-            save_data($data);
-
-            // Supprimer la série de la liste d'envies
-            array_splice($wishlist, $index, 1);
-            save_wishlist($wishlist);
-            echo json_encode(['success' => true, 'wishlist' => $wishlist]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Une série avec ce nom existe déjà dans votre collection.']);
-        }
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Index invalide.']);
-    }
-    exit;
-}
-
-// Générer un UUID unique
-function generate_uuid() {
-    return sprintf(
-        '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-        mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-        mt_rand(0, 0xffff),
-        mt_rand(0, 0x0fff) | 0x4000,
-        mt_rand(0, 0x3fff) | 0x8000,
-        mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-    );
-}
-
-// Ajouter une série
+// Gestion des actions pour les séries
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $name = trim($_POST['name'] ?? '');
     $author = trim($_POST['author'] ?? '');
@@ -252,144 +90,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $all_collector = !empty($_POST['all_collector']);
     $last_volume = !empty($_POST['last_volume']);
 
-    // Vérifier si une série avec le même nom existe déjà
-    $series_exists = false;
-    foreach ($data as $series) {
-        if (strcasecmp($series['name'], $name) === 0) {
-            $series_exists = true;
-            break;
-        }
-    }
-
-    // Vérifier l'upload de l'image
     $error_message = null;
     $image = upload_image($_FILES['image'] ?? [], $error_message);
 
     if ($image === false) {
-        echo $error_message;
-        exit;
-    }
-
-
-    if ($series_exists) {
-        $_SESSION['error_message'] = "Une série avec ce nom existe déjà.";
-    } elseif ($image === false) {
         $_SESSION['error_message'] = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
-    } elseif (empty($name) || empty($author) || empty($publisher) || empty($categories)) {
-        $_SESSION['error_message'] = "Veuillez remplir tous les champs obligatoires.";
     } else {
-        $volumes = [];
-        for ($i = 1; $i <= $volumes_count; $i++) {
-            $volumes[] = [
-                'number' => $i,
-                'status' => $volumes_status,
-                'collector' => $all_collector,
-                'last' => ($last_volume && $i == $volumes_count)
-            ];
+        $result = add_series($data, $name, $author, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image);
+        if ($result['success']) {
+            save_data($result['data']);
+            $_SESSION['success_message'] = "Série ajoutée avec succès.";
+        } else {
+            $_SESSION['error_message'] = $result['message'];
         }
-
-        $data[] = [
-            'id' => generate_uuid(),
-            'name' => $name,
-            'author' => $author,
-            'publisher' => $publisher,
-            'categories' => explode(',', $categories),
-            'genres' => explode(',', $genres),
-            'image' => $image,
-            'anilist_id' => $anilist_id,
-            'mature' => $mature,
-            'favorite' => $favorite,
-            'volumes' => $volumes
-        ];
-        save_data($data);
-        $_SESSION['success_message'] = "Série ajoutée avec succès.";
     }
 
     header("Location: admin.php");
     exit;
 }
 
-// Trouver une série par son ID
-function find_series_by_id($data, $series_id) {
-    foreach ($data as $index => $series) {
-        if (isset($series['id']) && $series['id'] === $series_id) {
-            return ['index' => $index, 'series' => $series];
-        }
-    }
-    return null;
-}
-
-// Ajouter un ou plusieurs tomes
+// Gestion des actions pour les tomes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_volume']) || isset($_POST['add_multiple_volumes']))) {
     $series_id = $_POST['series_id'] ?? '';
     $status = $_POST['status'] ?? 'à lire';
     $is_collector = !empty($_POST['is_collector']);
     $is_last = !empty($_POST['is_last']);
 
-    $series = find_series_by_id($data, $series_id);
-    if ($series) {
-        $series_index = $series['index'];
-
-        if (isset($_POST['add_volume'])) {
-            $volume_number = (int)($_POST['volume_number'] ?? 0);
-            if ($volume_number > 0) {
-                $volume_exists = false;
-                foreach ($data[$series_index]['volumes'] as $volume) {
-                    if ((int)$volume['number'] === $volume_number) {
-                        $volume_exists = true;
-                        break;
-                    }
-                }
-
-                if (!$volume_exists) {
-                    $data[$series_index]['volumes'][] = [
-                        'number' => $volume_number,
-                        'status' => $status,
-                        'collector' => $is_collector,
-                        'last' => $is_last
-                    ];
-                } else {
-                    // Ajouter un message d'erreur pour indiquer que le tome existe déjà
-                    $_SESSION['error_message'] = "Le tome $volume_number existe déjà.";
-                }
-            }
-        } elseif (isset($_POST['add_multiple_volumes'])) {
-            $volumes_count = (int)($_POST['volumes_count'] ?? 0);
-            if ($volumes_count > 0) {
-                $current_volumes = $data[$series_index]['volumes'];
-                $max_volume_number = !empty($current_volumes) ? max(array_column($current_volumes, 'number')) : 0;
-                $existing_volumes = [];
-
-                for ($i = 1; $i <= $volumes_count; $i++) {
-                    $new_volume_number = $max_volume_number + $i;
-                    $volume_exists = false;
-                    foreach ($data[$series_index]['volumes'] as $volume) {
-                        if ((int)$volume['number'] === $new_volume_number) {
-                            $volume_exists = true;
-                            break;
-                        }
-                    }
-
-                    if (!$volume_exists) {
-                        $data[$series_index]['volumes'][] = [
-                            'number' => $new_volume_number,
-                            'status' => $status,
-                            'collector' => $is_collector,
-                            'last' => ($i == $volumes_count) ? $is_last : false
-                        ];
-                    } else {
-                        $existing_volumes[] = $new_volume_number;
-                    }
-                }
-                if (!empty($existing_volumes)) {
-                    $_SESSION['error_message'] = "Les tomes " . implode(', ', $existing_volumes) . " existent déjà.";
-                }
+    if (isset($_POST['add_volume'])) {
+        $volume_number = (int)($_POST['volume_number'] ?? 0);
+        if ($volume_number > 0) {
+            $result = add_volume_to_series($data, $series_id, $volume_number, $status, $is_collector, $is_last);
+            if ($result['success']) {
+                save_data($result['data']);
+            } else {
+                $_SESSION['error_message'] = $result['message'];
             }
         }
-        save_data($data);
-        header("Location: admin.php");
-        exit;
+    } elseif (isset($_POST['add_multiple_volumes'])) {
+        $volumes_count = (int)($_POST['volumes_count'] ?? 0);
+        if ($volumes_count > 0) {
+            $result = add_multiple_volumes_to_series($data, $series_id, $volumes_count, $status, $is_collector, $is_last);
+            if ($result['success']) {
+                save_data($result['data']);
+            } else {
+                $_SESSION['error_message'] = $result['message'];
+            }
+        }
     }
+
+    header("Location: admin.php");
+    exit;
 }
 
 // Mettre à jour un tome
@@ -400,18 +150,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
     $is_collector = !empty($_POST['is_collector']);
     $is_last = !empty($_POST['is_last']);
 
-    $series = find_series_by_id($data, $series_id);
-    if ($series && isset($data[$series['index']]['volumes'][$volume_index])) {
-        $data[$series['index']]['volumes'][$volume_index] = [
-            'number' => $data[$series['index']]['volumes'][$volume_index]['number'],
-            'status' => $status,
-            'collector' => $is_collector,
-            'last' => $is_last
-        ];
-        save_data($data);
-        header("Location: admin.php");
-        exit;
+    $result = update_volume($data, $series_id, $volume_index, $status, $is_collector, $is_last);
+    if ($result['success']) {
+        save_data($result['data']);
     }
+
+    header("Location: admin.php");
+    exit;
 }
 
 // Supprimer un tome
@@ -419,13 +164,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_volume'])) {
     $series_id = $_POST['series_id'] ?? '';
     $volume_index = (int)($_POST['volume_index'] ?? 0);
 
-    $series = find_series_by_id($data, $series_id);
-    if ($series && isset($data[$series['index']]['volumes'][$volume_index])) {
-        array_splice($data[$series['index']]['volumes'], $volume_index, 1);
-        save_data($data);
+    $result = delete_volume($data, $series_id, $volume_index);
+    if ($result['success']) {
+        save_data($result['data']);
         $_SESSION['success_message'] = "Tome supprimé avec succès";
     } else {
-        $_SESSION['error_message'] = "Série ou volume introuvable";
+        $_SESSION['error_message'] = $result['message'];
     }
 
     header("Location: admin.php");
@@ -449,74 +193,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $new_volumes_collector = !empty($_POST['new_volumes_collector']);
     $new_volumes_last = !empty($_POST['new_volumes_last']);
 
-    $series = find_series_by_id($data, $series_id);
-    if ($series && $name && $author && $publisher && $categories) {
-        $series_index = $series['index'];
-
-        $data[$series_index]['name'] = $name;
-        $data[$series_index]['author'] = $author;
-        $data[$series_index]['publisher'] = $publisher;
-        $data[$series_index]['categories'] = explode(',', $categories);
-        $data[$series_index]['genres'] = explode(',', $genres);
-        $data[$series_index]['anilist_id'] = $anilist_id;
-        $data[$series_index]['mature'] = $mature;
-        $data[$series_index]['favorite'] = $favorite;
-
-        if ($new_volumes_count > 0) {
-            $current_volumes = $data[$series_index]['volumes'];
-            $max_volume_number = !empty($current_volumes) ? max(array_column($current_volumes, 'number')) : 0;
-
-            for ($i = 1; $i <= $new_volumes_count; $i++) {
-                $new_volume_number = $max_volume_number + $i;
-                $data[$series_index]['volumes'][] = [
-                    'number' => $new_volume_number,
-                    'status' => $new_volumes_status,
-                    'collector' => $new_volumes_collector,
-                    'last' => ($new_volumes_last && $i == $new_volumes_count)
-                ];
-            }
-
-        if ($remove_image) {
-            if (file_exists($data[$series_index]['image'])) {
-                unlink($data[$series_index]['image']);
-            }
-            $data[$series_index]['image'] = '';
+    $new_image = null;
+    if (!empty($_FILES['edit_image']['name'])) {
+        $error_message = null;
+        $new_image = upload_image($_FILES['edit_image'], $error_message);
+        if ($new_image === false) {
+            $_SESSION['error_message'] = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
+            header("Location: admin.php");
+            exit;
         }
-
-        if (!empty($_FILES['edit_image']['name'])) {
-            if (!empty($data[$series_index]['image']) && file_exists($data[$series_index]['image'])) {
-                unlink($data[$series_index]['image']);
-            }
-            $new_image = upload_image($_FILES['edit_image']);
-            if ($new_image) {
-                $data[$series_index]['image'] = $new_image;
-            }
-        }
-
-        save_data($data);
-        header("Location: admin.php");
-        exit;
     }
-}
+
+    $result = update_series($data, $series_id, $name, $author, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image);
+    if ($result['success']) {
+        save_data($result['data']);
+    }
+
+    header("Location: admin.php");
+    exit;
 }
 
 // Supprimer une série
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_series'])) {
     $series_id = $_POST['series_id'] ?? '';
-
-    $series = find_series_by_id($data, $series_id);
-    if ($series) {
-        $series_index = $series['index'];
-        $image_path = $data[$series_index]['image'];
-        if (file_exists($image_path)) {
-            unlink($image_path);
-        }
-
-        array_splice($data, $series_index, 1);
-        save_data($data);
+    $result = delete_series($data, $series_id);
+    if ($result['success']) {
+        save_data($result['data']);
         echo "OK";
-        exit;
+    } else {
+        echo $result['message'];
     }
+    exit;
 }
 
 // Mettre à jour les options du site
@@ -534,343 +241,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
 
     $admin_password = trim($_POST['admin_password'] ?? '');
 
-    if ($options['site_name'] && $options['site_description'] && $options['index_page_title'] && $options['admin_page_title'] && $options['stats_page_title']) {
-        // Mettre à jour le mot de passe uniquement s'il n'est pas vide
-        if (!empty($admin_password)) {
-            // Limiter les caractères autorisés pour le mot de passe
-            if (!preg_match('/^[a-zA-Z0-9_!@#$%^&*()\-+=\[\]{};:\'"\\|,.<>\/?]+$/', $admin_password)) {
-                $_SESSION['error_message'] = "Le mot de passe contient des caractères non autorisés.";
-                header("Location: admin.php");
-                exit;
-            }
-
-            // Hasher le mot de passe
-            $password_hash = password_hash($admin_password, PASSWORD_DEFAULT);
-
-            // Sauvegarder le hash dans bdd/mdp.json
-            $password_data = ['admin_password_hash' => $password_hash];
-            file_put_contents(PASSWORD_FILE, json_encode($password_data, JSON_PRETTY_PRINT));
-        }
-
-        save_options($options);
-        $_SESSION['success_message'] = "Options mises à jour avec succès";
+    $result = update_options($options, $admin_password);
+    if ($result['success']) {
+        $_SESSION['success_message'] = $result['message'];
     } else {
-        $_SESSION['error_message'] = "Veuillez remplir tous les champs obligatoires.";
+        $_SESSION['error_message'] = $result['message'];
     }
 
     header("Location: admin.php");
     exit;
 }
 
-// Gestion du tri, filtre et recherche
-$sort_by = $_GET['sort_by'] ?? 'name';
-$sort_order = $_GET['sort_order'] ?? 'asc';
-$search_term = $_GET['search'] ?? '';
+// Gestion des actions pour la liste d'envies
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_wishlist'])) {
+    $name = trim($_POST['wishlist_name'] ?? '');
+    $author = trim($_POST['wishlist_author'] ?? '');
+    $publisher = trim($_POST['wishlist_publisher'] ?? '');
 
-function sort_series(&$data, $sort_by, $sort_order) {
-    usort($data, function($a, $b) use ($sort_by, $sort_order) {
-        if ($sort_by === 'volumes') {
-            return $sort_order === 'asc'
-                ? count($a['volumes']) - count($b['volumes'])
-                : count($b['volumes']) - count($a['volumes']);
-        } elseif ($sort_by === 'categories') {
-            $a_categories = implode(', ', $a['categories'] ?? []);
-            $b_categories = implode(', ', $b['categories'] ?? []);
-            return $sort_order === 'asc'
-                ? strcasecmp($a_categories, $b_categories)
-                : strcasecmp($b_categories, $a_categories);
-        } else {
-            return $sort_order === 'asc'
-                ? strcasecmp($a[$sort_by], $b[$sort_by])
-                : strcasecmp($b[$sort_by], $a[$sort_by]);
-        }
-    });
-}
-
-// Fonction pour trier les tomes par numéro
-function sort_volumes(&$volumes) {
-    usort($volumes, function($a, $b) {
-        return $a['number'] - $b['number'];
-    });
-}
-
-// Fonction pour générer les notifications
-function generate_notifications($volumes, $anilist_volumes = null) {
-    $notifications = [];
-    if (empty($volumes)) {
-        return $notifications;
-    }
-
-    $numbers = array_map(function($v) { return $v['number']; }, $volumes);
-    $min = min($numbers);
-    $max = max($numbers);
-    $last_volumes = array_filter($volumes, function($v) { return !empty($v['last']); });
-
-    // Vérifier les tomes manquants
-    $missing = [];
-    for ($i = $min; $i <= $max; $i++) {
-        if (!in_array($i, $numbers)) {
-            $missing[] = $i;
-        }
-    }
-    if (!empty($missing)) {
-        if (count($missing) == 1) {
-            $notifications[] = "Attention, le tome " . implode(', ', $missing) . " est manquant.";
-        } else {
-            $notifications[] = "Attention, les tomes " . implode(', ', $missing) . " sont manquants.";
-        }
-    }
-
-    // Vérifier si le tome étiqueté comme dernier est correct
-    if (!empty($last_volumes)) {
-        $last_numbers = array_map(function($v) { return $v['number']; }, $last_volumes);
-        $actual_last = $max;
-        foreach ($last_numbers as $num) {
-            if ($num != $actual_last) {
-                $notifications[] = "Attention, le tome tagué dernier ($num) est incorrect.";
-            }
-        }
-        if (count($last_volumes) > 1) {
-            $notifications[] = "Attention, plusieurs tomes sont tagués comme dernier (" . implode(', ', $last_numbers) . ").";
-        }
-    }
-
-    // Vérifier si la bibliothèque a plus de tomes que sur Anilist
-    if ($anilist_volumes !== null && $max > $anilist_volumes) {
-        $notifications[] = "Attention, votre série contient plus de tomes que ce qui est indiqué sur Anilist.";
-    }
-
-    // Vérifier si la série est complète selon Anilist mais qu'il y a des tomes manquants
-        if ($anilist_volumes !== null && $max < $anilist_volumes) {
-            $missing = range($max + 1, $anilist_volumes);
-            if (count($missing) == 1) {
-                $notifications[] = "Attention, il manque le tome " . implode(', ', $missing) . " pour compléter cette série.";
-            } else {
-                $notifications[] = "Attention, il manque les tomes " . implode(', ', $missing) . " pour compléter cette série.";
-            }
-        }
-
-    // Vérifier si le nombre de tomes est égal à Anilist mais que le dernier tome n'est pas tagué comme tel
-    if ($anilist_volumes !== null && $max == $anilist_volumes && empty($last_volumes)) {
-        $notifications[] = "Attention, cette série semble complète mais le dernier tome n'est pas tagué comme tel.";
-    }
-
-    return $notifications;
-}
-
-sort_series($data, $sort_by, $sort_order);
-
-if ($search_term) {
-    $data = array_filter($data, function($series) use ($search_term) {
-        return stripos($series['name'], $search_term) !== false ||
-               stripos($series['author'], $search_term) !== false ||
-               stripos($series['publisher'], $search_term) !== false ||
-               (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false) ||
-               (isset($series['genres']) && stripos(implode(', ', $series['genres']), $search_term) !== false);
-    });
-}
-
-// Fonction pour obtenir les valeurs uniques d'un champ spécifique
-function get_unique_values($data, $field) {
-    $values = [];
-    foreach ($data as $series) {
-        if (isset($series[$field])) {
-            if (is_array($series[$field])) {
-                foreach ($series[$field] as $value) {
-                    $value = trim($value);
-                    if (!empty($value) && !in_array($value, $values, true)) {
-                        $values[] = $value;
-                    }
-                }
-            } else {
-                $value = trim($series[$field]);
-                if (!empty($value) && !in_array($value, $values, true)) {
-                    $values[] = $value;
-                }
-            }
-        }
-    }
-    return $values;
-}
-
-// Gérer les suggestions pour l'auto-complétion
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
-    $field = $_GET['field'] ?? '';
-    $term = strtolower($_GET['term'] ?? '');
-    $suggestions = [];
-
-    if (in_array($field, ['author', 'publisher', 'categories', 'genres'])) {
-        $values = get_unique_values($data, $field);
-        foreach ($values as $value) {
-            if (strpos(strtolower($value), $term) !== false) {
-                $suggestions[] = $value;
-            }
-        }
+    $wishlist = load_wishlist();
+    $result = add_to_wishlist($wishlist, $name, $author, $publisher);
+    if ($result['success']) {
+        save_wishlist($result['wishlist']);
     }
 
     header('Content-Type: application/json');
-    echo json_encode($suggestions);
+    echo json_encode($result);
     exit;
 }
 
-// Charger les données de prêt
-function load_loans() {
-    if (file_exists('bdd/loan.json')) {
-        $loans = json_decode(file_get_contents('bdd/loan.json'), true);
-        return $loans ?: [];
+// Supprimer une série de la liste d'envies
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_from_wishlist'])) {
+    $index = $_POST['index'] ?? 0;
+    $wishlist = load_wishlist();
+    $result = remove_from_wishlist($wishlist, $index);
+    if ($result['success']) {
+        save_wishlist($result['wishlist']);
     }
-    return [];
+
+    header('Content-Type: application/json');
+    echo json_encode($result);
+    exit;
 }
 
-// Sauvegarder les données de prêt
-function save_loans($loans) {
-    file_put_contents('bdd/loan.json', json_encode($loans, JSON_PRETTY_PRINT));
-}
-
-// Ajouter un prêt (un seul tome)
-function add_loan($data, $series_id, $volume_number, $borrower_name) {
-    $loans = load_loans();
-
-    // Vérifier si la série existe
-    $series = find_series_by_id($data, $series_id);
-    if (!$series) {
-        return [
-            'success' => false,
-            'error' => 'series_not_found',
-            'message' => 'La série sélectionnée n\'existe pas dans votre base. Veuillez vérifier votre sélection.'
-        ];
+// Ajouter une série à la collection principale depuis la liste d'envies
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_from_wishlist'])) {
+    $index = $_POST['index'] ?? 0;
+    $wishlist = load_wishlist();
+    $result = add_from_wishlist($data, $wishlist, $index);
+    if ($result['success']) {
+        save_data($result['data']);
+        save_wishlist($result['wishlist']);
     }
 
-    // Vérifier si le tome est possédé
-    if (!is_volume_owned($data, $series_id, $volume_number)) {
-        return [
-            'success' => false,
-            'error' => 'volume_not_owned',
-            'message' => 'Vous ne possédez pas le tome ' . $volume_number . ' de cette série.'
-        ];
-    }
-
-    // Vérifier si le tome est déjà en prêt
-    foreach ($loans as $loan) {
-        if ($loan['series_id'] === $series_id && $loan['volume_number'] == $volume_number) {
-            return [
-                'success' => false,
-                'error' => 'volume_already_loaned',
-                'message' => 'Le tome ' . $volume_number . ' est déjà en prêt.'
-            ];
-        }
-    }
-
-    $loans[] = [
-        'series_id' => $series_id,
-        'volume_number' => $volume_number,
-        'borrower_name' => $borrower_name,
-        'loan_date' => date('Y-m-d H:i:s')
-    ];
-    save_loans($loans);
-    return ['success' => true];
-}
-
-// Ajouter un prêt (plusieurs tomes)
-function add_multiple_loans($data, $series_id, $start_volume, $end_volume, $borrower_name) {
-    $loans = load_loans();
-
-    // Vérifier si la série existe
-    $series = find_series_by_id($data, $series_id);
-    if (!$series) {
-        return ['success' => false, 'error' => 'series_not_found', 'message' => 'La série sélectionnée n\'existe pas dans votre base. Veuillez vérifier votre sélection.'];
-    }
-
-    // Vérifier si tous les tomes sont possédés
-    $ownership_check = are_volumes_owned($data, $series_id, $start_volume, $end_volume);
-    if (!$ownership_check['owned']) {
-        return ['success' => false, 'error' => 'volumes_not_owned', 'message' => 'Vous ne possédez pas tous les tomes sélectionnés. Tomes manquants : ' . implode(', ', $ownership_check['missing_volumes']), 'missing_volumes' => $ownership_check['missing_volumes']];
-    }
-
-    // Vérifier si certains tomes sont déjà en prêt
-    $already_loaned = [];
-    for ($i = $start_volume; $i <= $end_volume; $i++) {
-        foreach ($loans as $loan) {
-            if ($loan['series_id'] === $series_id && $loan['volume_number'] == $i) {
-                $already_loaned[] = $i;
-                break;
-            }
-        }
-    }
-
-    if (!empty($already_loaned)) {
-        return [
-            'success' => false,
-            'error' => 'volumes_already_loaned',
-            'message' => 'Les tomes ' . implode(', ', $already_loaned) . ' sont déjà en prêt.',
-            'already_loaned' => $already_loaned
-        ];
-    }
-
-    for ($i = $start_volume; $i <= $end_volume; $i++) {
-        $loans[] = [
-            'series_id' => $series_id,
-            'volume_number' => $i,
-            'borrower_name' => $borrower_name,
-            'loan_date' => date('Y-m-d H:i:s')
-        ];
-    }
-    save_loans($loans);
-    return ['success' => true];
-}
-
-// Supprimer un prêt
-function remove_loan($series_id, $volume_number) {
-    $loans = load_loans();
-    foreach ($loans as $index => $loan) {
-        if ($loan['series_id'] === $series_id && $loan['volume_number'] == $volume_number) {
-            array_splice($loans, $index, 1);
-            save_loans($loans);
-            return true;
-        }
-    }
-    return false;
-}
-
-// Récupérer les prêts par série (y compris les séries supprimées)
-function get_loans_by_series($data) {
-    $loans = load_loans();
-    $result = [];
-    $series_ids = [];
-
-    // Récupérer tous les IDs de séries existantes
-    foreach ($data as $series) {
-        $series_ids[] = $series['id'];
-    }
-
-    // Grouper les prêts par série
-    $loans_by_series = [];
-    foreach ($loans as $loan) {
-        $series_id = $loan['series_id'];
-        if (!isset($loans_by_series[$series_id])) {
-            $loans_by_series[$series_id] = [];
-        }
-        $loans_by_series[$series_id][] = $loan;
-    }
-
-    // Créer le résultat
-    foreach ($loans_by_series as $series_id => $loans) {
-        $series = find_series_by_id($data, $series_id);
-        $result[] = [
-            'series' => $series ? $series['series'] : null,
-            'loans' => $loans,
-            'series_exists' => $series !== null
-        ];
-    }
-
-    return $result;
+    header('Content-Type: application/json');
+    echo json_encode($result);
+    exit;
 }
 
 // Gestion des actions pour les prêts
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_action'])) {
     $response = ['success' => false];
     $action = $_POST['loan_action'];
-    $data = load_data();
 
     switch ($action) {
         case 'add_single_loan':
@@ -891,38 +322,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_action'])) {
             $end_volume = (int)($_POST['end_volume'] ?? 0);
             $borrower_name = trim($_POST['borrower_name'] ?? '');
 
-            // Vérifier que la série existe avant de continuer
-            $series = find_series_by_id($data, $series_id);
-            if (!$series) {
-                $response = ['success' => false, 'error' => 'series_not_found', 'message' => 'La série sélectionnée n\'existe pas dans votre base. Veuillez vérifier votre sélection.'];
-                break;
-            }
-
             if ($series_id && $start_volume > 0 && $end_volume >= $start_volume && $borrower_name) {
                 $response = add_multiple_loans($data, $series_id, $start_volume, $end_volume, $borrower_name);
-            }
-            break;
-
-        case 'add_single_loan':
-            $series_id = $_POST['series_id'] ?? '';
-            $volume_number = (int)($_POST['volume_number'] ?? 0);
-            $borrower_name = trim($_POST['borrower_name'] ?? '');
-
-            if ($series_id && $volume_number > 0 && $borrower_name) {
-                add_loan($series_id, $volume_number, $borrower_name);
-                $response['success'] = true;
-            }
-            break;
-
-        case 'add_multiple_loans':
-            $series_id = $_POST['series_id'] ?? '';
-            $start_volume = (int)($_POST['start_volume'] ?? 0);
-            $end_volume = (int)($_POST['end_volume'] ?? 0);
-            $borrower_name = trim($_POST['borrower_name'] ?? '');
-
-            if ($series_id && $start_volume > 0 && $end_volume >= $start_volume && $borrower_name) {
-                add_multiple_loans($series_id, $start_volume, $end_volume, $borrower_name);
-                $response['success'] = true;
             }
             break;
 
@@ -934,7 +335,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_action'])) {
                 $response['success'] = remove_loan($series_id, $volume_number);
             }
             break;
-        
+
         case 'remove_all_loans':
             $series_id = $_POST['series_id'] ?? '';
             if ($series_id) {
@@ -954,156 +355,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_action'])) {
     exit;
 }
 
-// Supprimer tous les prêts d'une série
-function remove_all_loans($series_id) {
-    $loans = load_loans();
-    $loans = array_filter($loans, function($loan) use ($series_id) {
-        return $loan['series_id'] !== $series_id;
-    });
-    save_loans(array_values($loans));
-    return true;
-}
-
-// Vérifier si un tome est possédé
-function is_volume_owned($data, $series_id, $volume_number) {
-    $series = find_series_by_id($data, $series_id);
-    if (!$series) {
-        return false;
-    }
-    foreach ($series['series']['volumes'] as $volume) {
-        if ($volume['number'] == $volume_number) {
-            return true;
-        }
-    }
-    return false;
-}
-
-// Vérifier si plusieurs tomes sont possédés
-function are_volumes_owned($data, $series_id, $start_volume, $end_volume) {
-    $series = find_series_by_id($data, $series_id);
-    if (!$series) {
-        return ['owned' => false, 'error' => 'series_not_found'];
-    }
-
-    $missing_volumes = [];
-    for ($i = $start_volume; $i <= $end_volume; $i++) {
-        if (!is_volume_owned($data, $series_id, $i)) {
-            $missing_volumes[] = $i;
-        }
-    }
-
-    if (empty($missing_volumes)) {
-        return ['owned' => true];
-    } else {
-        return ['owned' => false, 'missing_volumes' => $missing_volumes];
-    }
-}
-
-// Gestion des sauvegardes
+// Gestion des actions de sauvegarde
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_action'])) {
     $action = $_POST['backup_action'];
     $response = ['success' => false, 'message' => ''];
 
     switch ($action) {
         case 'create_backup':
-        $backup_dir = 'saves';
-        // Vérifier si le dossier existe, sinon essayer de le créer
-        if (!file_exists($backup_dir)) {
-            $old_umask = umask(0);
-            $success = mkdir($backup_dir, 0774, true);
-            umask($old_umask);
-
-            if (!$success) {
-                $response['message'] = "Impossible de créer le dossier 'saves/'. Veuillez vérifier les permissions du dossier parent ou créer le dossier manuellement.";
-                break;
-            }
-        }
-
-        // Vérifier que le dossier est accessible en écriture
-        if (!is_writable($backup_dir)) {
-            $response['message'] = "Le dossier 'saves/' n'est pas accessible en écriture. Veuillez vérifier les permissions.";
+            $response = create_backup();
             break;
-        }
-
-        // Suite du code pour créer la sauvegarde...
-        $timestamp = time();
-        $backup_name = "save_$timestamp.zip";
-        $backup_path = "$backup_dir/$backup_name";
-
-        $zip = new ZipArchive();
-        if ($zip->open($backup_path, ZipArchive::CREATE) === TRUE) {
-            // Ajouter les fichiers JSON
-            $files_to_backup = [
-                'bdd/data.json',
-                'bdd/list.json',
-                'bdd/loan.json',
-                'bdd/options.json'
-            ];
-
-            foreach ($files_to_backup as $file) {
-                if (file_exists($file)) {
-                    $zip->addFile($file, basename($file));
-                }
-            }
-
-            // Ajouter le dossier uploads/ et ses images
-            $uploads_dir = 'uploads/';
-            if (file_exists($uploads_dir) && is_dir($uploads_dir)) {
-                $files = new RecursiveIteratorIterator(
-                    new RecursiveDirectoryIterator($uploads_dir),
-                    RecursiveIteratorIterator::LEAVES_ONLY
-                );
-
-                foreach ($files as $name => $file) {
-                    if (!$file->isDir()) {
-                        $file_path = $file->getRealPath();
-                        $relative_path = substr($file_path, strlen(realpath($uploads_dir)) + 1);
-                        $zip->addFile($file_path, 'uploads/' . $relative_path);
-                    }
-                }
-            }
-
-            $zip->close();
-            $response['success'] = true;
-            $response['message'] = 'Sauvegarde créée avec succès.';
-        } else {
-            $response['message'] = 'Impossible de créer la sauvegarde.';
-        }
-        break;
 
         case 'delete_backup':
             $backup_file = $_POST['backup_file'] ?? '';
-            if (!empty($backup_file) && file_exists("saves/$backup_file")) {
-                unlink("saves/$backup_file");
-                $response['success'] = true;
-                $response['message'] = 'Sauvegarde supprimée avec succès.';
-            } else {
-                $response['message'] = 'Fichier de sauvegarde introuvable.';
-            }
+            $response = delete_backup($backup_file);
             break;
 
         case 'list_backups':
-            $backup_dir = 'saves';
-            $backups = [];
-            if (file_exists($backup_dir)) {
-                $files = scandir($backup_dir);
-                foreach ($files as $file) {
-                    if ($file !== '.' && $file !== '..' && pathinfo($file, PATHINFO_EXTENSION) === 'zip') {
-                        $timestamp = str_replace(['save_', '.zip'], '', $file);
-                        $date = date('d/m/Y H:i', $timestamp);
-                        $backups[] = [
-                            'name' => $file,
-                            'date' => $date,
-                            'timestamp' => $timestamp
-                        ];
-                    }
-                }
-                usort($backups, function($a, $b) {
-                    return $b['timestamp'] - $a['timestamp'];
-                });
-            }
-            $response['success'] = true;
-            $response['backups'] = $backups;
+            $response = list_backups();
             break;
     }
 
@@ -1112,243 +380,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_action'])) {
     exit;
 }
 
-// Fonction pour récupérer la dernière version depuis Gitea
-function get_latest_version_from_gitea() {
-    $url = "https://git.crystalyx.net/api/v1/repos/Esenjin_Asakha/Lengas/releases/latest";
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_USERAGENT, "Lengas-Version-Checker");
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $response = curl_exec($ch);
-    curl_close($ch);
-
-    if ($response) {
-        $data = json_decode($response, true);
-        if (isset($data['tag_name'])) {
-            return ltrim($data['tag_name'], 'v');
-        }
-    }
-    return null;
-}
-
-// Fonction pour vérifier l'intégrité du site
-function check_site_integrity()
-{
-    global $data;
-    $results = [
-        'file_existence' => [],
-        'forbidden_files' => [],
-        'permissions' => [],
-        'duplicates' => [],
-        'orphaned_images' => [],
-        'version' => null,
-    ];
-
-    // 1. Vérifier l'existence de tous les fichiers/dossiers
-    $required_files = [
-        'index.php', 'admin.php', 'stats.php', 'config.php', 'anilist.php',
-        'login.php', 'logout.php', 'styles.css', 'scripts/', 'uploads/', 'saves/', 'bdd/'
-    ];
-    $required_bdd_files = [
-        'bdd/data.json', 'bdd/list.json', 'bdd/loan.json', 'bdd/anilist.json', 'bdd/options.json', 'bdd/mdp.json'
-    ];
-
-    foreach ($required_files as $file) {
-        $results['file_existence'][$file] = file_exists($file);
-    }
-    foreach ($required_bdd_files as $file) {
-        $results['file_existence'][$file] = file_exists($file);
-    }
-
-    // 2. Vérifier l'absence de generate_password.php
-    $results['forbidden_files']['generate_password.php'] = !file_exists('generate_password.php');
-
-    // 3. Vérifier les permissions des dossiers/fichiers
-    $results['permissions'] = [];
-    $checks = [
-        'uploads/' => '0774',
-        'bdd/' => '0774',
-        'saves/' => '0774',
-        'bdd/data.json' => '0660',
-        'bdd/list.json' => '0660',
-        'bdd/loan.json' => '0660',
-        'bdd/anilist.json' => '0660',
-        'bdd/options.json' => '0660',
-        'bdd/mdp.json' => '0660',
-    ];
-    foreach ($checks as $path => $expected) {
-        if (file_exists($path)) {
-            $current = substr(sprintf('%o', fileperms($path)), -4);
-            $results['permissions'][$path] = [
-                'current' => $current,
-                'expected' => $expected,
-                'ok' => ($current === $expected),
-            ];
-        } else {
-            $results['permissions'][$path] = [
-                'current' => 'N/A',
-                'expected' => $expected,
-                'ok' => false,
-            ];
-        }
-    }
-
-    // 4. Vérification des séries doublons (collection, envies, prêts)
-    $wishlist = load_wishlist();
-    $loans = load_loans();
-    $series_names = array_map(function($s) { return strtolower($s['name']); }, $data);
-    $wishlist_names = array_map(function($s) { return strtolower($s['name']); }, $wishlist);
-    $loan_series_ids = array_unique(array_column($loans, 'series_id'));
-
-    // Doublons collection/envies
-    $results['duplicates']['collection_wishlist'] = array_intersect($series_names, $wishlist_names);
-
-    // Doublons collection/prêts (séries supprimées mais encore en prêt)
-    $results['duplicates']['deleted_loans'] = [];
-    foreach ($loan_series_ids as $id) {
-        $found = false;
-        foreach ($data as $series) {
-            if ($series['id'] === $id) {
-                $found = true;
-                break;
-            }
-        }
-        if (!$found) {
-            $results['duplicates']['deleted_loans'][] = $id;
-        }
-    }
-
-    // 5. Vérification que toutes les images (dans uploads) soient attachées à une série
-    $uploaded_images = [];
-    $used_images = [];
-    if (file_exists('uploads/') && is_dir('uploads/')) {
-        $files = scandir('uploads/');
-        foreach ($files as $file) {
-            if ($file !== '.' && $file !== '..' && !is_dir('uploads/' . $file)) {
-                $uploaded_images[] = 'uploads/' . $file;
-            }
-        }
-    }
-    foreach ($data as $series) {
-        if (!empty($series['image'])) {
-            $used_images[] = $series['image'];
-        }
-    }
-    $results['orphaned_images'] = array_values(array_diff($uploaded_images, $used_images));
-
-    // 6. Vérification de la version du site avec la dernière version Gitea
-    $results['version'] = [
-        'current' => SITE_VERSION,
-        'latest' => get_latest_version_from_gitea(),
-    ];
-
-    return $results;
-}
-
-// Nettoyer les doublons
-function clean_duplicates() {
-    global $data;
-    $wishlist = load_wishlist();
-    $loans = load_loans();
-    $messages = [];
-
-    // Nettoyer les doublons collection/envies
-    $series_names = array_map(function($s) { return strtolower($s['name']); }, $data);
-    $wishlist_names = array_map(function($s) { return strtolower($s['name']); }, $wishlist);
-    $duplicates = array_intersect($series_names, $wishlist_names);
-
-    if (!empty($duplicates)) {
-        $new_wishlist = array_filter($wishlist, function($item) use ($series_names) {
-            return !in_array(strtolower($item['name']), $series_names);
-        });
-        save_wishlist(array_values($new_wishlist));
-        $messages[] = "Doublons collection/envies nettoyés.";
-    }
-
-    // Nettoyer les prêts de séries supprimées
-    $series_ids = array_column($data, 'id');
-    $deleted_loans = array_filter($loans, function($loan) use ($series_ids) {
-        return !in_array($loan['series_id'], $series_ids);
-    });
-
-    if (!empty($deleted_loans)) {
-        $new_loans = array_filter($loans, function($loan) use ($series_ids) {
-            return in_array($loan['series_id'], $series_ids);
-        });
-        save_loans(array_values($new_loans));
-        $messages[] = "Prêts de séries supprimées nettoyés.";
-    }
-
-    return [
-        'success' => true,
-        'message' => implode(' ', $messages) ?: 'Aucun doublon à nettoyer.',
-    ];
-}
-
-// Nettoyer les images orphelines
-function clean_orphaned_images() {
-    global $data;
-    $uploaded_images = [];
-    $used_images = [];
-    $deleted_images = [];
-
-    if (file_exists('uploads/') && is_dir('uploads/')) {
-        $files = scandir('uploads/');
-        foreach ($files as $file) {
-            if ($file !== '.' && $file !== '..' && !is_dir('uploads/' . $file)) {
-                $uploaded_images[] = 'uploads/' . $file;
-            }
-        }
-    }
-
-    foreach ($data as $series) {
-        if (!empty($series['image'])) {
-            $used_images[] = $series['image'];
-        }
-    }
-
-    $orphaned_images = array_diff($uploaded_images, $used_images);
-    foreach ($orphaned_images as $image) {
-        if (file_exists($image) && unlink($image)) {
-            $deleted_images[] = $image;
-        }
-    }
-
-    return [
-        'success' => true,
-        'message' => !empty($deleted_images) ?
-            'Images orphelines supprimées : ' . implode(', ', $deleted_images) :
-            'Aucune image orpheline à supprimer.',
-    ];
-}
-
-// Supprimer les fichiers interdits
-function clean_forbidden_files() {
-    $forbidden_files = ['generate_password.php'];
-    $deleted_files = [];
-
-    foreach ($forbidden_files as $file) {
-        if (file_exists($file) && unlink($file)) {
-            $deleted_files[] = $file;
-        }
-    }
-
-    return [
-        'success' => true,
-        'message' => !empty($deleted_files) ?
-            'Fichiers interdits supprimés : ' . implode(', ', $deleted_files) :
-            'Aucun fichier interdit à supprimer.',
-    ];
-}
-
 // Gestion des actions de nettoyage
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
     $response = ['success' => false, 'message' => 'Action inconnue.'];
 
     switch ($_POST['tool_action']) {
         case 'check_integrity':
-            $integrity_results = check_site_integrity();
+            $integrity_results = check_site_integrity($data);
             $response = ['success' => true, 'results' => $integrity_results];
             break;
 
@@ -1370,12 +408,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
     exit;
 }
 
-// Gestion de l'action de vérification d'intégrité
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action']) && $_POST['tool_action'] === 'check_integrity') {
-    $integrity_results = check_site_integrity();
+// Gestion de la pagination des séries
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])) {
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 9;
+    $search_term = $_GET['search'] ?? '';
+    $sort_by = $_GET['sort_by'] ?? 'name';
+    $sort_order = $_GET['sort_order'] ?? 'asc';
+
+    $filtered_data = $data;
+    if (!empty($search_term)) {
+        $filtered_data = array_filter($filtered_data, function($series) use ($search_term) {
+            return stripos($series['name'], $search_term) !== false ||
+                   stripos($series['author'], $search_term) !== false ||
+                   stripos($series['publisher'], $search_term) !== false ||
+                   (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false) ||
+                   (isset($series['genres']) && stripos(implode(', ', $series['genres']), $search_term) !== false);
+        });
+    }
+    sort_series($filtered_data, $sort_by, $sort_order);
+
+    // Génère les notifications pour chaque série
+    foreach ($filtered_data as &$series) {
+        $anilist_volumes = null;
+        if (isset($series['anilist_id']) && !empty($series['anilist_id'])) {
+            $anilist_volumes = get_series_volumes_from_anilist($series['anilist_id']);
+        }
+        $series['notifications'] = generate_notifications($series['volumes'], $anilist_volumes);
+    }
+
+    $offset = ($page - 1) * $per_page;
+    $paginated_data = array_slice($filtered_data, $offset, $per_page);
+
     header('Content-Type: application/json');
-    echo json_encode(['success' => true, 'results' => $integrity_results]);
+    echo json_encode([
+        'success' => true,
+        'series' => array_values($paginated_data),
+        'has_more' => ($offset + $per_page) < count($filtered_data)
+    ]);
     exit;
+}
+
+// Gestion des suggestions pour l'auto-complétion
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
+    $field = $_GET['field'] ?? '';
+    $term = strtolower($_GET['term'] ?? '');
+    $suggestions = [];
+
+    if (in_array($field, ['author', 'publisher', 'categories', 'genres'])) {
+        $values = get_unique_values($data, $field);
+        foreach ($values as $value) {
+            if (strpos(strtolower($value), $term) !== false) {
+                $suggestions[] = $value;
+            }
+        }
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode($suggestions);
+    exit;
+}
+
+// Gestion du tri, filtre et recherche
+$sort_by = $_GET['sort_by'] ?? 'name';
+$sort_order = $_GET['sort_order'] ?? 'asc';
+$search_term = $_GET['search'] ?? '';
+
+sort_series($data, $sort_by, $sort_order);
+
+if ($search_term) {
+    $data = array_filter($data, function($series) use ($search_term) {
+        return stripos($series['name'], $search_term) !== false ||
+               stripos($series['author'], $search_term) !== false ||
+               stripos($series['publisher'], $search_term) !== false ||
+               (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false) ||
+               (isset($series['genres']) && stripos(implode(', ', $series['genres']), $search_term) !== false);
+    });
 }
 ?>
 
@@ -1734,7 +842,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action']) && $_P
                         <button id="add-to-wishlist-btn" class="button button-otl">Ajouter à la liste</button>
                     </div>
                     <div class="wishlist-list" id="wishlist-list">
-                        <?php foreach ($wishlist as $index => $item): ?>
+                        <?php foreach (load_wishlist() as $index => $item): ?>
                             <div class="wishlist-item" data-index="<?= $index ?>">
                                 <span class="wishlist-series-name"><?= $item['name'] ?></span>
                                 <span class="wishlist-series-author"><?= $item['author'] ?></span>
@@ -1797,12 +905,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action']) && $_P
                     <p class="hint">Laisser vide pour ne pas modifier.</p>
 
                     <label>
-                        <input type="checkbox" name="private_mode" <?= load_options()['private_mode'] ? 'checked' : '' ?>> Mode privé
+                        <input type="checkbox" name="private_mode" <?= $options['private_mode'] ? 'checked' : '' ?>> Mode privé
                     </label>
                     <p class="hint">Votre bibliothèque ne sera pas visible publiquement.</p>
 
                     <label>
-                        <input type="checkbox" name="hide_mature" <?= load_options()['hide_mature'] ? 'checked' : '' ?>> Masquer les séries matures
+                        <input type="checkbox" name="hide_mature" <?= $options['hide_mature'] ? 'checked' : '' ?>> Masquer les séries matures
                     </label>
 
                     <button type="submit" name="update_options" class="button button-opt">Mettre à jour</button>
@@ -1956,7 +1064,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action']) && $_P
     <script>
         // Données des séries pour JavaScript
         const seriesData = <?= json_encode($data) ?>;
-        const wishlistData = <?= json_encode($wishlist) ?>;
+        const wishlistData = <?= json_encode(load_wishlist()) ?>;
     </script>
     <script src="assets/js/admin/modals.js"></script>
     <script src="assets/js/admin/autocomplete.js"></script>

@@ -180,42 +180,6 @@ function get_incomplete_series($data) {
     return $result;
 }
 
-// Fonction pour ajouter un tome à une série
-function add_volume_to_series(&$data, $series_id, $volume_number, $status = 'à lire', $is_collector = false, $is_last = false) {
-    foreach ($data as &$series) {
-        if ($series['id'] === $series_id) {
-            // Vérifier si le tome existe déjà
-            foreach ($series['volumes'] as $volume) {
-                if ($volume['number'] == $volume_number) {
-                    return false; // Le tome existe déjà
-                }
-            }
-
-            // Ajouter le nouveau tome
-            $series['volumes'][] = [
-                'number' => $volume_number,
-                'status' => $status,
-                'collector' => $is_collector,
-                'last' => $is_last
-            ];
-
-            // Trier les tomes par numéro
-            usort($series['volumes'], function($a, $b) {
-                return $a['number'] - $b['number'];
-            });
-
-            // Marquer le dernier tome comme 'dernier'
-            $last_volume = end($series['volumes']);
-            foreach ($series['volumes'] as &$volume) {
-                $volume['last'] = ($volume['number'] == $last_volume['number']);
-            }
-
-            return true;
-        }
-    }
-    return false;
-}
-
 // Fonction pour ajouter tous les tomes manquants à une série
 function add_all_missing_volumes_to_series(&$data, $series_id, $missing_volumes, $status = 'à lire', $is_collector = false) {
     $series_index = null;
