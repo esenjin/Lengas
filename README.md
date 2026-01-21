@@ -59,24 +59,59 @@ Administration
 
 ```
 lengas/
-├── index.php          # Page publique
-├── admin.php          # Interface d'administration
-├── stats.php          # Page des statistiques
-├── config.php         # Configuration du site
-├── anilist.php        # API Anilist
-├── login.php          # Connexion
-├── logout.php         # Déconnexion
-├── styles.css         # Styles CSS
-├── uploads/           # Images des séries (chmod 774)
-├── scripts/           # Scripts JS
-├── saves/             # Sauvegardes de la base de données (chmod 774)
-└── bdd/               # Fichiers de données (chmod 774)
-   ├── data.json          # Base de données des séries et tomes possédés (chmod 660)
-   ├── list.json          # Base de données de la liste d'envies (chmod 660)
-   ├── loan.json          # Base de données des prêts (chmod 660)
-   ├── anilist.json       # Cache des requêtes API Anilist (chmod 660)
-   ├── options.json       # Options principales éditables (chmod 660)
-   └── mdp.json           # Contient le mdp hashé (chmod 660)
+├── index.php            # Page publique
+├── admin.php            # Interface d'administration
+├── stats.php            # Page des statistiques
+├── config.php           # Configuration du site
+├── login.php            # Connexion
+├── logout.php           # Déconnexion
+├── assets/
+│   ├── css/             # Fichiers CSS
+│   │   ├── _admin.css
+│   │   ├── _base.css
+│   │   ├── _buttons.css
+│   │   ├── _forms.css
+│   │   ├── _layout.css
+│   │   ├── _modals.css
+│   │   ├── _public.css
+│   │   ├── _responsive.css
+│   │   ├── _series.css
+│   │   ├── _utils.css
+│   │   ├── _variables.css
+│   │   └── main.css
+│   └── js/              # Scripts JavaScript
+│       ├── admin/
+│       │   ├── modals.js
+│       │   ├── autocomplete.js
+│       │   ├── series.js
+│       │   ├── volumes.js
+│       │   ├── wishlist.js
+│       │   ├── loans.js
+│       │   ├── tools.js
+│       │   ├── pagination.js
+│       │   └── main.js
+│       ├── stats.js
+│       └── public.js
+├── includes/
+│   ├── auth.php          # Gestion de l'authentification et des sessions
+│   ├── helpers.php       # Fonctions utilitaires générales
+│   └── anilist.php       # API Anilist
+├── fonctions/
+│   ├── series.php        # Fonctions de gestion des séries
+│   ├── volumes.php       # Fonctions de gestion des tomes
+│   ├── wishlist.php      # Fonctions de gestion de la liste d'envies
+│   ├── loans.php         # Fonctions de gestion des prêts
+│   ├── options.php       # Fonctions de gestion des options du site
+│   └── tools.php         # Fonctions de gestion des outils (sauvegardes, intégrité, etc.)
+├── uploads/             # Images des séries (chmod 0774)
+├── saves/               # Sauvegardes de la base de données (chmod 0774)
+└── bdd/                 # Fichiers de données (chmod 0774)
+   ├── data.json         # Base de données des séries et tomes possédés (chmod 0660)
+   ├── list.json         # Base de données de la liste d'envies (chmod 0660)
+   ├── loan.json         # Base de données des prêts (chmod 0660)
+   ├── anilist.json      # Cache des requêtes API Anilist (chmod 0660)
+   ├── options.json      # Options principales éditables (chmod 0660)
+   └── mdp.json          # Contient le mot de passe hashé (chmod 0660)
 ```
 
 ## Utilisation
