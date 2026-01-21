@@ -6,6 +6,21 @@ define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 // Chemin vers le fichier de mot de passe
 define('PASSWORD_FILE', 'bdd/mdp.json');
 
+// Fonction pour charger le hash du mot de passe
+function load_password_hash() {
+    if (file_exists(PASSWORD_FILE)) {
+        $data = json_decode(file_get_contents(PASSWORD_FILE), true);
+        return $data['admin_password_hash'] ?? null;
+    }
+    return null;
+}
+
+// Fonction pour vérifier le mot de passe
+function check_password($password) {
+    $hash = load_password_hash();
+    return password_verify($password, $hash);
+}
+
 // Chemin vers le dossier d'upload
 define('UPLOAD_DIR', 'uploads/');
 
