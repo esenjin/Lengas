@@ -20,8 +20,7 @@ function get_latest_version_from_gitea() {
 }
 
 // Fonction pour vérifier l'intégrité du site
-function check_site_integrity($data)
-{
+function check_site_integrity($data) {
     $results = [
         'file_existence' => [],
         'forbidden_files' => [],
@@ -29,6 +28,7 @@ function check_site_integrity($data)
         'duplicates' => [],
         'orphaned_images' => [],
         'version' => null,
+        'site_info' => [],
     ];
 
     // 1. Vérifier l'existence de tous les fichiers/dossiers
@@ -154,7 +154,94 @@ function check_site_integrity($data)
         'latest' => get_latest_version_from_gitea(),
     ];
 
+    // 7. Récupérer des informations sur le site
+    $results['site_info'] = [
+        'site_url' => get_site_url(),
+        'uses_https' => uses_https(),
+        'uploads_size' => get_uploads_size(),
+        'max_upload_size' => get_max_upload_size(),
+        'effective_max_upload_size' => get_effective_max_upload_size(),
+        'server_info' => get_server_info(),
+    ];
+
     return $results;
+}
+
+// Fonction pour obtenir l'URL du site
+function get_site_url() {
+    return (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
+}
+
+// Fonction pour vérifier si le site utilise HTTPS
+function uses_https() {
+    return isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+}
+
+// Fonction pour obtenir la taille du dossier uploads/
+function get_uploads_size() {
+    $size = 0;
+    if (file_exists('uploads/') && is_dir('uploads/')) {
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator('uploads/'));
+        foreach ($files as $file) {
+            if ($file->isFile()) {
+                $size += $file->getSize();
+            }
+        }
+    }
+    return format_size($size);
+}
+
+// Fonction pour obtenir la taille maximale des fichiers téléversés
+function get_max_upload_size() {
+    return ini_get('upload_max_filesize');
+}
+
+// Fonction pour obtenir la taille de fichier effective maximale
+function get_effective_max_upload_size() {
+    $max_upload = parse_size(ini_get('upload_max_filesize'));
+    $max_post = parse_size(ini_get('post_max_size'));
+    $memory_limit = parse_size(ini_get('memory_limit'));
+    return min($max_upload, $max_post, $memory_limit);
+}
+
+// Fonction pour obtenir des informations sur le serveur
+function get_server_info() {
+    return [
+        'server_architecture' => php_uname('m'),
+        'server_software' => $_SERVER['SERVER_SOFTWARE'],
+        'php_version' => phpversion(),
+        'max_execution_time' => ini_get('max_execution_time'),
+        'memory_limit' => ini_get('memory_limit'),
+    ];
+}
+
+// Fonction pour convertir la taille en octets
+function parse_size($size) {
+    $unit = preg_replace('/[^bkmgtpezy]/i', '', $size);
+    $size = preg_replace('/[^0-9\\.]/', '', $size);
+    if ($unit) {
+        return round($size * pow(1024, stripos('bkmgtpezy', $unit[0])));
+    } else {
+        return round($size);
+    }
+}
+
+// Fonction pour formater la taille en octets lisible
+function format_size($bytes) {
+    if ($bytes >= 1073741824) {
+        $bytes = number_format($bytes / 1073741824, 2) . ' GB';
+    } elseif ($bytes >= 1048576) {
+        $bytes = number_format($bytes / 1048576, 2) . ' MB';
+    } elseif ($bytes >= 1024) {
+        $bytes = number_format($bytes / 1024, 2) . ' KB';
+    } elseif ($bytes > 1) {
+        $bytes = $bytes . ' bytes';
+    } elseif ($bytes == 1) {
+        $bytes = $bytes . ' byte';
+    } else {
+        $bytes = '0 bytes';
+    }
+    return $bytes;
 }
 
 // Nettoyer les doublons

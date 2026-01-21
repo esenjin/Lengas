@@ -247,10 +247,38 @@ function displayIntegrityResults(results) {
         <div class="integrity-section">
             <h3>Version du site</h3>
             <ul>
-                <li>Version actuelle: ${results.version.current}</li>
-                <li>Dernière version: ${results.version.latest || 'Inconnue'}</li>
+                <li>Version actuelle : ${results.version.current}</li>
+                <li>Dernière version : ${results.version.latest || 'Inconnue'}</li>
                 ${results.version.latest && results.version.current !== results.version.latest ?
                     `<li class="error">Une nouvelle version est disponible !</li>` : ''}
+            </ul>
+        </div>
+    `;
+
+    // 7. Informations sur le site et le serveur
+    html += `
+        <div class="integrity-section">
+            <h3>Informations sur le site</h3>
+            <ul>
+                <li>URL du site : <a href="${results.site_info.site_url}" target="_blank">${results.site_info.site_url}</a></li>
+                <li>HTTPS : <span class="${results.site_info.uses_https ? 'ok' : 'error'}">${results.site_info.uses_https ? 'Activé' : 'Non activé'}</span></li>
+                <li>Taille du dossier uploads (vignettes) : ${results.site_info.uploads_size}</li>
+                <li>Taille maximale des fichiers téléversés : ${results.site_info.max_upload_size}</li>
+                <li>Taille effective maximale : ${results.site_info.effective_max_upload_size}</li>
+            </ul>
+        </div>
+    `;
+
+    // 8. Informations sur le serveur
+    html += `
+        <div class="integrity-section">
+            <h3>Informations sur le serveur</h3>
+            <ul>
+                <li>Architecture serveur : ${results.site_info.server_info.server_architecture}</li>
+                <li>Serveur web : ${results.site_info.server_info.server_software}</li>
+                <li>Version de PHP : ${results.site_info.server_info.php_version}</li>
+                <li>Limite d'exécution PHP : ${results.site_info.server_info.max_execution_time} secondes</li>
+                <li>Limite de mémoire PHP : ${results.site_info.server_info.memory_limit}</li>
             </ul>
         </div>
     `;
