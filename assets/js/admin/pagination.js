@@ -21,6 +21,9 @@ function loadMoreSeries() {
         .then(response => response.json())
         .then(data => {
             if (data.success && data.series && data.series.length > 0) {
+                if (!Array.isArray(seriesData)) seriesData = [];
+                seriesData = [...seriesData, ...data.series];
+                console.log("seriesData mis à jour (tableau) :", seriesData);
                 const seriesList = document.getElementById('series-list');
                 data.series.forEach(series => {
                     // Crée la carte de la série
@@ -105,10 +108,23 @@ function loadMoreSeries() {
 
 // Fonction pour réattacher les événements aux nouvelles séries chargées
 function attachSeriesEvents() {
+    if (!Array.isArray(seriesData)) {
+        console.error("seriesData n'est pas un tableau valide.");
+        return;
+    }
+    // Supprime les anciens écouteurs
+    document.querySelectorAll('.edit-series-btn, .delete-series-btn, .volumes-list li').forEach(el => {
+        el.replaceWith(el.cloneNode(true));
+    });
+
     // Événements pour les boutons "Modifier" et "Supprimer"
     document.querySelectorAll('.edit-series-btn').forEach(button => {
         button.addEventListener('click', function() {
             const seriesId = this.dataset.seriesId;
+            if (!Array.isArray(seriesData)) {
+                console.error("seriesData n'est pas un tableau, conversion forcée :", seriesData);
+                seriesData = Object.values(seriesData); // Conversion en tableau si nécessaire
+            }
             const series = seriesData.find(s => s.id === seriesId);
             if (series) {
                 document.getElementById('edit-series-id-input').value = seriesId;
@@ -147,6 +163,10 @@ function attachSeriesEvents() {
         li.addEventListener('click', function() {
             const seriesId = this.dataset.seriesId;
             const volumeIndex = this.dataset.volumeIndex;
+            if (!Array.isArray(seriesData)) {
+                console.error("seriesData n'est pas un tableau, conversion forcée :", seriesData);
+                seriesData = Object.values(seriesData); // Conversion en tableau si nécessaire
+            }
             const series = seriesData.find(s => s.id === seriesId);
             if (series && series.volumes[volumeIndex]) {
                 const volume = series.volumes[volumeIndex];

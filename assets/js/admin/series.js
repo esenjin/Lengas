@@ -2,6 +2,10 @@
 document.querySelectorAll('.edit-series-btn').forEach(button => {
     button.addEventListener('click', function() {
         const seriesId = this.dataset.seriesId;
+        if (!Array.isArray(seriesData)) {
+            console.error("seriesData n'est pas un tableau, conversion forcée :", seriesData);
+            seriesData = Object.values(seriesData); // Conversion en tableau si nécessaire
+        }
         const series = seriesData.find(s => s.id === seriesId);
 
         if (series) {

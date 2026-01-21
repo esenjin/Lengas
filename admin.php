@@ -1063,7 +1063,7 @@ if ($search_term) {
 
     <script>
         // Données des séries pour JavaScript
-        const seriesData = <?= json_encode($data) ?>;
+        const seriesData = Object.values(<?= json_encode($data ?? []) ?>);
         const wishlistData = <?= json_encode(load_wishlist()) ?>;
     </script>
     <script src="assets/js/admin/modals.js"></script>
