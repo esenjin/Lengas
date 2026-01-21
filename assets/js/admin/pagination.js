@@ -23,7 +23,6 @@ function loadMoreSeries() {
             if (data.success && data.series && data.series.length > 0) {
                 if (!Array.isArray(seriesData)) seriesData = [];
                 seriesData = [...seriesData, ...data.series];
-                console.log("seriesData mis à jour (tableau) :", seriesData);
                 const seriesList = document.getElementById('series-list');
                 data.series.forEach(series => {
                     // Crée la carte de la série
