@@ -417,13 +417,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
     $sort_order = $_GET['sort_order'] ?? 'asc';
 
     $filtered_data = $data;
-    if (!empty($search_term)) {
-        $filtered_data = array_filter($filtered_data, function($series) use ($search_term) {
-            return stripos($series['name'], $search_term) !== false ||
-                   stripos($series['author'], $search_term) !== false ||
-                   stripos($series['publisher'], $search_term) !== false ||
-                   (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false) ||
-                   (isset($series['genres']) && stripos(implode(', ', $series['genres']), $search_term) !== false);
+    if ($search_term) {
+        $normalized_search = normalize_string($search_term);
+        $filtered_data = array_filter($filtered_data, function($series) use ($normalized_search) {
+            return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
+                strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
+                strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
+                (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
+                (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
         });
     }
     sort_series($filtered_data, $sort_by, $sort_order);
@@ -474,15 +475,18 @@ $sort_by = $_GET['sort_by'] ?? 'name';
 $sort_order = $_GET['sort_order'] ?? 'asc';
 $search_term = $_GET['search'] ?? '';
 
-sort_series($data, $sort_by, $sort_order);
+$filtered_data = $data;
+
+sort_series($filtered_data, $sort_by, $sort_order);
 
 if ($search_term) {
-    $data = array_filter($data, function($series) use ($search_term) {
-        return stripos($series['name'], $search_term) !== false ||
-               stripos($series['author'], $search_term) !== false ||
-               stripos($series['publisher'], $search_term) !== false ||
-               (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false) ||
-               (isset($series['genres']) && stripos(implode(', ', $series['genres']), $search_term) !== false);
+    $normalized_search = normalize_string($search_term);
+    $filtered_data = array_filter($filtered_data, function($series) use ($normalized_search) {
+        return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
+               strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
+               strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
+               (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
+               (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
     });
 }
 ?>
@@ -976,13 +980,14 @@ if ($search_term) {
                 <?php
                 // Applique la recherche et le tri AVANT la pagination
                 $filtered_data = $data;
-                if (!empty($search_term)) {
-                    $filtered_data = array_filter($filtered_data, function($series) use ($search_term) {
-                        return stripos($series['name'], $search_term) !== false ||
-                            stripos($series['author'], $search_term) !== false ||
-                            stripos($series['publisher'], $search_term) !== false ||
-                            (isset($series['categories']) && stripos(implode(', ', $series['categories']), $search_term) !== false) ||
-                            (isset($series['genres']) && stripos(implode(', ', $series['genres']), $search_term) !== false);
+                if ($search_term) {
+                    $normalized_search = normalize_string($search_term);
+                    $filtered_data = array_filter($filtered_data, function($series) use ($normalized_search) {
+                        return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
+                            strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
+                            strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
+                            (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
+                            (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
                     });
                 }
                 sort_series($filtered_data, $sort_by, $sort_order);

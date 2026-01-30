@@ -1,5 +1,13 @@
 // scripts/public.js
 
+function normalizeString(str) {
+    return str
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9\s\-]/g, '');
+}
+
 // Gestion des cartes cliquables
 document.querySelectorAll('.series-card').forEach(card => {
     card.addEventListener('click', function() {
@@ -94,7 +102,8 @@ function loadMoreSeries() {
 
     // Récupère les paramètres de recherche/filtre depuis l'URL
     const urlParams = new URLSearchParams(window.location.search);
-    const searchTerm = urlParams.get('search') || '';
+    let searchTerm = urlParams.get('search') || '';
+    searchTerm = normalizeString(searchTerm);
     const sortBy = urlParams.get('sort_by') || 'name';
     const sortOrder = urlParams.get('sort_order') || 'asc';
 

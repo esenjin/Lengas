@@ -3,6 +3,15 @@ let currentPage = 1;
 let isLoading = false;
 let hasMoreSeries = true;
 
+// Fonction pour normaliser une chaîne de caractères
+function normalizeString(str) {
+    return str
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9\s\-]/g, '');
+}
+
 // Fonction pour charger les séries paginées via AJAX
 async function loadMoreSeries() {
     if (isLoading || !hasMoreSeries) return;
@@ -13,7 +22,8 @@ async function loadMoreSeries() {
     try {
         // Récupère les paramètres de recherche/filtre depuis l'URL
         const urlParams = new URLSearchParams(window.location.search);
-        const searchTerm = urlParams.get('search') || '';
+        let searchTerm = urlParams.get('search') || '';
+        searchTerm = normalizeString(searchTerm);
         const sortBy = urlParams.get('sort_by') || 'name';
         const sortOrder = urlParams.get('sort_order') || 'asc';
 
