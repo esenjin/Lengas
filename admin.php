@@ -988,7 +988,7 @@ if ($search_term) {
                 sort_series($filtered_data, $sort_by, $sort_order);
 
                 // Affiche les 9 premières séries filtrées
-                $paginated_data = array_slice($filtered_data, 0, 9);
+                $paginated_data = array_slice($filtered_data, $offset, $per_page_admin);
                 foreach ($paginated_data as $series):
                     if (empty($series['volumes'])) continue;
                 ?>
@@ -1063,7 +1063,7 @@ if ($search_term) {
 
     <script>
         // Données des séries pour JavaScript
-        const seriesData = Object.values(<?= json_encode($data ?? []) ?>);
+        window.seriesData = Object.values(<?= json_encode($data ?? []) ?>);
         const wishlistData = <?= json_encode(load_wishlist()) ?>;
     </script>
     <script src="assets/js/admin/modals.js"></script>
