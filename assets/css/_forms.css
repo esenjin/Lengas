@@ -30,7 +30,7 @@ form {
 
 /* Autocomplétion */
 .autocomplete-suggestions {
-    position: absolute;
+    position: relative;
     top: 100%;
     left: 0;
     right: 0;
@@ -41,7 +41,7 @@ form {
     overflow-y: auto;
     z-index: 1000;
     margin-top: 2px;
-    display: none;
+    display: block;
 }
 
 .autocomplete-suggestions div {

@@ -453,20 +453,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
 // Gestion des suggestions pour l'auto-complétion
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
     $field = $_GET['field'] ?? '';
-    $term = strtolower($_GET['term'] ?? '');
+    $term = strtolower(trim($_GET['term'] ?? ''));
     $suggestions = [];
 
     if (in_array($field, ['author', 'publisher', 'categories', 'genres'])) {
-        $values = get_unique_values($data, $field);
-        foreach ($values as $value) {
-            if (strpos(strtolower($value), $term) !== false) {
-                $suggestions[] = $value;
+        foreach ($data as $series) {
+            if (isset($series[$field])) {
+                // Si le champ est un tableau (genres, catégories)
+                if (is_array($series[$field])) {
+                    foreach ($series[$field] as $value) {
+                        if (str_contains(strtolower($value), $term) && !in_array($value, $suggestions)) {
+                            $suggestions[] = $value;
+                        }
+                    }
+                }
+                // Si le champ est une chaîne (auteur, éditeur)
+                else {
+                    $value = $series[$field];
+                    if (str_contains(strtolower($value), $term) && !in_array($value, $suggestions)) {
+                        $suggestions[] = $value;
+                    }
+                }
             }
         }
     }
 
+    // Supprime les doublons
+    $suggestions = array_unique($suggestions);
     header('Content-Type: application/json');
-    echo json_encode($suggestions);
+    echo json_encode(array_values($suggestions));
     exit;
 }
 
