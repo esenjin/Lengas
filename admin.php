@@ -919,7 +919,6 @@ if ($search_term) {
 
                     <button type="submit" name="update_options" class="button button-opt">Mettre à jour</button>
                     <p style="visibility: hidden;">_</p>
-                    <p class="hint">Merci de recharger la page après l'application des modifications, afin d'actualiser les champs des paramètres ci-dessus.</p>
                 </form>
             </div>
         </div>

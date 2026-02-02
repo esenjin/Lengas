@@ -1,6 +1,5 @@
 // Ouverture de la modale "Outils"
 document.getElementById('open-tools-modal').addEventListener('click', () => {
-    modals['tools'] = { modal: document.getElementById('tools-modal'), closeBtn: document.getElementById('close-tools-modal') };
     modals['tools'].modal.classList.add('modal-active');
     loadBackupsList();
     addIntegrityCheckButton();

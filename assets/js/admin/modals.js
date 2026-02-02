@@ -6,6 +6,7 @@ const modals = {
     'edit-volume': { modal: document.getElementById('edit-volume-modal'), closeBtn: document.getElementById('close-edit-volume-modal') },
     'edit-series': { modal: document.getElementById('edit-series-modal'), closeBtn: document.getElementById('close-edit-series-modal') },
     'wishlist': { modal: document.getElementById('wishlist-modal'), closeBtn: document.getElementById('close-wishlist-modal') },
+    'tools': { modal: document.getElementById('tools-modal'), closeBtn: document.getElementById('close-tools-modal') },
     'options': { modal: document.getElementById('options-modal'), closeBtn: document.getElementById('close-options-modal') },
     'incomplete-series': { modal: document.getElementById('incomplete-series-modal'), closeBtn: document.getElementById('close-incomplete-series-modal') },
     'loan': { modal: document.getElementById('loan-modal'), closeBtn: document.getElementById('close-loan-modal') }
@@ -25,10 +26,10 @@ document.getElementById('open-wishlist-modal').addEventListener('click', () => m
 document.getElementById('open-options-modal').addEventListener('click', () => modals['options'].modal.classList.add('modal-active'));
 document.getElementById('open-incomplete-series-modal').addEventListener('click', () => modals['incomplete-series'].modal.classList.add('modal-active'));
 
-// Fonction pour fermer une modale et recharger la page si c'est la modale d'outils
+// Fonction pour fermer une modale et recharger la page si c'est la modale d'outils ou d'options
 function closeModalAndReloadIfTools(modal) {
     modal.classList.remove('modal-active');
-    if (modal.id === 'tools-modal') {
+    if (modal.id === 'tools-modal' || modal.id === 'options-modal') {
         window.location.reload();
     }
 }
