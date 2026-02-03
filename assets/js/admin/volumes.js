@@ -53,8 +53,8 @@ document.querySelector('#add-multiple-volumes-modal form').addEventListener('sub
     const seriesId = document.getElementById('multiple-selected-series-id').value;
     const volumesCount = parseInt(document.querySelector('#add-multiple-volumes-modal [name="volumes_count"]').value);
     const status = document.querySelector('#add-multiple-volumes-modal [name="status"]').value;
-    const isCollector = document.querySelector('#add-multiple-volumes-modal [name="is_collector"]').checked;
-    const isLast = document.querySelector('#add-multiple-volumes-modal [name="is_last"]').checked;
+    const isCollector = document.querySelector('#add-multiple-volumes-modal [name="is_collector"]').checked ? 1 : 0;
+    const isLast = document.querySelector('#add-multiple-volumes-modal [name="is_last"]').checked ? 1 : 0;
 
     if (!seriesId || volumesCount <= 0) {
         alert('Veuillez sélectionner une série et indiquer un nombre de tomes valide.');

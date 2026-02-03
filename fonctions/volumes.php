@@ -41,6 +41,10 @@ function add_multiple_volumes_to_series($data, $series_id, $volumes_count, $stat
     $max_volume_number = !empty($current_volumes) ? max(array_column($current_volumes, 'number')) : 0;
     $existing_volumes = [];
 
+    // Convertir explicitement en booléen
+    $is_collector = (bool)$is_collector;
+    $is_last = (bool)$is_last;
+
     for ($i = 1; $i <= $volumes_count; $i++) {
         $new_volume_number = $max_volume_number + $i;
         $volume_exists = false;
@@ -56,7 +60,7 @@ function add_multiple_volumes_to_series($data, $series_id, $volumes_count, $stat
                 'number' => $new_volume_number,
                 'status' => $status,
                 'collector' => $is_collector,
-                'last' => ($i == $volumes_count) ? $is_last : false,
+                'last' => ($is_last && $i == $volumes_count),
                 'added_at' => date('Y-m-d')
             ];
         } else {

@@ -110,31 +110,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
 }
 
 // Gestion des actions pour les tomes
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_volume']) || isset($_POST['add_multiple_volumes']))) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_multiple_volumes'])) {
     $series_id = $_POST['series_id'] ?? '';
+    $volumes_count = (int)($_POST['volumes_count'] ?? 0);
     $status = $_POST['status'] ?? 'à lire';
-    $is_collector = !empty($_POST['is_collector']);
-    $is_last = !empty($_POST['is_last']);
+    $is_collector = isset($_POST['is_collector']) ? (bool)$_POST['is_collector'] : false;
+    $is_last = isset($_POST['is_last']) ? (bool)$_POST['is_last'] : false;
 
-    if (isset($_POST['add_volume'])) {
-        $volume_number = (int)($_POST['volume_number'] ?? 0);
-        if ($volume_number > 0) {
-            $result = add_volume_to_series($data, $series_id, $volume_number, $status, $is_collector, $is_last);
-            if ($result['success']) {
-                save_data($result['data']);
-            } else {
-                $_SESSION['error_message'] = $result['message'];
-            }
-        }
-    } elseif (isset($_POST['add_multiple_volumes'])) {
-        $volumes_count = (int)($_POST['volumes_count'] ?? 0);
-        if ($volumes_count > 0) {
-            $result = add_multiple_volumes_to_series($data, $series_id, $volumes_count, $status, $is_collector, $is_last);
-            if ($result['success']) {
-                save_data($result['data']);
-            } else {
-                $_SESSION['error_message'] = $result['message'];
-            }
+    if ($volumes_count > 0) {
+        $result = add_multiple_volumes_to_series($data, $series_id, $volumes_count, $status, $is_collector, $is_last);
+        if ($result['success']) {
+            save_data($result['data']);
+        } else {
+            $_SESSION['error_message'] = $result['message'];
         }
     }
 

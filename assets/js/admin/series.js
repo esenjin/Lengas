@@ -136,10 +136,10 @@ function render_current_series(seriesList) {
         btn.addEventListener('click', function() {
             const seriesId = this.dataset.seriesId;
             const series = currentSeriesData.series.find(s => s.id === seriesId);
-            document.getElementById('selected-series-id').value = seriesId;
-            document.getElementById('series-search').value = series.name;
-            document.getElementById('series-results').style.display = 'none';
-            modals['add-volume'].modal.classList.add('modal-active');
+            document.getElementById('multiple-selected-series-id').value = seriesId;
+            document.getElementById('multiple-series-search').value = series.name;
+            document.getElementById('multiple-series-results').style.display = 'none';
+            modals['add-multiple-volumes'].modal.classList.add('modal-active');
         });
     });
 }
