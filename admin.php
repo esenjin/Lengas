@@ -597,15 +597,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
                 <h2>Ajouter une série</h2>
                 <form method="post" enctype="multipart/form-data">
                     <p>Nom :</p>
-                    <input type="text" name="name" id="add-series-name" placeholder="Nom de la série" autocomplete="off" required>
+                    <input type="text" name="name" id="add-series-name" placeholder="Nom de la série (obligatoire)" autocomplete="off" required>
                     <p>Auteur :</p>
-                    <input type="text" name="author" id="add-series-author" placeholder="Auteur" autocomplete="off" required>
+                    <input type="text" name="author" id="add-series-author" placeholder="Nom de l'auteur (obligatoire)" autocomplete="off" required>
                     <p>Éditeur :</p>
-                    <input type="text" name="publisher" id="add-series-publisher" placeholder="Éditeur" autocomplete="off" required>
+                    <input type="text" name="publisher" id="add-series-publisher" placeholder="Nom de l'éditeur (obligatoire)" autocomplete="off" required>
                     <p>Catégories :</p>
-                    <input type="text" name="categories" id="add-series-categories" placeholder="Catégories (séparées par des virgules)" autocomplete="off" required>
+                    <input type="text" name="categories" id="add-series-categories" placeholder="Catégories (séparées par des virgules) (obligatoire)" autocomplete="off" required>
                     <p>Genres :</p>
-                    <input type="text" name="genres" id="add-series-genres" placeholder="Genres (séparés par des virgules)" autocomplete="off">
+                    <input type="text" name="genres" id="add-series-genres" placeholder="Genres (séparés par des virgules) (facultatif)" autocomplete="off">
                     <p>Nombre de tomes à créer :</p>
                     <input type="number" name="volumes_count" id="volumes_count" placeholder="Nombre de tomes" min="1" value="1" autocomplete="off">
                     <p>Statut des tomes :</p>
@@ -621,7 +621,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
                         <input type="checkbox" name="last_volume"> Série terminée ✅
                     </label>
                     <p class="hint">Le tome final sera tagué comme dernier de la série.</p>
-                    <p>ID Anilist (facultatif) :</p>
+                    <p>ID Anilist :</p>
                     <input type="text" name="anilist_id" placeholder="ID Anilist (facultatif)" autocomplete="off">
                     <p class="hint"><a tabindex="0" data-hint="L'ID Anilist est utilisé pour trouver les tomes manquants des sériées terminées, plus d'infos dans l'outil « Séries incomplètes ». Pour trouver cet identifiant, rendez-vous sur anilist.co, recherchez votre série et accédez à sa fiche, l'ID est la suite de chiffres avant le nom dans l'url.">À quoi ça sert ? Où le trouver ?</a>.</p>
                     <label>
