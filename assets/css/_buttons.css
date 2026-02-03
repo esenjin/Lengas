@@ -15,6 +15,14 @@
     text-decoration: none;
 }
 
+.button-ats {
+    background-color: #66aa60;
+}
+
+.button-ats:hover {
+    background-color: #599253;
+}
+
 .button-ext {
     background-color: #626d74;
 }
@@ -24,11 +32,19 @@
 }
 
 .button-otl {
-    background-color: #9342c1;
+    background-color: #4291c1;
 }
 
 .button-otl:hover {
-    background-color: #703294;
+    background-color: #3b81ac;
+}
+
+.button-aos {
+    background-color: #7558c4;
+}
+
+.button-aos:hover {
+    background-color: #6048a0;
 }
 
 .button-opt {

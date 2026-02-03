@@ -577,10 +577,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
 
         <!-- Menu d'actions -->
         <div class="admin-menu">
-            <button id="open-add-series-modal">Ajouter une série</button>
-            <button id="open-add-multiple-volumes-modal">Ajouter des tomes</button>
-            <button id="open-current-series-modal" class="button button-otl">Séries en cours</button>
-            <button id="open-incomplete-series-modal" class="button button-otl">Séries incomplètes</button>
+            <button id="open-add-series-modal" class="button button-ats">Ajouter une série</button>
+            <button id="open-add-multiple-volumes-modal" class="button button-ats">Ajouter des tomes</button>
+            <button id="open-current-series-modal" class="button button-aos">Séries en cours</button>
+            <button id="open-incomplete-series-modal" class="button button-aos">Séries incomplètes</button>
             <button id="open-loan-modal" class="button button-otl">Livres prêtés</button>
             <button id="open-wishlist-modal" class="button button-otl">Liste d'envies</button>
             <button id="open-options-modal" class="button button-opt">Options</button>
