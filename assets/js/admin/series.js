@@ -70,33 +70,76 @@ document.querySelector('form[enctype="multipart/form-data"]').addEventListener('
 });
 
 // Fonction pour récupérer et afficher les séries en cours
+let currentSeriesData = [];
+
 function fetch_current_series() {
     fetch('admin.php?get_current_series=true')
         .then(response => response.json())
         .then(data => {
+            currentSeriesData = data;
             const container = document.getElementById('current-series-list');
             container.innerHTML = '';
             if (data.success && data.series.length > 0) {
-                data.series.forEach(series => {
-                    const seriesDiv = document.createElement('div');
-                    seriesDiv.className = 'current-series-item';
-                    seriesDiv.innerHTML = `
-                        <h3>${series.name}</h3>
-                        <p>Dernier tome possédé : ${series.last_volume}</p>
-                        <button class="add-volume-btn" data-series-id="${series.id}">+</button>
-                    `;
-                    container.appendChild(seriesDiv);
-                });
-                // Écouteurs pour les boutons "+"
-                document.querySelectorAll('.add-volume-btn').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const seriesId = this.dataset.seriesId;
-                        document.getElementById('add-volume-series-id').value = seriesId;
-                        modals['add-volume'].modal.classList.add('modal-active');
+                // Sélecteur de tri (uniquement par date)
+                container.innerHTML = `
+                    <div class="sort-options">
+                        <label>Trier par date : </label>
+                        <select id="sort-current-series-by-date">
+                            <option value="recent">Plus récent d'abord</option>
+                            <option value="oldest">Plus ancien d'abord</option>
+                        </select>
+                    </div>
+                    <div id="current-series-items"></div>
+                `;
+                // Tri par défaut : plus récent d'abord
+                data.series.sort((a, b) => new Date(b.last_volume_added_at) - new Date(a.last_volume_added_at));
+                render_current_series(data.series);
+
+                // Écouteur pour le tri par date
+                document.getElementById('sort-current-series-by-date').addEventListener('change', (e) => {
+                    const sortOrder = e.target.value;
+                    let sortedSeries = [...data.series];
+                    sortedSeries.sort((a, b) => {
+                        if (sortOrder === 'recent') {
+                            return new Date(b.last_volume_added_at) - new Date(a.last_volume_added_at);
+                        } else {
+                            return new Date(a.last_volume_added_at) - new Date(b.last_volume_added_at);
+                        }
                     });
+                    render_current_series(sortedSeries);
                 });
             } else {
                 container.innerHTML = '<p>Aucune série en cours.</p>';
             }
         });
+}
+
+function render_current_series(seriesList) {
+    const itemsContainer = document.getElementById('current-series-items');
+    itemsContainer.innerHTML = '';
+    seriesList.forEach(series => {
+        const seriesDiv = document.createElement('div');
+        seriesDiv.className = 'current-series-item';
+        seriesDiv.innerHTML = `
+            <div class="series-title">${series.name}</div>
+            <div class="series-details">
+                <span>Dernier tome : ${series.last_volume}</span>
+                <span>Ajouté le : ${series.last_volume_added_at}</span>
+                <button class="add-volume-btn" data-series-id="${series.id}">+</button>
+            </div>
+        `;
+        itemsContainer.appendChild(seriesDiv);
+    });
+
+    // Écouteurs pour les boutons "+"
+    document.querySelectorAll('.add-volume-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const seriesId = this.dataset.seriesId;
+            const series = currentSeriesData.series.find(s => s.id === seriesId);
+            document.getElementById('selected-series-id').value = seriesId;
+            document.getElementById('series-search').value = series.name;
+            document.getElementById('series-results').style.display = 'none';
+            modals['add-volume'].modal.classList.add('modal-active');
+        });
+    });
 }

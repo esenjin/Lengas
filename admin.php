@@ -521,7 +521,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
             $current_series[] = [
                 'id' => $series['id'],
                 'name' => $series['name'],
-                'last_volume' => $last_volume['number']
+                'last_volume' => $last_volume['number'],
+                'last_volume_added_at' => $last_volume['added_at'] ?? 'Inconnue'
             ];
         }
     }
@@ -576,7 +577,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
                         <option value="publisher" <?= $sort_by === 'publisher' ? 'selected' : '' ?>>Trier par éditeur</option>
                         <option value="categories" <?= $sort_by === 'categories' ? 'selected' : '' ?>>Trier par catégories</option>
                         <option value="volumes" <?= $sort_by === 'volumes' ? 'selected' : '' ?>>Trier par nombre de tomes</option>
-                        <option value="added_at" <?= $sort_by === 'added_at' ? 'selected' : '' ?>>Trier par date d'ajout</option>
                     </select>
                     <select name="sort_order">
                         <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Ascendant</option>
