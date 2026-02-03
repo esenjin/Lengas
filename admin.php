@@ -578,7 +578,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
         <!-- Menu d'actions -->
         <div class="admin-menu">
             <button id="open-add-series-modal">Ajouter une série</button>
-            <button id="open-add-volume-modal" style="display: none;">Ajouter un tome</button>
             <button id="open-add-multiple-volumes-modal">Ajouter des tomes</button>
             <button id="open-current-series-modal" class="button button-otl">Séries en cours</button>
             <button id="open-incomplete-series-modal" class="button button-otl">Séries incomplètes</button>
@@ -664,39 +663,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
                 <div id="incomplete-series-results">
                     <!-- Les résultats seront affichés ici -->
                 </div>
-            </div>
-        </div>
-
-        <!-- Modale pour ajouter un tome -->
-        <div class="modal" id="add-volume-modal">
-            <div class="modal-content">
-                <span class="close-modal" id="close-add-volume-modal">&times;</span>
-                <h2>Ajouter un tome</h2>
-                <form method="post">
-                    <p>Choisir une série :</p>
-                    <input type="text" id="series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
-                    <div class="series-results" id="series-results">
-                        <?php foreach ($data as $series): ?>
-                            <div data-id="<?= $series['id'] ?>"><?= $series['name'] ?></div>
-                        <?php endforeach; ?>
-                    </div>
-                    <input type="hidden" name="series_id" id="selected-series-id" required>
-                    <p>Numéro du tome à ajouter :</p>
-                    <input type="number" inputmode="numeric" name="volume_number" placeholder="Numéro du tome" min="1" autocomplete="off" required>
-                    <p>Statut du tome :</p>
-                    <select name="status" required>
-                        <option value="à lire">À lire</option>
-                        <option value="en cours">En cours</option>
-                        <option value="terminé">Terminé</option>
-                    </select>
-                    <label>
-                        <input type="checkbox" name="is_collector"> Collector
-                    </label>
-                    <label>
-                        <input type="checkbox" name="is_last"> Dernier tome
-                    </label>
-                    <button type="submit" name="add_volume">Ajouter</button>
-                </form>
             </div>
         </div>
 

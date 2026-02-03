@@ -1,7 +1,6 @@
 // Gestion des modales (ouverture/fermeture)
 const modals = {
     'add-series': { modal: document.getElementById('add-series-modal'), closeBtn: document.getElementById('close-add-series-modal') },
-    'add-volume': { modal: document.getElementById('add-volume-modal'), closeBtn: document.getElementById('close-add-volume-modal') },
     'add-multiple-volumes': { modal: document.getElementById('add-multiple-volumes-modal'), closeBtn: document.getElementById('close-add-multiple-volumes-modal') },
     'edit-volume': { modal: document.getElementById('edit-volume-modal'), closeBtn: document.getElementById('close-edit-volume-modal') },
     'edit-series': { modal: document.getElementById('edit-series-modal'), closeBtn: document.getElementById('close-edit-series-modal') },
@@ -15,10 +14,6 @@ const modals = {
 
 // Ouverture des modales
 document.getElementById('open-add-series-modal').addEventListener('click', () => modals['add-series'].modal.classList.add('modal-active'));
-document.getElementById('open-add-volume-modal').addEventListener('click', () => {
-    modals['add-volume'].modal.classList.add('modal-active');
-    document.getElementById('series-results').style.display = 'block';
-});
 document.getElementById('open-add-multiple-volumes-modal').addEventListener('click', () => {
     modals['add-multiple-volumes'].modal.classList.add('modal-active');
     document.getElementById('multiple-series-results').style.display = 'block';
