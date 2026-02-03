@@ -29,32 +29,6 @@ document.querySelectorAll('.edit-series-btn').forEach(button => {
     });
 });
 
-// Gestion de la suppression d'une série
-document.querySelectorAll('.delete-series-btn').forEach(button => {
-    button.addEventListener('click', function() {
-        showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer cette série ?').then((confirmed) => {
-            if (confirmed) {
-                const seriesId = this.dataset.seriesId;
-                fetch('admin.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `delete_series=true&series_id=${encodeURIComponent(seriesId)}`
-                })
-                .then(response => response.text())
-                .then(() => {
-                    window.location.reload();
-                })
-                .catch(error => {
-                    console.error('Erreur:', error);
-                    alert('Une erreur est survenue lors de la suppression.');
-                });
-            }
-        });
-    });
-});
-
 // Écouteur pour le formulaire d'ajout de série
 document.querySelector('form[enctype="multipart/form-data"]').addEventListener('submit', function(e) {
     const fileInput = this.querySelector('input[type="file"]');

@@ -155,17 +155,41 @@ function attachSeriesEvents() {
 
     // Événements pour les boutons "Supprimer"
     document.querySelectorAll('.delete-series-btn').forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
             const seriesId = this.dataset.seriesId;
-            if (confirm('Êtes-vous sûr de vouloir supprimer cette série ?')) {
-                fetch('admin.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `delete_series=true&series_id=${encodeURIComponent(seriesId)}`
+
+            // Affiche la pop-up de confirmation personnalisée
+            showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer cette série ?')
+                .then((confirmed) => {
+                    if (confirmed) {
+                        fetch('admin.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: `delete_series=true&series_id=${encodeURIComponent(seriesId)}&no_redirect=true`
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Erreur réseau');
+                            }
+                            return response.text();
+                        })
+                        .then(() => {
+                            alert('Série supprimée avec succès !');
+                            window.location.reload();
+                        })
+                        .catch(error => {
+                            console.error('Erreur:', error);
+                            alert('Une erreur est survenue lors de la suppression.');
+                        });
+                    }
                 })
-                .then(() => window.location.reload())
-                .catch(error => alert('Erreur : ' + error.message));
-            }
+                .catch(error => {
+                    console.error('Erreur lors de la confirmation:', error);
+                });
         });
     });
 
