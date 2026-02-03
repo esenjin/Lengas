@@ -68,3 +68,35 @@ document.querySelector('form[enctype="multipart/form-data"]').addEventListener('
         }
     }
 });
+
+// Fonction pour récupérer et afficher les séries en cours
+function fetch_current_series() {
+    fetch('admin.php?get_current_series=true')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('current-series-list');
+            container.innerHTML = '';
+            if (data.success && data.series.length > 0) {
+                data.series.forEach(series => {
+                    const seriesDiv = document.createElement('div');
+                    seriesDiv.className = 'current-series-item';
+                    seriesDiv.innerHTML = `
+                        <h3>${series.name}</h3>
+                        <p>Dernier tome possédé : ${series.last_volume}</p>
+                        <button class="add-volume-btn" data-series-id="${series.id}">+</button>
+                    `;
+                    container.appendChild(seriesDiv);
+                });
+                // Écouteurs pour les boutons "+"
+                document.querySelectorAll('.add-volume-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const seriesId = this.dataset.seriesId;
+                        document.getElementById('add-volume-series-id').value = seriesId;
+                        modals['add-volume'].modal.classList.add('modal-active');
+                    });
+                });
+            } else {
+                container.innerHTML = '<p>Aucune série en cours.</p>';
+            }
+        });
+}

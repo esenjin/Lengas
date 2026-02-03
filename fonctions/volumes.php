@@ -20,7 +20,8 @@ function add_volume_to_series($data, $series_id, $volume_number, $status, $is_co
             'number' => $volume_number,
             'status' => $status,
             'collector' => $is_collector,
-            'last' => $is_last
+            'last' => $is_last,
+            'added_at' => date('Y-m-d')
         ];
         return ['success' => true, 'data' => $data];
     } else {
@@ -55,7 +56,8 @@ function add_multiple_volumes_to_series($data, $series_id, $volumes_count, $stat
                 'number' => $new_volume_number,
                 'status' => $status,
                 'collector' => $is_collector,
-                'last' => ($i == $volumes_count) ? $is_last : false
+                'last' => ($i == $volumes_count) ? $is_last : false,
+                'added_at' => date('Y-m-d')
             ];
         } else {
             $existing_volumes[] = $new_volume_number;

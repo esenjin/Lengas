@@ -42,6 +42,11 @@ function get_unique_values($data, $field) {
 // Fonction pour trier les séries
 function sort_series(&$data, $sort_by, $sort_order) {
     usort($data, function($a, $b) use ($sort_by, $sort_order) {
+        if ($sort_by === 'added_at') {
+            $a_val = end($a['volumes'])['added_at'] ?? '0000-00-00';
+            $b_val = end($b['volumes'])['added_at'] ?? '0000-00-00';
+            return $sort_order === 'asc' ? strcmp($a_val, $b_val) : strcmp($b_val, $a_val);
+        }
         if ($sort_by === 'volumes') {
             return $sort_order === 'asc'
                 ? count($a['volumes']) - count($b['volumes'])

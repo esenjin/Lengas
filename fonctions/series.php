@@ -19,7 +19,8 @@ function add_series($data, $name, $author, $publisher, $categories, $genres, $an
             'number' => $i,
             'status' => $volumes_status,
             'collector' => $all_collector,
-            'last' => ($last_volume && $i == $volumes_count)
+            'last' => ($last_volume && $i == $volumes_count),
+            'added_at' => date('Y-m-d')
         ];
     }
 
@@ -80,7 +81,8 @@ function update_series($data, $series_id, $name, $author, $publisher, $categorie
                 'number' => $new_volume_number,
                 'status' => $new_volumes_status,
                 'collector' => $new_volumes_collector,
-                'last' => ($new_volumes_last && $i == $new_volumes_count)
+                'last' => ($new_volumes_last && $i == $new_volumes_count),
+                'added_at' => date('Y-m-d')
             ];
         }
     }

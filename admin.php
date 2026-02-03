@@ -504,6 +504,31 @@ if ($search_term) {
                (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
     });
 }
+
+// Gestion de la récupération des séries en cours
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) {
+    $current_series = [];
+    foreach ($data as $series) {
+        $has_last_volume = false;
+        foreach ($series['volumes'] as $volume) {
+            if (isset($volume['last']) && $volume['last']) {
+                $has_last_volume = true;
+                break;
+            }
+        }
+        if (!$has_last_volume && !empty($series['volumes'])) {
+            $last_volume = end($series['volumes']);
+            $current_series[] = [
+                'id' => $series['id'],
+                'name' => $series['name'],
+                'last_volume' => $last_volume['number']
+            ];
+        }
+    }
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true, 'series' => $current_series]);
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
@@ -551,6 +576,7 @@ if ($search_term) {
                         <option value="publisher" <?= $sort_by === 'publisher' ? 'selected' : '' ?>>Trier par éditeur</option>
                         <option value="categories" <?= $sort_by === 'categories' ? 'selected' : '' ?>>Trier par catégories</option>
                         <option value="volumes" <?= $sort_by === 'volumes' ? 'selected' : '' ?>>Trier par nombre de tomes</option>
+                        <option value="added_at" <?= $sort_by === 'added_at' ? 'selected' : '' ?>>Trier par date d'ajout</option>
                     </select>
                     <select name="sort_order">
                         <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Ascendant</option>
@@ -566,6 +592,7 @@ if ($search_term) {
             <button id="open-add-series-modal">Ajouter une série</button>
             <button id="open-add-volume-modal" style="display: none;">Ajouter un tome</button>
             <button id="open-add-multiple-volumes-modal">Ajouter des tomes</button>
+            <button id="open-current-series-modal" class="button button-otl">Séries en cours</button>
             <button id="open-incomplete-series-modal" class="button button-otl">Séries incomplètes</button>
             <button id="open-loan-modal" class="button button-otl">Livres prêtés</button>
             <button id="open-wishlist-modal" class="button button-otl">Liste d'envies</button>
@@ -619,8 +646,21 @@ if ($search_term) {
                     <p>Vignette :</p>
                     <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp" required>
                     <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
+                    <input type="hidden" id="add-volume-series-id" name="series_id">
                     <button type="submit" name="add_series">Ajouter</button>
                 </form>
+            </div>
+        </div>
+
+        <!-- Modale pour les séries en cours -->
+        <div class="modal" id="current-series-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-current-series-modal">&times;</span>
+                <h2>Séries en cours</h2>
+                <p>Voici la liste de vos séries en cours (sans le tag "dernier tome").</p>
+                <div id="current-series-list">
+                    <!-- La liste sera remplie par JavaScript -->
+                </div>
             </div>
         </div>
 
