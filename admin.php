@@ -659,7 +659,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
                 <p>Cet outil vous permet de trouver les séries qui son terminées, pour lesquelles il vous manque des tomes.</p>
                 <p>Attention, nous utilisons l'API d'Anilist, qui se base sur les dates des publications japonaises uniquement, il peut y avoir un décalage de sortie avec la France.</p>
                 <p>Merci de noter qu'à cause des limitations de l'API d'Anilist, nous ne pouvons pas identifier les tomes manquants des séries en cours de publication.</p>
-                <button id="search-incomplete-series" class="button button-otl">Rechercher les séries incomplètes</button>
+                <button id="search-incomplete-series" class="button">Rechercher les séries incomplètes</button>
                 <div id="incomplete-series-results">
                     <!-- Les résultats seront affichés ici -->
                 </div>
@@ -804,7 +804,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
                         <input type="number" inputmode="numeric" name="volume_number" placeholder="Numéro du tome" min="1" autocomplete="off" required>
                         <p>Nom de l'emprunteur :</p>
                         <input type="text" name="borrower_name" placeholder="Nom de l'emprunteur" autocomplete="off" required>
-                        <button type="submit" class="button button-otl">Ajouter</button>
+                        <button type="submit" class="button">Ajouter</button>
                     </form>
                 </div>
 
@@ -828,7 +828,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
                         </div>
                         <p>Nom de l'emprunteur :</p>
                         <input type="text" name="borrower_name" placeholder="Nom de l'emprunteur" autocomplete="off" required>
-                        <button type="submit" class="button button-otl">Ajouter</button>
+                        <button type="submit" class="button">Ajouter</button>
                     </form>
                 </div>
 
@@ -852,7 +852,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
                         <input type="text" id="wishlist-name" placeholder="Nom de la série" autocomplete="off" required>
                         <input type="text" id="wishlist-author" placeholder="Auteur" autocomplete="off" required>
                         <input type="text" id="wishlist-publisher" placeholder="Éditeur" autocomplete="off" required>
-                        <button id="add-to-wishlist-btn" class="button button-otl">Ajouter à la liste</button>
+                        <button id="add-to-wishlist-btn" class="button">Ajouter à la liste</button>
                     </div>
                     <div class="wishlist-list" id="wishlist-list">
                         <?php foreach (load_wishlist() as $index => $item): ?>
