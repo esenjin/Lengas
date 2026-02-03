@@ -144,7 +144,6 @@ function setupMultiAutocomplete(inputId, field) {
 }
 
 // Initialisation des recherches et autocomplétions
-setupSeriesSearch('series-search', 'series-results');
 setupSeriesSearch('multiple-series-search', 'multiple-series-results');
 setupSeriesSelection('series-results', 'selected-series-id', 'series-search');
 setupSeriesSelection('multiple-series-results', 'multiple-selected-series-id', 'multiple-series-search');
