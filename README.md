@@ -1,25 +1,47 @@
 # Lengas - Gestion de collection de mangas/light-novels
 
 ## Description
-Lengas est une application web légère pour gérer et suivre votre collection de mangas et light-novels. Elle permet de :
-- Visualiser votre collection
-- Suivre l'état de lecture de chaque tome (à lire, en cours, terminé)
-- Ajouter/modifier/supprimer des séries et des tomes
-- Consulter des statistiques sur votre collection
-- Gérer une liste d'envies pour les séries que vous souhaitez acquérir
+Lengas est une application web légère et intuitive pour gérer et suivre votre collection de mangas et light-novels. Elle vous permet de :
+
+- Visualiser et organiser votre collection
+- Suivre l’état de lecture de chaque tome (à lire, en cours, terminé)
+- Ajouter, modifier et supprimer des séries et des tomes
+- Consulter des statistiques détaillées sur votre collection
+- Gérer une liste d’envies pour les séries que vous souhaitez acquérir
 - Recevoir des notifications pour les tomes manquants ou incorrectement étiquetés
 - Marquer les tomes collectors et les derniers tomes
+- Gérer les prêts de tomes à vos amis
+- Activer un mode privé pour cacher votre bibliothèque
 
 ## Fonctionnalités
-- **Gestion des séries** : Ajout, modification et suppression de séries.
-- **Suivi des tomes** : Ajout, modification et suppression de tomes, statut de lecture, gestion des tomes collectors et des derniers tomes.
-- **Liste d'envies** : Ajout et suppression de séries dans une liste d'envies, possibilité d'ajouter une série de la liste d'envies à votre collection.
-- **Gestion des prêts** : Savoir quels tomes ont été prêtés et à qui.
-- **Statistiques** : Nombre de séries, tomes, répartition par statut.
-- **Notifications** : Alertes pour les tomes manquants ou incorrectement étiquetés.
-- **Séries incomplètes** : Recherche des séries (terminées) incomplètes.
-- **Interface intuitive** : Design sombre et responsive, modales pour les actions, tri et filtrage des séries.
-- **Mode privé** : Pour cacher votre bibliothèque.
+### Gestion des séries
+- Ajout, modification et suppression de séries
+- Importation de données depuis l’API Anilist
+
+### Suivi des tomes
+- Ajout, modification et suppression de tomes
+- Statut de lecture personnalisable
+- Gestion des tomes collectors et des derniers tomes
+
+### Liste d’envies
+- Ajout et suppression de séries dans une liste d’envies
+- Possibilité d’ajouter une série de la liste d’envies à votre collection
+
+### Gestion des prêts
+- Suivi des tomes prêtés et à qui
+
+### Statistiques
+- Nombre de séries, tomes, répartition par statut
+- Recherche des séries incomplètes
+
+### Interface intuitive
+- Design sombre et responsive
+- Modales pour les actions
+- Tri et filtrage des séries
+
+### Sécurité
+- Mode privé pour cacher votre bibliothèque
+- Gestion des mots de passe et des sessions
 
 ## Aperçu visuel
 Publique
@@ -113,12 +135,6 @@ lengas/
    ├── options.json      # Options principales éditables (chmod 0660)
    └── mdp.json          # Contient le mot de passe hashé (chmod 0660)
 ```
-
-## Utilisation
-1. Connectez-vous à l'interface d'administration via `admin.php`.
-2. Utilisez les modales pour ajouter, modifier ou supprimer des séries et des tomes.
-3. Consultez la liste d'envies pour gérer les séries que vous souhaitez acquérir.
-4. Utilisez les options de tri et de recherche pour naviguer dans votre collection.
 
 ## Crédits
 - Développé avec l'aide de [Mistral](https://chat.mistral.ai/)
