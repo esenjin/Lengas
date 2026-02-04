@@ -1,0 +1,12 @@
+/* Importe tous les fichiers partiels */
+@import '_variables.css';
+@import '_base.css';
+@import '_layout.css';
+@import '_series.css';
+@import '_modals.css';
+@import '_forms.css';
+@import '_buttons.css';
+@import '_admin.css';
+@import '_public.css';
+@import '_utils.css';
+@import '_responsive.css';

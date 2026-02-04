@@ -1,0 +1,103 @@
+/* Styles pour les boutons spécifiques */
+.button {
+    display: inline-block;
+    background-color: var(--primary-color);
+    color: var(--background-dark);
+    padding: 10px 20px;
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    font-weight: bold;
+    transition: var(--transition);
+}
+
+.button:hover {
+    background-color: #9a67ea;
+    text-decoration: none;
+}
+
+.button-ats {
+    background-color: #66aa60;
+}
+
+.button-ats:hover {
+    background-color: #599253;
+}
+
+.button-ext {
+    background-color: #626d74;
+}
+
+.button-ext:hover {
+    background-color: #444b50;
+}
+
+.button-otl {
+    background-color: #4291c1;
+}
+
+.button-otl:hover {
+    background-color: #3b81ac;
+}
+
+.button-aos {
+    background-color: #7558c4;
+}
+
+.button-aos:hover {
+    background-color: #6048a0;
+}
+
+.button-opt {
+    background-color: #ae644d;
+}
+
+.button-opt:hover {
+    background-color: #814a39;
+}
+
+/* Boutons de suppression */
+.delete-btn {
+    background-color: var(--error-color);
+    color: white;
+}
+
+.delete-btn:hover {
+    background-color: #b35467;
+}
+
+/* Bouton "Retour en haut" */
+#back-to-top {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--primary-color);
+    color: var(--background-dark);
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 1.2em;
+    cursor: pointer;
+    z-index: 999;
+}
+
+/* Bouton de déconnexion */
+.logout-container {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+}
+
+.logout-button {
+    display: inline-block;
+    padding: 5px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 15%;
+    transition: background 0.3s;
+}
+
+.logout-button:hover {
+    background: rgba(255, 0, 0, 0.5);
+}

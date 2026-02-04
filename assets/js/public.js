@@ -1,34 +1,52 @@
 // scripts/public.js
 
+function normalizeString(str) {
+    return str
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9\s\-]/g, '');
+}
+
 // Gestion des cartes cliquables
 document.querySelectorAll('.series-card').forEach(card => {
     card.addEventListener('click', function() {
         const seriesIndex = this.dataset.seriesIndex;
         const series = seriesData[seriesIndex];
 
-        // Remplir la modale avec les données de la série
+        // Vérifie si l'image existe, sinon utilise une image par défaut
+        const imageUrl = series.image || 'logo.png';
+        document.getElementById('modal-series-image').src = imageUrl;
+
+        // Ajoute un gestionnaire d'erreur pour l'image
+        const modalImage = document.getElementById('modal-series-image');
+        modalImage.onerror = function() {
+            this.src = 'logo.png';
+        };
+
+        // Remplit les autres informations de la série
         document.getElementById('modal-series-title').textContent = series.name;
-        document.getElementById('modal-series-image').src = series.image;
         document.getElementById('modal-series-author').textContent = series.author;
         document.getElementById('modal-series-publisher').textContent = series.publisher;
+        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors ? series.other_contributors.join(', ') : '';
         document.getElementById('modal-series-categories').textContent = series.categories ? series.categories.join(', ') : '';
         document.getElementById('modal-series-genres').textContent = series.genres ? series.genres.join(', ') : '';
 
-        // Calculer les stats
-        const totalVolumes = series.volumes.length;
-        const readVolumes = series.volumes.filter(v => v.status === 'terminé').length;
+        // Calcule les stats
+        const totalVolumes = series.volumes ? series.volumes.length : 0;
+        const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
         document.getElementById('modal-series-stats').innerHTML =
             `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} ` +
             `(${readVolumes} lu${readVolumes > 1 ? 's' : ''})`;
 
-        // Remplir la liste des tomes
+        // Remplit la liste des tomes
         const volumesList = document.getElementById('modal-volumes-list');
         volumesList.innerHTML = '';
 
-        // Trier les tomes par numéro
-        const sortedVolumes = [...series.volumes].sort((a, b) => a.number - b.number);
+        // Trie les tomes par numéro
+        const sortedVolumes = series.volumes ? [...series.volumes].sort((a, b) => a.number - b.number) : [];
 
-        // Afficher les tomes triés
+        // Affiche les tomes triés
         sortedVolumes.forEach(volume => {
             const li = document.createElement('li');
             li.className = `status-${volume.status.replace(' ', '-')} ${volume.collector ? 'volume-collector' : ''} ${volume.last ? 'volume-last' : ''}`;
@@ -36,7 +54,7 @@ document.querySelectorAll('.series-card').forEach(card => {
             volumesList.appendChild(li);
         });
 
-        // Afficher la modale
+        // Affiche la modale
         document.getElementById('series-detail-modal').classList.add('modal-active');
     });
 });
@@ -85,7 +103,8 @@ function loadMoreSeries() {
 
     // Récupère les paramètres de recherche/filtre depuis l'URL
     const urlParams = new URLSearchParams(window.location.search);
-    const searchTerm = urlParams.get('search') || '';
+    let searchTerm = urlParams.get('search') || '';
+    searchTerm = normalizeString(searchTerm);
     const sortBy = urlParams.get('sort_by') || 'name';
     const sortOrder = urlParams.get('sort_order') || 'asc';
 
@@ -128,6 +147,7 @@ function loadMoreSeries() {
                         document.getElementById('modal-series-image').src = series.image;
                         document.getElementById('modal-series-author').textContent = series.author;
                         document.getElementById('modal-series-publisher').textContent = series.publisher;
+                        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors ? series.other_contributors.join(', ') : '';
                         document.getElementById('modal-series-categories').textContent = series.categories ? series.categories.join(', ') : '';
                         document.getElementById('modal-series-genres').textContent = series.genres ? series.genres.join(', ') : '';
 

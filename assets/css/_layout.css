@@ -1,0 +1,54 @@
+/* Grilles et dispositions générales */
+.series-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(600px, 1fr));
+    gap: 25px;
+    margin-top: 30px;
+}
+
+.admin-menu {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.public-menu {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    justify-content: center;
+}
+
+.filters {
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.filters form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+}
+
+.filters input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filters select {
+    min-width: 150px;
+}
+
+.sort-options {
+    display: flex;
+    gap: 10px;
+}
+
+.sort-options select {
+    min-width: 150px;
+}

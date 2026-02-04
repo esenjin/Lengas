@@ -1,0 +1,66 @@
+/* Styles pour les formulaires */
+form {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Champ de recherche pour les séries */
+.series-search {
+    margin-bottom: 15px;
+}
+
+.series-results {
+    background-color: var(--background-light);
+    border: 1px solid #333;
+    border-radius: var(--border-radius);
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+    display: none;
+}
+
+.series-results div {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.series-results div:hover {
+    background-color: #333;
+}
+
+/* Autocomplétion */
+.autocomplete-suggestions {
+    position: relative;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--background-light);
+    border: 1px solid #333;
+    border-radius: var(--border-radius);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    margin-top: 2px;
+    display: block;
+}
+
+.autocomplete-suggestions div {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.autocomplete-suggestions div:hover {
+    background-color: #333;
+}
+
+/* Plage de tomes */
+.volume-range {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.volume-range input {
+    flex: 1;
+}
