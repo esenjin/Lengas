@@ -141,6 +141,14 @@
     font-size: 0.9em;
 }
 
+.wishlist-series-name {
+  color: var(--primary-color);
+}
+
+.wishlist-series-author {
+  font-weight: bold;
+}
+
 .add-from-wishlist-btn {
     background-color: #4CAF50;
     color: var(--background-dark);
