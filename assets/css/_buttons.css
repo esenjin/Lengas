@@ -65,6 +65,15 @@
     background-color: #b35467;
 }
 
+.delete-backup-btn {
+    background-color: var(--error-color);
+    color: white;
+}
+
+.delete-backup-btn:hover {
+    background-color: #b35467;
+}
+
 /* Bouton "Retour en haut" */
 #back-to-top {
     display: none;

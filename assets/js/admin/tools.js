@@ -80,7 +80,7 @@ function displayBackupsList(backups) {
         backupDiv.innerHTML = `
             <p><strong>${backup.name}</strong> (${backup.date})</p>
             <div class="backup-actions">
-                <a href="saves/${backup.name}" download class="button button-opt">Télécharger</a>
+                <a href="saves/${backup.name}" download class="button button-oas">Télécharger</a>
                 <button class="delete-backup-btn" data-backup-file="${backup.name}">Supprimer</button>
             </div>
         `;
@@ -384,7 +384,7 @@ function addIntegrityCheckButton() {
     integritySection.innerHTML = `
         <h3>Vérification d'intégrité</h3>
         <p>Vérifie l'intégrité de votre site et de vos données.</p>
-        <button id="check-integrity-btn" class="button button-opt">
+        <button id="check-integrity-btn" class="button button-oas">
             <span id="check-integrity-text">Vérifier l'intégrité</span>
             <span id="check-integrity-spinner" class="spinner" style="display: none;"></span>
         </button>

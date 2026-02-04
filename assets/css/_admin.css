@@ -28,6 +28,10 @@
     cursor: pointer;
 }
 
+.delete-series-btn:hover {
+    background-color: #aa5463;
+}
+
 /* Bouton "Créer une sauvegarde" */
 #create-backup-btn {
     background-color: #4CAF50;
