@@ -57,6 +57,7 @@ if (isset($_GET['get_paginated_series'])) {
             return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
                 strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
                 strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
+                (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
                 (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
                 (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
         });
@@ -116,6 +117,7 @@ if (!empty($search_term)) {
         return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
                strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
                strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
+               (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
                (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
                (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
     });
@@ -221,6 +223,7 @@ if (!empty($search_term)) {
                         <div class="modal-series-info">
                             <p><strong>Auteur :</strong> <span id="modal-series-author"></span></p>
                             <p><strong>Éditeur :</strong> <span id="modal-series-publisher"></span></p>
+                            <p><strong>Autres contributeurs :</strong> <span id="modal-series-other-contributors"></span></p>
                             <p><strong>Catégories :</strong> <span id="modal-series-categories"></span></p>
                             <p><strong>Genres :</strong> <span id="modal-series-genres"></span></p>
                             <div class="series-stats" id="modal-series-stats"></div>

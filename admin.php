@@ -80,6 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $name = trim($_POST['name'] ?? '');
     $author = trim($_POST['author'] ?? '');
     $publisher = trim($_POST['publisher'] ?? '');
+    $other_contributors = trim($_POST['other_contributors'] ?? '');
     $categories = trim($_POST['categories'] ?? '');
     $genres = trim($_POST['genres'] ?? '');
     $anilist_id = trim($_POST['anilist_id'] ?? '');
@@ -96,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     if ($image === false) {
         $_SESSION['error_message'] = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
     } else {
-        $result = add_series($data, $name, $author, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image);
+        $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image);
         if ($result['success']) {
             save_data($result['data']);
             $_SESSION['success_message'] = "Série ajoutée avec succès.";
@@ -170,6 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $name = trim($_POST['edit_name'] ?? '');
     $author = trim($_POST['edit_author'] ?? '');
     $publisher = trim($_POST['edit_publisher'] ?? '');
+    $other_contributors = trim($_POST['edit_other_contributors'] ?? '');
     $categories = trim($_POST['edit_categories'] ?? '');
     $genres = trim($_POST['edit_genres'] ?? '');
     $anilist_id = trim($_POST['edit_anilist_id'] ?? '');
@@ -192,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         }
     }
 
-    $result = update_series($data, $series_id, $name, $author, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image);
+    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image);
     if ($result['success']) {
         save_data($result['data']);
     }
@@ -411,6 +413,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
             return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
                 strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
                 strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
+                (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
                 (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
                 (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
         });
@@ -444,10 +447,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
     $term = strtolower(trim($_GET['term'] ?? ''));
     $suggestions = [];
 
-    if (in_array($field, ['author', 'publisher', 'categories', 'genres'])) {
+    if (in_array($field, ['author', 'publisher', 'other_contributors', 'categories', 'genres'])) {
         foreach ($data as $series) {
             if (isset($series[$field])) {
-                // Si le champ est un tableau (genres, catégories)
+                // Si le champ est un tableau (autres contributeurs, genres, catégories)
                 if (is_array($series[$field])) {
                     foreach ($series[$field] as $value) {
                         if (str_contains(strtolower($value), $term) && !in_array($value, $suggestions)) {
@@ -473,7 +476,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
     exit;
 }
 
-// Gestion du tri, filtre et recherche
+// Gestion du tri et de la recherche
 $sort_by = $_GET['sort_by'] ?? 'name';
 $sort_order = $_GET['sort_order'] ?? 'asc';
 $search_term = $_GET['search'] ?? '';
@@ -488,6 +491,7 @@ if ($search_term) {
         return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
                strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
                strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
+               (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
                (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
                (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
     });
@@ -602,6 +606,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
                     <input type="text" name="author" id="add-series-author" placeholder="Nom de l'auteur (obligatoire)" autocomplete="off" required>
                     <p>Éditeur :</p>
                     <input type="text" name="publisher" id="add-series-publisher" placeholder="Nom de l'éditeur (obligatoire)" autocomplete="off" required>
+                    <p>Autres contributeurs :</p>
+                    <input type="text" name="other_contributors" id="add-series-other-contributors" placeholder="Autres contributeurs (séparés par des virgules) (facultatif)" autocomplete="off">
                     <p>Catégories :</p>
                     <input type="text" name="categories" id="add-series-categories" placeholder="Catégories (séparées par des virgules) (obligatoire)" autocomplete="off" required>
                     <p>Genres :</p>
@@ -742,6 +748,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
                     <input type="text" name="edit_author" id="edit-series-author" placeholder="Auteur" autocomplete="off" required>
                     <p>Éditeur :</p>
                     <input type="text" name="edit_publisher" id="edit-series-publisher" placeholder="Éditeur" autocomplete="off" required>
+                    <p>Autres contributeurs :</p>
+                    <input type="text" name="edit_other_contributors" id="edit-series-other-contributors" placeholder="Autres contributeurs (séparés par des virgules) (facultatif)" autocomplete="off">
                     <p>Catégories :</p>
                     <input type="text" name="edit_categories" id="edit-series-categories" placeholder="Catégories (séparées par des virgules)" autocomplete="off" required>
                     <p>Genres :</p>
@@ -994,6 +1002,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
                         return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
                             strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
                             strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
+                            (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
                             (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
                             (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
                     });
@@ -1018,6 +1027,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
                             <p><strong>Auteur :</strong> <?= $series['author'] ?></p>
                             <p><strong>Éditeur :</strong> <?= $series['publisher'] ?></p>
                             <p><strong>Catégories :</strong> <?= isset($series['categories']) ? implode(', ', $series['categories']) : '' ?></p>
+                            <p><strong>Autres contributeurs :</strong> <?= isset($series['other_contributors']) ? implode(', ', $series['other_contributors']) : '' ?></p>
                             <p><strong>Genres :</strong> <?= isset($series['genres']) ? implode(', ', $series['genres']) : '' ?></p>
                             <p><strong>ID Anilist :</strong>
                                 <?php if (isset($series['anilist_id']) && !empty($series['anilist_id'])): ?>

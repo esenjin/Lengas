@@ -63,7 +63,7 @@ async function loadMoreSeries() {
     }
 }
 
-// Fonction pour créer une carte de série (évite la duplication de code)
+// Fonction pour créer une carte de série
 function createSeriesCard(series) {
     const seriesCard = document.createElement('div');
     seriesCard.className = 'series-card' + (series.favorite ? ' favorite' : '');
@@ -106,6 +106,7 @@ function createSeriesCard(series) {
             </div>
             <p><strong>Auteur :</strong> ${series.author}</p>
             <p><strong>Éditeur :</strong> ${series.publisher}</p>
+            <p><strong>Autres contributeurs :</strong> ${series.other_contributors ? series.other_contributors.join(', ') : ''}</p>
             <p><strong>Catégories :</strong> ${series.categories ? series.categories.join(', ') : ''}</p>
             <p><strong>Genres :</strong> ${series.genres ? series.genres.join(', ') : ''}</p>
             <p><strong>ID Anilist :</strong>
@@ -142,6 +143,7 @@ function attachSeriesEvents() {
                 document.getElementById('edit-series-name').value = series.name;
                 document.getElementById('edit-series-author').value = series.author;
                 document.getElementById('edit-series-publisher').value = series.publisher;
+                document.getElementById('edit-series-other-contributors').value = series.other_contributors ? series.other_contributors.join(', ') : '';
                 document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
                 document.getElementById('edit-series-genres').value = series.genres ? series.genres.join(', ') : '';
                 document.getElementById('edit-series-anilist-id').value = series.anilist_id || '';

@@ -1,6 +1,6 @@
 <?php
 // Ajouter une série
-function add_series($data, $name, $author, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image) {
+function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image) {
     $series_exists = false;
     foreach ($data as $series) {
         if (strcasecmp($series['name'], $name) === 0) {
@@ -29,6 +29,7 @@ function add_series($data, $name, $author, $publisher, $categories, $genres, $an
         'name' => $name,
         'author' => $author,
         'publisher' => $publisher,
+        'other_contributors' => explode(',', $other_contributors),
         'categories' => explode(',', $categories),
         'genres' => explode(',', $genres),
         'image' => $image,
@@ -42,7 +43,7 @@ function add_series($data, $name, $author, $publisher, $categories, $genres, $an
 }
 
 // Mettre à jour une série
-function update_series($data, $series_id, $name, $author, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null) {
+function update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
         return ['success' => false, 'message' => "Série introuvable."];
@@ -53,6 +54,7 @@ function update_series($data, $series_id, $name, $author, $publisher, $categorie
     $data[$series_index]['name'] = $name;
     $data[$series_index]['author'] = $author;
     $data[$series_index]['publisher'] = $publisher;
+    $data[$series_index]['other_contributors'] = explode(',', $other_contributors);
     $data[$series_index]['categories'] = explode(',', $categories);
     $data[$series_index]['genres'] = explode(',', $genres);
     $data[$series_index]['anilist_id'] = $anilist_id;

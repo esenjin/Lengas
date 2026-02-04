@@ -159,3 +159,5 @@ setupMultiAutocomplete('add-series-categories', 'categories');
 setupMultiAutocomplete('add-series-genres', 'genres');
 setupMultiAutocomplete('edit-series-categories', 'categories');
 setupMultiAutocomplete('edit-series-genres', 'genres');
+setupMultiAutocomplete('add-series-other-contributors', 'other_contributors');
+setupMultiAutocomplete('edit-series-other-contributors', 'other_contributors');

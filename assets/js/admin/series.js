@@ -13,6 +13,7 @@ document.querySelectorAll('.edit-series-btn').forEach(button => {
             document.getElementById('edit-series-name').value = series.name;
             document.getElementById('edit-series-author').value = series.author;
             document.getElementById('edit-series-publisher').value = series.publisher;
+            document.getElementById('edit-series-other-contributors').value = series.other_contributors ? series.other_contributors.join(', ') : '';
             document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
             document.getElementById('edit-series-genres').value = series.genres ? series.genres.join(', ') : '';
             document.getElementById('edit-series-anilist-id').value = series.anilist_id || '';
@@ -29,7 +30,7 @@ document.querySelectorAll('.edit-series-btn').forEach(button => {
     });
 });
 
-// Écouteur pour le formulaire d'ajout de série
+// Validation de la taille du fichier image à l'ajout ou la modification d'une série
 document.querySelector('form[enctype="multipart/form-data"]').addEventListener('submit', function(e) {
     const fileInput = this.querySelector('input[type="file"]');
     if (fileInput.files.length > 0) {

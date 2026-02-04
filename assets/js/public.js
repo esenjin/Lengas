@@ -28,6 +28,7 @@ document.querySelectorAll('.series-card').forEach(card => {
         document.getElementById('modal-series-title').textContent = series.name;
         document.getElementById('modal-series-author').textContent = series.author;
         document.getElementById('modal-series-publisher').textContent = series.publisher;
+        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors ? series.other_contributors.join(', ') : '';
         document.getElementById('modal-series-categories').textContent = series.categories ? series.categories.join(', ') : '';
         document.getElementById('modal-series-genres').textContent = series.genres ? series.genres.join(', ') : '';
 
@@ -146,6 +147,7 @@ function loadMoreSeries() {
                         document.getElementById('modal-series-image').src = series.image;
                         document.getElementById('modal-series-author').textContent = series.author;
                         document.getElementById('modal-series-publisher').textContent = series.publisher;
+                        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors ? series.other_contributors.join(', ') : '';
                         document.getElementById('modal-series-categories').textContent = series.categories ? series.categories.join(', ') : '';
                         document.getElementById('modal-series-genres').textContent = series.genres ? series.genres.join(', ') : '';
 
