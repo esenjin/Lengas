@@ -153,7 +153,13 @@ if (!empty($search_term)) {
         <!-- Menu d'actions -->
         <div class="public-menu">
             <?php if (!empty($options['custom_button_name']) && !empty($options['custom_button_url'])): ?>
-                <a href="<?= htmlspecialchars($options['custom_button_url']) ?>" class="button" target="_blank"><?= htmlspecialchars($options['custom_button_name']) ?> ↗</a>
+                <a href="<?= htmlspecialchars($options['custom_button_url']) ?>" class="button button-otl" target="_blank"><?= htmlspecialchars($options['custom_button_name']) ?> ↗</a>
+            <?php endif; ?>
+            <?php if (!empty($options['custom_button_name2']) && !empty($options['custom_button_url2'])): ?>
+                <a href="<?= htmlspecialchars($options['custom_button_url2']) ?>" class="button button-otl" target="_blank"><?= htmlspecialchars($options['custom_button_name2']) ?> ↗</a>
+            <?php endif; ?>
+            <?php if (!empty($options['custom_button_name3']) && !empty($options['custom_button_url3'])): ?>
+                <a href="<?= htmlspecialchars($options['custom_button_url3']) ?>" class="button button-otl" target="_blank"><?= htmlspecialchars($options['custom_button_name3']) ?> ↗</a>
             <?php endif; ?>
             <a href="stats.php" class="button" target="_blank">Statistiques Lengas ↗</a>
             <button class="button" id="open-legend-modal">Légende</button>

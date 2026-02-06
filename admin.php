@@ -228,6 +228,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $options['hide_mature'] = !empty($_POST['hide_mature']);
     $options['custom_button_name'] = trim($_POST['custom_button_name'] ?? '');
     $options['custom_button_url'] = trim($_POST['custom_button_url'] ?? '');
+    $options['custom_button_name2'] = trim($_POST['custom_button_name2'] ?? '');
+    $options['custom_button_url2'] = trim($_POST['custom_button_url2'] ?? '');
+    $options['custom_button_name3'] = trim($_POST['custom_button_name3'] ?? '');
+    $options['custom_button_url3'] = trim($_POST['custom_button_url3'] ?? '');
 
     $admin_password = trim($_POST['admin_password'] ?? '');
 
@@ -919,6 +923,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
 
                     <label for="custom-button-url">URL du bouton personnalisé</label>
                     <input type="text" name="custom_button_url" id="custom-button-url" placeholder="URL du bouton" value="<?= htmlspecialchars($options['custom_button_url'] ?? '') ?>">
+                    <p class="hint">Laisser vide pour masquer le bouton.</p>
+
+                    <label for="custom-button-name2">Nom du bouton personnalisé (2)</label>
+                    <input type="text" name="custom_button_name2" id="custom-button-name2" placeholder="Nom du bouton" value="<?= htmlspecialchars($options['custom_button_name2'] ?? '') ?>">
+
+                    <label for="custom-button-url2">URL du bouton personnalisé (2)</label>
+                    <input type="text" name="custom_button_url2" id="custom-button-url2" placeholder="URL du bouton" value="<?= htmlspecialchars($options['custom_button_url2'] ?? '') ?>">
+                    <p class="hint">Laisser vide pour masquer le bouton.</p>
+
+                    <label for="custom-button-name3">Nom du bouton personnalisé (3)</label>
+                    <input type="text" name="custom_button_name3" id="custom-button-name3" placeholder="Nom du bouton" value="<?= htmlspecialchars($options['custom_button_name3'] ?? '') ?>">
+
+                    <label for="custom-button-url3">URL du bouton personnalisé (3)</label>
+                    <input type="text" name="custom_button_url3" id="custom-button-url3" placeholder="URL du bouton" value="<?= htmlspecialchars($options['custom_button_url3'] ?? '') ?>">
                     <p class="hint">Laisser vide pour masquer le bouton.</p>
 
                     <label for="admin-password">Mot de passe admin</label>
