@@ -139,3 +139,4 @@ lengas/
 ## Crédits
 - Développé avec l'aide de [Mistral](https://chat.mistral.ai/)
 - Utilise l'API d'[Anilist](https://docs.anilist.co/)
+- Utilise [JSDelivr](https://www.jsdelivr.com/)
