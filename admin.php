@@ -883,6 +883,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <input type="text" id="wishlist-author" placeholder="Auteur" autocomplete="off" required>
                         <input type="text" id="wishlist-publisher" placeholder="Éditeur" autocomplete="off" required>
                         <button id="add-to-wishlist-btn" class="button">Ajouter à la liste</button>
+                        <input type="text" id="wishlist-search" placeholder="Rechercher une série, un auteur ou un éditeur..." autocomplete="off">
+                        <div class="wishlist-item">
+                            <span class="wishlist-series-name">Nom de la série</span>
+                            <span class="wishlist-series-author">Auteur</span>
+                            <span class="wishlist-series-publisher">Éditeur</span>
+                        </div>
                     </div>
                     <div class="wishlist-list" id="wishlist-list">
                         <?php foreach (load_wishlist() as $index => $item): ?>

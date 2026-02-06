@@ -228,3 +228,21 @@ function updateWishlist(wishlist) {
         });
     });
 }
+
+// Écouteur pour le champ de recherche
+document.getElementById('wishlist-search').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const wishlistItems = document.querySelectorAll('.wishlist-item');
+
+    wishlistItems.forEach(item => {
+        const name = item.querySelector('.wishlist-series-name').textContent.toLowerCase();
+        const author = item.querySelector('.wishlist-series-author').textContent.toLowerCase();
+        const publisher = item.querySelector('.wishlist-series-publisher').textContent.toLowerCase();
+
+        if (name.includes(searchTerm) || author.includes(searchTerm) || publisher.includes(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
