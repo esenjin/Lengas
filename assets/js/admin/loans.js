@@ -14,6 +14,37 @@ document.getElementById('close-loan-modal').addEventListener('click', () => {
 setupSeriesSearch('loan-series-search', 'loan-series-results');
 setupSeriesSearch('multiple-loan-series-search', 'multiple-loan-series-results');
 
+// Normalisation d'une chaîne pour la recherche (sans accents, en minuscules)
+function normalizeString(str) {
+    return str
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+}
+
+// Écouteur pour le champ de recherche des prêts
+document.getElementById('loan-search').addEventListener('input', function() {
+    const searchTerm = normalizeString(this.value);
+    const loanItems = document.querySelectorAll('.loan-series-item');
+
+    loanItems.forEach(item => {
+        const seriesName = item.querySelector('h4') ? normalizeString(item.querySelector('h4').textContent) : '';
+        const borrowerNames = Array.from(item.querySelectorAll('.loan-volumes-list li')).map(li =>
+            normalizeString(li.textContent)
+        );
+
+        // Vérifie si le terme de recherche correspond au nom de la série ou à un emprunteur
+        const matchesSeries = seriesName.includes(searchTerm);
+        const matchesBorrower = borrowerNames.some(name => name.includes(searchTerm));
+
+        if (matchesSeries || matchesBorrower) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+
 // Autocomplétion pour les prêts
 setupAutocomplete('loan-series-search', 'series');
 setupAutocomplete('multiple-loan-series-search', 'series');

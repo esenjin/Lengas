@@ -865,6 +865,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                 <!-- Liste des prêts -->
                 <div class="loan-section">
                     <h3>Liste des livres prêtés</h3>
+                    <input type="text" id="loan-search" placeholder="Rechercher une série ou un emprunteur..." autocomplete="off">
                     <div id="loan-list">
                         <!-- Les prêts seront affichés ici -->
                     </div>
