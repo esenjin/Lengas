@@ -35,6 +35,21 @@ function add_to_wishlist($wishlist, $name, $author, $publisher) {
     }
 }
 
+// Éditer une série dans la liste d'envies
+function edit_wishlist_item($wishlist, $index, $name, $author, $publisher) {
+    if (!isset($wishlist[$index])) {
+        return ['success' => false, 'message' => 'Index invalide.'];
+    }
+
+    $wishlist[$index] = [
+        'name' => $name,
+        'author' => $author,
+        'publisher' => $publisher
+    ];
+
+    return ['success' => true, 'wishlist' => $wishlist];
+}
+
 // Supprimer une série de la liste d'envies
 function remove_from_wishlist($wishlist, $index) {
     if (isset($wishlist[$index])) {

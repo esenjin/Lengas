@@ -5,6 +5,7 @@ const modals = {
     'edit-volume': { modal: document.getElementById('edit-volume-modal'), closeBtn: document.getElementById('close-edit-volume-modal') },
     'edit-series': { modal: document.getElementById('edit-series-modal'), closeBtn: document.getElementById('close-edit-series-modal') },
     'wishlist': { modal: document.getElementById('wishlist-modal'), closeBtn: document.getElementById('close-wishlist-modal') },
+    'edit-wishlist': { modal: document.getElementById('edit-wishlist-modal'), closeBtn: document.getElementById('close-edit-wishlist-modal') },
     'tools': { modal: document.getElementById('tools-modal'), closeBtn: document.getElementById('close-tools-modal') },
     'options': { modal: document.getElementById('options-modal'), closeBtn: document.getElementById('close-options-modal') },
     'current-series': { modal: document.getElementById('current-series-modal'), closeBtn: document.getElementById('close-current-series-modal')},
@@ -24,6 +25,11 @@ document.getElementById('open-incomplete-series-modal').addEventListener('click'
 document.getElementById('open-current-series-modal').addEventListener('click', () => {
     fetch_current_series();
     modals['current-series'].modal.classList.add('modal-active');
+});
+
+// Fermeture de la modale de la liste d'envies
+document.getElementById('close-edit-wishlist-modal').addEventListener('click', () => {
+    document.getElementById('edit-wishlist-modal').classList.remove('modal-active');
 });
 
 // Fonction pour fermer une modale et recharger la page si c'est la modale d'outils ou d'options

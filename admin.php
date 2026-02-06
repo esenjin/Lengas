@@ -526,6 +526,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
     echo json_encode(['success' => true, 'series' => $current_series]);
     exit;
 }
+
+// Éditer une série de la liste d'envies
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
+    $index = (int)($_POST['index'] ?? 0);
+    $name = trim($_POST['name'] ?? '');
+    $author = trim($_POST['author'] ?? '');
+    $publisher = trim($_POST['publisher'] ?? '');
+
+    $wishlist = load_wishlist();
+    $result = edit_wishlist_item($wishlist, $index, $name, $author, $publisher);
+    if ($result['success']) {
+        save_wishlist($result['wishlist']);
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode($result);
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
@@ -874,12 +892,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) 
                                 <span class="wishlist-series-publisher"><?= $item['publisher'] ?></span>
                                 <div class="wishlist-item-actions">
                                     <button class="add-from-wishlist-btn" data-index="<?= $index ?>">+</button>
+                                    <button class="edit-wishlist-btn" data-index="<?= $index ?>">...</button>
                                     <button class="remove-from-wishlist-btn" data-index="<?= $index ?>">x</button>
                                 </div>
                             </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Modale pour éditer une série de la liste d'envies -->
+        <div class="modal" id="edit-wishlist-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-edit-wishlist-modal">&times;</span>
+                <h2>Éditer une série de la liste d'envies</h2>
+                <form id="edit-wishlist-form">
+                    <input type="hidden" id="edit-wishlist-index">
+                    <p>Nom :</p>
+                    <input type="text" id="edit-wishlist-name" placeholder="Nom de la série" autocomplete="off" required>
+                    <p>Auteur :</p>
+                    <input type="text" id="edit-wishlist-author" placeholder="Nom de l'auteur" autocomplete="off" required>
+                    <p>Éditeur :</p>
+                    <input type="text" id="edit-wishlist-publisher" placeholder="Nom de l'éditeur" autocomplete="off" required>
+                    <button type="submit" class="button">Mettre à jour</button>
+                </form>
             </div>
         </div>
 

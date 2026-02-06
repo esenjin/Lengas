@@ -92,6 +92,48 @@ document.querySelectorAll('.add-from-wishlist-btn').forEach(button => {
     });
 });
 
+// Éditer une série de la liste d'envies
+document.querySelectorAll('.edit-wishlist-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        const index = this.dataset.index;
+        const item = wishlistData[index];
+        document.getElementById('edit-wishlist-index').value = index;
+        document.getElementById('edit-wishlist-name').value = item.name;
+        document.getElementById('edit-wishlist-author').value = item.author;
+        document.getElementById('edit-wishlist-publisher').value = item.publisher;
+        document.getElementById('edit-wishlist-modal').classList.add('modal-active');
+    });
+});
+
+document.getElementById('edit-wishlist-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const index = document.getElementById('edit-wishlist-index').value;
+    const name = document.getElementById('edit-wishlist-name').value;
+    const author = document.getElementById('edit-wishlist-author').value;
+    const publisher = document.getElementById('edit-wishlist-publisher').value;
+
+    fetch('admin.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `edit_wishlist=true&index=${index}&name=${encodeURIComponent(name)}&author=${encodeURIComponent(author)}&publisher=${encodeURIComponent(publisher)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateWishlist(data.wishlist);
+            document.getElementById('edit-wishlist-modal').classList.remove('modal-active');
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Une erreur est survenue lors de la mise à jour.');
+    });
+});
+
 // Mettre à jour la liste d'envies dans le DOM
 function updateWishlist(wishlist) {
     const wishlistList = document.getElementById('wishlist-list');
@@ -107,13 +149,27 @@ function updateWishlist(wishlist) {
             <span class="wishlist-series-publisher">${item.publisher}</span>
             <div class="wishlist-item-actions">
                 <button class="add-from-wishlist-btn" data-index="${index}">+</button>
+                <button class="edit-wishlist-btn" data-index="${index}">...</button>
                 <button class="remove-from-wishlist-btn" data-index="${index}">x</button>
             </div>
         `;
         wishlistList.appendChild(wishlistItem);
     });
 
-    // Réattacher les événements aux nouveaux boutons
+    // Réattacher les écouteurs pour les boutons "Éditer"
+    document.querySelectorAll('.edit-wishlist-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const index = this.dataset.index;
+            const item = wishlist[index];
+            document.getElementById('edit-wishlist-index').value = index;
+            document.getElementById('edit-wishlist-name').value = item.name;
+            document.getElementById('edit-wishlist-author').value = item.author;
+            document.getElementById('edit-wishlist-publisher').value = item.publisher;
+            document.getElementById('edit-wishlist-modal').classList.add('modal-active');
+        });
+    });
+
+    // Réattacher les événements aux boutons "Ajouter" et "Supprimer"
     document.querySelectorAll('.add-from-wishlist-btn').forEach(button => {
         button.addEventListener('click', function() {
             const index = this.dataset.index;
