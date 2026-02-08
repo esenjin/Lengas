@@ -16,6 +16,10 @@
         grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     }
 
+    .series-image {
+        width: auto;
+    }
+
     .admin-menu, .public-menu {
         flex-wrap: wrap;
         justify-content: center;
