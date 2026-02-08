@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '2.0.3');
+define('SITE_VERSION', '2.1.0');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Chemin vers le fichier de mot de passe
@@ -29,6 +29,7 @@ define('DATA_FILE', 'bdd/data.json');
 define('OPTIONS_FILE', 'bdd/options.json');
 define('LOAN_FILE', 'bdd/loan.json');
 define('WISHLIST_FILE', 'bdd/list.json');
+define('READ_FILE', 'bdd/read.json');
 
 // Initialisation du fichier JSON si inexistant
 if (!file_exists(DATA_FILE)) {

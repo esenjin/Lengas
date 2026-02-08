@@ -333,3 +333,88 @@
     color: white;
     border: 1px solid #444;
 }
+
+/* Modale "lues ailleurs" */
+.read-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.read-header {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.read-header input {
+    margin-bottom: 0;
+}
+
+#read-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.read-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #2d2d2d;
+    border-radius: var(--border-radius);
+}
+
+.read-item-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: 10px;
+}
+
+.read-item-actions button {
+    padding: 5px 10px;
+    font-size: 0.9em;
+}
+
+.read-series-name {
+  color: var(--primary-color);
+}
+
+.read-series-author {
+  font-weight: bold;
+}
+
+.read-series-volumes {
+    color: #ae644d;
+}
+
+.read-series-status {
+  color: #4291c1;
+}
+
+.add-from-read-btn {
+    background-color: #4CAF50;
+    color: var(--background-dark);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.add-from-read-btn:hover {
+    background-color: #3e9141;
+}
+
+.remove-from-read-btn {
+    background-color: var(--error-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.remove-from-read-btn:hover {
+    background-color: #b35467;
+}
