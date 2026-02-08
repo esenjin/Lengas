@@ -1088,8 +1088,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                             </div>
                             <p><strong>Auteur :</strong> <?= $series['author'] ?></p>
                             <p><strong>Éditeur :</strong> <?= $series['publisher'] ?></p>
-                            <p><strong>Catégories :</strong> <?= isset($series['categories']) ? implode(', ', $series['categories']) : '' ?></p>
                             <p><strong>Autres contributeurs :</strong> <?= isset($series['other_contributors']) ? implode(', ', $series['other_contributors']) : '' ?></p>
+                            <p><strong>Catégories :</strong> <?= isset($series['categories']) ? implode(', ', $series['categories']) : '' ?></p>
                             <p><strong>Genres :</strong> <?= isset($series['genres']) ? implode(', ', $series['genres']) : '' ?></p>
                             <p><strong>ID Anilist :</strong>
                                 <?php if (isset($series['anilist_id']) && !empty($series['anilist_id'])): ?>
