@@ -16,13 +16,15 @@
         grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     }
 
-    .admin-menu {
+    .admin-menu, .public-menu {
         flex-wrap: wrap;
         justify-content: center;
     }
 
     .admin-menu button,
-    .admin-menu a.button {
+    .admin-menu a.button,
+    .public-menu button,
+    .public-menu a.button {
         flex: 1 1 100%;
         max-width: 200px;
         padding: 12px;
@@ -61,5 +63,44 @@
 
     .volume-range input {
         width: 100%;
+    }
+
+    #tools-modal .modal-content {
+        width: 95%;
+    }
+
+    .backup-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .backup-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .backup-actions button {
+        flex: 1;
+        text-align: center;
+    }
+
+    .wishlist-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .wishlist-item-actions {
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .modal-content {
+        width: 95%;
+        max-width: none;
+    }
+
+    #modal-series-content {
+        max-height: 60vh;
     }
 }
