@@ -48,9 +48,17 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 
 ## Aperçu visuel
 Publique
+
+
 ![Lengas p1](https://concepts.esenjin.xyz/cyla/fichiers/6989c7f4a197c_1770637300.gif)
+
+
 Administration
+
+
 ![Lengas a1](https://concepts.esenjin.xyz/cyla/fichiers/6989c7f52bb63_1770637301.gif)
+
+
 *Captures effectuées en v.2.1.0*
 
 ## Prérequis
