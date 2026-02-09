@@ -123,3 +123,48 @@ function add_from_read($data, $read, $index) {
         return ['success' => false, 'message' => 'Une série avec ce nom existe déjà dans votre collection.'];
     }
 }
+
+// Déplacer une série de la bibliothèque vers "lues ailleurs"
+function move_series_to_read($data, $read, $series_id) {
+    // Trouver la série dans la bibliothèque
+    $series_index = null;
+    foreach ($data as $index => $series) {
+        if (isset($series['id']) && $series['id'] === $series_id) {
+            $series_index = $index;
+            break;
+        }
+    }
+
+    if ($series_index === null) {
+        return ['success' => false, 'message' => 'Série non trouvée.'];
+    }
+
+    $series = $data[$series_index];
+
+    // Calculer le nombre de tomes lus (tous les tomes de la série)
+    $volumes_read = count($series['volumes']);
+
+    // Déterminer le statut (si tous les tomes sont "terminé", alors "terminé", sinon "en cours")
+    $status = 'terminé';
+    foreach ($series['volumes'] as $volume) {
+        if ($volume['status'] !== 'terminé') {
+            $status = 'en cours';
+            break;
+        }
+    }
+
+    // Ajouter la série à "Lues ailleurs"
+    $read[] = [
+        'name' => $series['name'],
+        'author' => $series['author'],
+        'publisher' => $series['publisher'],
+        'volumes_read' => $volumes_read,
+        'status' => $status,
+        'added_at' => date('Y-m-d')
+    ];
+
+    // Supprimer la série de la bibliothèque
+    array_splice($data, $series_index, 1);
+
+    return ['success' => true, 'data' => $data, 'read' => $read];
+}

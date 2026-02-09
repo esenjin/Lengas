@@ -605,6 +605,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_from_read'])) {
     exit;
 }
 
+// Déplacer une série vers "Lues ailleurs"
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['move_to_read'])) {
+    $series_id = $_POST['series_id'] ?? '';
+    $read = load_read();
+    $result = move_series_to_read($data, $read, $series_id);
+    if ($result['success']) {
+        save_data($result['data']);
+        save_read($result['read']);
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode($result);
+    exit;
+}
+
 // Éditer une série de "lues ailleurs"
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
     $index = (int)($_POST['index'] ?? 0);
@@ -1221,6 +1236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                                 <div class="series-actions">
                                     <button class="edit-series-btn" data-series-id="<?= $series['id'] ?>">Modifier</button>
                                     <button class="delete-series-btn" data-series-id="<?= $series['id'] ?>">Supprimer</button>
+                                    <button class="move-to-read-btn" data-series-id="<?= $series['id'] ?>">Lues ailleurs</button>
                                 </div>
                             </div>
                             <p><strong>Auteur :</strong> <?= $series['author'] ?></p>
