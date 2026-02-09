@@ -15,7 +15,7 @@ body {
 
 /* En-têtes */
 h1, h2, h3, h4 {
-    color: #ffffff;
+    color: var(--text-white);
     margin-bottom: 15px;
 }
 
@@ -58,7 +58,7 @@ button, input[type="submit"] {
 }
 
 button:hover, input[type="submit"]:hover {
-    background-color: #9a67ea;
+    background-color: var(--primary-hover);
 }
 
 /* Inputs et formulaires de base */
@@ -69,7 +69,7 @@ input[type="number"],
 select {
     background-color: var(--background-light);
     color: var(--text-color);
-    border: 1px solid #333;
+    border: 1px solid var(--background-darker);
     padding: 10px;
     border-radius: var(--border-radius);
     width: 100%;

@@ -29,15 +29,15 @@
 }
 
 .delete-series-btn:hover {
-    background-color: #aa5463;
+    background-color: var(--error-dark);
 }
 
 /* Bouton "Créer une sauvegarde" */
 #create-backup-btn {
-    background-color: #4CAF50;
+    background-color: var(--success-light);
     color: var(--background-dark);
 }
 
 #create-backup-btn:hover {
-    background-color: #45a049;
+    background-color: var(--success-hover);
 }

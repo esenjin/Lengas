@@ -11,48 +11,48 @@
 }
 
 .button:hover {
-    background-color: #9a67ea;
+    background-color: var(--primary-hover);
     text-decoration: none;
 }
 
 .button-ats {
-    background-color: #66aa60;
+    background-color: var(--button-ats);
 }
 
 .button-ats:hover {
-    background-color: #599253;
+    background-color: var(--button-ats-hover);
 }
 
 .button-ext {
-    background-color: #626d74;
+    background-color: var(--button-ext);
 }
 
 .button-ext:hover {
-    background-color: #444b50;
+    background-color: var(--button-ext-hover);
 }
 
 .button-otl {
-    background-color: #4291c1;
+    background-color: var(--button-otl);
 }
 
 .button-otl:hover {
-    background-color: #3b81ac;
+    background-color: var(--button-otl-hover);
 }
 
 .button-aos {
-    background-color: #7558c4;
+    background-color: var(--button-aos);
 }
 
 .button-aos:hover {
-    background-color: #6048a0;
+    background-color: var(--button-aos-hover);
 }
 
 .button-opt {
-    background-color: #ae644d;
+    background-color: var(--button-opt);
 }
 
 .button-opt:hover {
-    background-color: #814a39;
+    background-color: var(--button-opt-hover);
 }
 
 /* Boutons de suppression */
@@ -62,7 +62,7 @@
 }
 
 .delete-btn:hover {
-    background-color: #b35467;
+    background-color: var(--error-hover);
 }
 
 .delete-backup-btn {
@@ -71,7 +71,7 @@
 }
 
 .delete-backup-btn:hover {
-    background-color: #b35467;
+    background-color: var(--error-hover);
 }
 
 /* Bouton "Retour en haut" */

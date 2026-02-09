@@ -1,13 +1,61 @@
 /* Variables globales (couleurs, tailles, polices, etc.) */
 :root {
+    /* Couleurs principales */
     --primary-color: #bb86fc;
+    --primary-hover: #9a67ea;
     --error-color: #cf6679;
+    --error-hover: #b35467;
+    --error-dark: #aa5463;
     --success-color: #009e3d;
+    --success-light: #4CAF50;
+    --success-hover: #45a049;
+    --success-dark: #3e9141;
+    --warning-color: #ff9800;
     --background-dark: #121212;
     --background-light: #1e1e1e;
+    --background-medium: #2d2d2d;
+    --background-darker: #333;
+    --background-lighter: #3a3a3a;
     --text-color: #e0e0e0;
-    --warning-color: #ff9800;
+    --text-white: #ffffff;
+    --text-gray: #aeaeae;
+
+    /* Couleurs spécifiques aux boutons */
+    --button-ats: #66aa60;
+    --button-ats-hover: #599253;
+    --button-ext: #626d74;
+    --button-ext-hover: #444b50;
+    --button-otl: #4291c1;
+    --button-otl-hover: #3b81ac;
+    --button-aos: #7558c4;
+    --button-aos-hover: #6048a0;
+    --button-opt: #ae644d;
+    --button-opt-hover: #814a39;
+
+    /* Couleurs pour les statuts des tomes */
+    --status-a-lire-bg: rgba(207, 102, 121, 0.15);
+    --status-a-lire-border: var(--error-color);
+    --status-en-cours-bg: rgba(187, 134, 252, 0.15);
+    --status-en-cours-border: var(--primary-color);
+    --status-termine-bg: rgba(61, 126, 210, 0.15);
+    --status-termine-border: #4270dd;
+    --status-mature: #dd9cd2;
+
+    /* Couleurs pour les badges et indicateurs */
+    --badge-collector: gold;
+    --badge-last-volume: rgb(77, 221, 100);
+
+    /* Couleurs pour les éléments interactifs */
+    --input-border: #333;
+    --input-focus: var(--primary-color);
+    --tooltip-bg: #2a2a2a;
+    --tooltip-text: var(--primary-color);
+    --tooltip-warning: #ff9800;
+
+    /* Autres variables */
     --border-radius: 5px;
     --box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     --transition: all 0.3s ease;
+    --favorite-shadow: 0 4px 8px rgba(236, 190, 103, 0.55);
+    --favorite-border: rgba(236, 190, 103, 0.8);
 }

@@ -46,7 +46,7 @@
 }
 
 .mature-badge {
-    color: #dd9cd2;
+    color: var(--status-mature);
 }
 
 /* Liste des tomes */
@@ -60,7 +60,7 @@
 }
 
 .volumes-list li {
-    background-color: #2d2d2d;
+    background-color: var(--background-medium);
     padding: 8px 12px;
     border-radius: var(--border-radius);
     text-align: center;
@@ -74,37 +74,37 @@
 }
 
 .volumes-list li:hover {
-    background-color: #3a3a3a;
+    background-color: var(--background-lighter);
 }
 
 /* Statuts des tomes */
 .volumes-list li.status-à-lire {
-    background-color: rgba(207, 102, 121, 0.15);
+    background-color: var(--status-a-lire-bg);
     border-left-color: var(--error-color);
 }
 
 .volumes-list li.status-en-cours {
-    background-color: rgba(187, 134, 252, 0.15);
+    background-color: var(--status-en-cours-bg);
     border-left-color: var(--primary-color);
 }
 
 .volumes-list li.status-terminé {
-    background-color: rgba(61, 126, 210, 0.15);
-    border-left-color: #4270dd;
+    background-color: var(--status-termine-bg);
+    border-left-color: var(--status-termine-border);
 }
 
 /* Indicateur "collector" et "dernier tome" */
 .volumes-list li.volume-collector::before {
     content: "⭐";
     margin-right: 5px;
-    color: gold;
+    color: var(--badge-collector);
     font-size: 0.9em;
 }
 
 .volumes-list li.volume-last::after {
     content: "✅";
     margin-left: 5px;
-    color: rgb(77, 221, 100);
+    color: var(--badge-last-volume);
     font-size: 0.9em;
 }
 
@@ -117,17 +117,17 @@
 }
 
 .legend-sample.status-terminé {
-    background-color: rgba(61, 126, 210, 0.15);
-    border-left-color: #4270dd;
+    background-color: var(--status-termine-bg);
+    border-left-color: var(--status-termine-border);
 }
 
 .legend-sample.status-en-cours {
-    background-color: rgba(187, 134, 252, 0.15);
+    background-color: var(--status-en-cours-bg);
     border-left-color: var(--primary-color);
 }
 
 .legend-sample.status-à-lire {
-    background-color: rgba(207, 102, 121, 0.15);
+    background-color: var(--status-a-lire-bg);
     border-left-color: var(--error-color);
 }
 
@@ -136,7 +136,7 @@
     height: 40px;
     border-radius: 8px;
     border: 2px solid rgba(236, 190, 103, 0.8);
-    background-color: #2d2d2d;
+    background-color: var(--background-medium);
     margin-top: 20px;
 }
 

@@ -117,7 +117,7 @@
 
 /* Version outdated */
 .version-outdated {
-    color: #ff9800 !important;
+    color: var(--warning-color) !important;
     position: relative;
     cursor: help;
 }
@@ -129,7 +129,7 @@
     left: 75%;
     transform: translateX(-50%);
     background: #2a2a2a;
-    color: #ff9800;
+    color: var(--warning-color);
     padding: 8px 12px;
     border-radius: 8px;
     font-size: 0.9em;

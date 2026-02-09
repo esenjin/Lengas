@@ -11,7 +11,7 @@ form {
 
 .series-results {
     background-color: var(--background-light);
-    border: 1px solid #333;
+    border: 1px solid var(--background-darker);
     border-radius: var(--border-radius);
     max-height: 200px;
     overflow-y: auto;
@@ -25,7 +25,7 @@ form {
 }
 
 .series-results div:hover {
-    background-color: #333;
+    background-color: var(--background-darker);
 }
 
 /* Autocomplétion */
@@ -35,7 +35,7 @@ form {
     left: 0;
     right: 0;
     background-color: var(--background-light);
-    border: 1px solid #333;
+    border: 1px solid var(--background-darker);
     border-radius: var(--border-radius);
     max-height: 200px;
     overflow-y: auto;
@@ -50,7 +50,7 @@ form {
 }
 
 .autocomplete-suggestions div:hover {
-    background-color: #333;
+    background-color: var(--background-darker);
 }
 
 /* Plage de tomes */
