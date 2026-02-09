@@ -1235,8 +1235,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                                 <h2><?= $series['name'] ?></h2>
                                 <div class="series-actions">
                                     <button class="edit-series-btn" data-series-id="<?= $series['id'] ?>">Modifier</button>
+                                    <button class="move-to-read-btn" data-series-id="<?= $series['id'] ?>">Déplacer</button>
                                     <button class="delete-series-btn" data-series-id="<?= $series['id'] ?>">Supprimer</button>
-                                    <button class="move-to-read-btn" data-series-id="<?= $series['id'] ?>">Lues ailleurs</button>
                                 </div>
                             </div>
                             <p><strong>Auteur :</strong> <?= $series['author'] ?></p>
