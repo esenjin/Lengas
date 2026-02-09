@@ -1,7 +1,9 @@
 <?php
 require 'config.php';
+require 'fonctions/read.php';
 $data = load_data();
 $options = load_options();
+$read = load_read();
 
 $total_series = count($data);
 $total_volumes = array_sum(array_map(function($series) {
@@ -141,6 +143,16 @@ $total_reading_time = convertMinutesToReadableTime($total_reading_time_minutes);
 // Données pour le graphique
 $chart_labels = ['À lire', 'En cours', 'Terminé'];
 $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_counts['terminé']];
+
+// Calculer les statistiques pour les séries "lues ailleurs"
+$total_read_series = count($read);
+$total_read_volumes = array_sum(array_map(function($item) {
+    return $item['volumes_read'];
+}, $read));
+
+// Calculer le temps de lecture pour les séries "lues ailleurs"
+$total_read_reading_time_minutes = $total_read_volumes * 40;
+$total_read_reading_time = convertMinutesToReadableTime($total_read_reading_time_minutes);
 ?>
 
 <!DOCTYPE html>
@@ -246,6 +258,14 @@ $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_
                     <span>Nombre total d'éditeurs :</span>
                     <span class="stat-value"><?= $total_unique_publishers ?></span>
                 </div>
+                <div class="stat-item">
+                    <span>Séries lues non possédées :</span>
+                    <span class="stat-value" style="color: #03dac6;"><?= $total_read_series ?></span>
+                </div>
+                <div class="stat-item">
+                    <span>Tomes lus non possédés :</span>
+                    <span class="stat-value" style="color: #03dac6;"><?= $total_read_volumes ?></span>
+                </div>
             </div>
 
             <h2>Répartition par statut</h2>
@@ -269,6 +289,10 @@ $chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_
                     <div class="reading-time-item">
                         <span>Temps de lecture terminé :</span>
                         <span class="stat-value"><?= $reading_time_by_status_readable['terminé'] ?></span>
+                    </div>
+                    <div class="reading-time-item">
+                        <span>Temps de lecture des non possédées :</span>
+                        <span class="stat-value" style="color: #03dac6;"><?= $total_read_reading_time ?></span>
                     </div>
                     <p><i>* Pour un temps moyen de 40 min par tome.</i></p>
                 </div>
