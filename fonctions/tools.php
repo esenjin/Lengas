@@ -33,9 +33,18 @@ function check_site_integrity($data) {
 
     // 1. Vérifier l'existence de tous les fichiers/dossiers
     $required_files = [
+        // Fichiers racines
         'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php',
+        // Fichiers d'assets (général)
         'assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js',
-        'assets/js/admin/', 'includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/'
+        'assets/js/admin/',
+        // Fichiers de fonctions
+        'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php', 
+        'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php',
+        // Fichiers includes
+        'includes/anilist.php', 'includes/auth.php', 'includes/helpers.php', 
+        // Dossiers principaux
+        'includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/'
     ];
 
     // Vérification des fichiers/dossiers principaux
@@ -58,7 +67,8 @@ function check_site_integrity($data) {
     $required_js_files = [
         'assets/js/admin/series.js', 'assets/js/admin/volumes.js', 'assets/js/admin/wishlist.js',
         'assets/js/admin/loans.js', 'assets/js/admin/tools.js', 'assets/js/admin/autocomplete.js',
-        'assets/js/admin/modals.js', 'assets/js/admin/pagination.js', 'assets/js/admin/main.js'
+        'assets/js/admin/modals.js', 'assets/js/admin/pagination.js', 'assets/js/admin/main.js',
+        'assets/js/admin/read.js'
     ];
     foreach ($required_js_files as $file) {
         $results['file_existence'][$file] = file_exists($file);
@@ -66,7 +76,8 @@ function check_site_integrity($data) {
 
     // Vérification des fichiers JSON dans bdd/
     $required_bdd_files = [
-        'bdd/data.json', 'bdd/list.json', 'bdd/loan.json', 'bdd/anilist.json', 'bdd/options.json', 'bdd/mdp.json'
+        'bdd/data.json', 'bdd/list.json', 'bdd/loan.json', 'bdd/anilist.json', 'bdd/options.json', 
+        'bdd/mdp.json', 'bdd/read.json'
     ];
     foreach ($required_bdd_files as $file) {
         $results['file_existence'][$file] = file_exists($file);
@@ -84,6 +95,7 @@ function check_site_integrity($data) {
         'bdd/data.json' => '0660',
         'bdd/list.json' => '0660',
         'bdd/loan.json' => '0660',
+        'bdd/read.json' => '0660',
         'bdd/anilist.json' => '0660',
         'bdd/options.json' => '0660',
         'bdd/mdp.json' => '0660',
