@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '2.1.0');
+define('SITE_VERSION', '2.1.1');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Chemin vers le fichier de mot de passe
