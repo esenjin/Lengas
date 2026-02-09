@@ -132,12 +132,130 @@ function displayIntegrityResults(results) {
     html += `
         <div class="integrity-section">
             <h3>Existence des fichiers/dossiers</h3>
-            <ul>
+            <div class="file-categories">
+                <!-- Fichiers racines -->
+                <div class="file-category">
+                    <h4>Fichiers racines</h4>
+                    <ul>
     `;
-    for (const [file, exists] of Object.entries(results.file_existence)) {
-        html += `<li>${file}: <span class="${exists ? 'ok' : 'error'}">${exists ? 'OK' : 'Manquant'}</span></li>`;
-    }
+    const rootFiles = [
+        'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php'
+    ];
+    rootFiles.forEach(file => {
+        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
+    });
+    html += `</ul></div><br>`;
+
+    // Fichiers d'assets (général)
+    html += `
+                <div class="file-category">
+                    <h4>Fichiers d'assets (général)</h4>
+                    <ul>
+    `;
+    const generalAssets = [
+        'assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js', 'assets/js/admin/'
+    ];
+    generalAssets.forEach(file => {
+        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
+    });
+    html += `</ul></div><br>`;
+
+    // Fichiers de fonctions
+    html += `
+                <div class="file-category">
+                    <h4>Fichiers de fonctions</h4>
+                    <ul>
+    `;
+    const functionFiles = [
+        'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php',
+        'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php'
+    ];
+    functionFiles.forEach(file => {
+        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
+    });
+    html += `</ul></div><br>`;
+
+    // Fichiers includes
+    html += `
+                <div class="file-category">
+                    <h4>Fichiers includes</h4>
+                    <ul>
+    `;
+    const includeFiles = [
+        'includes/anilist.php', 'includes/auth.php', 'includes/helpers.php'
+    ];
+    includeFiles.forEach(file => {
+        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
+    });
+    html += `</ul></div><br>`;
+
+    // Dossiers principaux
+    html += `
+                <div class="file-category">
+                    <h4>Dossiers principaux</h4>
+                    <ul>
+    `;
+    const mainDirectories = [
+        'includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/'
+    ];
+    mainDirectories.forEach(file => {
+        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
+    });
+    html += `</ul></div><br>`;
+
+    // Fichiers CSS
+    html += `
+                <div class="file-category">
+                    <h4>Fichiers CSS</h4>
+                    <ul>
+    `;
+    const cssFiles = [
+        'assets/css/_admin.css', 'assets/css/_base.css', 'assets/css/_buttons.css',
+        'assets/css/_forms.css', 'assets/css/_layout.css', 'assets/css/_modals.css',
+        'assets/css/_public.css', 'assets/css/_responsive.css', 'assets/css/_series.css',
+        'assets/css/_utils.css', 'assets/css/_variables.css'
+    ];
+    cssFiles.forEach(file => {
+        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
+    });
+    html += `</ul></div><br>`;
+
+    // Fichiers JS (admin)
+    html += `
+                <div class="file-category">
+                    <h4>Fichiers JS (admin)</h4>
+                    <ul>
+    `;
+    const jsFiles = [
+        'assets/js/admin/series.js', 'assets/js/admin/volumes.js', 'assets/js/admin/wishlist.js',
+        'assets/js/admin/loans.js', 'assets/js/admin/tools.js', 'assets/js/admin/autocomplete.js',
+        'assets/js/admin/modals.js', 'assets/js/admin/pagination.js', 'assets/js/admin/main.js',
+        'assets/js/admin/read.js'
+    ];
+    jsFiles.forEach(file => {
+        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
+    });
+    html += `</ul></div><br>`;
+
+    // Fichiers JSON dans bdd/
+    html += `
+                <div class="file-category">
+                    <h4>Fichiers JSON (bdd/)</h4>
+                    <ul>
+    `;
+    const bddFiles = [
+        'bdd/data.json', 'bdd/list.json', 'bdd/loan.json', 'bdd/anilist.json', 'bdd/options.json',
+        'bdd/mdp.json', 'bdd/read.json'
+    ];
+    bddFiles.forEach(file => {
+        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
+    });
     html += `</ul></div>`;
+
+    html += `
+            </div>
+        </div>
+    `;
 
     // 2. Vérification de l'absence de generate_password.php
     html += `
