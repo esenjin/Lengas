@@ -102,6 +102,7 @@ function createSeriesCard(series) {
                 <div class="series-actions">
                     <button class="edit-series-btn" data-series-id="${series.id}">Modifier</button>
                     <button class="delete-series-btn" data-series-id="${series.id}">Supprimer</button>
+                    <button class="move-to-read-btn" data-series-id="${series.id}">Lues ailleurs</button>
                 </div>
             </div>
             <p><strong>Auteur :</strong> ${series.author}</p>
@@ -188,6 +189,55 @@ function attachSeriesEvents() {
                             alert('Une erreur est survenue lors de la suppression.');
                         });
                     }
+                })
+                .catch(error => {
+                    console.error('Erreur lors de la confirmation:', error);
+                });
+        });
+    });
+
+    // Événements pour les boutons "Lues ailleurs"
+    document.querySelectorAll('.move-to-read-btn').forEach(button => {
+        button.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            const seriesId = this.getAttribute('data-series-id');
+            const seriesName = this.closest('.series-card').querySelector('h2').textContent;
+
+            if (!seriesId) {
+                alert("Erreur : ID de la série non défini.");
+                return;
+            }
+
+            // Afficher une pop-up de confirmation personnalisée
+            showCustomConfirm('Confirmation', `Voulez-vous vraiment déplacer la série "${seriesName}" vers "Lues ailleurs" ?`)
+                .then((confirmed) => {
+                    if (!confirmed) {
+                        return;
+                    }
+
+                    // Envoyer la requête pour déplacer la série
+                    fetch('admin.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `move_to_read=true&series_id=${encodeURIComponent(seriesId)}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(`La série "${seriesName}" a été déplacée vers "Lues ailleurs".`);
+                            window.location.reload();
+                        } else {
+                            alert(data.message || "Une erreur est survenue.");
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        alert('Une erreur est survenue.');
+                    });
                 })
                 .catch(error => {
                     console.error('Erreur lors de la confirmation:', error);
