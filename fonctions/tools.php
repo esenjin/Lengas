@@ -161,9 +161,11 @@ function check_site_integrity($data) {
     $results['orphaned_images'] = array_values(array_diff($uploaded_images, $used_images));
 
     // 6. Vérification de la version du site avec la dernière version Gitea
+    $latest_version = get_latest_version_from_gitea();
     $results['version'] = [
         'current' => SITE_VERSION,
-        'latest' => get_latest_version_from_gitea(),
+        'latest' => $latest_version,
+        'needs_update' => ($latest_version !== null && version_compare(SITE_VERSION, $latest_version, '<'))
     ];
 
     // 7. Récupérer des informations sur le site

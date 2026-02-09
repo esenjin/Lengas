@@ -248,7 +248,7 @@ function displayIntegrityResults(results) {
             <ul>
                 <li>Version actuelle : ${results.version.current}</li>
                 <li>Dernière version : ${results.version.latest || 'Inconnue'}</li>
-                ${results.version.latest && results.version.current !== results.version.latest ?
+                ${results.version.needs_update ?
                     `<li class="error">Une nouvelle version est disponible !</li>` : ''}
             </ul>
         </div>
