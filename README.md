@@ -27,6 +27,9 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 - Ajout et suppression de séries dans une liste d’envies
 - Possibilité d’ajouter une série de la liste d’envies à votre collection
 
+### Gestion des lues ailleurs
+- Suivi des séries lues non-présentes dans la bibliothèque
+
 ### Gestion des prêts
 - Suivi des tomes prêtés et à qui
 
@@ -45,18 +48,10 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 
 ## Aperçu visuel
 Publique
-![Lengas p1](https://concepts.esenjin.xyz/cyla/fichiers/69653f4a90bce_1768243018.png)
-![Lengas p2](https://concepts.esenjin.xyz/cyla/fichiers/69653f4a70bf5_1768243018.png)
-![Lengas p3](https://concepts.esenjin.xyz/cyla/fichiers/69653f4a48c53_1768243018.png)
+![Lengas p1](https://concepts.esenjin.xyz/cyla/fichiers/6989c7f4a197c_1770637300.gif)
 Administration
-![Lengas a1](https://concepts.esenjin.xyz/cyla/fichiers/696540839be53_1768243331.png)
-![Lengas a2](https://concepts.esenjin.xyz/cyla/fichiers/69654083b56e5_1768243331.png)
-![Lengas a3](https://concepts.esenjin.xyz/cyla/fichiers/6965408390bc3_1768243331.png)
-![Lengas a4](https://concepts.esenjin.xyz/cyla/fichiers/6965408397e85_1768243331.png)
-![Lengas a5](https://concepts.esenjin.xyz/cyla/fichiers/69654083a04e1_1768243331.png)
-![Lengas a6](https://concepts.esenjin.xyz/cyla/fichiers/69654083a5f10_1768243331.png)
-![Lengas a7](https://concepts.esenjin.xyz/cyla/fichiers/69654083a99e8_1768243331.png)
-*Captures effectuées en v.1.4.0*
+![Lengas a1](https://concepts.esenjin.xyz/cyla/fichiers/6989c7f52bb63_1770637301.gif)
+*Captures effectuées en v.2.1.0*
 
 ## Prérequis
 - Serveur web (Apache, Nginx)
@@ -111,6 +106,7 @@ lengas/
 │       │   ├── loans.js
 │       │   ├── tools.js
 │       │   ├── pagination.js
+│       │   ├── read.js
 │       │   └── main.js
 │       ├── stats.js
 │       └── public.js
@@ -123,6 +119,7 @@ lengas/
 │   ├── volumes.php       # Fonctions de gestion des tomes
 │   ├── wishlist.php      # Fonctions de gestion de la liste d'envies
 │   ├── loans.php         # Fonctions de gestion des prêts
+│   ├── read.php          # Fonctions de gestion des lues ailleurs
 │   ├── options.php       # Fonctions de gestion des options du site
 │   └── tools.php         # Fonctions de gestion des outils (sauvegardes, intégrité, etc.)
 ├── uploads/             # Images des séries (chmod 0774)
@@ -131,6 +128,7 @@ lengas/
    ├── data.json         # Base de données des séries et tomes possédés (chmod 0660)
    ├── list.json         # Base de données de la liste d'envies (chmod 0660)
    ├── loan.json         # Base de données des prêts (chmod 0660)
+   ├── read.json         # Base de données des prêts (chmod 0660)
    ├── anilist.json      # Cache des requêtes API Anilist (chmod 0660)
    ├── options.json      # Options principales éditables (chmod 0660)
    └── mdp.json          # Contient le mot de passe hashé (chmod 0660)
