@@ -1,5 +1,6 @@
 <?php
 require 'config.php';
+require 'fonctions/read.php';
 $data = load_data();
 $options = load_options();
 
@@ -40,6 +41,17 @@ function normalize_string($str) {
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $per_page_public = 12;
 $offset = ($page - 1) * $per_page_public;
+
+// Récupérer les séries "lues ailleurs"
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'get_read') {
+    $read = load_read();
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => true,
+        'read' => is_array($read) ? $read : []
+    ]);
+    exit;
+}
 
 // Endpoint pour la pagination infinie
 if (isset($_GET['get_paginated_series'])) {
@@ -163,6 +175,7 @@ if (!empty($search_term)) {
             <?php endif; ?>
             <a href="stats.php" class="button" target="_blank">Statistiques Lengas ↗</a>
             <button class="button" id="open-legend-modal">Légende</button>
+            <button class="button" id="open-read-modal">Lues ailleurs</button>
         </div>
 
         <!-- Barre de filtres et recherche -->
@@ -270,12 +283,26 @@ if (!empty($search_term)) {
                 </div><br>
                 <div class="legend-item">
                     <div class="legend-icon last-icon">✅</div>
-                    <span>Cochette verte : Dernier tome</span><br>
+                    <span>Cochette verte : Dernier tome</span>
+                </div><br>
                 <div class="legend-item">
                     <div class="legend-sample favorite-border"></div>
                     <span>Contour doré : Série favorite</span>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Modale pour "Lues ailleurs" -->
+    <div class="modal" id="read-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-read-modal">&times;</span>
+            <h2>Séries lues ailleurs</h2>
+            <p>Cette section vous permet de voir les séries lues mais qui ne sont pas dans la collection.</p>
+            <div class="search-container">
+                <input type="text" id="read-search" placeholder="Rechercher...">
+            </div>
+            <div id="read-list"></div>
         </div>
     </div>
 
