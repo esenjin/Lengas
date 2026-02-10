@@ -183,7 +183,10 @@ function check_site_integrity($data) {
 
 // Fonction pour obtenir l'URL du site
 function get_site_url() {
-    return (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
+    $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'];
+    $uri = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+    return "$protocol://$host$uri";
 }
 
 // Fonction pour vérifier si le site utilise HTTPS
