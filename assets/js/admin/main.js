@@ -251,3 +251,22 @@ function displayIncompleteSeries(incomplete_series) {
         });
     });
 }
+
+// Gestion du menu mobile
+document.addEventListener('DOMContentLoaded', function() {
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const adminMenu = document.getElementById('admin-menu');
+
+    if (mobileMenuButton && adminMenu) {
+        mobileMenuButton.addEventListener('click', function() {
+            adminMenu.classList.toggle('active');
+        });
+    }
+
+    // Fermer le menu si on clique en dehors
+    adminMenu.addEventListener('click', function(e) {
+        if (e.target === adminMenu) {
+            adminMenu.classList.remove('active');
+        }
+    });
+});

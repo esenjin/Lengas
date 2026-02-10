@@ -289,3 +289,22 @@ document.getElementById('open-read-modal').addEventListener('click', function(e)
         }
     }, 100);
 });
+
+// Gestion du menu mobile
+document.addEventListener('DOMContentLoaded', function() {
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const publicMenu = document.getElementById('public-menu');
+
+    if (mobileMenuButton && publicMenu) {
+        mobileMenuButton.addEventListener('click', function() {
+            publicMenu.classList.toggle('active');
+        });
+    }
+
+    // Fermer le menu si on clique en dehors
+    publicMenu.addEventListener('click', function(e) {
+        if (e.target === publicMenu) {
+            publicMenu.classList.remove('active');
+        }
+    });
+});

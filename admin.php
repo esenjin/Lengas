@@ -696,8 +696,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
             </form>
         </div>
 
+        <!-- Bouton Menu Mobile -->
+        <button class="mobile-menu-button" id="mobile-menu-button">☰ Menu</button>
+
         <!-- Menu d'actions -->
-        <div class="admin-menu">
+        <div class="admin-menu" id="admin-menu">
             <button id="open-add-series-modal" class="button button-ats">Ajouter une série</button>
             <button id="open-add-multiple-volumes-modal" class="button button-ats">Ajouter des tomes</button>
             <button id="open-current-series-modal" class="button button-aos">Séries en cours</button>

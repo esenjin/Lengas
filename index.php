@@ -162,8 +162,11 @@ if (!empty($search_term)) {
     <div class="container">
         <h1><?= htmlspecialchars($options['index_page_title']) ?></h1>
 
+        <!-- Bouton Menu Mobile -->
+        <button class="mobile-menu-button" id="mobile-menu-button">☰ Menu</button>
+
         <!-- Menu d'actions -->
-        <div class="public-menu">
+        <div class="public-menu" id="public-menu">
             <?php if (!empty($options['custom_button_name']) && !empty($options['custom_button_url'])): ?>
                 <a href="<?= htmlspecialchars($options['custom_button_url']) ?>" class="button button-otl" target="_blank"><?= htmlspecialchars($options['custom_button_name']) ?> ↗</a>
             <?php endif; ?>
