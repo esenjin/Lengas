@@ -32,7 +32,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         'other_contributors' => explode(',', $other_contributors),
         'categories' => explode(',', $categories),
         'genres' => explode(',', $genres),
-        'image' => $image,
+        'image' => $image ?? '',
         'anilist_id' => $anilist_id,
         'mature' => $mature,
         'favorite' => $favorite,

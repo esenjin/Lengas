@@ -103,19 +103,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $all_collector = !empty($_POST['all_collector']);
     $last_volume = !empty($_POST['last_volume']);
 
+    // Initialiser $image à null par défaut
+    $image = null;
     $error_message = null;
-    $image = upload_image($_FILES['image'] ?? [], $error_message);
 
-    if ($image === false) {
-        $_SESSION['error_message'] = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
-    } else {
-        $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image);
-        if ($result['success']) {
-            save_data($result['data']);
-            $_SESSION['success_message'] = "Série ajoutée avec succès.";
-        } else {
-            $_SESSION['error_message'] = $result['message'];
+    // Si une image est uploadée, essayer de la traiter
+    if (!empty($_FILES['image']['name'])) {
+        $image = upload_image($_FILES['image'], $error_message);
+        if ($image === false) {
+            $_SESSION['error_message'] = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
+            // Ne pas bloquer l'ajout de la série si l'image échoue
         }
+    }
+
+    // Appeler add_series avec $image (qui peut être null)
+    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image);
+
+    if ($result['success']) {
+        save_data($result['data']);
+        $_SESSION['success_message'] = "Série ajoutée avec succès.";
+    } else {
+        $_SESSION['error_message'] = $result['message'];
     }
 
     header("Location: admin.php");
@@ -758,7 +766,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                         <input type="checkbox" name="favorite"> Série favorite ❤️
                     </label>
                     <p>Vignette :</p>
-                    <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp" required>
+                    <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp">
                     <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
                     <input type="hidden" id="add-volume-series-id" name="series_id">
                     <button type="submit" name="add_series">Ajouter</button>
