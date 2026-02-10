@@ -163,7 +163,14 @@ $total_read_reading_time = convertMinutesToReadableTime($total_read_reading_time
     <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        .container {
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
         .stats-container {
             max-width: 800px;
             margin: 0 auto;
@@ -186,11 +193,7 @@ $total_read_reading_time = convertMinutesToReadableTime($total_read_reading_time
             border-radius: 5px;
             display: flex;
             justify-content: space-between;
-        }
-
-        .chart-container {
-            margin-top: 20px;
-            height: 300px;
+            align-items: center;
         }
 
         .stat-value {
@@ -198,9 +201,23 @@ $total_read_reading_time = convertMinutesToReadableTime($total_read_reading_time
             color: #bb86fc;
         }
 
+        h1, h2 {
+            text-align: center;
+            color: white;
+        }
+
+        h2 {
+            margin-top: 20px;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            margin-top: 20px;
+        }
+
         .reading-time-container {
-            display: flex;
-            flex-direction: column;
+            width: 100%;
             margin-top: 20px;
         }
 
@@ -210,6 +227,36 @@ $total_read_reading_time = convertMinutesToReadableTime($total_read_reading_time
             background-color: #2d2d2d;
             border-radius: 5px;
             margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Responsive pour mobile */
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-item {
+                text-align: center;
+                padding: 12px;
+            }
+
+            .stat-value {
+                margin-top: 5px;
+                font-size: 1.1em;
+            }
+
+            .reading-time-item {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            /* Empiler le graphique et le temps de lecture */
+            .stats-container > div:last-child {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
