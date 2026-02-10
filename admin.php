@@ -255,6 +255,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
 
     $admin_password = trim($_POST['admin_password'] ?? '');
 
+    // Gestion du remplacement de logo.png
+    if (!empty($_FILES['default_logo']['name'])) {
+        $uploaded_image = $_FILES['default_logo'];
+        $allowed_types = ['image/png'];
+        $file_info = finfo_open(FILEINFO_MIME_TYPE);
+        $mime_type = finfo_file($file_info, $uploaded_image['tmp_name']);
+
+        // Vérification du type MIME
+        if (!in_array($mime_type, $allowed_types)) {
+            $_SESSION['error_message'] = "Seuls le PNG est autorisés pour le logo.";
+        } else {
+            // Chemin absolu vers logo.png
+            $logo_path = __DIR__ . '/logo.png';
+
+            // Supprimer l'ancien logo.png s'il existe
+            if (file_exists($logo_path)) {
+                if (!unlink($logo_path)) {
+                    $_SESSION['error_message'] = "Impossible de supprimer l'ancien logo. Vérifiez les permissions.";
+                    header("Location: admin.php");
+                    exit;
+                }
+            }
+
+            // Déplacer le nouveau fichier
+            if (move_uploaded_file($uploaded_image['tmp_name'], $logo_path)) {
+                $_SESSION['success_message'] = "Le logo par défaut a été mis à jour avec succès.";
+            } else {
+                $_SESSION['error_message'] = "Erreur lors du déplacement du fichier. Vérifiez les permissions du dossier.";
+            }
+        }
+    }
+
+    // Mise à jour des autres options (sans toucher à default_image)
     $result = update_options($options, $admin_password);
     if ($result['success']) {
         $_SESSION['success_message'] = $result['message'];
@@ -1109,7 +1142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     Site en version <?= $current_version ?>.
                     <a href="<?= URL_GITEA ?>" target="_blank">Accéder au dépôt Gitéa</a>.
                 </p>
-                <form id="options-form" method="post">
+                <form id="options-form" method="post" enctype="multipart/form-data">
                     <label for="site-name">Nom du site</label>
                     <input type="text" name="site_name" id="site-name" placeholder="Nom du site" value="<?= htmlspecialchars($options['site_name']) ?>" required>
 
@@ -1158,6 +1191,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <label>
                         <input type="checkbox" name="hide_mature" <?= $options['hide_mature'] ? 'checked' : '' ?>> Masquer les séries matures
                     </label>
+
+                    <div class="form-group">
+                        <br>
+                        <label for="default_logo">Remplacer la vignette par défaut :</label>
+                        <input type="file" id="default_logo" name="default_logo" accept="image/png">
+                        <p class="hint">L'image uploadée remplacera le fichier logo.png actuel (PNG obligatoire).</p>
+                        <p class="hint">Vignette par défaut actuelle :</p>
+                        <?php if (file_exists('logo.png')): ?>
+                            <div>
+                                <img src="logo.png?v=<?= time() ?>" alt="Logo actuel" style="max-width: 100px; max-height: 100px;">
+                            </div>
+                        <?php endif; ?>
+                        <br>
+                    </div>
 
                     <button type="submit" name="update_options" class="button button-opt">Mettre à jour</button>
                     <p style="visibility: hidden;">_</p>
