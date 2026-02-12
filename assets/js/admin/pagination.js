@@ -69,8 +69,9 @@ function createLightSeriesCard(series) {
     const seriesCard = document.createElement('div');
     seriesCard.className = 'series-card' + (series.favorite ? ' favorite' : '');
     seriesCard.dataset.seriesId = series.id;
+    const imageSrc = series.image && series.image !== '' ? series.image : 'logo.png';
     seriesCard.innerHTML = `
-        <img class="series-image" src="${series.image}" alt="${series.name}" loading="lazy">
+        <img class="series-image" src="${imageSrc}" alt="${series.name}" loading="lazy">
         <div class="series-info">
             <div class="series-header">
                 <h2>${series.name}</h2>
