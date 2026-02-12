@@ -393,7 +393,7 @@ function create_backup() {
 
         foreach ($files_to_backup as $file) {
             if (file_exists($file)) {
-                $zip->addFile($file, basename($file));
+                $zip->addFile($file, 'bdd/' . basename($file));
             }
         }
 
