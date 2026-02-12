@@ -12,6 +12,10 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         ];
     }
 
+    $other_contributors = clean_comma_separated($other_contributors);
+    $categories = clean_comma_separated($categories);
+    $genres = clean_comma_separated($genres);
+
     $data[] = [
         'id' => generate_uuid(),
         'name' => $name,
@@ -38,6 +42,10 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
     }
 
     $series_index = $series['index'];
+
+    $other_contributors = clean_comma_separated($other_contributors);
+    $categories = clean_comma_separated($categories);
+    $genres = clean_comma_separated($genres);
 
     $data[$series_index]['name'] = $name;
     $data[$series_index]['author'] = $author;
@@ -95,4 +103,9 @@ function delete_series($data, $series_id) {
 
     array_splice($data, $series_index, 1);
     return ['success' => true, 'data' => $data];
+}
+
+// Fonction pour nettoyer les espaces après les virgules
+function clean_comma_separated($string) {
+    return preg_replace('/\s*,\s*/', ',', trim($string));
 }
