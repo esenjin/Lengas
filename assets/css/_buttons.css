@@ -91,6 +91,10 @@
     z-index: 999;
 }
 
+#back-to-top:hover { 
+    background: var(--primary-hover); 
+}
+
 /* Bouton de déconnexion */
 .logout-container {
     position: absolute;
