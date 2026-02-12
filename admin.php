@@ -515,7 +515,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
 // Gestion de la récupération des tomes d'une série
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) {
     $series_id = $_GET['series_id'] ?? '';
-    $series = find_series_by_id($data, $series_id);
+
+    $series = null;
+    foreach ($data as $key => $s) {
+        if ($s['id'] === $series_id) {
+            $series = $s;
+            break;
+        }
+    }
 
     if (!$series) {
         header('Content-Type: application/json');
@@ -523,7 +530,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
         exit;
     }
 
-    // Calcul des notifications uniquement ici
+    // Calcul des notifications
     $anilist_volumes = null;
     if (!empty($series['anilist_id'])) {
         $anilist_volumes = get_series_volumes_from_anilist($series['anilist_id']);
