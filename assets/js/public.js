@@ -1,4 +1,7 @@
 // scripts/public.js
+let currentSearchTerm = '';
+let currentSortBy = 'name';
+let currentSortOrder = 'asc';
 
 // Fonction pour normaliser une chaîne de caractères
 function normalizeString(str) {
@@ -187,15 +190,19 @@ function loadMoreSeries() {
     const sortBy = urlParams.get('sort_by') || 'name';
     const sortOrder = urlParams.get('sort_order') || 'asc';
 
-    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=12&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}`)
+    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=12&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}`)
         .then(response => response.json())
         .then(data => {
             if (data.success && data.series && data.series.length > 0) {
                 const seriesList = document.getElementById('series-list');
-                data.series.forEach((series, seriesIndex) => {
+                data.series.forEach((series) => {
+                    // Ajoute la série à seriesData
+                    seriesData.push(series);
+                    const seriesIndex = seriesData.length - 1;
+
                     const seriesCard = document.createElement('div');
                     seriesCard.className = `series-card ${series.mature ? 'mature' : ''}`;
-                    seriesCard.dataset.seriesIndex = currentPage * 12 + seriesIndex;
+                    seriesCard.dataset.seriesIndex = seriesIndex;
 
                     const totalVolumes = series.volumes ? series.volumes.length : 0;
                     const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
@@ -213,8 +220,9 @@ function loadMoreSeries() {
                         </div>
                     `;
 
+                    // Écouteur pour la nouvelle carte
                     seriesCard.addEventListener('click', function() {
-                        const series = seriesData[currentPage * 12 + seriesIndex];
+                        const series = seriesData[this.dataset.seriesIndex];
                         document.getElementById('modal-series-title').textContent = series.name;
                         document.getElementById('modal-series-image').src = series.image || 'logo.png';
                         document.getElementById('modal-series-author').textContent = series.author;
@@ -269,10 +277,100 @@ window.addEventListener('scroll', () => {
 });
 
 // Réinitialiser la pagination lors d'une nouvelle recherche
-document.querySelector('.filters form')?.addEventListener('submit', function() {
+document.querySelector('.filters form')?.addEventListener('submit', function(e) {
+    e.preventDefault(); // Empêche le rechargement de la page
     currentPage = 1;
     hasMoreSeries = true;
+    seriesData = []; // Réinitialise seriesData comme tableau vide
+
+    // Met à jour les paramètres de recherche
+    const formData = new FormData(this);
+    currentSearchTerm = formData.get('search') || '';
+    currentSortBy = formData.get('sort_by') || 'name';
+    currentSortOrder = formData.get('sort_order') || 'asc';
+
     document.getElementById('series-list').innerHTML = '<p>Chargement des résultats...</p>';
+
+    console.log("Requête envoyée avec :", { searchTerm: currentSearchTerm, sortBy: currentSortBy, sortOrder: currentSortOrder }); // Log pour débogage
+
+    // Charge les résultats via AJAX
+    fetch(`index.php?get_paginated_series=true&page=1&per_page=12&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log("Réponse reçue :", data);
+            const seriesList = document.getElementById('series-list');
+            seriesList.innerHTML = ''; // Vide la liste
+
+            if (data.success && data.series && data.series.length > 0) {
+                data.series.forEach((series, index) => {
+                    console.log(`Création de la carte pour : ${series.name} (index ${index})`);
+                    seriesData.push(series);
+                    const seriesIndex = seriesData.length - 1;
+
+                    const seriesCard = document.createElement('div');
+                    seriesCard.className = `series-card ${series.mature ? 'mature' : ''}`;
+                    seriesCard.dataset.seriesIndex = seriesIndex;
+
+                    const totalVolumes = series.volumes ? series.volumes.length : 0;
+                    const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
+
+                    seriesCard.innerHTML = `
+                        <img class="series-image" src="${series.image || 'logo.png'}" alt="${series.name}" loading="lazy">
+                        <div class="series-info">
+                            <h2>${series.name}</h2>
+                            <p><strong>Auteur :</strong> ${series.author}</p>
+                            <p><strong>Éditeur :</strong> ${series.publisher}</p>
+                            <div class="series-stats">
+                                ${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''}
+                                (${readVolumes} lu${readVolumes > 1 ? 's' : ''})
+                            </div>
+                        </div>
+                    `;
+
+                    // Écouteur pour la nouvelle carte
+                    seriesCard.addEventListener('click', function() {
+                        const series = seriesData[this.dataset.seriesIndex];
+                        document.getElementById('modal-series-title').textContent = series.name;
+                        document.getElementById('modal-series-image').src = series.image || 'logo.png';
+                        document.getElementById('modal-series-author').textContent = series.author;
+                        document.getElementById('modal-series-publisher').textContent = series.publisher;
+                        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors ? series.other_contributors.join(', ') : '';
+                        document.getElementById('modal-series-categories').textContent = series.categories ? series.categories.join(', ') : '';
+                        document.getElementById('modal-series-genres').textContent = series.genres ? series.genres.join(', ') : '';
+
+                        const totalVolumes = series.volumes ? series.volumes.length : 0;
+                        const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
+                        document.getElementById('modal-series-stats').innerHTML =
+                            `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} ` +
+                            `(${readVolumes} lu${readVolumes > 1 ? 's' : ''})`;
+
+                        const volumesList = document.getElementById('modal-volumes-list');
+                        volumesList.innerHTML = '';
+                        const sortedVolumes = series.volumes ? [...series.volumes].sort((a, b) => a.number - b.number) : [];
+                        sortedVolumes.forEach(volume => {
+                            const li = document.createElement('li');
+                            li.className = `status-${volume.status.replace(' ', '-')} ${volume.collector ? 'volume-collector' : ''} ${volume.last ? 'volume-last' : ''}`;
+                            li.textContent = volume.number;
+                            volumesList.appendChild(li);
+                        });
+
+                        openModal('series-detail-modal');
+                    });
+
+                    seriesList.appendChild(seriesCard);
+                });
+
+                currentPage = 1;
+                hasMoreSeries = data.has_more;
+            } else {
+                seriesList.innerHTML = '<p>Aucune série trouvée.</p>';
+                hasMoreSeries = false;
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            document.getElementById('series-list').innerHTML = '<p>Erreur lors du chargement des séries.</p>';
+        });
 });
 
 // Écouteurs pour la modale "Lues ailleurs"

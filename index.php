@@ -65,18 +65,20 @@ if (isset($_GET['get_paginated_series'])) {
     $filtered_data = $data;
     if (!empty($search_term)) {
         $normalized_search = normalize_string($search_term);
-        $data = array_filter($data, function($series) use ($normalized_search) {
+        $filtered_data = array_filter($data, function($series) use ($normalized_search) {
             return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
-                strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
-                strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
-                (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
-                (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
-                (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
+                   strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
+                   strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
+                   (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
+                   (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
+                   (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
         });
     }
+
+    // Trie les résultats filtrés
     sort_series($filtered_data, $sort_by, $sort_order);
 
-    // Paginer les résultats
+    // Paginer les résultats filtrés
     $offset = ($page - 1) * $per_page;
     $paginated_data = array_slice($filtered_data, $offset, $per_page);
 
@@ -313,7 +315,7 @@ if (!empty($search_term)) {
 
     <script>
         // Données des séries pour JavaScript
-        const seriesData = <?= json_encode($data) ?>;
+        let seriesData = <?= json_encode(array_values($data)) ?>;
     </script>
     <script src="assets/js/admin/main.js"></script>
     <script src="assets/js/public.js"></script>
