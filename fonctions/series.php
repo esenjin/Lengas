@@ -1,18 +1,6 @@
 <?php
 // Ajouter une série
 function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image) {
-    $series_exists = false;
-    foreach ($data as $series) {
-        if (strcasecmp($series['name'], $name) === 0) {
-            $series_exists = true;
-            break;
-        }
-    }
-
-    if ($series_exists) {
-        return ['success' => false, 'message' => "Une série avec ce nom existe déjà."];
-    }
-
     $volumes = [];
     for ($i = 1; $i <= $volumes_count; $i++) {
         $volumes[] = [
