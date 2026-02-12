@@ -309,10 +309,13 @@ if (!empty($search_term)) {
         </div>
     </div>
 
+    <button id="back-to-top" title="Retour en haut">↑</button>
+
     <script>
         // Données des séries pour JavaScript
         const seriesData = <?= json_encode($data) ?>;
     </script>
+    <script src="assets/js/admin/main.js"></script>
     <script src="assets/js/public.js"></script>
 </body>
 </html>
