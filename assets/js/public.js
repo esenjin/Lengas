@@ -291,19 +291,15 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
 
     document.getElementById('series-list').innerHTML = '<p>Chargement des résultats...</p>';
 
-    console.log("Requête envoyée avec :", { searchTerm: currentSearchTerm, sortBy: currentSortBy, sortOrder: currentSortOrder }); // Log pour débogage
-
     // Charge les résultats via AJAX
     fetch(`index.php?get_paginated_series=true&page=1&per_page=12&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}`)
         .then(response => response.json())
         .then(data => {
-            console.log("Réponse reçue :", data);
             const seriesList = document.getElementById('series-list');
             seriesList.innerHTML = ''; // Vide la liste
 
             if (data.success && data.series && data.series.length > 0) {
                 data.series.forEach((series, index) => {
-                    console.log(`Création de la carte pour : ${series.name} (index ${index})`);
                     seriesData.push(series);
                     const seriesIndex = seriesData.length - 1;
 
