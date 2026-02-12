@@ -1,4 +1,6 @@
 <?php
+error_reporting(0);
+
 require 'config.php';
 require 'includes/auth.php';
 require 'includes/helpers.php';
@@ -462,6 +464,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
     $search_term = $_GET['search'] ?? '';
     $sort_by = $_GET['sort_by'] ?? 'name';
     $sort_order = $_GET['sort_order'] ?? 'asc';
+    $light_mode = isset($_GET['light']) && $_GET['light'] === 'true';
 
     $filtered_data = $data;
     if ($search_term) {
@@ -477,23 +480,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
     }
     sort_series($filtered_data, $sort_by, $sort_order);
 
-    // Génère les notifications pour chaque série
-    foreach ($filtered_data as &$series) {
-        $anilist_volumes = null;
-        if (isset($series['anilist_id']) && !empty($series['anilist_id'])) {
-            $anilist_volumes = get_series_volumes_from_anilist($series['anilist_id']);
-        }
-        $series['notifications'] = generate_notifications($series['volumes'], $anilist_volumes);
-    }
-
     $offset = ($page - 1) * $per_page;
     $paginated_data = array_slice($filtered_data, $offset, $per_page);
+
+    // En mode "light", on ne renvoie que les métadonnées
+    if ($light_mode) {
+        $light_series = array_map(function($series) {
+            return [
+                'id' => $series['id'],
+                'name' => $series['name'],
+                'author' => $series['author'],
+                'publisher' => $series['publisher'],
+                'other_contributors' => $series['other_contributors'] ?? [],
+                'categories' => $series['categories'] ?? [],
+                'genres' => $series['genres'] ?? [],
+                'image' => $series['image'] ?? 'logo.png',
+                'volumes_count' => count($series['volumes']),
+                'favorite' => $series['favorite'] ?? false,
+                'mature' => $series['mature'] ?? false,
+                'has_anilist_id' => !empty($series['anilist_id']),
+            ];
+        }, $paginated_data);
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'series' => array_values($light_series),
+            'has_more' => ($offset + $per_page) < count($filtered_data)
+        ]);
+        exit;
+    }
+}
+
+// Gestion de la récupération des tomes d'une série
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) {
+    $series_id = $_GET['series_id'] ?? '';
+    $series = find_series_by_id($data, $series_id);
+
+    if (!$series) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Série introuvable.']);
+        exit;
+    }
+
+    // Calcul des notifications uniquement ici
+    $anilist_volumes = null;
+    if (!empty($series['anilist_id'])) {
+        $anilist_volumes = get_series_volumes_from_anilist($series['anilist_id']);
+    }
+    $notifications = generate_notifications($series['volumes'], $anilist_volumes);
+
+    // Générer le HTML des tomes
+    $volumes_html = '<ul class="volumes-list">';
+    foreach ($series['volumes'] as $volume_index => $volume) {
+        $volumes_html .= sprintf(
+            '<li class="status-%s%s%s" data-series-id="%s" data-volume-index="%d">%d</li>',
+            str_replace(' ', '-', strtolower($volume['status'])),
+            !empty($volume['collector']) ? ' volume-collector' : '',
+            !empty($volume['last']) ? ' volume-last' : '',
+            $series_id,
+            $volume_index,
+            $volume['number']
+        );
+    }
+    $volumes_html .= '</ul>';
+
+    // Ajouter les notifications si nécessaire
+    if (!empty($notifications)) {
+        $volumes_html = '<div class="issues-list"><span class="warning-icon">⚠️</span><span class="issues-text">' . implode(' ', $notifications) . '</span></div>' . $volumes_html;
+    }
 
     header('Content-Type: application/json');
     echo json_encode([
         'success' => true,
-        'series' => array_values($paginated_data),
-        'has_more' => ($offset + $per_page) < count($filtered_data)
+        'volumes_html' => $volumes_html,
+        'notifications' => $notifications
     ]);
     exit;
 }
@@ -1261,92 +1322,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
         </div>
 
         <!-- Liste des séries -->
-        <div class="series-list" id="series-list">
+         <div class="series-list" id="series-list">
+            <!-- Le contenu sera chargé dynamiquement par JavaScript -->
             <?php if (empty($data)): ?>
                 <p>Aucune série trouvée.</p>
-            <?php else: ?>
-                <?php
-                // Applique la recherche et le tri AVANT la pagination
-                $filtered_data = $data;
-                if ($search_term) {
-                    $normalized_search = normalize_string($search_term);
-                    $filtered_data = array_filter($filtered_data, function($series) use ($normalized_search) {
-                        return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
-                            strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
-                            strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
-                            (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
-                            (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
-                            (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
-                    });
-                }
-                sort_series($filtered_data, $sort_by, $sort_order);
-
-                // Affiche les 9 premières séries filtrées
-                $paginated_data = array_slice($filtered_data, $offset, $per_page_admin);
-                foreach ($paginated_data as $series):
-                    if (empty($series['volumes'])) continue;
-                ?>
-                    <div class="series-card <?= isset($series['favorite']) && $series['favorite'] ? 'favorite' : '' ?>">
-                        <img class="series-image" src="<?= !empty($series['image']) && file_exists($series['image']) ? $series['image'] : 'logo.png' ?>" alt="<?= $series['name'] ?? '' ?>" loading="lazy">
-                        <div class="series-info">
-                            <div class="series-header">
-                                <h2><?= $series['name'] ?></h2>
-                                <div class="series-actions">
-                                    <button class="edit-series-btn" data-series-id="<?= $series['id'] ?>">Modifier</button>
-                                    <button class="move-to-read-btn" data-series-id="<?= $series['id'] ?>">Déplacer</button>
-                                    <button class="delete-series-btn" data-series-id="<?= $series['id'] ?>">Supprimer</button>
-                                </div>
-                            </div>
-                            <p><strong>Auteur :</strong> <?= $series['author'] ?></p>
-                            <p><strong>Éditeur :</strong> <?= $series['publisher'] ?></p>
-                            <p><strong>Autres contributeurs :</strong> <?= isset($series['other_contributors']) ? implode(', ', $series['other_contributors']) : '' ?></p>
-                            <p><strong>Catégories :</strong> <?= isset($series['categories']) ? implode(', ', $series['categories']) : '' ?></p>
-                            <p><strong>Genres :</strong> <?= isset($series['genres']) ? implode(', ', $series['genres']) : '' ?></p>
-                            <p><strong>ID Anilist :</strong>
-                                <?php if (isset($series['anilist_id']) && !empty($series['anilist_id'])): ?>
-                                    <a href="https://anilist.co/manga/<?= htmlspecialchars($series['anilist_id']) ?>" target="_blank"><?= htmlspecialchars($series['anilist_id']) ?></a>
-                                <?php else: ?>
-                                    Non défini
-                                <?php endif; ?>
-                            </p>
-                            <p><strong>Tomes :</strong> <?= count($series['volumes']) ?></p>
-                            <?php if (!empty($series['mature'])): ?>
-                                <span class="mature-badge">🔞 Mature</span>
-                            <?php endif; ?>
-                            <h3>Liste des tomes :</h3>
-                            <?php
-                            // Générer les notifications
-                            $anilist_volumes = null;
-                            if (isset($series['anilist_id']) && !empty($series['anilist_id'])) {
-                                $anilist_volumes = get_series_volumes_from_anilist($series['anilist_id']);
-                            }
-                            $notifications = generate_notifications($series['volumes'], $anilist_volumes);
-                            if (!check_image_exists($series['image'])) {
-                                $notifications[] = "Attention, l'image de la série est manquante (logo utilisé par défaut).";
-                            }
-
-                            // Afficher les notifications si nécessaire
-                            if (!empty($notifications)) {
-                                echo '<div class="issues-list">';
-                                echo '<span class="warning-icon">⚠️</span>';
-                                echo '<span class="issues-text">' . implode(' ', $notifications) . '</span>';
-                                echo '</div>';
-                            }
-                            ?>
-                            <ul class="volumes-list">
-                                <?php foreach ($series['volumes'] as $volume_index => $volume): ?>
-                                    <li class="<?= 'status-' . str_replace(' ', '-', strtolower($volume['status'])) .
-                                                (!empty($volume['collector']) ? ' volume-collector' : '') .
-                                                (!empty($volume['last']) ? ' volume-last' : '') ?>"
-                                        data-series-id="<?= $series['id'] ?>"
-                                        data-volume-index="<?= $volume_index ?>">
-                                        <?= $volume['number'] ?>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
             <?php endif; ?>
         </div>
         <div class="loading-spinner" id="loading-spinner">
@@ -1358,9 +1337,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
     <button id="back-to-top" title="Retour en haut">↑</button>
 
     <script>
-        // Données des séries pour JavaScript
-        window.seriesData = Object.values(<?= json_encode($data ?? []) ?>);
-        const wishlistData = <?= json_encode(load_wishlist()) ?>;
+        window.seriesData = <?= json_encode(array_values(array_map(function($series) {
+            return [
+                'id' => $series['id'],
+                'name' => $series['name'],
+                'author' => $series['author'],
+                'publisher' => $series['publisher'],
+                'other_contributors' => $series['other_contributors'] ?? [],
+                'categories' => $series['categories'] ?? [],
+                'genres' => $series['genres'] ?? [],
+                'image' => $series['image'] ?? 'logo.png',
+                'volumes' => $series['volumes'],
+                'volumes_count' => count($series['volumes']),
+                'favorite' => $series['favorite'] ?? false,
+                'mature' => $series['mature'] ?? false,
+                'has_anilist_id' => !empty($series['anilist_id']),
+            ];
+        }, $filtered_data))) ?>;
     </script>
     <script src="assets/js/admin/modals.js"></script>
     <script src="assets/js/admin/autocomplete.js"></script>

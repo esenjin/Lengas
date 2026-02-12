@@ -41,3 +41,24 @@
 #create-backup-btn:hover {
     background-color: var(--success-hover);
 }
+
+/* Styles pour la section de gestion des volumes */
+.load-volumes-btn {
+    background: #444;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.load-volumes-btn:hover {
+    background: #555;
+}
+
+.volumes-container {
+    margin-top: 10px;
+    border-top: 1px solid #333;
+    padding-top: 10px;
+}
