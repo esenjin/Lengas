@@ -41,41 +41,41 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
         return ['success' => false, 'message' => "Série introuvable."];
     }
 
-    $series_index = $series['index'];
+    $series_key = $series['key'];  // Utilise la clé associative
+    $series_data = $series['data'];
 
-    $other_contributors = clean_comma_separated($other_contributors);
-    $categories = clean_comma_separated($categories);
-    $genres = clean_comma_separated($genres);
+    // Met à jour directement via la clé
+    $data[$series_key]['name'] = $name;
+    $data[$series_key]['author'] = $author;
+    $data[$series_key]['publisher'] = $publisher;
+    $data[$series_key]['other_contributors'] = explode(',', clean_comma_separated($other_contributors));
+    $data[$series_key]['categories'] = explode(',', clean_comma_separated($categories));
+    $data[$series_key]['genres'] = explode(',', clean_comma_separated($genres));
+    $data[$series_key]['anilist_id'] = $anilist_id;
+    $data[$series_key]['mature'] = $mature;
+    $data[$series_key]['favorite'] = $favorite;
 
-    $data[$series_index]['name'] = $name;
-    $data[$series_index]['author'] = $author;
-    $data[$series_index]['publisher'] = $publisher;
-    $data[$series_index]['other_contributors'] = explode(',', $other_contributors);
-    $data[$series_index]['categories'] = explode(',', $categories);
-    $data[$series_index]['genres'] = explode(',', $genres);
-    $data[$series_index]['anilist_id'] = $anilist_id;
-    $data[$series_index]['mature'] = $mature;
-    $data[$series_index]['favorite'] = $favorite;
-
-    if ($remove_image && !empty($data[$series_index]['image']) && file_exists($data[$series_index]['image'])) {
-        unlink($data[$series_index]['image']);
-        $data[$series_index]['image'] = '';
+    // Gestion de l'image
+    if ($remove_image && !empty($data[$series_key]['image']) && file_exists($data[$series_key]['image'])) {
+        unlink($data[$series_key]['image']);
+        $data[$series_key]['image'] = '';
     }
 
     if ($new_image) {
-        if (!empty($data[$series_index]['image']) && file_exists($data[$series_index]['image'])) {
-            unlink($data[$series_index]['image']);
+        if (!empty($data[$series_key]['image']) && file_exists($data[$series_key]['image'])) {
+            unlink($data[$series_key]['image']);
         }
-        $data[$series_index]['image'] = $new_image;
+        $data[$series_key]['image'] = $new_image;
     }
 
+    // Ajout de nouveaux tomes
     if ($new_volumes_count > 0) {
-        $current_volumes = $data[$series_index]['volumes'];
+        $current_volumes = $data[$series_key]['volumes'];
         $max_volume_number = !empty($current_volumes) ? max(array_column($current_volumes, 'number')) : 0;
 
         for ($i = 1; $i <= $new_volumes_count; $i++) {
             $new_volume_number = $max_volume_number + $i;
-            $data[$series_index]['volumes'][] = [
+            $data[$series_key]['volumes'][] = [
                 'number' => $new_volume_number,
                 'status' => $new_volumes_status,
                 'collector' => $new_volumes_collector,
@@ -95,13 +95,14 @@ function delete_series($data, $series_id) {
         return ['success' => false, 'message' => "Série introuvable."];
     }
 
-    $series_index = $series['index'];
-    $image_path = $data[$series_index]['image'];
+    $series_key = $series['key'];
+    $image_path = $data[$series_key]['image'];
+
     if (file_exists($image_path)) {
         unlink($image_path);
     }
 
-    array_splice($data, $series_index, 1);
+    unset($data[$series_key]);
     return ['success' => true, 'data' => $data];
 }
 

@@ -74,9 +74,13 @@ function sort_volumes(&$volumes) {
 
 // Fonction pour trouver une série par son ID
 function find_series_by_id($data, $series_id) {
-    foreach ($data as $series) {
+    foreach ($data as $key => $series) {
         if ($series['id'] === $series_id) {
-            return $series;
+            return [
+                'key' => $key,
+                'index' => array_search($series, $data),
+                'data' => $series
+            ];
         }
     }
     return null;

@@ -149,26 +149,33 @@ document.getElementById('series-list').addEventListener('click', (e) => {
 
     // Bouton "Modifier"
     const editBtn = e.target.closest('.edit-series-btn');
-    if (editBtn) {
-        e.preventDefault();
-        const seriesId = editBtn.dataset.seriesId;
-        const series = window.seriesData.find(s => s.id === seriesId);
-        if (series) {
-            document.getElementById('edit-series-id-input').value = seriesId;
-            document.getElementById('edit-series-name').value = series.name;
-            document.getElementById('edit-series-author').value = series.author;
-            document.getElementById('edit-series-publisher').value = series.publisher;
-            document.getElementById('edit-series-other-contributors').value = series.other_contributors ? series.other_contributors.join(', ') : '';
-            document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
-            document.getElementById('edit-series-genres').value = series.genres ? series.genres.join(', ') : '';
-            document.getElementById('edit-series-anilist-id').value = series.anilist_id || '';
-            document.getElementById('edit-series-mature').checked = series.mature || false;
-            document.getElementById('edit-series-favorite').checked = series.favorite || false;
-            document.getElementById('current-series-image').src = series.image || 'logo.png';
-            document.getElementById('edit-series-modal').classList.add('modal-active');
+        if (editBtn) {
+            e.preventDefault();
+            const seriesId = editBtn.dataset.seriesId;
+            let series = null;
+            for (const key in window.seriesData) {
+                if (window.seriesData[key].id === seriesId) {
+                    series = window.seriesData[key];
+                    break;
+                }
+            }
+
+            if (series) {
+                document.getElementById('edit-series-id-input').value = seriesId;
+                document.getElementById('edit-series-name').value = series.name;
+                document.getElementById('edit-series-author').value = series.author;
+                document.getElementById('edit-series-publisher').value = series.publisher;
+                document.getElementById('edit-series-other-contributors').value = series.other_contributors ? series.other_contributors.join(', ') : '';
+                document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
+                document.getElementById('edit-series-genres').value = series.genres ? series.genres.join(', ') : '';
+                document.getElementById('edit-series-anilist-id').value = series.anilist_id || '';
+                document.getElementById('edit-series-mature').checked = series.mature || false;
+                document.getElementById('edit-series-favorite').checked = series.favorite || false;
+                document.getElementById('current-series-image').src = series.image || 'logo.png';
+                document.getElementById('edit-series-modal').classList.add('modal-active');
+            }
+            return;
         }
-        return;
-    }
 
     // Bouton "Supprimer"
     const deleteBtn = e.target.closest('.delete-series-btn');

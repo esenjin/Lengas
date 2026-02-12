@@ -1337,23 +1337,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
     <button id="back-to-top" title="Retour en haut">↑</button>
 
     <script>
-        window.seriesData = <?= json_encode(array_values(array_map(function($series) {
-            return [
-                'id' => $series['id'],
-                'name' => $series['name'],
-                'author' => $series['author'],
-                'publisher' => $series['publisher'],
-                'other_contributors' => $series['other_contributors'] ?? [],
-                'categories' => $series['categories'] ?? [],
-                'genres' => $series['genres'] ?? [],
-                'image' => $series['image'] ?? 'logo.png',
-                'volumes' => $series['volumes'],
-                'volumes_count' => count($series['volumes']),
-                'favorite' => $series['favorite'] ?? false,
-                'mature' => $series['mature'] ?? false,
-                'has_anilist_id' => !empty($series['anilist_id']),
-            ];
-        }, $filtered_data))) ?>;
+        window.seriesData = <?= json_encode($filtered_data) ?>;
     </script>
     <script src="assets/js/admin/modals.js"></script>
     <script src="assets/js/admin/autocomplete.js"></script>
