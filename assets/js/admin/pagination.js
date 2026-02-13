@@ -122,7 +122,13 @@ document.getElementById('series-list').addEventListener('click', (e) => {
         e.preventDefault();
         const seriesId = volumeLi.dataset.seriesId;
         const volumeIndex = volumeLi.dataset.volumeIndex;
-        const series = window.seriesData.find(s => s.id === seriesId);
+        let series = null;
+        for (const key in window.seriesData) {
+            if (window.seriesData[key].id === seriesId) {
+                series = window.seriesData[key];
+                break;
+            }
+        }
         if (series && series.volumes && series.volumes[volumeIndex]) {
             const volume = series.volumes[volumeIndex];
             document.getElementById('edit-series-id').value = seriesId;
@@ -224,7 +230,13 @@ document.getElementById('series-list').addEventListener('click', (e) => {
         e.preventDefault();
         const seriesId = volumeLi.dataset.seriesId;
         const volumeIndex = volumeLi.dataset.volumeIndex;
-        const series = window.seriesData.find(s => s.id === seriesId);
+        let series = null;
+        for (const key in window.seriesData) {
+            if (window.seriesData[key].id === seriesId) {
+                series = window.seriesData[key];
+                break;
+            }
+        }
         if (series && series.volumes && series.volumes[volumeIndex]) {
             const volume = series.volumes[volumeIndex];
             document.getElementById('edit-series-id').value = seriesId;
