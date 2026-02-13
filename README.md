@@ -90,6 +90,7 @@ lengas/
 ├── config.php           # Configuration du site
 ├── login.php            # Connexion
 ├── logout.php           # Déconnexion
+├── .htaccess
 ├── assets/
 │   ├── css/             # Fichiers CSS
 │   │   ├── _admin.css
