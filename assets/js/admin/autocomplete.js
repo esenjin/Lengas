@@ -31,10 +31,18 @@ function setupSeriesSelection(resultsId, inputId, searchInputId) {
     });
 }
 
-// Fonction pour récupérer les suggestions de plusieurs champs
+// Fonction pour normaliser les chaînes de caractères
+function normalizeString(str) {
+    return str
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+}
+
 async function fetchSuggestionsForFields(term, fields) {
+    const normalizedTerm = normalizeString(term);
     const promises = fields.map(field =>
-        fetch(`admin.php?get_suggestions=true&field=${field}&term=${encodeURIComponent(term)}`)
+        fetch(`admin.php?get_suggestions=true&field=${field}&term=${encodeURIComponent(normalizedTerm)}`)
             .then(response => response.json())
     );
     const results = await Promise.all(promises);
@@ -67,15 +75,18 @@ function setupAutocomplete(inputId, fields) {
             const suggestions = await fetchSuggestionsForFields(term, fields);
             suggestionsList.innerHTML = '';
             if (suggestions.length > 0) {
-                suggestions.forEach(suggestion => {
-                    const div = document.createElement('div');
-                    div.textContent = suggestion;
-                    div.addEventListener('click', () => {
-                        input.value = suggestion;
-                        suggestionsList.style.display = 'none';
+                const normalizedTerm = normalizeString(term);
+                suggestions
+                    .filter(suggestion => normalizeString(suggestion).includes(normalizedTerm))
+                    .forEach(suggestion => {
+                        const div = document.createElement('div');
+                        div.textContent = suggestion;
+                        div.addEventListener('click', () => {
+                            input.value = suggestion;
+                            suggestionsList.style.display = 'none';
+                        });
+                        suggestionsList.appendChild(div);
                     });
-                    suggestionsList.appendChild(div);
-                });
                 suggestionsList.style.display = 'block';
             } else {
                 suggestionsList.style.display = 'none';
@@ -109,10 +120,10 @@ function setupMultiAutocomplete(inputId, fields) {
     suggestionsList.className = 'autocomplete-suggestions';
     container.appendChild(suggestionsList);
 
+    // Fonction pour extraire le dernier terme saisi
     function getLastTerm(value) {
         const parts = value.split(',').map(part => part.trim());
-        const lastPart = parts[parts.length - 1];
-        return lastPart;
+        return parts[parts.length - 1];
     }
 
     input.addEventListener('input', async function() {
@@ -124,10 +135,19 @@ function setupMultiAutocomplete(inputId, fields) {
         }
 
         try {
+            // Normaliser le dernier terme saisi
+            const normalizedLastTerm = normalizeString(lastTerm);
+            // Récupérer les suggestions pour tous les champs demandés
             const suggestions = await fetchSuggestionsForFields(lastTerm, fields);
+
             suggestionsList.innerHTML = '';
             if (suggestions.length > 0) {
-                suggestions.forEach(suggestion => {
+                // Filtrer les suggestions pour qu'elles contiennent le terme normalisé
+                const filteredSuggestions = suggestions.filter(suggestion =>
+                    normalizeString(suggestion).includes(normalizedLastTerm)
+                );
+
+                filteredSuggestions.forEach(suggestion => {
                     const div = document.createElement('div');
                     div.textContent = suggestion;
                     div.addEventListener('click', () => {
@@ -159,7 +179,6 @@ setupSeriesSearch('multiple-series-search', 'multiple-series-results');
 setupSeriesSelection('series-results', 'selected-series-id', 'series-search');
 setupSeriesSelection('multiple-series-results', 'multiple-selected-series-id', 'multiple-series-search');
 
-// Initialisation des autocomplétions
 // Initialisation des autocomplétions
 setupAutocomplete('add-series-author', ['author', 'other_contributors']);
 setupAutocomplete('add-series-publisher', ['publisher']);
