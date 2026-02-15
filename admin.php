@@ -231,8 +231,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_series'])) {
     $result = delete_series($data, $series_id);
     if ($result['success']) {
         save_data($result['data']);
+        $_SESSION['success_message'] = $result['message'];
         echo "OK";
     } else {
+        $_SESSION['error_message'] = $result['message'];
         echo $result['message'];
     }
     exit;

@@ -106,6 +106,7 @@ function delete_series($data, $series_id) {
     }
 
     $series_key = $series['key'];
+    $series_name = $data[$series_key]['name'];
     $image_path = $data[$series_key]['image'];
 
     if (file_exists($image_path)) {
@@ -113,7 +114,11 @@ function delete_series($data, $series_id) {
     }
 
     unset($data[$series_key]);
-    return ['success' => true, 'data' => $data];
+    return [
+        'success' => true,
+        'data' => $data,
+        'message' => "La série $series_name a été supprimée avec succès."
+    ];
 }
 
 // Fonction pour nettoyer les espaces après les virgules
