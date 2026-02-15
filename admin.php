@@ -879,8 +879,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
         <div class="modal" id="current-series-modal">
             <div class="modal-content">
                 <span class="close-modal" id="close-current-series-modal">&times;</span>
-                <h2>Séries en cours</h2>
-                <p>Voici la liste de vos séries en cours (sans le tag "dernier tome").</p>
+                <h2>Séries en cours de publication</h2>
+                <p>Voici la liste de vos séries en cours de publication (sans le tag "dernier tome").</p>
                 <div id="current-series-list">
                     <!-- La liste sera remplie par JavaScript -->
                 </div>
