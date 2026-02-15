@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
 
     if ($result['success']) {
         save_data($result['data']);
-        $_SESSION['success_message'] = "Série ajoutée avec succès.";
+        $_SESSION['success_message'] = $result['message'];
     } else {
         $_SESSION['error_message'] = $result['message'];
     }
@@ -772,8 +772,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
     <?php endif; ?>
 
     <?php if (isset($_SESSION['success_message'])): ?>
-        <div id="success-message" class="success-message">
-            <?= $_SESSION['success_message'] ?>
+        <?php
+        $message = $_SESSION['success_message'];
+        $is_warning = (strpos($message, 'attention') !== false);
+        ?>
+        <div class="alert <?php echo $is_warning ? 'alert-warning' : 'alert-success'; ?>">
+            <?php echo htmlspecialchars($message); ?>
         </div>
         <?php unset($_SESSION['success_message']); ?>
     <?php endif; ?>

@@ -16,6 +16,16 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
     $categories = clean_comma_separated($categories);
     $genres = clean_comma_separated($genres);
 
+    // Vérifie si une série du même nom existe déjà
+    $existing_series = array_filter($data, function($s) use ($name) {
+        return strtolower(trim($s['name'])) === strtolower(trim($name));
+    });
+
+    $message = "Série ajoutée avec succès.";
+    if (!empty($existing_series)) {
+        $message = "Série créée, attention, une autre du même nom existe déjà.";
+    }
+
     $data[] = [
         'id' => generate_uuid(),
         'name' => $name,
@@ -31,7 +41,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         'volumes' => $volumes
     ];
 
-    return ['success' => true, 'data' => $data];
+    return ['success' => true, 'data' => $data, 'message' => $message];
 }
 
 // Mettre à jour une série

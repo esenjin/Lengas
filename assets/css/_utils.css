@@ -18,14 +18,15 @@
 
 /* Messages d'erreur/succès */
 .error-message,
-.success-message {
+.success-message,
+.alert-warning {
     position: fixed;
     top: 20px;
     right: 20px;
     padding: 10px 20px;
     border-radius: var(--border-radius);
     z-index: 1000;
-    animation: fadeOut 3s ease-in-out forwards;
+    animation: fadeOut 5s ease-in-out forwards;
     opacity: 1;
 }
 
@@ -46,6 +47,11 @@
 
 .issues-list {
     color: var(--warning-color);
+}
+
+.alert-warning {
+    background-color: var(--warning-color);
+    color: white;
 }
 
 @keyframes fadeOut {
