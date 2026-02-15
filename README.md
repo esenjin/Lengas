@@ -80,6 +80,14 @@ Administration
 4. Téléverser les fichiers/dossiers restants sur votre serveur (écraser ceux présents)
 5. Bien joué, c'est à jour !
 
+## Importer une base de données
+1. Créer une sauvegarde avec l'outil dédié (modale "Outils")
+2. Extraire l'archive
+3. (facultatif) Supprimer le dossier `uploads/` et les fichiers `data.json`, `list.json`, `loan.json` et `options.json` du dossier `bdd/` de votre site
+4. Déplacer les dossiers `bdd/` et `uploads/` que vous venez d'extraire à la racine de votre site (écraser les fichiers si nécessaire)
+5. (facultatif) Utiliser l'outil de vérification de l'intégrité du site (modale "Outils")
+6. Félicitation, votre base de données est de nouveau là !
+
 ## Structure des fichiers
 
 ```
