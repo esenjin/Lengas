@@ -570,7 +570,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
     $field = $_GET['field'] ?? '';
     $term = trim($_GET['term'] ?? '');
-    $normalizedTerm = normalize_string($term); // Normalise le terme de recherche
+    $normalizedTerm = normalize_string($term);
     $suggestions = [];
 
     if (in_array($field, ['author', 'publisher', 'other_contributors', 'categories', 'genres'])) {
@@ -579,7 +579,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
                 // Si le champ est un tableau (autres contributeurs, genres, catégories)
                 if (is_array($series[$field])) {
                     foreach ($series[$field] as $value) {
-                        $normalizedValue = normalize_string($value); // Normalise la valeur en base
+                        $normalizedValue = normalize_string($value);
                         if (str_contains($normalizedValue, $normalizedTerm) && !in_array($value, $suggestions)) {
                             $suggestions[] = $value;
                         }
@@ -588,7 +588,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
                 // Si le champ est une chaîne (auteur, éditeur)
                 else {
                     $value = $series[$field];
-                    $normalizedValue = normalize_string($value); // Normalise la valeur en base
+                    $normalizedValue = normalize_string($value);
                     if (str_contains($normalizedValue, $normalizedTerm) && !in_array($value, $suggestions)) {
                         $suggestions[] = $value;
                     }
