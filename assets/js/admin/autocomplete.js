@@ -180,8 +180,10 @@ setupSeriesSelection('series-results', 'selected-series-id', 'series-search');
 setupSeriesSelection('multiple-series-results', 'multiple-selected-series-id', 'multiple-series-search');
 
 // Initialisation des autocomplétions
+setupAutocomplete('add-series-name', ['name']);
 setupAutocomplete('add-series-author', ['author', 'other_contributors']);
 setupAutocomplete('add-series-publisher', ['publisher']);
+setupAutocomplete('edit-series-name', ['name']);
 setupAutocomplete('edit-series-author', ['author', 'other_contributors']);
 setupAutocomplete('edit-series-publisher', ['publisher']);
 setupAutocomplete('wishlist-author', ['author', 'other_contributors']);
@@ -192,3 +194,4 @@ setupMultiAutocomplete('edit-series-categories', ['categories']);
 setupMultiAutocomplete('edit-series-genres', ['genres']);
 setupMultiAutocomplete('add-series-other-contributors', ['author', 'other_contributors']);
 setupMultiAutocomplete('edit-series-other-contributors', ['author', 'other_contributors']);
+setupMultiAutocomplete('search-all', ['name', 'author', 'other_contributors', 'publisher', 'categories', 'genres']);

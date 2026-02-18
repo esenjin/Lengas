@@ -575,7 +575,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
     $normalizedTerm = normalize_string($term);
     $suggestions = [];
 
-    if (in_array($field, ['author', 'publisher', 'other_contributors', 'categories', 'genres'])) {
+    if (in_array($field, ['name', 'author', 'publisher', 'other_contributors', 'categories', 'genres'])) {
         foreach ($data as $series) {
             if (isset($series[$field])) {
                 // Si le champ est un tableau (autres contributeurs, genres, catégories)
@@ -796,7 +796,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
         <!-- Barre de filtres et recherche -->
         <div class="filters">
             <form method="get">
-                <input type="text" name="search" autocomplete="off" placeholder="Rechercher une série, un auteur ou un éditeur..."
+                <input type="text" name="search" autocomplete="off" id="search-all" placeholder="Rechercher une série, un auteur, un éditeur, etc.."
                        value="<?= htmlspecialchars($search_term) ?>">
                 <div class="sort-options">
                     <select name="sort_by">
