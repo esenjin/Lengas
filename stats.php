@@ -154,6 +154,26 @@ $total_read_volumes = array_sum(array_map(function($item) {
 // Calculer le temps de lecture pour les séries "lues ailleurs"
 $total_read_reading_time_minutes = $total_read_volumes * 40;
 $total_read_reading_time = convertMinutesToReadableTime($total_read_reading_time_minutes);
+
+// Fonction pour récupérer la dernière version depuis Gitea
+function get_latest_version_from_gitea() {
+    $url = "https://git.crystalyx.net/api/v1/repos/Esenjin_Asakha/Lengas/releases/latest";
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_USERAGENT, "Lengas-Version-Checker");
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    if ($response) {
+        $data = json_decode($response, true);
+        if (isset($data['tag_name'])) {
+            return ltrim($data['tag_name'], 'v');
+        }
+    }
+    return null;
+}
 ?>
 
 <!DOCTYPE html>
@@ -231,6 +251,12 @@ $total_read_reading_time = convertMinutesToReadableTime($total_read_reading_time
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+
+        .footer {
+            justify-content: center;
+            display: flex;
+            padding-top: 20px;
         }
 
         /* Responsive pour mobile */
@@ -347,6 +373,22 @@ $total_read_reading_time = convertMinutesToReadableTime($total_read_reading_time
             </div>
         </div>
     </div>
+
+    <!-- Pied de page -->
+    <footer class="footer">
+        <?php
+            $latest_version = get_latest_version_from_gitea();
+            $current_version = SITE_VERSION;
+            $version_class = '';
+            $version_tooltip = '';
+        ?>
+        <container>
+        <p class="hint <?= $version_class ?>" data-tooltip="<?= htmlspecialchars($version_tooltip) ?>">
+            <?= htmlspecialchars($options['site_name']) ?> - Site en version <?= $current_version ?>.
+            <a href="<?= URL_GITEA ?>" target="_blank">Accéder au dépôt Gitéa</a>.
+        </p>
+        </container>
+    </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
