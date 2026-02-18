@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
         $_SESSION['error_message'] = $result['message'];
     }
 
-    header("Location: admin.php");
+    header("Location: " . $_SERVER['REQUEST_URI']);
     exit;
 }
 
@@ -149,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_multiple_volumes'
         }
     }
 
-    header("Location: admin.php");
+    header("Location: " . $_SERVER['REQUEST_URI']);
     exit;
 }
 
@@ -166,7 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
         save_data($result['data']);
     }
 
-    header("Location: admin.php");
+    header("Location: " . $_SERVER['REQUEST_URI']);
     exit;
 }
 
@@ -183,7 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_volume'])) {
         $_SESSION['error_message'] = $result['message'];
     }
 
-    header("Location: admin.php");
+    header("Location: " . $_SERVER['REQUEST_URI']);
     exit;
 }
 
@@ -211,7 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         $new_image = upload_image($_FILES['edit_image'], $error_message);
         if ($new_image === false) {
             $_SESSION['error_message'] = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
-            header("Location: admin.php");
+            header("Location: " . $_SERVER['REQUEST_URI']);
             exit;
         }
     }
@@ -221,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         save_data($result['data']);
     }
 
-    header("Location: admin.php");
+    header("Location: " . $_SERVER['REQUEST_URI']);
     exit;
 }
 
@@ -277,7 +277,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
             if (file_exists($logo_path)) {
                 if (!unlink($logo_path)) {
                     $_SESSION['error_message'] = "Impossible de supprimer l'ancien logo. Vérifiez les permissions.";
-                    header("Location: admin.php");
+                    header("Location: " . $_SERVER['REQUEST_URI']);
                     exit;
                 }
             }
@@ -299,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
         $_SESSION['error_message'] = $result['message'];
     }
 
-    header("Location: admin.php");
+    header("Location: " . $_SERVER['REQUEST_URI']);
     exit;
 }
 
