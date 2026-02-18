@@ -155,6 +155,20 @@ $total_read_volumes = array_sum(array_map(function($item) {
 $total_read_reading_time_minutes = $total_read_volumes * 40;
 $total_read_reading_time = convertMinutesToReadableTime($total_read_reading_time_minutes);
 
+// Préparer les données pour la recherche dynamique
+$search_data = [];
+foreach ($data as $series) {
+    $search_data[] = [
+        'name' => $series['name'],
+        'author' => $series['author'],
+        'publisher' => $series['publisher'],
+        'categories' => $series['categories'] ?? [],
+        'genres' => $series['genres'] ?? [],
+        'other_contributors' => $series['other_contributors'] ?? [],
+        'volumes_count' => count($series['volumes']),
+    ];
+}
+
 // Fonction pour récupérer la dernière version depuis Gitea
 function get_latest_version_from_gitea() {
     $url = "https://git.crystalyx.net/api/v1/repos/Esenjin_Asakha/Lengas/releases/latest";
@@ -257,6 +271,80 @@ function get_latest_version_from_gitea() {
             justify-content: center;
             display: flex;
             padding-top: 20px;
+        }
+
+        .search-container {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #dynamic-search-form input {
+            background-color: #2d2d2d;
+            color: white;
+        }
+
+        #dynamic-search-form input::placeholder {
+            color: #aaa;
+        }
+
+        #search-results {
+            background-color: #2d2d2d;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        #search-results.show {
+            display: block;
+        }
+
+        .result-item {
+            padding: 10px;
+            border-bottom: 1px solid #444;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-link {
+            color: #bb86fc;
+            text-decoration: none;
+        }
+
+        .result-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Style pour les suggestions d'autocomplétion */
+        .autocomplete-suggestions {
+            background-color: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            margin-top: 2px;
+        }
+
+        .autocomplete-suggestions.show {
+            display: block;
+        }
+
+        .autocomplete-suggestions div {
+            padding: 8px 12px;
+            cursor: pointer;
+            color: white;
+        }
+
+        .autocomplete-suggestions div:hover {
+            background-color: #bb86fc;
+            color: white;
+        }
+
+        /* Style pour le bouton de recherche */
+        #search-button {
+            margin-top: 10px;
         }
 
         /* Responsive pour mobile */
@@ -372,7 +460,20 @@ function get_latest_version_from_gitea() {
                 </div>
             </div>
         </div>
-    </div>
+        <!-- Recherche dynamique -->
+        <div class="search-container" style="max-width: 800px; margin: 30px auto; background-color: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);">
+            <h2 style="text-align: center; color: white; margin-bottom: 20px;">Statistiques avancées</h2>
+            <div style="position: relative; width: 100%; margin-bottom: 20px;">
+                <input type="text"
+                    id="search-input"
+                    placeholder="Rechercher : Série, auteur, éditeur, catégorie, genre, contributeur..."
+                    style="width: 100%; padding: 10px; border-radius: 5px; border: none; background-color: #2d2d2d; color: white;"
+                    autocomplete="off">
+                <div id="search-suggestions" class="autocomplete-suggestions" style="top: 100%; left: 0; right: 0; z-index: 1000;"></div>
+            </div>
+            <button id="search-button" style="padding: 10px 20px; background-color: #bb86fc; color: white; border: none; border-radius: 5px; cursor: pointer; display: block; margin: 0 auto;">Rechercher</button>
+            <div id="search-results" style="margin-top: 20px; color: white; display: none;"></div>
+        </div>
 
     <!-- Pied de page -->
     <footer class="footer">
@@ -398,5 +499,76 @@ function get_latest_version_from_gitea() {
         var totalVolumes = <?= $total_volumes ?>;
     </script>
     <script src="assets/js/stats.js"></script>
+    <script>
+        // Exposer les données PHP en JavaScript
+        const searchData = <?php echo json_encode($search_data); ?>;
+        const allAuthors = <?php echo json_encode($unique_authors); ?>;
+        const allPublishers = <?php echo json_encode($unique_publishers); ?>;
+        const allCategories = <?php
+            $categories = [];
+            foreach ($data as $series) {
+                if (!empty($series['categories'])) {
+                    $categories = array_merge($categories, $series['categories']);
+                }
+            }
+            echo json_encode(array_unique($categories));
+        ?>;
+        const allGenres = <?php
+            $genres = [];
+            foreach ($data as $series) {
+                if (!empty($series['genres'])) {
+                    $genres = array_merge($genres, $series['genres']);
+                }
+            }
+            echo json_encode(array_unique($genres));
+        ?>;
+        const allContributors = <?php
+            $contributors = [];
+            foreach ($data as $series) {
+                if (!empty($series['other_contributors'])) {
+                    $contributors = array_merge($contributors, $series['other_contributors']);
+                }
+            }
+            echo json_encode(array_unique($contributors));
+        ?>;
+    </script>
+    <script>
+        // Version ultra-simple pour éviter toute erreur
+        const allSuggestions = [
+            <?php
+                $suggestions = [];
+                foreach ($data as $series) {
+                    if (!empty($series['name'])) $suggestions[] = '"' . addslashes($series['name']) . '"';
+                    if (!empty($series['author'])) $suggestions[] = '"' . addslashes($series['author']) . '"';
+                    if (!empty($series['publisher'])) $suggestions[] = '"' . addslashes($series['publisher']) . '"';
+                    if (!empty($series['categories'])) {
+                        foreach ($series['categories'] as $cat) {
+                            $suggestions[] = '"' . addslashes($cat) . '"';
+                        }
+                    }
+                    if (!empty($series['genres'])) {
+                        foreach ($series['genres'] as $genre) {
+                            $suggestions[] = '"' . addslashes($genre) . '"';
+                        }
+                    }
+                    if (!empty($series['other_contributors'])) {
+                        foreach ($series['other_contributors'] as $contrib) {
+                            $suggestions[] = '"' . addslashes($contrib) . '"';
+                        }
+                    }
+                }
+                echo implode(',', array_unique($suggestions));
+            ?>
+        ];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const datalist = document.getElementById('search-suggestions');
+            allSuggestions.forEach(suggestion => {
+                const option = document.createElement('option');
+                option.value = suggestion;
+                datalist.appendChild(option);
+            });
+        });
+    </script>
 </body>
 </html>
