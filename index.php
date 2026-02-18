@@ -99,6 +99,32 @@ if ($options['hide_mature']) {
     });
 }
 
+// Vérifier si le mode privé est activé
+if ($options['private_mode']) {
+    // Afficher un message informatif avec la structure HTML complète
+    ?>
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title><?= htmlspecialchars($options['index_page_title']) ?></title>
+        <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
+        <meta property="og:image" content="logo.png">
+        <link rel="icon" type="image/x-icon" href="favicon.ico">
+        <link rel="stylesheet" href="assets/css/main.css">
+    </head>
+    <body>
+        <div class="container">
+            <h1><?= htmlspecialchars($options['index_page_title']) ?></h1>
+            <p>Le site est en mode privé. La bibliothèque n'est pas accessible au public.</p>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
 // Gestion du tri, filtre et recherche
 $sort_by = $_GET['sort_by'] ?? 'name';
 $sort_order = $_GET['sort_order'] ?? 'asc';
@@ -203,6 +229,10 @@ if (!empty($search_term)) {
                     </select>
                 </div>
                 <button type="submit">Appliquer</button>
+
+                <?php if ($options['hide_mature']): ?>
+                    <p style="color: var(--status-mature);">🔞 Les séries matures sont masquées.</p>
+                <?php endif; ?>
             </form>
         </div>
 
