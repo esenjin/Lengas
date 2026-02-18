@@ -21,6 +21,7 @@ if ($options['private_mode']) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title><?= htmlspecialchars($options['index_page_title']) ?></title>
         <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
+        <meta property="og:image" content="logo.png">
         <link rel="icon" type="image/x-icon" href="favicon.ico">
         <link rel="stylesheet" href="assets/css/main.css">
     </head>

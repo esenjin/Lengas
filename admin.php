@@ -762,6 +762,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($options['admin_page_title']) ?></title>
     <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
+    <meta property="og:image" content="logo.png">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
 </head>
