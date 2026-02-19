@@ -27,6 +27,9 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 - Ajout et suppression de séries dans une liste d’envies
 - Possibilité d’ajouter une série de la liste d’envies à votre collection
 
+### Séries à lire
+- Affiche les séries qui ne sont pas entièrement lues.
+
 ### Gestion des lues ailleurs
 - Suivi des séries lues non-présentes dans la bibliothèque
 
@@ -122,6 +125,7 @@ lengas/
 │       │   ├── wishlist.js
 │       │   ├── loans.js
 │       │   ├── tools.js
+│       │   ├── unread.js
 │       │   ├── pagination.js
 │       │   ├── read.js
 │       │   └── main.js
@@ -138,6 +142,7 @@ lengas/
 │   ├── loans.php         # Fonctions de gestion des prêts
 │   ├── read.php          # Fonctions de gestion des lues ailleurs
 │   ├── options.php       # Fonctions de gestion des options du site
+│   ├── unread.php        # Fonctions de gestion des séries à lire
 │   └── tools.php         # Fonctions de gestion des outils (sauvegardes, intégrité, etc.)
 ├── uploads/             # Images des séries (chmod 0774)
 ├── saves/               # Sauvegardes de la base de données (chmod 0774)
