@@ -1191,9 +1191,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <div class="wishlist-list" id="wishlist-list">
                         <?php foreach (load_wishlist() as $index => $item): ?>
                             <div class="wishlist-item" data-index="<?= $index ?>">
-                                <span class="wishlist-series-name"><?= $item['name'] ?></span>
-                                <span class="wishlist-series-author"><?= $item['author'] ?></span>
-                                <span class="wishlist-series-publisher"><?= $item['publisher'] ?></span>
+                                <div class="wishlist-item-info">
+                                    <span class="wishlist-series-name"><?= $item['name'] ?></span>
+                                    <span class="wishlist-series-author"><?= $item['author'] ?></span>
+                                    <span class="wishlist-series-publisher"><?= $item['publisher'] ?></span>
+                                </div>    
                                 <div class="wishlist-item-actions">
                                     <button class="add-from-wishlist-btn" data-index="<?= $index ?>">+</button>
                                     <button class="edit-wishlist-btn" data-index="<?= $index ?>">...</button>

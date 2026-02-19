@@ -141,6 +141,10 @@
     font-size: 0.9em;
 }
 
+.wishlist-item-info {
+  display: grid;
+}
+
 .wishlist-series-name {
   color: var(--primary-color);
 }
@@ -388,11 +392,11 @@
 }
 
 .read-series-volumes {
-    color: var(--button-opt);
+    color: #aaa;
 }
 
 .read-series-status {
-  color: var(--button-otl);
+  color: #aaa;
 }
 
 .add-from-read-btn {

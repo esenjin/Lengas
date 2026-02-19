@@ -87,7 +87,7 @@ function updateReadList(read) {
                 </div>
 
                 <div class="read-item-line read-item-line-bottom">
-                    <span class="read-series-volumes">${item.volumes_read || 0} tomes lus</span>
+                    <span class="read-series-volumes">${item.volumes_read || 0} tomes lus</span>&nbsp;-&nbsp;
                     <span class="read-series-status">${item.status || 'inconnu'}</span>
                 </div>
             </div>
