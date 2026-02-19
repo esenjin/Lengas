@@ -1064,6 +1064,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                 <span class="close-modal" id="close-unread-modal">&times;</span>
                 <h2>Séries à lire</h2>
                 <p>Cette section vous permet de garder une trace des séries que vous possédez mais que vous n'avez pas encore terminé de lire.</p>
+                <br>
                 <div id="unread-list" class="unread-list"></div>
             </div>
         </div>

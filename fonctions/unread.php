@@ -7,8 +7,12 @@ function get_unread_series($data) {
         $last_read_volume = null;
         $unread_count = 0;
         $total_volumes = count($series['volumes']);
+        $has_last_volume = false;
 
         foreach ($series['volumes'] as $volume) {
+            if (isset($volume['last']) && $volume['last']) {
+                $has_last_volume = true;
+            }
             if ($volume['status'] !== 'terminé') {
                 $has_unread = true;
                 $unread_count++;
@@ -26,6 +30,8 @@ function get_unread_series($data) {
                 'last_read_volume' => ($last_read_volume !== null) ? $last_read_volume : 'aucun',
                 'unread_count' => $unread_count,
                 'total_volumes' => $total_volumes,
+                'soon_finished' => is_series_soon_finished($series),
+                'status' => $has_last_volume ? 'terminée' : 'en cours',
             ];
         }
     }
@@ -46,5 +52,23 @@ function mark_first_unread_volume_as_read($data, $series_id) {
         }
     }
     return ['success' => false, 'message' => 'Série non trouvée.'];
+}
+
+// Vérifier si une série est bientôt terminée
+function is_series_soon_finished($series) {
+    $last_volume = null;
+    $unread_count = 0;
+    $has_last_volume = false;
+
+    foreach ($series['volumes'] as $volume) {
+        if (isset($volume['last']) && $volume['last']) {
+            $has_last_volume = true;
+        }
+        if ($volume['status'] !== 'terminé') {
+            $unread_count++;
+        }
+    }
+
+    return $has_last_volume && $unread_count <= 2;
 }
 ?>
