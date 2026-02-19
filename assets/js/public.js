@@ -178,6 +178,18 @@ let currentPage = 1;
 let isLoading = false;
 let hasMoreSeries = true;
 
+// Écouteurs pour les liens de recherche depuis stats.php
+document.addEventListener('DOMContentLoaded', function() {
+    const resultLinks = document.querySelectorAll('.result-link');
+    resultLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const searchTerm = this.getAttribute('href').split('search=')[1];
+            window.location.href = `index.php?search=${searchTerm}`;
+        });
+    });
+});
+
 // Fonction pour charger les séries paginées via AJAX
 function loadMoreSeries() {
     if (isLoading || !hasMoreSeries) return;
@@ -185,18 +197,18 @@ function loadMoreSeries() {
     isLoading = true;
     document.getElementById('loading-spinner').classList.add('active');
 
+    // Récupérer les paramètres de recherche actuels depuis l'URL
     const urlParams = new URLSearchParams(window.location.search);
-    const searchTerm = normalizeString(urlParams.get('search') || '');
+    const searchTerm = urlParams.get('search') || '';
     const sortBy = urlParams.get('sort_by') || 'name';
     const sortOrder = urlParams.get('sort_order') || 'asc';
 
-    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=12&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}`)
+    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=12&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}`)
         .then(response => response.json())
         .then(data => {
             if (data.success && data.series && data.series.length > 0) {
                 const seriesList = document.getElementById('series-list');
                 data.series.forEach((series) => {
-                    // Ajoute la série à seriesData
                     seriesData.push(series);
                     const seriesIndex = seriesData.length - 1;
 

@@ -62,7 +62,7 @@ if (isset($_GET['get_paginated_series'])) {
     $sort_by = $_GET['sort_by'] ?? 'name';
     $sort_order = $_GET['sort_order'] ?? 'asc';
 
-    // Applique la recherche et le tri
+    // Applique la recherche et le tri à chaque requête
     $filtered_data = $data;
     if (!empty($search_term)) {
         $normalized_search = normalize_string($search_term);
