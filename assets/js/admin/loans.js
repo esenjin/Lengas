@@ -173,7 +173,7 @@ function displayLoanList(loans) {
 
         let html = '';
 
-        if (!seriesExists) {
+        if (!seriesExists || !series) {
             html += `
                 <h4 style="color: #cf6679;">Série supprimée de la base</h4>
                 <p>Cette série a été supprimée de votre base, mais des prêts sont encore enregistrés.</p>

@@ -188,7 +188,7 @@ function get_loans_by_series($data) {
     foreach ($loans_by_series as $series_id => $loans) {
         $series = find_series_by_id($data, $series_id);
         $result[] = [
-            'series' => $series ? $series['series'] : null,
+            'series' => $series ? $series['data'] : null,
             'loans' => $loans,
             'series_exists' => $series !== null
         ];
