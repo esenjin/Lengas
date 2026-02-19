@@ -31,4 +31,20 @@ function get_unread_series($data) {
     }
     return $unread_series;
 }
+
+// Marquer le premier tome non-lu d'une série comme lu
+function mark_first_unread_volume_as_read($data, $series_id) {
+    foreach ($data as &$series) {
+        if ($series['id'] === $series_id) {
+            foreach ($series['volumes'] as &$volume) {
+                if ($volume['status'] !== 'terminé') {
+                    $volume['status'] = 'terminé';
+                    return ['success' => true, 'data' => $data];
+                }
+            }
+            return ['success' => false, 'message' => 'Aucun tome non-lu trouvé.'];
+        }
+    }
+    return ['success' => false, 'message' => 'Série non trouvée.'];
+}
 ?>

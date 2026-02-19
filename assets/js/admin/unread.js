@@ -42,6 +42,7 @@ function updateUnreadList(unread_series) {
                     <span class="unread-series-name">${item.name || 'Inconnu'}</span>&nbsp;|&nbsp;
                     <span class="unread-series-author">${item.author || 'Inconnu'}</span>&nbsp;|&nbsp;
                     <span class="unread-series-publisher">${item.publisher || 'Inconnu'}</span>
+                    <button class="mark-as-read-btn" data-series-id="${item.id}">+</button>
                 </div>
                 <div class="unread-item-line unread-item-line-bottom">
                     <span class="unread-series-last-read">Dernier lu : ${item.last_read_volume || 'aucun'}</span>
@@ -50,6 +51,37 @@ function updateUnreadList(unread_series) {
             </div>
         `;
         unreadList.appendChild(unreadItem);
+    });
+
+    // Ajoute les écouteurs d'événements pour les boutons "+"
+    document.querySelectorAll('.mark-as-read-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const seriesId = this.getAttribute('data-series-id');
+            markFirstUnreadVolumeAsRead(seriesId);
+        });
+    });
+}
+
+// Marquer le premier tome non lu d'une série comme lu
+function markFirstUnreadVolumeAsRead(seriesId) {
+    fetch('admin.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=mark_first_unread_as_read&series_id=${seriesId}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadUnread();
+        } else {
+            alert(data.message || 'Erreur lors de la mise à jour.');
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Une erreur est survenue.');
     });
 }
 

@@ -94,6 +94,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
             }
             break;
+
+        case 'mark_first_unread_as_read':
+            $series_id = $_POST['series_id'] ?? '';
+            if ($series_id) {
+                $result = mark_first_unread_volume_as_read($data, $series_id);
+                if ($result['success']) {
+                    save_data($result['data']);
+                    $response['success'] = true;
+                } else {
+                    $response['message'] = $result['message'];
+                }
+            } else {
+                $response['message'] = 'ID de série invalide.';
+            }
+            break;
     }
 
     header('Content-Type: application/json');

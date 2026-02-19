@@ -456,3 +456,22 @@
 .unread-series-author {
   font-weight: bold;
 }
+
+.mark-as-read-btn {
+    background: var(--success-light);
+    color: var(--text-color);
+    border: none;
+    border-radius: 5%;
+    width: 24px;
+    height: 24px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 10px;
+}
+
+.mark-as-read-btn:hover {
+    background: #45a049;
+}
