@@ -12,6 +12,7 @@ require 'fonctions/wishlist.php';
 require 'fonctions/loans.php';
 require 'fonctions/options.php';
 require 'fonctions/tools.php';
+require 'fonctions/unread.php';
 
 $data = load_data();
 $options = load_options();
@@ -20,6 +21,17 @@ $options = load_options();
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $per_page_admin = 9;
 $offset = ($page - 1) * $per_page_admin;
+
+// Récupérer les séries non lues
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_unread_series') {
+    $unread_series = get_unread_series($data);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => true,
+        'unread_series' => $unread_series
+    ]);
+    exit;
+}
 
 // Récupérer les séries "lues ailleurs"
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'get_read') {
@@ -824,6 +836,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
             <button id="open-add-multiple-volumes-modal" class="button button-ats">Ajouter des tomes</button>
             <button id="open-current-series-modal" class="button button-aos">Séries en cours</button>
             <button id="open-incomplete-series-modal" class="button button-aos">Séries incomplètes</button>
+            <button id="open-unread-modal" class="button button-aos">Séries à lire</button>
             <button id="open-read-modal" class="button button-otl">Lues ailleurs</button>
             <button id="open-loan-modal" class="button button-otl">Livres prêtés</button>
             <button id="open-wishlist-modal" class="button button-otl">Liste d'envies</button>
@@ -1027,6 +1040,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
                     <button type="submit" name="update_series">Mettre à jour</button>
                 </form>
+            </div>
+        </div>
+
+        <!-- Modale "À lire" -->
+        <div id="unread-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-unread-modal">&times;</span>
+                <h2>Séries à lire</h2>
+                <p>Cette section vous permet de garder une trace des séries que vous possédez mais que vous n'avez pas encore terminé de lire.</p>
+                <div id="unread-list" class="unread-list"></div>
             </div>
         </div>
 
@@ -1366,6 +1389,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
     <script src="assets/js/admin/pagination.js"></script>
     <script src="assets/js/admin/main.js"></script>
     <script src="assets/js/admin/read.js"></script>
+    <script src="assets/js/admin/unread.js"></script>
 
 </body>
 </html>

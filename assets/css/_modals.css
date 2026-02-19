@@ -418,3 +418,37 @@
 .remove-from-read-btn:hover {
     background-color: var(--error-hover);
 }
+
+/* Modale "Séries à lire" */
+.unread-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    margin: 5px 0;
+    background: #2a2a2a;
+    border-radius: 5px;
+}
+
+.unread-item-content {
+    flex: 1;
+}
+
+.unread-item-line-top {
+    display: flex;
+    margin-bottom: 5px;
+}
+
+.unread-item-line-bottom {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9em;
+    color: #aaa;
+}
+
+.unread-series-name {
+  color: var(--primary-color);
+}
+
+.unread-series-author {
+  font-weight: bold;
+}
