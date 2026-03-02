@@ -83,15 +83,22 @@ function createLightSeriesCard(series) {
             </div>
             <p><strong>Auteur :</strong> ${series.author}</p>
             <p><strong>Éditeur :</strong> ${series.publisher}</p>
-            <p><strong>Autres contributeurs :</strong> ${series.other_contributors ? series.other_contributors.join(', ') : ''}</p>
+            <p><strong>Autres contributeurs :</strong> ${formatList(series.other_contributors)}</p>
             <p><strong>Catégories :</strong> ${series.categories ? series.categories.join(', ') : ''}</p>
-            <p><strong>Genres :</strong> ${series.genres ? series.genres.join(', ') : ''}</p>
+            <p><strong>Genres :</strong> ${formatList(series.genres)}</p>
             ${series.mature ? '<span class="mature-badge">🔞 Mature</span>' : ''}
             <button class="load-volumes-btn" data-series-id="${series.id}">Voir les tomes (${series.volumes_count})</button>
             <div class="volumes-container" data-series-id="${series.id}"></div>
         </div>
     `;
     return seriesCard;
+}
+
+// Vérifie si un champ de liste est vide
+function formatList(list) {
+    // Filtre les éléments vides ou uniquement des espaces
+    const filtered = list ? list.filter(item => item && item.trim() !== '') : [];
+    return filtered.length > 0 ? filtered.join(', ') : '<em>aucun</em>';
 }
 
 // Charge les tomes d'une série
