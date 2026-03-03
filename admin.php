@@ -496,6 +496,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
     $sort_by = $_GET['sort_by'] ?? 'name';
     $sort_order = $_GET['sort_order'] ?? 'asc';
     $light_mode = isset($_GET['light']) && $_GET['light'] === 'true';
+    $status_filter = $_GET['status_filter'] ?? '';
 
     $filtered_data = $data;
     if ($search_term) {
@@ -507,6 +508,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
                 (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
                 (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
+        });
+    }
+    if ($status_filter !== '') {
+        $filtered_data = array_filter($filtered_data, function($series) use ($status_filter) {
+            // Même logique que le JS
+            $status = 'en cours';
+            if (!empty($series['volumes'])) {
+                foreach ($series['volumes'] as $volume) {
+                    if (!empty($volume['last'])) {
+                        $status = 'terminée';
+                        break;
+                    }
+                }
+            }
+            if ($status === 'en cours' && !empty($series['status'])) {
+                $status = $series['status'];
+            }
+            return $status === $status_filter;
         });
     }
     sort_series($filtered_data, $sort_by, $sort_order);
@@ -853,6 +872,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <select name="sort_order">
                         <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Ascendant</option>
                         <option value="desc" <?= $sort_order === 'desc' ? 'selected' : '' ?>>Descendant</option>
+                    </select>
+                    <select name="status_filter" id="status-filter">
+                        <option value="">Tous les statuts</option>
+                        <option value="en cours">En cours ▶️</option>
+                        <option value="terminée">Terminée ✅</option>
+                        <option value="en pause">En pause ⏳</option>
+                        <option value="abandonnée">Abandonnée ⛔</option>
                     </select>
                 </div>
                 <button type="submit">Appliquer</button>

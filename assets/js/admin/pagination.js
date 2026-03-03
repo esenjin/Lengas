@@ -37,11 +37,14 @@ async function loadMoreSeries() {
         const searchTerm = urlParams.get('search') || '';
         const sortBy = urlParams.get('sort_by') || 'name';
         const sortOrder = urlParams.get('sort_order') || 'asc';
+        const statusFilterEl = document.getElementById('status-filter');
+        const statusFilter = statusFilterEl ? statusFilterEl.value : '';
 
         const response = await fetch(
             `admin.php?get_paginated_series=true&page=${currentPage + 1}&per_page=9&light=true` +
             `&search=${encodeURIComponent(searchTerm)}` +
-            `&sort_by=${sortBy}&sort_order=${sortOrder}`
+            `&sort_by=${sortBy}&sort_order=${sortOrder}` +
+            `&status_filter=${encodeURIComponent(statusFilter)}`
         );
         const data = await response.json();
 
@@ -207,6 +210,13 @@ document.getElementById('series-list').addEventListener('click', (e) => {
             }
 
             if (series) {
+                let seriesStatus = 'en cours';
+                if (series.volumes && series.volumes.some(volume => volume.last)) {
+                    seriesStatus = 'terminée';
+                } else if (series.status === 'en pause' || series.status === 'abandonnée') {
+                    seriesStatus = series.status;
+                }
+
                 document.getElementById('edit-series-id-input').value = seriesId;
                 document.getElementById('edit-series-name').value = series.name;
                 document.getElementById('edit-series-author').value = series.author;
@@ -215,9 +225,16 @@ document.getElementById('series-list').addEventListener('click', (e) => {
                 document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
                 document.getElementById('edit-series-genres').value = series.genres ? series.genres.join(', ') : '';
                 document.getElementById('edit-series-anilist-id').value = series.anilist_id || '';
+                document.getElementById('edit-series-new-volumes-count').value = 0;
+                document.getElementById('edit-series-new-volumes-status').value = 'à lire';
+                document.querySelector('#edit-series-form [name="new_volumes_collector"]').checked = false;
                 document.getElementById('edit-series-mature').checked = series.mature || false;
                 document.getElementById('edit-series-favorite').checked = series.favorite || false;
                 document.getElementById('current-series-image').src = series.image || 'logo.png';
+                const statusSelect = document.getElementById('edit-series-status');
+                Array.from(statusSelect.options).forEach(option => {
+                    option.selected = option.value === seriesStatus;
+                });
                 document.getElementById('edit-series-modal').classList.add('modal-active');
             }
             return;
@@ -301,7 +318,17 @@ window.addEventListener('scroll', throttle(() => {
 
 // Initialisation au chargement de la page
 document.addEventListener('DOMContentLoaded', () => {
+    const statusFilter = document.getElementById('status-filter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', () => {
+            seriesList.innerHTML = '';
+            currentPage = 0;
+            hasMoreSeries = true;
+            loadMoreSeries();
+        });
+    }
+
     document.getElementById('series-list').innerHTML = '';
-    currentPage = 0; // On commence à 0 pour charger la page 1
+    currentPage = 0;
     loadMoreSeries();
 });
