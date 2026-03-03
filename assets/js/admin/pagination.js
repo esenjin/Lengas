@@ -70,6 +70,36 @@ function createLightSeriesCard(series) {
     seriesCard.className = 'series-card' + (series.favorite ? ' favorite' : '');
     seriesCard.dataset.seriesId = series.id;
     const imageSrc = series.image && series.image !== '' ? series.image : 'logo.png';
+    
+    // Détermine le statut de la série
+    let seriesStatus = 'en cours';
+    if (series.volumes && series.volumes.some(volume => volume.last)) {
+        seriesStatus = 'terminée';
+    } else if (series.status) {
+        seriesStatus = series.status;
+    }
+
+    // Détermine l'icône et la classe CSS en fonction du statut
+    let statusIcon = '▶️';
+    let statusClass = 'status-in-progress';
+    switch (seriesStatus) {
+        case 'terminée':
+            statusIcon = '✅ terminée';
+            statusClass = 'status-completed';
+            break;
+        case 'en pause':
+            statusIcon = '⏳ en pause';
+            statusClass = 'status-paused';
+            break;
+        case 'abandonnée':
+            statusIcon = '⛔ abandonnée';
+            statusClass = 'status-abandoned';
+            break;
+        default:
+            statusIcon = '▶️ en cours';
+            statusClass = 'status-in-progress';
+    }
+
     seriesCard.innerHTML = `
         <img class="series-image" src="${imageSrc}" alt="${series.name}" loading="lazy">
         <div class="series-info">
@@ -86,7 +116,10 @@ function createLightSeriesCard(series) {
             <p><strong>Autres contributeurs :</strong> ${formatList(series.other_contributors)}</p>
             <p><strong>Catégories :</strong> ${series.categories ? series.categories.join(', ') : ''}</p>
             <p><strong>Genres :</strong> ${formatList(series.genres)}</p>
-            ${series.mature ? '<span class="mature-badge">🔞 Mature</span>' : ''}
+            <div class="series-badges">
+                ${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}
+                <span class="series-status-badge ${statusClass}">${statusIcon}</span>
+            </div>
             <button class="load-volumes-btn" data-series-id="${series.id}">Voir les tomes (${series.volumes_count})</button>
             <div class="volumes-container" data-series-id="${series.id}"></div>
         </div>

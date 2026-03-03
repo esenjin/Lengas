@@ -1,6 +1,6 @@
 <?php
 // Ajouter une série
-function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image) {
+function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours') {
     $volumes = [];
     for ($i = 1; $i <= $volumes_count; $i++) {
         $volumes[] = [
@@ -38,6 +38,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         'anilist_id' => $anilist_id,
         'mature' => $mature,
         'favorite' => $favorite,
+        'status' => $status,
         'volumes' => $volumes
     ];
 
@@ -45,7 +46,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
 }
 
 // Mettre à jour une série
-function update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null) {
+function update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null, $new_status = null) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
         return ['success' => false, 'message' => "Série introuvable."];
@@ -53,6 +54,33 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
 
     $series_key = $series['key'];  // Utilise la clé associative
     $series_data = $series['data'];
+
+    // Détermine le statut actuel si non fourni
+    if ($new_status === null) {
+        $has_last_volume = false;
+        foreach ($series_data['volumes'] as $volume) {
+            if (!empty($volume['last'])) {
+                $has_last_volume = true;
+                break;
+            }
+        }
+        $new_status = $has_last_volume ? 'terminée' : ($series_data['status'] ?? 'en cours');
+    }
+
+    // Met à jour le statut
+    $data[$series_key]['status'] = $new_status;
+
+    // Gestion du tag "last" en fonction du statut
+    if ($new_status === 'terminée') {
+        $last_index = count($data[$series_key]['volumes']) - 1;
+        if ($last_index >= 0) {
+            $data[$series_key]['volumes'][$last_index]['last'] = true;
+        }
+    } else {
+        foreach ($data[$series_key]['volumes'] as &$volume) {
+            $volume['last'] = false;
+        }
+    }
 
     // Met à jour directement via la clé
     $data[$series_key]['name'] = $name;
@@ -64,6 +92,21 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
     $data[$series_key]['anilist_id'] = $anilist_id;
     $data[$series_key]['mature'] = $mature;
     $data[$series_key]['favorite'] = $favorite;
+
+    // Gestion du statut de la série
+    if ($new_status !== null) {
+        $data[$series_key]['status'] = $new_status;
+        if ($new_status === 'terminée') {
+            $last_index = count($data[$series_key]['volumes']) - 1;
+            if ($last_index >= 0) {
+                $data[$series_key]['volumes'][$last_index]['last'] = true;
+            }
+        } else {
+            foreach ($data[$series_key]['volumes'] as &$volume) {
+                $volume['last'] = false;
+            }
+        }
+    }
 
     // Gestion de l'image
     if ($remove_image && !empty($data[$series_key]['image']) && file_exists($data[$series_key]['image'])) {

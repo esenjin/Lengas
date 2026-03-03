@@ -106,3 +106,13 @@ function normalize_string($string) {
     $string = preg_replace('/[^a-z0-9]/', '', $string);
     return $string;
 }
+
+// Statut de la série
+function get_status_icon($status) {
+    switch ($status) {
+        case 'terminee': return '✅';
+        case 'enpause': return '⏳';
+        case 'abandonnee': return '⛔';
+        default: return '▶️';
+    }
+}

@@ -1,5 +1,5 @@
 <?php
-error_reporting(0);
+
 
 require 'config.php';
 require 'includes/auth.php';
@@ -131,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $volumes_status = $_POST['volumes_status'] ?? 'à lire';
     $all_collector = !empty($_POST['all_collector']);
     $last_volume = !empty($_POST['last_volume']);
+    $status = $_POST['series_status'] ?? 'en cours';
 
     // Initialiser $image à null par défaut
     $image = null;
@@ -146,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     }
 
     // Appeler add_series avec $image (qui peut être null)
-    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image);
+    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status);
 
     if ($result['success']) {
         save_data($result['data']);
@@ -231,6 +232,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $new_volumes_status = $_POST['new_volumes_status'] ?? 'à lire';
     $new_volumes_collector = !empty($_POST['new_volumes_collector']);
     $new_volumes_last = !empty($_POST['new_volumes_last']);
+    $new_status = $_POST['series_status'] ?? null;
 
     $new_image = null;
     if (!empty($_FILES['edit_image']['name'])) {
@@ -243,7 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         }
     }
 
-    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image);
+    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status);
     if ($result['success']) {
         save_data($result['data']);
     }
@@ -515,6 +517,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
     // En mode "light", on ne renvoie que les métadonnées
     if ($light_mode) {
         $light_series = array_map(function($series) {
+            // Détermine le statut de la série
+            $status = 'en cours';
+            if (isset($series['volumes']) && is_array($series['volumes'])) {
+                foreach ($series['volumes'] as $volume) {
+                    if (!empty($volume['last'])) {
+                        $status = 'terminée';
+                        break;
+                    }
+                }
+            }
+            if (isset($series['status'])) {
+                $status = $series['status'];
+            }
+
             return [
                 'id' => $series['id'],
                 'name' => $series['name'],
@@ -527,6 +543,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 'volumes_count' => count($series['volumes']),
                 'favorite' => $series['favorite'] ?? false,
                 'mature' => $series['mature'] ?? false,
+                'status' => $status,
                 'has_anilist_id' => !empty($series['anilist_id']),
             ];
         }, $paginated_data);
@@ -891,10 +908,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <label>
                         <input type="checkbox" name="all_collector"> Tous en collector ⭐
                     </label>
-                    <label>
-                        <input type="checkbox" name="last_volume"> Série terminée ✅
-                    </label>
-                    <p class="hint">Le tome final sera tagué comme dernier de la série.</p>
+                    <p>Statut de la série :</p>
+                    <select name="series_status" id="add-series-status" required>
+                        <option value="en cours">En cours ▶️</option>
+                        <option value="terminée">Terminée ✅</option>
+                        <option value="en pause">En pause ⏳</option>
+                        <option value="abandonnée">Abandonnée ⛔</option>
+                    </select>
                     <p>ID Anilist :</p>
                     <input type="text" name="anilist_id" placeholder="ID Anilist (facultatif)" autocomplete="off">
                     <p class="hint"><a tabindex="0" data-hint="L'ID Anilist est utilisé pour trouver les tomes manquants des sériées terminées, plus d'infos dans l'outil « Séries incomplètes ». Pour trouver cet identifiant, rendez-vous sur anilist.co, recherchez votre série et accédez à sa fiche, l'ID est la suite de chiffres avant le nom dans l'url.">À quoi ça sert ? Où le trouver ?</a>.</p>
@@ -1035,10 +1055,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <label>
                         <input type="checkbox" name="new_volumes_collector"> Tous en collector ⭐
                     </label>
-                    <label>
-                        <input type="checkbox" name="new_volumes_last"> Série terminée ✅
-                    </label>
-                    <p class="hint">Le dernier sera tagué comme le tome final de la série.</p>
+                    <p>Statut de la série :</p>
+                    <select name="series_status" id="edit-series-status" required>
+                        <option value="en cours">En cours ▶️</option>
+                        <option value="terminée">Terminée ✅</option>
+                        <option value="en pause">En pause ⏳</option>
+                        <option value="abandonnée">Abandonnée ⛔</option>
+                    </select>
                     <label>
                         <input type="checkbox" name="edit_mature" id="edit-series-mature"> Contenu mature 🔞
                     </label>
@@ -1394,8 +1417,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
 
     <button id="back-to-top" title="Retour en haut">↑</button>
 
+    <?php
+        $series_with_status = array_map(function($series) {
+            $status = $series['status'] ?? 'en cours';
+            if (empty($series['status'])) {
+                foreach ($series['volumes'] as $volume) {
+                    if (!empty($volume['last'])) {
+                        $status = 'terminée';
+                        break;
+                    }
+                }
+            }
+            $series['status'] = $status;
+            return $series;
+        }, array_values($filtered_data));
+    ?>
     <script>
-        window.seriesData = <?= json_encode($filtered_data) ?>;
+        window.seriesData = <?= json_encode($series_with_status) ?>;
     </script>
     <script src="assets/js/admin/modals.js"></script>
     <script src="assets/js/admin/autocomplete.js"></script>
