@@ -9,14 +9,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     data: chartValues,
                     backgroundColor: [
-                        'rgba(207, 102, 121, 0.4)',
-                        'rgba(187, 134, 252, 0.4)',
-                        'rgba(3, 218, 198, 0.4)'
+                        '#9a67ea',  // À lire
+                        '#bb86fc',  // En cours
+                        '#4CAF50',  // Terminé
+                        '#ff9800',  // En pause
+                        '#cf6679'   // Abandonnée
                     ],
                     borderColor: [
-                        '#cf6679',
-                        '#bb86fc',
-                        '#03dac6'
+                        '#8156c5',  // À lire
+                        '#986cce',  // En cours
+                        '#3b883d',  // Terminé
+                        '#c77802',  // En pause
+                        '#9c4e5c'   // Abandonnée
                     ],
                     borderWidth: 1
                 }]

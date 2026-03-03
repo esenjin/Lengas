@@ -10,6 +10,9 @@ $total_volumes = array_sum(array_map(function($series) {
     return count($series['volumes']);
 }, $data));
 
+$paused_series = 0;
+$abandoned_series = 0;
+
 // Vérifier si le mode privé est activé
 if ($options['private_mode']) {
     // Afficher un message informatif avec la structure HTML complète
@@ -85,6 +88,11 @@ foreach ($data as $series) {
         $unique_publishers[] = $publisher;
     }
 
+    if (isset($series['status'])) {
+        if ($series['status'] === 'en pause') $paused_series++;
+        if ($series['status'] === 'abandonnée') $abandoned_series++;
+    }
+
     foreach ($series['volumes'] as $volume) {
         $status_counts[$volume['status']]++;
         if (!empty($volume['collector'])) $collector_counts++;
@@ -142,8 +150,14 @@ $total_reading_time_minutes = $total_volumes * 40; // 40 minutes par tome
 $total_reading_time = convertMinutesToReadableTime($total_reading_time_minutes);
 
 // Données pour le graphique
-$chart_labels = ['À lire', 'En cours', 'Terminé'];
-$chart_values = [$status_counts['à lire'], $status_counts['en cours'], $status_counts['terminé']];
+$chart_labels = ['À lire', 'En cours', 'Terminé', 'En pause', 'Abandonnée'];
+$chart_values = [
+    $status_counts['à lire'],
+    $status_counts['en cours'],
+    $status_counts['terminé'],
+    $paused_series,
+    $abandoned_series
+];
 
 // Calculer les statistiques pour les séries "lues ailleurs"
 $total_read_series = count($read);
@@ -413,6 +427,14 @@ function get_latest_version_from_gitea() {
                     <span class="stat-value"><?= $completed_series ?></span>
                 </div>
                 <div class="stat-item">
+                    <span>Séries en pause :</span>
+                    <span class="stat-value"><?= $paused_series ?></span>
+                </div>
+                <div class="stat-item">
+                    <span>Séries abandonnées :</span>
+                    <span class="stat-value"><?= $abandoned_series ?></span>
+                </div>
+                <div class="stat-item">
                     <span>Nombre total d'auteurs :</span>
                     <span class="stat-value"><?= $total_unique_authors ?></span>
                 </div>
@@ -437,23 +459,23 @@ function get_latest_version_from_gitea() {
                 </div>
                 <div class="reading-time-container">
                     <div class="reading-time-item">
-                        <span>Temps de lecture total :</span>
+                        <span>Temps de lecture pour toute la bibliothèque :</span>
                         <span class="stat-value"><?= $total_reading_time ?></span>
                     </div>
                     <div class="reading-time-item">
-                        <span>Temps de lecture à lire :</span>
+                        <span>Temps de lecture des tomes à lire :</span>
                         <span class="stat-value"><?= $reading_time_by_status_readable['à lire'] ?></span>
                     </div>
                     <div class="reading-time-item">
-                        <span>Temps de lecture en cours :</span>
+                        <span>Temps de lecture des tomes en cours :</span>
                         <span class="stat-value"><?= $reading_time_by_status_readable['en cours'] ?></span>
                     </div>
                     <div class="reading-time-item">
-                        <span>Temps de lecture terminé :</span>
+                        <span>Temps de lecture des tomes terminés :</span>
                         <span class="stat-value"><?= $reading_time_by_status_readable['terminé'] ?></span>
                     </div>
                     <div class="reading-time-item">
-                        <span>Temps de lecture des non possédées :</span>
+                        <span>Temps de lecture des tomes non possédés :</span>
                         <span class="stat-value" style="color: #03dac6;"><?= $total_read_reading_time ?></span>
                     </div>
                     <p><i>* Pour un temps moyen de 40 min par tome.</i></p>
