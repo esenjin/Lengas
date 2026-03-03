@@ -407,31 +407,31 @@ function get_latest_version_from_gitea() {
                     <span class="stat-value"><?= $status_counts['à lire'] ?> (<?= $percentages['à lire'] ?>%)</span>
                 </div>
                 <div class="stat-item">
-                    <span>Tomes en cours :</span>
+                    <span>Tomes en lecture :</span>
                     <span class="stat-value"><?= $status_counts['en cours'] ?> (<?= $percentages['en cours'] ?>%)</span>
                 </div>
                 <div class="stat-item">
-                    <span>Tomes terminés :</span>
+                    <span>Tomes lus :</span>
                     <span class="stat-value"><?= $status_counts['terminé'] ?> (<?= $percentages['terminé'] ?>%)</span>
-                </div>
-                <div class="stat-item">
-                    <span>Séries complètes :</span>
-                    <span class="stat-value"><?= $complete_series ?></span>
                 </div>
                 <div class="stat-item">
                     <span>Tomes collectors :</span>
                     <span class="stat-value"><?= $collector_counts ?></span>
                 </div>
                 <div class="stat-item">
-                    <span>Séries terminées :</span>
+                    <span>Séries possédées entièrement :</span>
+                    <span class="stat-value"><?= $complete_series ?></span>
+                </div>
+                <div class="stat-item">
+                    <span>Séries complètement lues :</span>
                     <span class="stat-value"><?= $completed_series ?></span>
                 </div>
                 <div class="stat-item">
-                    <span>Séries en pause :</span>
+                    <span>Séries en pause (par l'éditeur) :</span>
                     <span class="stat-value"><?= $paused_series ?></span>
                 </div>
                 <div class="stat-item">
-                    <span>Séries abandonnées :</span>
+                    <span>Séries abandonnées (par l'éditeur) :</span>
                     <span class="stat-value"><?= $abandoned_series ?></span>
                 </div>
                 <div class="stat-item">
