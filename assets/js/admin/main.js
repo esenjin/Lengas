@@ -82,7 +82,7 @@ setTimeout(function() {
 }, 3000);
 
 // Recherche des séries incomplètes
-document.getElementById('search-incomplete-series').addEventListener('click', function() {
+document.getElementById('search-incomplete-series')?.addEventListener('click', function() {
     const resultsDiv = document.getElementById('incomplete-series-results');
     resultsDiv.innerHTML = '<p>Recherche en cours...</p>';
 
@@ -261,12 +261,11 @@ document.addEventListener('DOMContentLoaded', function() {
         mobileMenuButton.addEventListener('click', function() {
             adminMenu.classList.toggle('active');
         });
-    }
 
-    // Fermer le menu si on clique en dehors
-    adminMenu.addEventListener('click', function(e) {
-        if (e.target === adminMenu) {
-            adminMenu.classList.remove('active');
-        }
-    });
+        adminMenu.addEventListener('click', function(e) {
+            if (e.target === adminMenu) {
+                adminMenu.classList.remove('active');
+            }
+        });
+    }
 });

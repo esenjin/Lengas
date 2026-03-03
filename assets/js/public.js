@@ -2,6 +2,7 @@
 let currentSearchTerm = '';
 let currentSortBy = 'name';
 let currentSortOrder = 'asc';
+let currentStatusFilter = '';
 
 // Fonction pour normaliser une chaîne de caractères
 function normalizeString(str) {
@@ -203,7 +204,7 @@ function loadMoreSeries() {
     const sortBy = urlParams.get('sort_by') || 'name';
     const sortOrder = urlParams.get('sort_order') || 'asc';
 
-    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=12&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}`)
+    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=12&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}` + `&status_filter=${encodeURIComponent(document.getElementById('status-filter')?.value || '')}`)
         .then(response => response.json())
         .then(data => {
             if (data.success && data.series && data.series.length > 0) {
@@ -300,15 +301,18 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
     currentSearchTerm = formData.get('search') || '';
     currentSortBy = formData.get('sort_by') || 'name';
     currentSortOrder = formData.get('sort_order') || 'asc';
+    currentStatusFilter = formData.get('status_filter') || '';
 
     document.getElementById('series-list').innerHTML = '<p>Chargement des résultats...</p>';
 
     // Charge les résultats via AJAX
-    fetch(`index.php?get_paginated_series=true&page=1&per_page=12&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}`)
+    fetch(`index.php?get_paginated_series=true&page=1&per_page=12&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}` + `&status_filter=${encodeURIComponent(currentStatusFilter)}`)
         .then(response => response.json())
         .then(data => {
             const seriesList = document.getElementById('series-list');
             seriesList.innerHTML = ''; // Vide la liste
+            const statusFilterEl = document.getElementById('status-filter');
+            if (statusFilterEl) statusFilterEl.value = currentStatusFilter;
 
             if (data.success && data.series && data.series.length > 0) {
                 data.series.forEach((series, index) => {
@@ -405,12 +409,90 @@ document.addEventListener('DOMContentLoaded', function() {
         mobileMenuButton.addEventListener('click', function() {
             publicMenu.classList.toggle('active');
         });
+
+        publicMenu.addEventListener('click', function(e) {
+            if (e.target === publicMenu) {
+                publicMenu.classList.remove('active');
+            }
+        });
     }
 
-    // Fermer le menu si on clique en dehors
-    publicMenu.addEventListener('click', function(e) {
-        if (e.target === publicMenu) {
-            publicMenu.classList.remove('active');
-        }
+    document.getElementById('status-filter')?.addEventListener('change', function() {
+        currentStatusFilter = this.value;
+        currentPage = 1;
+        hasMoreSeries = true;
+        seriesData = [];
+
+        document.getElementById('series-list').innerHTML = '<p>Chargement des résultats...</p>';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchTerm = urlParams.get('search') || currentSearchTerm;
+        const sortBy = urlParams.get('sort_by') || currentSortBy;
+        const sortOrder = urlParams.get('sort_order') || currentSortOrder;
+
+        fetch(`index.php?get_paginated_series=true&page=1&per_page=12&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}&status_filter=${encodeURIComponent(currentStatusFilter)}`)
+            .then(response => response.json())
+            .then(data => {
+                const seriesList = document.getElementById('series-list');
+                seriesList.innerHTML = '';
+
+                if (data.success && data.series && data.series.length > 0) {
+                    data.series.forEach(series => {
+                        seriesData.push(series);
+                        const seriesIndex = seriesData.length - 1;
+                        const seriesCard = document.createElement('div');
+                        seriesCard.className = `series-card ${series.mature ? 'mature' : ''}`;
+                        seriesCard.dataset.seriesIndex = seriesIndex;
+                        const totalVolumes = series.volumes ? series.volumes.length : 0;
+                        const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
+                        seriesCard.innerHTML = `
+                            <img class="series-image" src="${series.image || 'logo.png'}" alt="${series.name}" loading="lazy">
+                            <div class="series-info">
+                                <h2>${series.name}</h2>
+                                <p><strong>Auteur :</strong> ${series.author}</p>
+                                <p><strong>Éditeur :</strong> ${series.publisher}</p>
+                                <div class="series-stats">
+                                    ${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''}
+                                    (${readVolumes} lu${readVolumes > 1 ? 's' : ''})
+                                </div>
+                            </div>
+                        `;
+                        seriesCard.addEventListener('click', function() {
+                            const s = seriesData[this.dataset.seriesIndex];
+                            document.getElementById('modal-series-title').textContent = s.name;
+                            document.getElementById('modal-series-image').src = s.image || 'logo.png';
+                            document.getElementById('modal-series-author').textContent = s.author;
+                            document.getElementById('modal-series-publisher').textContent = s.publisher;
+                            document.getElementById('modal-series-other-contributors').textContent = s.other_contributors ? s.other_contributors.join(', ') : '';
+                            document.getElementById('modal-series-categories').textContent = s.categories ? s.categories.join(', ') : '';
+                            document.getElementById('modal-series-genres').textContent = s.genres ? s.genres.join(', ') : '';
+                            const tv = s.volumes ? s.volumes.length : 0;
+                            const rv = s.volumes ? s.volumes.filter(v => v.status === 'terminé').length : 0;
+                            document.getElementById('modal-series-stats').innerHTML =
+                                `${tv} tome${tv > 1 ? 's' : ''} possédé${tv > 1 ? 's' : ''} (${rv} lu${rv > 1 ? 's' : ''})`;
+                            const volumesList = document.getElementById('modal-volumes-list');
+                            volumesList.innerHTML = '';
+                            const sortedVolumes = s.volumes ? [...s.volumes].sort((a, b) => a.number - b.number) : [];
+                            sortedVolumes.forEach(volume => {
+                                const li = document.createElement('li');
+                                li.className = `status-${volume.status.replace(' ', '-')} ${volume.collector ? 'volume-collector' : ''} ${volume.last ? 'volume-last' : ''}`;
+                                li.textContent = volume.number;
+                                volumesList.appendChild(li);
+                            });
+                            openModal('series-detail-modal');
+                        });
+                        seriesList.appendChild(seriesCard);
+                    });
+                    currentPage = 1;
+                    hasMoreSeries = data.has_more;
+                } else {
+                    seriesList.innerHTML = '<p>Aucune série trouvée.</p>';
+                    hasMoreSeries = false;
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                document.getElementById('series-list').innerHTML = '<p>Erreur lors du chargement des séries.</p>';
+            });
     });
 });

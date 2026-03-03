@@ -61,6 +61,7 @@ if (isset($_GET['get_paginated_series'])) {
     $search_term = $_GET['search'] ?? '';
     $sort_by = $_GET['sort_by'] ?? 'name';
     $sort_order = $_GET['sort_order'] ?? 'asc';
+    $status_filter = $_GET['status_filter'] ?? '';
 
     // Applique la recherche et le tri à chaque requête
     $filtered_data = $data;
@@ -73,6 +74,23 @@ if (isset($_GET['get_paginated_series'])) {
                    (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
                    (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
                    (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
+        });
+    }
+    if ($status_filter !== '') {
+        $filtered_data = array_filter($filtered_data, function($series) use ($status_filter) {
+            $status = 'en cours';
+            if (!empty($series['volumes'])) {
+                foreach ($series['volumes'] as $volume) {
+                    if (!empty($volume['last'])) {
+                        $status = 'terminée';
+                        break;
+                    }
+                }
+            }
+            if ($status === 'en cours' && !empty($series['status'])) {
+                $status = $series['status'];
+            }
+            return $status === $status_filter;
         });
     }
 
@@ -253,6 +271,13 @@ function get_latest_version_from_gitea() {
                     <select name="sort_order">
                         <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Ascendant</option>
                         <option value="desc" <?= $sort_order === 'desc' ? 'selected' : '' ?>>Descendant</option>
+                    </select>
+                    <select name="status_filter" id="status-filter">
+                        <option value="">Tous les statuts</option>
+                        <option value="en cours">En cours ▶️</option>
+                        <option value="terminée">Terminée ✅</option>
+                        <option value="en pause">En pause ⏳</option>
+                        <option value="abandonnée">Abandonnée ⛔</option>
                     </select>
                 </div>
                 <button type="submit">Appliquer</button>
