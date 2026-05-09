@@ -5,3 +5,8 @@
     AddOutputFilterByType DEFLATE text/css
     AddOutputFilterByType DEFLATE application/javascript
 </IfModule>
+
+# Bloquer l'accès direct aux données et sauvegardes
+<LocationMatch "^/(bdd|saves)/">
+    Require all denied
+</LocationMatch>
