@@ -119,8 +119,7 @@ function updateReadList(read) {
                     <span class="read-series-publisher">${item.publisher || ''}</span>
                 </div>
                 <div class="read-item-line read-item-line-bottom">
-                    <span class="read-series-volumes">${item.volumes_read || 0} tomes lus</span>
-                    <span class="read-series-status">${item.status || 'inconnu'}</span>
+                    <span class="read-series-volumes">${item.volumes_read || 0} tomes lus, série ${item.status === 'terminé' ? 'terminée' : (item.status === 'en cours' ? 'en cours' : (item.status || 'inconnu'))}</span>
                 </div>
             </div>
         `;
