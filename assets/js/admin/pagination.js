@@ -122,6 +122,7 @@ function createLightSeriesCard(series) {
             <div class="series-badges">
                 ${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}
                 <span class="series-status-badge ${statusClass}">${statusIcon}</span>
+                ${series.anilist_id ? `<a class="anilist-badge" href="https://anilist.co/manga/${series.anilist_id}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="anilistlogo.png" alt="Anilist" class="anilist-logo"></a>` : ''}
             </div>
             <button class="load-volumes-btn" data-series-id="${series.id}">Voir les tomes (${series.volumes_count})</button>
             <div class="volumes-container" data-series-id="${series.id}"></div>

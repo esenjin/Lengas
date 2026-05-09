@@ -49,6 +49,23 @@
     color: var(--status-mature);
 }
 
+.anilist-badge {
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.75;
+    transition: opacity 0.2s;
+}
+
+.anilist-badge:hover {
+    opacity: 1;
+}
+
+.anilist-logo {
+    height: 18px;
+    width: auto;
+    display: block;
+}
+
 /* Badges de statut des séries */
 .series-badges {
     display: flex;

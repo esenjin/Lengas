@@ -563,7 +563,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 'favorite' => $series['favorite'] ?? false,
                 'mature' => $series['mature'] ?? false,
                 'status' => $status,
-                'has_anilist_id' => !empty($series['anilist_id']),
+                'anilist_id' => $series['anilist_id'] ?? '',
             ];
         }, $paginated_data);
 
