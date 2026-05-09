@@ -1318,6 +1318,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <a href="<?= URL_GITEA ?>" target="_blank">Accéder au dépôt Gitéa</a>.
                 </p>
                 <form id="options-form" method="post" enctype="multipart/form-data">
+
+                    <h3 class="options-section-title">Titres et descriptions</h3>
+
                     <label for="site-name">Nom du site</label>
                     <input type="text" name="site_name" id="site-name" placeholder="Nom du site" value="<?= htmlspecialchars($options['site_name']) ?>" required>
 
@@ -1333,10 +1336,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <label for="stats-page-title">Titre de la page de statistiques</label>
                     <input type="text" name="stats_page_title" id="stats-page-title" placeholder="Titre de la page de statistiques" value="<?= htmlspecialchars($options['stats_page_title']) ?>" required>
 
-                    <label for="custom-button-name">Nom du bouton personnalisé</label>
+                    <h3 class="options-section-title">Liens personnalisés</h3>
+
+                    <label for="custom-button-name">Nom du bouton personnalisé (1)</label>
                     <input type="text" name="custom_button_name" id="custom-button-name" placeholder="Nom du bouton" value="<?= htmlspecialchars($options['custom_button_name'] ?? '') ?>">
 
-                    <label for="custom-button-url">URL du bouton personnalisé</label>
+                    <label for="custom-button-url">URL du bouton personnalisé (1)</label>
                     <input type="text" name="custom_button_url" id="custom-button-url" placeholder="URL du bouton" value="<?= htmlspecialchars($options['custom_button_url'] ?? '') ?>">
                     <p class="hint">Laisser vide pour masquer le bouton.</p>
 
@@ -1354,6 +1359,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <input type="text" name="custom_button_url3" id="custom-button-url3" placeholder="URL du bouton" value="<?= htmlspecialchars($options['custom_button_url3'] ?? '') ?>">
                     <p class="hint">Laisser vide pour masquer le bouton.</p>
 
+                    <h3 class="options-section-title">Autres options</h3>
+
                     <label for="admin-password">Mot de passe admin</label>
                     <input type="password" name="admin_password" id="admin-password" placeholder="Mot de passe admin">
                     <p class="hint">Laisser vide pour ne pas modifier.</p>
@@ -1366,12 +1373,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <label>
                         <input type="checkbox" name="hide_mature" <?= $options['hide_mature'] ? 'checked' : '' ?>> Masquer les séries matures
                     </label>
+                    <p class="hint">Vos séries matures ne seront pas visibles au public.</p>
 
                     <div class="form-group">
                         <br>
                         <label for="default_logo">Remplacer la vignette par défaut :</label>
                         <input type="file" id="default_logo" name="default_logo" accept="image/png">
-                        <p class="hint">L'image uploadée remplacera le fichier logo.png actuel (PNG obligatoire).</p>
+                        <p class="hint">L'image téléversée remplacera le fichier logo.png actuel (PNG obligatoire).</p>
                         <p class="hint">Vignette par défaut actuelle :</p>
                         <?php if (file_exists('logo.png')): ?>
                             <div>

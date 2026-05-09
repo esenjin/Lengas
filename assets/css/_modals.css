@@ -1,3 +1,19 @@
+/* Titres de section dans la modale Options */
+.options-section-title {
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--background-darker);
+    padding-bottom: 6px;
+    margin-top: 22px;
+    margin-bottom: 14px;
+}
+
+.options-section-title:first-of-type {
+    margin-top: 4px;
+}
+
 /* Styles pour les modales */
 .modal {
     display: none;
