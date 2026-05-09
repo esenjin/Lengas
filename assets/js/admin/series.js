@@ -103,6 +103,13 @@ function fetch_current_series() {
         });
 }
 
+function format_date_fr(dateStr) {
+    if (!dateStr) return '';
+    const [year, month, day] = dateStr.split('-');
+    if (!year || !month || !day) return dateStr;
+    return `${day}/${month}/${year}`;
+}
+
 function render_current_series(seriesList) {
     const itemsContainer = document.getElementById('current-series-items');
     itemsContainer.innerHTML = '';
@@ -113,7 +120,7 @@ function render_current_series(seriesList) {
             <div class="series-title">${series.name}</div>
             <div class="series-details">
                 <span>Dernier tome : ${series.last_volume}</span>
-                <span>Ajouté le : ${series.last_volume_added_at}</span>
+                <span>Ajouté le : ${format_date_fr(series.last_volume_added_at)}</span>
                 <button class="add-volume-btn" data-series-id="${series.id}">+</button>
             </div>
         `;
