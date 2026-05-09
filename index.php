@@ -78,6 +78,15 @@ if (isset($_GET['get_paginated_series'])) {
     }
     if ($status_filter !== '') {
         $filtered_data = array_filter($filtered_data, function($series) use ($status_filter) {
+            if ($status_filter === 'mature') {
+                return !empty($series['mature']);
+            }
+            if ($status_filter === 'non_mature') {
+                return empty($series['mature']);
+            }
+            if ($status_filter === 'favorite') {
+                return !empty($series['favorite']);
+            }
             $status = 'en cours';
             if (!empty($series['volumes'])) {
                 foreach ($series['volumes'] as $volume) {
@@ -278,6 +287,9 @@ function get_latest_version_from_gitea() {
                         <option value="terminée">Terminée ✅</option>
                         <option value="en pause">En pause ⏳</option>
                         <option value="abandonnée">Abandonnée ⛔</option>
+                        <option value="mature">Mature 🔞</option>
+                        <option value="non_mature">Non mature 👐</option>
+                        <option value="favorite">Favoris ❤️</option>
                     </select>
                 </div>
                 <button type="submit">Appliquer</button>
