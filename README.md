@@ -157,6 +157,7 @@ lengas/
 ```
 
 ## Crédits
-- Développé avec l'aide de [Mistral](https://chat.mistral.ai/)
+- Développé avec l'aide de [Mistral](https://chat.mistral.ai/) (pour les version ≤ 2.2.2)
+- Développé avec l'aide de [Claude](https://claude.ai/) (pour les version > 2.2.2)
 - Utilise l'API d'[Anilist](https://docs.anilist.co/)
 - Utilise [JSDelivr](https://www.jsdelivr.com/)
