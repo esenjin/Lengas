@@ -392,6 +392,24 @@ function get_latest_version_from_gitea() {
 <body>
     <div class="container">
         <h1><?= htmlspecialchars($options['index_page_title']) ?></h1>
+
+        <!-- Bouton Menu Mobile -->
+        <button class="mobile-menu-button" id="mobile-menu-button">☰ Menu</button>
+
+        <!-- Menu d'actions -->
+        <div class="public-menu" id="public-menu">
+            <?php if (!empty($options['custom_button_name']) && !empty($options['custom_button_url'])): ?>
+                <a href="<?= htmlspecialchars($options['custom_button_url']) ?>" class="button button-otl" target="_blank"><?= htmlspecialchars($options['custom_button_name']) ?> ↗</a>
+            <?php endif; ?>
+            <?php if (!empty($options['custom_button_name2']) && !empty($options['custom_button_url2'])): ?>
+                <a href="<?= htmlspecialchars($options['custom_button_url2']) ?>" class="button button-otl" target="_blank"><?= htmlspecialchars($options['custom_button_name2']) ?> ↗</a>
+            <?php endif; ?>
+            <?php if (!empty($options['custom_button_name3']) && !empty($options['custom_button_url3'])): ?>
+                <a href="<?= htmlspecialchars($options['custom_button_url3']) ?>" class="button button-otl" target="_blank"><?= htmlspecialchars($options['custom_button_name3']) ?> ↗</a>
+            <?php endif; ?>
+            <a href="index.php" class="button">Accueil ↗</a>
+        </div>
+
         <div class="stats-container">
             <div class="stats-grid">
                 <div class="stat-item">
