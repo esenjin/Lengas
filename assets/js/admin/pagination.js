@@ -87,19 +87,19 @@ function createLightSeriesCard(series) {
     let statusClass = 'status-in-progress';
     switch (seriesStatus) {
         case 'terminée':
-            statusIcon = '✅ terminée';
+            statusIcon = '✅ publication terminée';
             statusClass = 'status-completed';
             break;
         case 'en pause':
-            statusIcon = '⏳ en pause';
+            statusIcon = '⏳ publication en pause';
             statusClass = 'status-paused';
             break;
         case 'abandonnée':
-            statusIcon = '⛔ abandonnée';
+            statusIcon = '⛔ publication abandonnée';
             statusClass = 'status-abandoned';
             break;
         default:
-            statusIcon = '▶️ en cours';
+            statusIcon = '▶️ publication en cours';
             statusClass = 'status-in-progress';
     }
 
