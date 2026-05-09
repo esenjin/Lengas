@@ -518,3 +518,118 @@ function generate_notifications($volumes, $anilist_volumes = null) {
 
     return $notifications;
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Vérification des incohérences de la collection (sans données Anilist)
+// ──────────────────────────────────────────────────────────────────────────────
+function check_collection_coherence($data) {
+    $issues = [];
+
+    foreach ($data as $series) {
+        $series_issues = [];
+        $name    = $series['name'] ?? '(sans nom)';
+        $volumes = $series['volumes'] ?? [];
+
+        // ── 1. Série sans tome ────────────────────────────────────────────────
+        if (empty($volumes)) {
+            $series_issues[] = [
+                'type'    => 'no_volumes',
+                'message' => 'La série ne possède aucun tome.'
+            ];
+            // Pas besoin d'analyser les tomes si la série est vide
+            $issues[] = ['series' => $name, 'series_id' => $series['id'], 'problems' => $series_issues];
+            continue;
+        }
+
+        $numbers      = array_map(fn($v) => (int)$v['number'], $volumes);
+        $max          = max($numbers);
+        $min          = min($numbers);
+        $last_volumes = array_values(array_filter($volumes, fn($v) => !empty($v['last'])));
+
+        // ── 2. Plusieurs tomes tagués « dernier » ─────────────────────────────
+        if (count($last_volumes) > 1) {
+            $last_nums = array_map(fn($v) => $v['number'], $last_volumes);
+            $series_issues[] = [
+                'type'    => 'multiple_last',
+                'message' => 'Plusieurs tomes sont tagués comme dernier : tome(s) ' . implode(', ', $last_nums) . '.'
+            ];
+        }
+
+        // ── 3. Tome tagué « dernier » mais ce n'est pas le numéro le plus élevé
+        foreach ($last_volumes as $lv) {
+            if ((int)$lv['number'] !== $max) {
+                $series_issues[] = [
+                    'type'    => 'wrong_last',
+                    'message' => 'Le tome ' . $lv['number'] . ' est tagué dernier mais le tome le plus élevé est le ' . $max . '.'
+                ];
+            }
+        }
+
+        // ── 4. Tomes manquants dans la séquence ──────────────────────────────
+        $missing = [];
+        for ($i = $min; $i <= $max; $i++) {
+            if (!in_array($i, $numbers, true)) {
+                $missing[] = $i;
+            }
+        }
+        if (!empty($missing)) {
+            $series_issues[] = [
+                'type'    => 'missing_volumes',
+                'message' => 'Tome(s) manquant(s) dans la séquence : ' . implode(', ', $missing) . '.'
+            ];
+        }
+
+        // ── 5. Numéros de tomes dupliqués ─────────────────────────────────────
+        $duplicates = array_keys(array_filter(array_count_values($numbers), fn($c) => $c > 1));
+        if (!empty($duplicates)) {
+            $series_issues[] = [
+                'type'    => 'duplicate_volumes',
+                'message' => 'Numéro(s) de tome en double : ' . implode(', ', $duplicates) . '.'
+            ];
+        }
+
+        // ── 6. Tome avec numéro ≤ 0 ──────────────────────────────────────────
+        $invalid = array_filter($numbers, fn($n) => $n <= 0);
+        if (!empty($invalid)) {
+            $series_issues[] = [
+                'type'    => 'invalid_number',
+                'message' => 'Tome(s) avec un numéro invalide (≤ 0) : ' . implode(', ', $invalid) . '.'
+            ];
+        }
+
+        // ── 7. Série marquée « terminée » mais sans tome dernier ──────────────
+        $status = $series['status'] ?? '';
+        if ($status === 'terminee' && empty($last_volumes)) {
+            $series_issues[] = [
+                'type'    => 'finished_no_last',
+                'message' => 'La série est marquée comme terminée mais aucun tome n\'est tagué dernier.'
+            ];
+        }
+
+        // ── 8. Série avec un tome « dernier » mais statut non terminé ─────────
+        if (!empty($last_volumes) && $status !== 'terminee' && $status !== 'abandonnee') {
+            $series_issues[] = [
+                'type'    => 'last_but_not_finished',
+                'message' => 'Un tome est tagué dernier mais la série n\'est pas marquée comme terminée.'
+            ];
+        }
+
+        // ── 9. Séquence ne commençant pas à 1 ────────────────────────────────
+        if ($min > 1) {
+            $series_issues[] = [
+                'type'    => 'sequence_not_starting_at_1',
+                'message' => 'La collection ne commence pas au tome 1 (premier tome possédé : ' . $min . ').'
+            ];
+        }
+
+        if (!empty($series_issues)) {
+            $issues[] = [
+                'series'    => $name,
+                'series_id' => $series['id'],
+                'problems'  => $series_issues
+            ];
+        }
+    }
+
+    return $issues;
+}

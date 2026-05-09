@@ -544,3 +544,142 @@ function addIntegrityCheckButton() {
         });
     });
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Modale « Incohérences »
+// ──────────────────────────────────────────────────────────────────────────────
+
+document.getElementById('open-coherences-modal').addEventListener('click', () => {
+    modals['coherences'].modal.classList.add('modal-active');
+    loadCoherences();
+});
+
+function loadCoherences() {
+    const container = document.getElementById('coherences-results');
+    container.innerHTML = '<p class="loading-text">Analyse en cours…</p>';
+
+    fetch('admin.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'tool_action=check_coherence'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) {
+            container.innerHTML = '<p class="error-text">Erreur lors de l\'analyse.</p>';
+            return;
+        }
+        renderCoherences(data.issues);
+    })
+    .catch(() => {
+        container.innerHTML = '<p class="error-text">Une erreur est survenue.</p>';
+    });
+}
+
+// Labels lisibles par type d'incohérence
+const COHERENCE_LABELS = {
+    no_volumes:                 { icon: '📭', label: 'Série vide' },
+    multiple_last:              { icon: '🔁', label: 'Plusieurs « derniers »' },
+    wrong_last:                 { icon: '🏷️', label: 'Dernier mal placé' },
+    missing_volumes:            { icon: '🕳️', label: 'Tomes manquants' },
+    duplicate_volumes:          { icon: '👯', label: 'Doublons' },
+    invalid_number:             { icon: '⚠️', label: 'Numéro invalide' },
+    finished_no_last:           { icon: '🏁', label: 'Terminée sans dernier' },
+    last_but_not_finished:      { icon: '🔖', label: 'Dernier sans fin' },
+    sequence_not_starting_at_1: { icon: '1️⃣',  label: 'Ne commence pas à 1' },
+};
+
+function renderCoherences(issues) {
+    const container = document.getElementById('coherences-results');
+    container.innerHTML = '';
+
+    // Résumé
+    const summaryDiv = document.createElement('div');
+    summaryDiv.className = 'coherences-summary';
+
+    if (issues.length === 0) {
+        summaryDiv.innerHTML = '<p class="coherences-ok">✅ Aucune incohérence détectée dans votre collection.</p>';
+        container.appendChild(summaryDiv);
+        return;
+    }
+
+    const totalProblems = issues.reduce((acc, s) => acc + s.problems.length, 0);
+    summaryDiv.innerHTML = `<p class="coherences-count">
+        <strong>${issues.length}</strong> série(s) concernée(s) — 
+        <strong>${totalProblems}</strong> incohérence(s) au total.
+    </p>`;
+    container.appendChild(summaryDiv);
+
+    // Filtres par type
+    const allTypes = [...new Set(issues.flatMap(s => s.problems.map(p => p.type)))];
+    if (allTypes.length > 1) {
+        const filterDiv = document.createElement('div');
+        filterDiv.className = 'coherences-filters';
+
+        const allBtn = document.createElement('button');
+        allBtn.className = 'button button-sm filter-btn active';
+        allBtn.dataset.filter = 'all';
+        allBtn.textContent = 'Tous';
+        filterDiv.appendChild(allBtn);
+
+        allTypes.forEach(type => {
+            const btn = document.createElement('button');
+            btn.className = 'button button-sm filter-btn';
+            btn.dataset.filter = type;
+            const meta = COHERENCE_LABELS[type] || { icon: '❓', label: type };
+            btn.textContent = `${meta.icon} ${meta.label}`;
+            filterDiv.appendChild(btn);
+        });
+
+        filterDiv.addEventListener('click', e => {
+            const btn = e.target.closest('.filter-btn');
+            if (!btn) return;
+            filterDiv.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            applyCoherenceFilter(btn.dataset.filter);
+        });
+
+        container.appendChild(filterDiv);
+    }
+
+    // Liste des séries
+    const listDiv = document.createElement('div');
+    listDiv.id = 'coherences-list';
+
+    issues.forEach(item => {
+        const block = document.createElement('div');
+        block.className = 'coherence-series-block';
+        block.dataset.types = item.problems.map(p => p.type).join(' ');
+
+        const header = document.createElement('div');
+        header.className = 'coherence-series-name';
+        header.textContent = item.series;
+        block.appendChild(header);
+
+        const ul = document.createElement('ul');
+        ul.className = 'coherence-problems';
+        item.problems.forEach(prob => {
+            const meta = COHERENCE_LABELS[prob.type] || { icon: '❓', label: prob.type };
+            const li = document.createElement('li');
+            li.className = `coherence-item coherence-type-${prob.type}`;
+            li.innerHTML = `<span class="coherence-icon">${meta.icon}</span>
+                            <span class="coherence-tag">${meta.label}</span>
+                            <span class="coherence-msg">${prob.message}</span>`;
+            ul.appendChild(li);
+        });
+        block.appendChild(ul);
+        listDiv.appendChild(block);
+    });
+
+    container.appendChild(listDiv);
+}
+
+function applyCoherenceFilter(filter) {
+    document.querySelectorAll('#coherences-list .coherence-series-block').forEach(block => {
+        if (filter === 'all') {
+            block.style.display = '';
+        } else {
+            block.style.display = block.dataset.types.split(' ').includes(filter) ? '' : 'none';
+        }
+    });
+}

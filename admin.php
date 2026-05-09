@@ -481,6 +481,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
         case 'clean_forbidden_files':
             $response = clean_forbidden_files();
             break;
+        case 'check_coherence':
+            $issues = check_collection_coherence($data);
+            $response = ['success' => true, 'issues' => $issues];
+            break;
     }
 
     header('Content-Type: application/json');
@@ -906,6 +910,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
             <button id="open-add-multiple-volumes-modal" class="button button-ats">Ajouter des tomes</button>
             <button id="open-current-series-modal" class="button button-aos">Séries en cours</button>
             <button id="open-incomplete-series-modal" class="button button-aos">Séries incomplètes</button>
+            <button id="open-coherences-modal" class="button button-aos">Incohérences</button>
             <button id="open-unread-modal" class="button button-aos">Séries à lire</button>
             <button id="open-read-modal" class="button button-otl">Lues ailleurs</button>
             <button id="open-loan-modal" class="button button-otl">Livres prêtés</button>
@@ -1392,6 +1397,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <button type="submit" name="update_options" class="button button-opt">Mettre à jour</button>
                     <p style="visibility: hidden;">_</p>
                 </form>
+            </div>
+        </div>
+
+        <!-- Modale pour les incohérences -->
+        <div class="modal" id="coherences-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-coherences-modal">&times;</span>
+                <h2>Incohérences de la collection</h2>
+                <p>Vérification des incohérences internes de vos séries (hors données Anilist).</p>
+                <div id="coherences-results">
+                    <!-- Résultats chargés dynamiquement -->
+                </div>
             </div>
         </div>
 

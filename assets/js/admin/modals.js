@@ -13,6 +13,7 @@ const modals = {
     'current-series': { modal: document.getElementById('current-series-modal'), closeBtn: document.getElementById('close-current-series-modal')},
     'incomplete-series': { modal: document.getElementById('incomplete-series-modal'), closeBtn: document.getElementById('close-incomplete-series-modal') },
     'unread': { modal: document.getElementById('unread-modal'), closeBtn: document.getElementById('close-unread-modal') },
+    'coherences': { modal: document.getElementById('coherences-modal'), closeBtn: document.getElementById('close-coherences-modal') },
     'loan': { modal: document.getElementById('loan-modal'), closeBtn: document.getElementById('close-loan-modal') }
 };
 
