@@ -6,26 +6,30 @@ form {
 
 /* Champ de recherche pour les séries */
 .series-search {
-    margin-bottom: 15px;
+    margin-bottom: 14px;
 }
 
 .series-results {
-    background-color: var(--background-light);
-    border: 1px solid var(--background-darker);
+    background-color: var(--background-card);
+    border: 1px solid var(--input-border);
     border-radius: var(--border-radius);
-    max-height: 200px;
+    max-height: 220px;
     overflow-y: auto;
-    margin-bottom: 15px;
+    margin-bottom: 14px;
     display: none;
+    box-shadow: var(--box-shadow);
 }
 
 .series-results div {
-    padding: 10px;
+    padding: 10px 14px;
     cursor: pointer;
+    font-size: 0.9em;
+    transition: var(--transition-fast);
 }
 
 .series-results div:hover {
-    background-color: var(--background-darker);
+    background-color: var(--background-medium);
+    color: var(--primary-color);
 }
 
 /* Autocomplétion */
@@ -34,23 +38,27 @@ form {
     top: 100%;
     left: 0;
     right: 0;
-    background-color: var(--background-light);
-    border: 1px solid var(--background-darker);
+    background-color: var(--background-card);
+    border: 1px solid var(--input-border);
     border-radius: var(--border-radius);
-    max-height: 200px;
+    max-height: 220px;
     overflow-y: auto;
     z-index: 1000;
-    margin-top: 2px;
+    margin-top: 4px;
     display: block;
+    box-shadow: var(--box-shadow);
 }
 
 .autocomplete-suggestions div {
-    padding: 10px;
+    padding: 10px 14px;
     cursor: pointer;
+    font-size: 0.9em;
+    transition: var(--transition-fast);
 }
 
 .autocomplete-suggestions div:hover {
-    background-color: var(--background-darker);
+    background-color: var(--background-medium);
+    color: var(--primary-color);
 }
 
 /* Plage de tomes */
@@ -58,17 +66,20 @@ form {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 15px;
+    margin-bottom: 14px;
 }
 
 .volume-range input {
     flex: 1;
+    margin-bottom: 0;
 }
 
 /* Élément actif lors de la navigation clavier dans les suggestions */
 .autocomplete-suggestions div.autocomplete-active,
 .series-results div.autocomplete-active {
-    background-color: var(--background-darker);
-    outline: 2px solid var(--accent-color, #7c6af7);
-    outline-offset: -2px;
+    background-color: var(--background-medium);
+    color: var(--primary-color);
+    outline: none;
+    border-left: 3px solid var(--primary-color);
+    padding-left: 11px;
 }

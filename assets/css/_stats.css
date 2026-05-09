@@ -1,0 +1,373 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Styles pour la page stats.php
+   Fichier indépendant — importer après main.css si séparé,
+   ou inclure dans main.css via @import '_stats.css';
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Conteneur principal ── */
+.container {
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.stats-container {
+    max-width: 860px;
+    margin: 0 auto;
+    background-color: var(--background-card);
+    padding: 28px;
+    border-radius: var(--border-radius-xl);
+    box-shadow: var(--box-shadow);
+    border: var(--border-subtle);
+}
+
+/* ── Grille de statistiques ── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+}
+
+.stat-item {
+    padding: 12px 16px;
+    background-color: var(--background-medium);
+    border-radius: var(--border-radius);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    border: var(--border-subtle);
+    font-size: 0.9em;
+    transition: var(--transition);
+}
+
+.stat-item:hover {
+    border-color: rgba(192, 132, 252, 0.15);
+    background-color: var(--background-lighter);
+}
+
+.stat-value {
+    font-weight: 700;
+    color: var(--primary-color);
+    font-family: 'Outfit', system-ui, sans-serif;
+    white-space: nowrap;
+}
+
+/* ── Titres ── */
+h1 {
+    text-align: center;
+}
+
+h2 {
+    text-align: center;
+    margin-top: 28px;
+    margin-bottom: 16px;
+    font-size: 1.25em;
+    color: var(--text-white);
+}
+
+/* ── Graphique ── */
+.chart-container {
+    width: 100%;
+    max-width: 380px;
+    height: 300px;
+    margin-top: 20px;
+    flex-shrink: 0;
+}
+
+/* ── Temps de lecture ── */
+.reading-time-container {
+    flex: 1;
+    margin-top: 20px;
+    margin-left: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.reading-time-item {
+    padding: 10px 14px;
+    background-color: var(--background-medium);
+    border-radius: var(--border-radius);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    border: var(--border-subtle);
+    font-size: 0.875em;
+    transition: var(--transition);
+}
+
+.reading-time-item:hover {
+    border-color: rgba(192, 132, 252, 0.15);
+    background-color: var(--background-lighter);
+}
+
+.reading-time-item p {
+    color: var(--text-gray);
+    font-style: italic;
+    font-size: 0.8em;
+    margin-top: 4px;
+    text-align: center;
+}
+
+/* Wrapper graphique + temps de lecture */
+.stats-chart-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+/* ── Overrides pour les attributs style="" inline de stats.php ─────────────
+   Ces règles utilisent !important pour écraser les styles inline du PHP.
+   La solution idéale est de supprimer les style="" dans stats.php.
+   ─────────────────────────────────────────────────────────────────────────*/
+#search-input {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--input-border) !important;
+    border-radius: var(--border-radius-sm) !important;
+    padding: 10px 14px !important;
+    width: 100% !important;
+    font-family: 'Inter', system-ui, sans-serif !important;
+    font-size: 0.9em !important;
+    transition: var(--transition) !important;
+    margin-bottom: 0 !important;
+}
+
+#search-input:focus {
+    outline: none !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 3px var(--primary-subtle) !important;
+    background-color: #181825 !important;
+}
+
+#search-input::placeholder {
+    color: var(--text-muted) !important;
+}
+
+#search-button {
+    padding: 9px 24px !important;
+    background-color: var(--primary-color) !important;
+    color: #0d0d12 !important;
+    border: none !important;
+    border-radius: var(--border-radius-sm) !important;
+    cursor: pointer !important;
+    display: block !important;
+    margin: 0 auto !important;
+    font-weight: 600 !important;
+    font-size: 0.875em !important;
+    font-family: 'Inter', system-ui, sans-serif !important;
+    transition: var(--transition) !important;
+}
+
+#search-button:hover {
+    background-color: var(--primary-hover) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 16px var(--primary-glow) !important;
+}
+
+#search-results {
+    margin-top: 16px !important;
+    color: var(--text-color) !important;
+    background-color: var(--background-medium) !important;
+    border-radius: var(--border-radius) !important;
+    border: var(--border-subtle) !important;
+    overflow: hidden !important;
+}
+
+/* ── Section recherche avancée ─────────────────────────────────────────────*/
+.search-container,
+div.search-container {
+    max-width: 860px !important;
+    margin: 28px auto 0 !important;
+    background-color: var(--background-card) !important;
+    padding: 24px 28px !important;
+    border-radius: var(--border-radius-xl) !important;
+    box-shadow: var(--box-shadow) !important;
+    border: var(--border-subtle) !important;
+    box-sizing: border-box;
+}
+
+.search-container h2 {
+    text-align: center;
+    color: var(--text-white);
+    margin-bottom: 18px;
+}
+
+.search-container > div {
+    position: relative;
+    width: 100%;
+    margin-bottom: 14px;
+}
+
+#search-input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--input-border);
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.9em;
+    margin-bottom: 0;
+    transition: var(--transition);
+}
+
+#search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+#search-input::placeholder {
+    color: var(--text-muted);
+}
+
+#search-button {
+    padding: 9px 24px;
+    background-color: var(--primary-color);
+    color: #0d0d12;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    display: block;
+    margin: 0 auto;
+    font-weight: 600;
+    font-size: 0.875em;
+    transition: var(--transition);
+}
+
+#search-button:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px var(--primary-glow);
+}
+
+#search-results {
+    margin-top: 16px;
+    color: var(--text-color);
+    display: none;
+    background-color: var(--background-medium);
+    border-radius: var(--border-radius);
+    border: var(--border-subtle);
+    overflow: hidden;
+}
+
+#search-results.show {
+    display: block;
+}
+
+.result-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.9em;
+    transition: var(--transition-fast);
+}
+
+.result-item:last-child {
+    border-bottom: none;
+}
+
+.result-item:hover {
+    background-color: var(--background-lighter);
+}
+
+.result-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.result-link:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
+/* ── Autocomplétion (stats) ── */
+#search-suggestions.autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--background-card);
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius);
+    max-height: 220px;
+    overflow-y: auto;
+    display: none;
+    margin-top: 4px;
+    box-shadow: var(--box-shadow);
+    z-index: 1000;
+}
+
+#search-suggestions.autocomplete-suggestions.show {
+    display: block;
+}
+
+#search-suggestions.autocomplete-suggestions div {
+    padding: 10px 14px;
+    cursor: pointer;
+    color: var(--text-color);
+    font-size: 0.9em;
+    transition: var(--transition-fast);
+}
+
+#search-suggestions.autocomplete-suggestions div:hover {
+    background-color: var(--primary-subtle);
+    color: var(--primary-color);
+}
+
+/* ── Pied de page ── */
+.footer {
+    display: flex;
+    justify-content: center;
+    padding-top: 24px;
+    padding-bottom: 8px;
+}
+
+.footer .hint {
+    text-align: center;
+    color: var(--text-gray);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .stats-container,
+    .search-container {
+        padding: 18px 16px;
+        border-radius: var(--border-radius-lg);
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .stat-item {
+        font-size: 0.85em;
+    }
+
+    .stats-chart-row {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .chart-container {
+        max-width: 100%;
+    }
+
+    .reading-time-container {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .reading-time-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 4px;
+    }
+}

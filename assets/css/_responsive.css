@@ -1,39 +1,67 @@
 /* Media queries pour le responsive */
 @media (max-width: 768px) {
+    body {
+        padding: 16px;
+    }
+
     .series-list {
         grid-template-columns: 1fr;
+        gap: 14px;
     }
 
+    /* Carte mobile : colonne image + actions à gauche, infos à droite */
     .series-card {
-        flex-direction: column;
-    }
-
-    .series-info {
-        padding: 15px;
-    }
-
-    .volumes-list {
-        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        grid-template-columns: 110px 1fr;
+        grid-template-rows: 110px auto;
+        max-height: none;
+        border-radius: var(--border-radius);
     }
 
     .series-image {
-        width: auto;
+        width: 110px;
+        height: 110px;
+        border-radius: var(--border-radius) 0 0 0;
+    }
+
+    .series-card > .series-actions {
+        padding: 8px 8px 12px;
+        gap: 5px;
+        border-radius: 0 0 0 var(--border-radius);
+    }
+
+    .series-card > .series-actions button {
+        font-size: 0.75em;
+        padding: 5px 8px;
+    }
+
+    .series-info {
+        padding: 12px 14px;
+    }
+
+    .series-info h2 {
+        font-size: 1em;
+    }
+
+    .volumes-list {
+        grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
     }
 
     .admin-menu, .public-menu {
         flex-wrap: wrap;
         justify-content: center;
+        gap: 6px;
     }
 
     .admin-menu button,
     .admin-menu a.button,
     .public-menu button,
     .public-menu a.button {
-        flex: 1 1 100%;
+        flex: 1 1 calc(50% - 6px);
         max-width: 200px;
-        padding: 12px;
-        font-size: 0.9em;
+        padding: 10px;
+        font-size: 0.85em;
         text-align: center;
+        justify-content: center;
     }
 
     .button-ext,
@@ -46,9 +74,17 @@
         width: 100%;
     }
 
+    .filters {
+        padding: 12px;
+    }
+
+    .filters input[type="text"] {
+        min-width: 100%;
+    }
+
     .series-search,
     .filters input[type="text"] {
-        min-width: 250px;
+        min-width: 200px;
     }
 
     .sort-options {
@@ -67,6 +103,7 @@
 
     .volume-range input {
         width: 100%;
+        margin-bottom: 0;
     }
 
     #tools-modal .modal-content {
@@ -112,43 +149,73 @@
     .modal-content {
         width: 95%;
         max-width: none;
+        padding: 20px;
+        border-radius: var(--border-radius-lg);
+        max-height: 88vh;
     }
 
     #modal-series-content {
         max-height: 60vh;
     }
 
-    /* Masquer le menu par défaut sur mobile */
-    .public-menu, .admin-menu {
-        display: none;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 1000;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-start;
-        box-sizing: border-box;
-        overflow-y: auto;
+    /* ── Menu mobile ────────────────────────────────────────────────────── */
+
+    /* Le bouton hamburger reste visible en haut */
+    .mobile-menu-button {
+        display: block;
+        padding: 10px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: var(--border-radius-sm);
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: 600;
+        background: var(--background-medium);
+        color: var(--text-color);
+        margin: 0 auto 16px;
+        width: fit-content;
+        z-index: 1001;
+        position: relative;
+        transition: var(--transition);
     }
 
-    /* Afficher le menu quand il est actif */
-    .public-menu.active, .admin-menu.active {
+    .mobile-menu-button:hover {
+        background: var(--background-lighter);
+        transform: none;
+        box-shadow: none;
+    }
+
+    /* Menu masqué par défaut */
+    .public-menu,
+    .admin-menu {
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        padding: 16px;
+        background: var(--background-card);
+        border: var(--border-subtle);
+        border-radius: var(--border-radius);
+        margin-bottom: 16px;
+        box-shadow: var(--box-shadow);
+        /* Pas de position fixed : le menu s'insère dans le flux normal */
+    }
+
+    /* Menu visible quand actif */
+    .public-menu.active,
+    .admin-menu.active {
         display: flex;
     }
 
-    /* Style du bouton menu mobile */
-    .mobile-menu-button{
-        display: block;
-        padding: 10px 15px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 1.2em;
-        margin: 10px auto;
-        width: fit-content;
-        z-index: 1001;
+    /* Les boutons du menu mobile prennent toute la largeur */
+    .public-menu.active button,
+    .public-menu.active a.button,
+    .admin-menu.active button,
+    .admin-menu.active a.button {
+        flex: 1 1 100%;
+        max-width: none;
+        width: 100%;
+        text-align: center;
+        justify-content: center;
     }
 }
 
@@ -156,5 +223,12 @@
 @media (min-width: 769px) {
     .mobile-menu-button {
         display: none;
+    }
+}
+
+/* Grille 2 colonnes sur écrans intermédiaires */
+@media (max-width: 1200px) and (min-width: 769px) {
+    .series-list {
+        grid-template-columns: repeat(2, 1fr);
     }
 }

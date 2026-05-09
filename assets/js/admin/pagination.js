@@ -105,15 +105,13 @@ function createLightSeriesCard(series) {
 
     seriesCard.innerHTML = `
         <img class="series-image" src="${imageSrc}" alt="${series.name}" loading="lazy">
+        <div class="series-actions">
+            <button class="edit-series-btn" data-series-id="${series.id}">Modifier</button>
+            <button class="delete-series-btn" data-series-id="${series.id}">Supprimer</button>
+            <button class="move-to-read-btn" data-series-id="${series.id}">Lues ailleurs</button>
+        </div>
         <div class="series-info">
-            <div class="series-header">
-                <h2>${series.name}</h2>
-                <div class="series-actions">
-                    <button class="edit-series-btn" data-series-id="${series.id}">Modifier</button>
-                    <button class="delete-series-btn" data-series-id="${series.id}">Supprimer</button>
-                    <button class="move-to-read-btn" data-series-id="${series.id}">Lues ailleurs</button>
-                </div>
-            </div>
+            <h2>${series.name}</h2>
             <p><strong>Auteur :</strong> ${series.author}</p>
             <p><strong>Éditeur :</strong> ${series.publisher}</p>
             <p><strong>Autres contributeurs :</strong> ${formatList(series.other_contributors)}</p>

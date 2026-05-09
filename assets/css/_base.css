@@ -3,62 +3,89 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background-color: var(--background-dark);
     color: var(--text-color);
-    line-height: 1.6;
-    padding: 20px;
+    line-height: 1.65;
+    padding: 24px;
+    min-height: 100vh;
+    /* Texture subtile */
+    background-image: radial-gradient(ellipse at 20% 0%, rgba(192, 132, 252, 0.04) 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 100%, rgba(56, 189, 248, 0.03) 0%, transparent 60%);
 }
 
 /* En-têtes */
 h1, h2, h3, h4 {
+    font-family: 'Outfit', system-ui, sans-serif;
     color: var(--text-white);
-    margin-bottom: 15px;
+    margin-bottom: 14px;
+    letter-spacing: -0.01em;
+    font-weight: 600;
 }
 
 h1 {
     text-align: center;
-    margin-bottom: 30px;
-    font-size: 2.2em;
+    margin-bottom: 32px;
+    font-size: 2em;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, var(--text-white) 40%, var(--primary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 h2 {
-    font-size: 1.6em;
-    margin-top: 25px;
+    font-size: 1.35em;
+    margin-top: 22px;
 }
 
 h3 {
-    font-size: 1.3em;
-    margin-top: 15px;
+    font-size: 1.1em;
+    margin-top: 14px;
+    font-weight: 600;
 }
 
 /* Liens */
 a {
     color: var(--primary-color);
     text-decoration: none;
+    transition: var(--transition-fast);
 }
 
 a:hover {
-    text-decoration: underline;
+    color: var(--primary-hover);
+    text-decoration: none;
 }
 
 /* Boutons de base */
 button, input[type="submit"] {
+    font-family: 'Inter', system-ui, sans-serif;
     background-color: var(--primary-color);
-    color: var(--background-dark);
+    color: #0d0d12;
     border: none;
-    padding: 10px 20px;
-    border-radius: var(--border-radius);
+    padding: 9px 18px;
+    border-radius: var(--border-radius-sm);
     cursor: pointer;
-    font-weight: bold;
+    font-weight: 600;
+    font-size: 0.875em;
+    letter-spacing: 0.01em;
     transition: var(--transition);
+    position: relative;
+    overflow: hidden;
 }
 
 button:hover, input[type="submit"]:hover {
     background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px var(--primary-glow);
+}
+
+button:active, input[type="submit"]:active {
+    transform: translateY(0);
 }
 
 /* Inputs et formulaires de base */
@@ -67,14 +94,41 @@ input[type="password"],
 input[type="file"],
 input[type="number"],
 select {
-    background-color: var(--background-light);
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: var(--input-bg);
     color: var(--text-color);
-    border: 1px solid var(--background-darker);
-    padding: 10px;
-    border-radius: var(--border-radius);
+    border: 1px solid var(--input-border);
+    padding: 10px 14px;
+    border-radius: var(--border-radius-sm);
     width: 100%;
-    margin-bottom: 15px;
-    font-size: 1em;
+    margin-bottom: 14px;
+    font-size: 0.9em;
+    transition: var(--transition);
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238888a8' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+    cursor: pointer;
+}
+
+option,
+select option {
+    background-color: #1e1e2b;
+    color: #d4d4e8;
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 8px 12px;
+}
+
+option:checked,
+option:hover,
+select option:checked {
+    background-color: #2e2040;
+    color: #c084fc;
 }
 
 input[type="text"]:focus,
@@ -84,16 +138,43 @@ input[type="number"]:focus,
 select:focus {
     outline: none;
     border-color: var(--primary-color);
+    background-color: #181825;
+    box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+input::placeholder {
+    color: var(--text-muted);
 }
 
 /* Messages d'erreur */
 .error {
     color: var(--error-color);
-    font-weight: bold;
+    font-weight: 600;
+    font-size: 0.875em;
 }
 
 /* Messages de succès */
 .ok {
     color: var(--success-color);
-    font-weight: bold;
+    font-weight: 600;
+    font-size: 0.875em;
+}
+
+/* Scrollbar personnalisée */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--background-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--background-lighter);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
 }

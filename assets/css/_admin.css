@@ -1,64 +1,124 @@
 /* Styles spécifiques à l'interface admin */
 .admin-menu button,
 .admin-menu a.button {
-    padding: 10px 15px;
-    font-size: 0.9em;
+    padding: 9px 16px;
+    font-size: 0.875em;
 }
 
 .series-actions {
     display: flex;
-    gap: 8px;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* Boutons dans la colonne de couverture (admin) */
+.series-cover-actions .edit-series-btn,
+.series-cover-actions .delete-series-btn,
+.series-cover-actions .read-series-btn {
+    padding: 6px 8px;
+    font-size: 0.76em;
+    width: 100%;
+    text-align: center;
+    justify-content: center;
 }
 
 .edit-series-btn {
-    background-color: var(--primary-color);
-    color: var(--background-dark);
-    border: none;
-    padding: 5px 10px;
-    border-radius: var(--border-radius);
+    background-color: transparent;
+    color: var(--primary-color);
+    border: 1px solid rgba(192, 132, 252, 0.4) !important;
+    padding: 5px 12px;
+    border-radius: var(--border-radius-sm);
     cursor: pointer;
+    font-size: 0.82em;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.edit-series-btn:hover {
+    background-color: var(--primary-subtle);
+    border-color: var(--primary-color) !important;
+    transform: translateY(-1px);
+    box-shadow: none;
 }
 
 .delete-series-btn {
-    background-color: var(--error-color);
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: var(--border-radius);
+    background-color: transparent;
+    color: var(--error-color);
+    border: 1px solid rgba(248, 113, 113, 0.4) !important;
+    padding: 5px 12px;
+    border-radius: var(--border-radius-sm);
     cursor: pointer;
+    font-size: 0.82em;
+    font-weight: 600;
+    transition: var(--transition);
 }
 
 .delete-series-btn:hover {
-    background-color: var(--error-dark);
+    background-color: var(--error-subtle);
+    border-color: var(--error-color) !important;
+    transform: translateY(-1px);
+    box-shadow: none;
 }
 
 /* Bouton "Créer une sauvegarde" */
 #create-backup-btn {
-    background-color: var(--success-light);
-    color: var(--background-dark);
+    background-color: var(--success-color);
+    color: #0d0d12;
 }
 
 #create-backup-btn:hover {
-    background-color: var(--success-hover);
+    background-color: var(--success-light);
+    box-shadow: 0 4px 16px rgba(52, 211, 153, 0.25);
 }
 
 /* Styles pour la section de gestion des volumes */
 .load-volumes-btn {
-    background: #444;
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 4px;
+    background: var(--background-lighter);
+    color: var(--text-color);
+    border: var(--border-subtle) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    padding: 8px 14px;
+    border-radius: var(--border-radius-sm);
     cursor: pointer;
     margin-top: 10px;
+    font-size: 0.875em;
+    font-weight: 500;
+    transition: var(--transition);
 }
 
 .load-volumes-btn:hover {
-    background: #555;
+    background: var(--background-darker);
+    transform: translateY(-1px);
+    box-shadow: none;
 }
 
 .volumes-container {
-    margin-top: 10px;
-    border-top: 1px solid #333;
-    padding-top: 10px;
+    margin-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 12px;
+}
+
+/* ── Boutons dans la colonne gauche de la carte (admin) ── */
+.series-card > .series-actions .edit-series-btn,
+.series-card > .series-actions .delete-series-btn,
+.series-card > .series-actions .move-to-read-btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+    padding: 6px 8px;
+    font-size: 0.78em;
+}
+
+.series-card > .series-actions .move-to-read-btn {
+    background-color: transparent;
+    color: var(--text-gray);
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    font-weight: 500;
+}
+
+.series-card > .series-actions .move-to-read-btn:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: var(--text-white);
+    transform: none;
+    box-shadow: none;
 }

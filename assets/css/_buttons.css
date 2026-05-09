@@ -1,116 +1,161 @@
 /* Styles pour les boutons spécifiques */
 .button {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     background-color: var(--primary-color);
-    color: var(--background-dark);
-    padding: 10px 20px;
-    border-radius: var(--border-radius);
+    color: #0d0d12;
+    padding: 9px 18px;
+    border-radius: var(--border-radius-sm);
     text-decoration: none;
-    font-weight: bold;
+    font-weight: 600;
+    font-size: 0.875em;
+    letter-spacing: 0.01em;
     transition: var(--transition);
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
 }
 
 .button:hover {
     background-color: var(--primary-hover);
     text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px var(--primary-glow);
+    color: #0d0d12;
+}
+
+.button:active {
+    transform: translateY(0);
 }
 
 .button-ats {
     background-color: var(--button-ats);
+    color: #0d0d12;
 }
 
 .button-ats:hover {
     background-color: var(--button-ats-hover);
+    box-shadow: 0 4px 16px rgba(74, 222, 128, 0.25);
+    color: #0d0d12;
 }
 
 .button-ext {
     background-color: var(--button-ext);
+    color: var(--text-white);
 }
 
 .button-ext:hover {
     background-color: var(--button-ext-hover);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    color: var(--text-white);
 }
 
 .button-otl {
     background-color: var(--button-otl);
+    color: #0d0d12;
 }
 
 .button-otl:hover {
     background-color: var(--button-otl-hover);
+    box-shadow: 0 4px 16px rgba(56, 189, 248, 0.25);
+    color: #0d0d12;
 }
 
 .button-aos {
     background-color: var(--button-aos);
+    color: white;
 }
 
 .button-aos:hover {
     background-color: var(--button-aos-hover);
+    box-shadow: 0 4px 16px rgba(167, 139, 250, 0.25);
+    color: white;
 }
 
 .button-opt {
     background-color: var(--button-opt);
+    color: white;
 }
 
 .button-opt:hover {
     background-color: var(--button-opt-hover);
+    box-shadow: 0 4px 16px rgba(251, 146, 60, 0.25);
+    color: white;
 }
 
 /* Boutons de suppression */
 .delete-btn {
-    background-color: var(--error-color);
-    color: white;
+    background-color: transparent;
+    color: var(--error-color);
+    border: 1px solid var(--error-color) !important;
 }
 
 .delete-btn:hover {
-    background-color: var(--error-hover);
+    background-color: var(--error-color);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(248, 113, 113, 0.25);
 }
 
 .delete-backup-btn {
-    background-color: var(--error-color);
-    color: white;
+    background-color: transparent;
+    color: var(--error-color);
+    border: 1px solid var(--error-color) !important;
 }
 
 .delete-backup-btn:hover {
-    background-color: var(--error-hover);
+    background-color: var(--error-color);
+    color: white;
+    box-shadow: 0 4px 12px rgba(248, 113, 113, 0.25);
 }
 
 /* Bouton "Retour en haut" */
 #back-to-top {
     display: none;
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: 24px;
+    right: 24px;
     background: var(--primary-color);
-    color: var(--background-dark);
+    color: #0d0d12;
     border: none;
     border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    font-size: 1.2em;
+    width: 48px;
+    height: 48px;
+    font-size: 1.1em;
     cursor: pointer;
     z-index: 999;
+    box-shadow: 0 4px 20px var(--primary-glow), 0 2px 8px rgba(0, 0, 0, 0.4);
+    transition: var(--transition);
 }
 
-#back-to-top:hover { 
-    background: var(--primary-hover); 
+#back-to-top:hover {
+    background: var(--primary-hover);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 28px var(--primary-glow), 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 /* Bouton de déconnexion */
 .logout-container {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 14px;
+    right: 14px;
     z-index: 1000;
 }
 
 .logout-button {
-    display: inline-block;
-    padding: 5px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 15%;
-    transition: background 0.3s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 50%;
+    transition: var(--transition);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .logout-button:hover {
-    background: rgba(255, 0, 0, 0.5);
+    background: rgba(248, 113, 113, 0.2);
+    border-color: rgba(248, 113, 113, 0.4);
 }

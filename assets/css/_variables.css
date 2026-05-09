@@ -1,61 +1,90 @@
 /* Variables globales (couleurs, tailles, polices, etc.) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap');
+
 :root {
     /* Couleurs principales */
-    --primary-color: #bb86fc;
-    --primary-hover: #9a67ea;
-    --error-color: #cf6679;
-    --error-hover: #b35467;
-    --error-dark: #aa5463;
-    --success-color: #009e3d;
-    --success-light: #4CAF50;
-    --success-hover: #45a049;
-    --success-dark: #3e9141;
-    --warning-color: #ff9800;
-    --background-dark: #121212;
-    --background-light: #1e1e1e;
-    --background-medium: #2d2d2d;
-    --background-darker: #333;
-    --background-lighter: #3a3a3a;
-    --text-color: #e0e0e0;
-    --text-white: #ffffff;
-    --text-gray: #aeaeae;
+    --primary-color: #c084fc;
+    --primary-hover: #a855f7;
+    --primary-subtle: rgba(192, 132, 252, 0.1);
+    --primary-glow: rgba(192, 132, 252, 0.2);
+
+    --error-color: #f87171;
+    --error-hover: #ef4444;
+    --error-dark: #dc2626;
+    --error-subtle: rgba(248, 113, 113, 0.12);
+
+    --success-color: #34d399;
+    --success-light: #4ade80;
+    --success-hover: #22c55e;
+    --success-dark: #16a34a;
+    --success-subtle: rgba(52, 211, 153, 0.12);
+
+    --warning-color: #fbbf24;
+    --warning-subtle: rgba(251, 191, 36, 0.12);
+
+    /* Arrière-plans — plus profonds et plus nuancés */
+    --background-dark: #0d0d12;
+    --background-light: #16161f;
+    --background-medium: #1e1e2b;
+    --background-darker: #252533;
+    --background-lighter: #2e2e3e;
+    --background-card: #181825;
+
+    /* Texte */
+    --text-color: #d4d4e8;
+    --text-white: #f0f0ff;
+    --text-gray: #8888a8;
+    --text-muted: #5a5a7a;
 
     /* Couleurs spécifiques aux boutons */
-    --button-ats: #66aa60;
-    --button-ats-hover: #599253;
-    --button-ext: #626d74;
-    --button-ext-hover: #444b50;
-    --button-otl: #4291c1;
-    --button-otl-hover: #3b81ac;
-    --button-aos: #7558c4;
-    --button-aos-hover: #6048a0;
-    --button-opt: #ae644d;
-    --button-opt-hover: #814a39;
+    --button-ats: #4ade80;
+    --button-ats-hover: #22c55e;
+    --button-ext: #64748b;
+    --button-ext-hover: #475569;
+    --button-otl: #38bdf8;
+    --button-otl-hover: #0ea5e9;
+    --button-aos: #a78bfa;
+    --button-aos-hover: #8b5cf6;
+    --button-opt: #fb923c;
+    --button-opt-hover: #f97316;
 
-    /* Couleurs pour les statuts des tomes */
-    --status-a-lire-bg: rgba(207, 102, 121, 0.15);
-    --status-a-lire-border: var(--error-color);
-    --status-en-cours-bg: rgba(187, 134, 252, 0.15);
+    /* Statuts des tomes */
+    --status-a-lire-bg: rgba(248, 113, 113, 0.08);
+    --status-a-lire-border: #f87171;
+    --status-en-cours-bg: rgba(192, 132, 252, 0.08);
     --status-en-cours-border: var(--primary-color);
-    --status-termine-bg: rgba(61, 126, 210, 0.15);
-    --status-termine-border: #4270dd;
-    --status-mature: #dd9cd2;
+    --status-termine-bg: rgba(56, 189, 248, 0.08);
+    --status-termine-border: #38bdf8;
+    --status-mature: #e879c6;
 
-    /* Couleurs pour les badges et indicateurs */
-    --badge-collector: gold;
-    --badge-last-volume: rgb(77, 221, 100);
+    /* Badges */
+    --badge-collector: #fcd34d;
+    --badge-last-volume: #4ade80;
 
-    /* Couleurs pour les éléments interactifs */
-    --input-border: #333;
-    --input-focus: var(--primary-color);
-    --tooltip-bg: #2a2a2a;
+    /* Inputs */
+    --input-border: #2e2e3e;
+    --input-border-focus: var(--primary-color);
+    --input-bg: #131320;
+    --tooltip-bg: #1e1e2b;
     --tooltip-text: var(--primary-color);
-    --tooltip-warning: #ff9800;
+    --tooltip-warning: var(--warning-color);
 
-    /* Autres variables */
-    --border-radius: 5px;
-    --box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    --transition: all 0.3s ease;
-    --favorite-shadow: 0 4px 8px rgba(236, 190, 103, 0.55);
-    --favorite-border: rgba(236, 190, 103, 0.8);
+    /* Design tokens */
+    --border-radius: 10px;
+    --border-radius-sm: 6px;
+    --border-radius-lg: 16px;
+    --border-radius-xl: 24px;
+
+    --box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    --box-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --box-shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.6);
+
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --favorite-shadow: 0 0 24px rgba(236, 190, 103, 0.3), 0 4px 12px rgba(0, 0, 0, 0.4);
+    --favorite-border: rgba(236, 190, 103, 0.6);
+
+    /* Bordure subtile globale */
+    --border-subtle: 1px solid rgba(255, 255, 255, 0.06);
 }
