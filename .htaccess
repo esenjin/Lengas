@@ -7,6 +7,6 @@
 </IfModule>
 
 # Bloquer l'accès direct aux données et sauvegardes
-<LocationMatch "^/(bdd|saves)/">
+<FilesMatch "\.(json|zip)$">
     Require all denied
-</LocationMatch>
+</FilesMatch>
