@@ -67,22 +67,8 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
         $new_status = $has_last_volume ? 'terminée' : ($series_data['status'] ?? 'en cours');
     }
 
-    // Met à jour le statut
-    $data[$series_key]['status'] = $new_status;
-
-    // Gestion du tag "last" en fonction du statut
-    if ($new_status === 'terminée') {
-        $last_index = count($data[$series_key]['volumes']) - 1;
-        if ($last_index >= 0) {
-            $data[$series_key]['volumes'][$last_index]['last'] = true;
-        }
-    } else {
-        foreach ($data[$series_key]['volumes'] as &$volume) {
-            $volume['last'] = false;
-        }
-    }
-
     // Met à jour directement via la clé
+    $data[$series_key]['status'] = $new_status;
     $data[$series_key]['name'] = $name;
     $data[$series_key]['author'] = $author;
     $data[$series_key]['publisher'] = $publisher;
@@ -92,21 +78,6 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
     $data[$series_key]['anilist_id'] = $anilist_id;
     $data[$series_key]['mature'] = $mature;
     $data[$series_key]['favorite'] = $favorite;
-
-    // Gestion du statut de la série
-    if ($new_status !== null) {
-        $data[$series_key]['status'] = $new_status;
-        if ($new_status === 'terminée') {
-            $last_index = count($data[$series_key]['volumes']) - 1;
-            if ($last_index >= 0) {
-                $data[$series_key]['volumes'][$last_index]['last'] = true;
-            }
-        } else {
-            foreach ($data[$series_key]['volumes'] as &$volume) {
-                $volume['last'] = false;
-            }
-        }
-    }
 
     // Gestion de l'image
     if ($remove_image && !empty($data[$series_key]['image']) && file_exists($data[$series_key]['image'])) {
@@ -121,7 +92,7 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
         $data[$series_key]['image'] = $new_image;
     }
 
-    // Ajout de nouveaux tomes
+    // Ajout de nouveaux tomes (sans tag "last" pour l'instant)
     if ($new_volumes_count > 0) {
         $current_volumes = $data[$series_key]['volumes'];
         $max_volume_number = !empty($current_volumes) ? max(array_column($current_volumes, 'number')) : 0;
@@ -132,9 +103,37 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
                 'number' => $new_volume_number,
                 'status' => $new_volumes_status,
                 'collector' => $new_volumes_collector,
-                'last' => ($new_volumes_last && $i == $new_volumes_count),
+                'last' => false,
                 'added_at' => date('Y-m-d')
             ];
+        }
+    }
+
+    // Gestion du tag "last" APRÈS l'ajout des nouveaux tomes
+    if ($new_status === 'terminée') {
+        // D'abord on retire tous les tags "last" existants
+        foreach ($data[$series_key]['volumes'] as &$volume) {
+            $volume['last'] = false;
+        }
+        // Puis on tag le dernier tome de la liste complète (incluant les nouveaux)
+        $last_index = count($data[$series_key]['volumes']) - 1;
+        if ($last_index >= 0) {
+            $data[$series_key]['volumes'][$last_index]['last'] = true;
+        }
+    } elseif ($new_volumes_last && $new_volumes_count > 0) {
+        // Statut non "terminée" mais l'utilisateur a coché "dernier tome" :
+        // on retire les anciens tags "last" et on tag le dernier des nouveaux
+        foreach ($data[$series_key]['volumes'] as &$volume) {
+            $volume['last'] = false;
+        }
+        $last_index = count($data[$series_key]['volumes']) - 1;
+        if ($last_index >= 0) {
+            $data[$series_key]['volumes'][$last_index]['last'] = true;
+        }
+    } else {
+        // Statut non "terminée" et pas de tag "last" demandé : on retire tous les tags
+        foreach ($data[$series_key]['volumes'] as &$volume) {
+            $volume['last'] = false;
         }
     }
 
