@@ -7,9 +7,15 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
             'number' => $i,
             'status' => $volumes_status,
             'collector' => $all_collector,
-            'last' => ($last_volume && $i == $volumes_count),
+            'last' => false,
             'added_at' => date('Y-m-d')
         ];
+    }
+
+    // Si la série est terminée, ou si l'utilisateur a coché "dernier tome",
+    // on tag le dernier tome comme tel
+    if ($volumes_count > 0 && ($status === 'terminée' || $last_volume)) {
+        $volumes[$volumes_count - 1]['last'] = true;
     }
 
     $other_contributors = clean_comma_separated($other_contributors);
