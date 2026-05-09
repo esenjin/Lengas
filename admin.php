@@ -976,7 +976,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
             <div class="modal-content">
                 <span class="close-modal" id="close-incomplete-series-modal">&times;</span>
                 <h2>Séries incomplètes</h2>
-                <p>Cet outil vous permet de trouver les séries qui son terminées, pour lesquelles il vous manque des tomes.</p>
+                <p>Cet outil vous permet de trouver les séries dont la publication est terminée, pour lesquelles il vous manque des tomes.</p>
                 <p>Attention, nous utilisons l'API d'Anilist, qui se base sur les dates des publications japonaises uniquement, il peut y avoir un décalage de sortie avec la France.</p>
                 <p>Merci de noter qu'à cause des limitations de l'API d'Anilist, nous ne pouvons pas identifier les tomes manquants des séries en cours de publication.</p>
                 <button id="search-incomplete-series" class="button">Rechercher les séries incomplètes</button>
