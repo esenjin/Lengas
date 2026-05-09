@@ -150,9 +150,9 @@ document.querySelectorAll('.series-card').forEach(card => {
         document.getElementById('modal-series-image').src = series.image || 'logo.png';
         document.getElementById('modal-series-author').textContent = series.author;
         document.getElementById('modal-series-publisher').textContent = series.publisher;
-        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors ? series.other_contributors.join(', ') : '';
+        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors && series.other_contributors.filter(i => i.trim()).length > 0 ? series.other_contributors.filter(i => i.trim()).join(', ') : 'aucun';
         document.getElementById('modal-series-categories').textContent = series.categories ? series.categories.join(', ') : '';
-        document.getElementById('modal-series-genres').textContent = series.genres ? series.genres.join(', ') : '';
+        document.getElementById('modal-series-genres').textContent = series.genres && series.genres.filter(i => i.trim()).length > 0 ? series.genres.filter(i => i.trim()).join(', ') : 'aucun';
 
         const totalVolumes = series.volumes ? series.volumes.length : 0;
         const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
@@ -240,9 +240,9 @@ function loadMoreSeries() {
                         document.getElementById('modal-series-image').src = series.image || 'logo.png';
                         document.getElementById('modal-series-author').textContent = series.author;
                         document.getElementById('modal-series-publisher').textContent = series.publisher;
-                        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors ? series.other_contributors.join(', ') : '';
+                        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors && series.other_contributors.filter(i => i.trim()).length > 0 ? series.other_contributors.filter(i => i.trim()).join(', ') : 'aucun';
                         document.getElementById('modal-series-categories').textContent = series.categories ? series.categories.join(', ') : '';
-                        document.getElementById('modal-series-genres').textContent = series.genres ? series.genres.join(', ') : '';
+                        document.getElementById('modal-series-genres').textContent = series.genres && series.genres.filter(i => i.trim()).length > 0 ? series.genres.filter(i => i.trim()).join(', ') : 'aucun';
 
                         const totalVolumes = series.volumes ? series.volumes.length : 0;
                         const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
@@ -346,9 +346,9 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
                         document.getElementById('modal-series-image').src = series.image || 'logo.png';
                         document.getElementById('modal-series-author').textContent = series.author;
                         document.getElementById('modal-series-publisher').textContent = series.publisher;
-                        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors ? series.other_contributors.join(', ') : '';
+                        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors && series.other_contributors.filter(i => i.trim()).length > 0 ? series.other_contributors.filter(i => i.trim()).join(', ') : 'aucun';
                         document.getElementById('modal-series-categories').textContent = series.categories ? series.categories.join(', ') : '';
-                        document.getElementById('modal-series-genres').textContent = series.genres ? series.genres.join(', ') : '';
+                        document.getElementById('modal-series-genres').textContent = series.genres && series.genres.filter(i => i.trim()).length > 0 ? series.genres.filter(i => i.trim()).join(', ') : 'aucun';
 
                         const totalVolumes = series.volumes ? series.volumes.length : 0;
                         const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
@@ -463,9 +463,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             document.getElementById('modal-series-image').src = s.image || 'logo.png';
                             document.getElementById('modal-series-author').textContent = s.author;
                             document.getElementById('modal-series-publisher').textContent = s.publisher;
-                            document.getElementById('modal-series-other-contributors').textContent = s.other_contributors ? s.other_contributors.join(', ') : '';
+                            document.getElementById('modal-series-other-contributors').textContent = s.other_contributors && s.other_contributors.filter(i => i.trim()).length > 0 ? s.other_contributors.filter(i => i.trim()).join(', ') : 'aucun';
                             document.getElementById('modal-series-categories').textContent = s.categories ? s.categories.join(', ') : '';
-                            document.getElementById('modal-series-genres').textContent = s.genres ? s.genres.join(', ') : '';
+                            document.getElementById('modal-series-genres').textContent = s.genres && s.genres.filter(i => i.trim()).length > 0 ? s.genres.filter(i => i.trim()).join(', ') : 'aucun';
                             const tv = s.volumes ? s.volumes.length : 0;
                             const rv = s.volumes ? s.volumes.filter(v => v.status === 'terminé').length : 0;
                             document.getElementById('modal-series-stats').innerHTML =
