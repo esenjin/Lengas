@@ -1,9 +1,9 @@
 // Recherche de série
 function setupSeriesSearch(inputId, resultsId) {
     document.getElementById(inputId).addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
+        const searchTerm = normalizeString(this.value);
         document.querySelectorAll(`#${resultsId} div`).forEach(div => {
-            div.style.display = div.textContent.toLowerCase().includes(searchTerm) ? 'block' : 'none';
+            div.style.display = normalizeString(div.textContent).includes(searchTerm) ? 'block' : 'none';
         });
     });
 }
