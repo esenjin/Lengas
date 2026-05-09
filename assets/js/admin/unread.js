@@ -36,6 +36,13 @@ function updateUnreadList(unread_series) {
                 <label for="max-unread-count">Nombre max de tomes restants :</label>
                 <input type="number" id="max-unread-count" min="1" placeholder="Ex: 4">
             </div>
+            <div>
+                <label for="sort-unread-order">Tri par tomes restants :</label>
+                <select id="sort-unread-order">
+                    <option value="asc" selected>Croissant</option>
+                    <option value="desc">Décroissant</option>
+                </select>
+            </div>
         </div>
     `;
 
@@ -43,6 +50,9 @@ function updateUnreadList(unread_series) {
         unreadList.innerHTML = '<p>Aucune série non terminée trouvée.</p>';
         return;
     }
+
+    // Tri par défaut : croissant
+    unread_series.sort((a, b) => a.unread_count - b.unread_count);
 
     unread_series.forEach((item) => {
         const unreadItem = document.createElement('div');
@@ -72,6 +82,7 @@ function updateUnreadList(unread_series) {
     // Ajoute un écouteur pour filtrer dynamiquement
     document.getElementById('filter-soon-finished').addEventListener('change', () => filterUnreadList(unread_series));
     document.getElementById('max-unread-count').addEventListener('input', () => filterUnreadList(unread_series));
+    document.getElementById('sort-unread-order').addEventListener('change', () => filterUnreadList(unread_series));
 
     // Ajoute les écouteurs d'événements pour les boutons "+"
     document.querySelectorAll('.mark-as-read-btn').forEach(button => {
@@ -86,12 +97,17 @@ function updateUnreadList(unread_series) {
 function filterUnreadList(unread_series) {
     const filterSoonFinished = document.getElementById('filter-soon-finished').checked;
     const maxUnreadCount = parseInt(document.getElementById('max-unread-count').value) || Infinity;
+    const sortOrder = document.getElementById('sort-unread-order').value;
 
-    const filteredSeries = unread_series.filter(series => {
+    let filteredSeries = unread_series.filter(series => {
         const matchesSoonFinished = !filterSoonFinished || series.soon_finished;
         const matchesMaxUnread = series.unread_count <= maxUnreadCount;
         return matchesSoonFinished && matchesMaxUnread;
     });
+
+    filteredSeries.sort((a, b) =>
+        sortOrder === 'asc' ? a.unread_count - b.unread_count : b.unread_count - a.unread_count
+    );
 
     renderFilteredUnreadList(filteredSeries);
 }
