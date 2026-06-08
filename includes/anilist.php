@@ -1,16 +1,12 @@
 <?php
 // anilist.php
-function fetch_from_anilist($query, $variables = [], $retry = 3, $delay = 2) {
-    $url = 'https://graphql.anilist.co';
+function fetch_from_anilist(string $query, array $variables = [], int $retry = 3, int $delay = 2): ?array {
+    $url     = 'https://graphql.anilist.co';
     $attempt = 0;
     $last_error = null;
 
     while ($attempt < $retry) {
-        $data = [
-            'query' => $query,
-            'variables' => $variables
-        ];
-
+        $data = ['query' => $query, 'variables' => $variables];
         $options = [
             'http' => [
                 'header'  => "Content-type: application/json\r\n",
@@ -19,21 +15,20 @@ function fetch_from_anilist($query, $variables = [], $retry = 3, $delay = 2) {
             ],
         ];
 
-        $context = stream_context_create($options);
+        $context  = stream_context_create($options);
         $response = @file_get_contents($url, false, $context);
 
         if ($response !== false) {
             $result = json_decode($response, true);
             if (isset($result['errors'])) {
-                $last_error = $result['errors'][0]['message'] ?? 'Erreur inconnue de l\'API Anilist.';
+                $last_error = $result['errors'][0]['message'] ?? "Erreur inconnue de l'API Anilist.";
             } else {
                 return $result;
             }
         } else {
-            $last_error = 'Impossible de contacter l\'API Anilist.';
+            $last_error = "Impossible de contacter l'API Anilist.";
         }
 
-        // Si erreur 429 (Too Many Requests), attendre avant de réessayer
         if (isset($http_response_header) && strpos($http_response_header[0], '429') !== false) {
             sleep($delay);
             $attempt++;
@@ -47,23 +42,20 @@ function fetch_from_anilist($query, $variables = [], $retry = 3, $delay = 2) {
     return null;
 }
 
-// Fonction pour récupérer les volumes de plusieurs séries en une seule requête (par lots)
-function fetch_volumes_for_series_batch($series_ids, $batch_size = 10) {
+function fetch_volumes_for_series_batch(array $series_ids, int $batch_size = 10): array {
     $results = [];
-    $batches = array_chunk($series_ids, $batch_size);
+    $batches  = array_chunk($series_ids, $batch_size);
 
     foreach ($batches as $batch) {
         $query_parts = [];
-        $variables = [];
         $i = 0;
-
         foreach ($batch as $id) {
             $query_parts[] = "media_$i: Media(id: $id, type: MANGA) { volumes }";
             $i++;
         }
 
         $query = 'query { ' . implode(' ', $query_parts) . ' }';
-        $data = fetch_from_anilist($query, $variables);
+        $data  = fetch_from_anilist($query, []);
 
         if ($data && isset($data['data'])) {
             foreach ($batch as $index => $id) {
@@ -78,28 +70,23 @@ function fetch_volumes_for_series_batch($series_ids, $batch_size = 10) {
     return $results;
 }
 
-// Fonction pour récupérer les volumes d'une série (avec cache)
-function get_series_volumes_from_anilist($anilist_id, $force_refresh = false) {
-    if (!$anilist_id) {
-        return null;
-    }
+// Fonction pour récupérer les volumes d'une série (avec cache SQLite)
+function get_series_volumes_from_anilist($anilist_id, bool $force_refresh = false): ?int {
+    if (!$anilist_id) return null;
 
-    $cache_file = 'bdd/anilist.json';
     $cache_key = "media_volumes_$anilist_id";
     $cache_ttl = 86400; // 24h
+    $db        = get_db();
 
-    // Charger le cache
-    $cache = file_exists($cache_file) ? json_decode(file_get_contents($cache_file), true) : [];
-
-    // Vérifier si le cache est valide
-    if (isset($cache[$cache_key]) && !$force_refresh) {
-        $entry = $cache[$cache_key];
-        if (time() - $entry['timestamp'] < $cache_ttl) {
-            return $entry['volumes'];
+    if (!$force_refresh) {
+        $row = $db->prepare("SELECT volumes, timestamp FROM anilist_cache WHERE cache_key = ?");
+        $row->execute([$cache_key]);
+        $cached = $row->fetch();
+        if ($cached && (time() - (int)$cached['timestamp']) < $cache_ttl) {
+            return $cached['volumes'] !== null ? (int)$cached['volumes'] : null;
         }
     }
 
-    // Sinon, faire la requête
     $query = '
     query ($id: Int) {
         Media (id: $id, type: MANGA) {
@@ -108,48 +95,39 @@ function get_series_volumes_from_anilist($anilist_id, $force_refresh = false) {
     }
     ';
 
-    $variables = ['id' => (int)$anilist_id];
-    $data = fetch_from_anilist($query, $variables);
+    $result = fetch_from_anilist($query, ['id' => (int)$anilist_id]);
 
-    if ($data && isset($data['data']['Media']['volumes'])) {
-        $volumes = $data['data']['Media']['volumes'];
+    if ($result && isset($result['data']['Media']['volumes'])) {
+        $volumes = $result['data']['Media']['volumes'];
 
-        // Mettre à jour le cache
-        $cache[$cache_key] = [
-            'volumes' => $volumes,
-            'timestamp' => time()
-        ];
+        $db->prepare("
+            INSERT OR REPLACE INTO anilist_cache (cache_key, volumes, timestamp)
+            VALUES (?, ?, ?)
+        ")->execute([$cache_key, $volumes, time()]);
 
-        if (!file_exists('bdd')) {
-            mkdir('bdd', 0777, true);
-        }
-
-        file_put_contents($cache_file, json_encode($cache, JSON_PRETTY_PRINT));
-        return $volumes;
+        return (int)$volumes;
     }
 
     return null;
 }
 
 // Fonction pour obtenir les séries incomplètes (optimisée)
-function get_incomplete_series($data) {
-    $incomplete_series = [];
+function get_incomplete_series(array $data): array {
+    $incomplete_series       = [];
     $series_with_more_volumes = [];
-    $anilist_ids = [];
+    $anilist_ids             = [];
 
-    // Collecter les IDs Anilist uniques
     foreach ($data as $series) {
         if (isset($series['anilist_id']) && !empty($series['anilist_id'])) {
             $anilist_ids[] = $series['anilist_id'];
         }
     }
 
-    // Récupérer les volumes par lots
     $volumes_by_id = fetch_volumes_for_series_batch(array_unique($anilist_ids));
 
     foreach ($data as $series) {
         if (isset($series['anilist_id']) && !empty($series['anilist_id'])) {
-            $anilist_id = $series['anilist_id'];
+            $anilist_id      = $series['anilist_id'];
             $anilist_volumes = $volumes_by_id[$anilist_id] ?? null;
 
             if ($anilist_volumes !== null) {
@@ -163,7 +141,7 @@ function get_incomplete_series($data) {
                     $incomplete_series[] = $series;
                 } elseif ($owned_volumes > $anilist_volumes) {
                     $series['has_more_volumes'] = true;
-                    $series['missing_volumes'] = [];
+                    $series['missing_volumes']  = [];
                     $series_with_more_volumes[] = $series;
                 }
             }
@@ -181,7 +159,7 @@ function get_incomplete_series($data) {
 }
 
 // Fonction pour ajouter tous les tomes manquants à une série
-function add_all_missing_volumes_to_series(&$data, $series_id, $missing_volumes, $status = 'à lire', $is_collector = false) {
+function add_all_missing_volumes_to_series(array &$data, string $series_id, array $missing_volumes, string $status = 'à lire', bool $is_collector = false): bool {
     $series_index = null;
     foreach ($data as $index => &$series) {
         if ($series['id'] === $series_id) {
@@ -190,31 +168,41 @@ function add_all_missing_volumes_to_series(&$data, $series_id, $missing_volumes,
         }
     }
 
-    if ($series_index !== null) {
-        $last_volume_number = !empty($data[$series_index]['volumes']) ? max(array_map(function($v) { return $v['number']; }, $data[$series_index]['volumes'])) : 0;
+    if ($series_index === null) return false;
 
-        foreach ($missing_volumes as $volume_number) {
-            if ($volume_number > $last_volume_number) {
-                $data[$series_index]['volumes'][] = [
-                    'number' => $volume_number,
-                    'status' => $status,
-                    'collector' => $is_collector,
-                    'last' => false // On ne marque pas comme dernier tome, car on ajoute plusieurs tomes
-                ];
-            }
+    $last_volume_number = !empty($data[$series_index]['volumes'])
+        ? max(array_map(fn($v) => $v['number'], $data[$series_index]['volumes']))
+        : 0;
+
+    $db   = get_db();
+    $stmt = $db->prepare("
+        INSERT OR IGNORE INTO volumes (series_id, number, status, collector, last, added_at)
+        VALUES (?, ?, ?, ?, 0, ?)
+    ");
+
+    foreach ($missing_volumes as $volume_number) {
+        if ((int)$volume_number > $last_volume_number) {
+            $data[$series_index]['volumes'][] = [
+                'number'    => (int)$volume_number,
+                'status'    => $status,
+                'collector' => $is_collector,
+                'last'      => false,
+                'added_at'  => date('Y-m-d'),
+            ];
+            $stmt->execute([$series_id, (int)$volume_number, $status, (int)$is_collector, date('Y-m-d')]);
         }
-
-        // Mettre à jour le dernier tome si nécessaire
-        if (!empty($data[$series_index]['volumes'])) {
-            $last_volume = max(array_map(function($v) { return $v['number']; }, $data[$series_index]['volumes']));
-            foreach ($data[$series_index]['volumes'] as &$volume) {
-                $volume['last'] = ($volume['number'] == $last_volume);
-            }
-        }
-
-        return true;
     }
 
-    return false;
+    // Mettre à jour le dernier tome
+    if (!empty($data[$series_index]['volumes'])) {
+        $last_volume = max(array_map(fn($v) => $v['number'], $data[$series_index]['volumes']));
+        $db->prepare("UPDATE volumes SET last = 0 WHERE series_id = ?")->execute([$series_id]);
+        $db->prepare("UPDATE volumes SET last = 1 WHERE series_id = ? AND number = ?")->execute([$series_id, $last_volume]);
+
+        foreach ($data[$series_index]['volumes'] as &$volume) {
+            $volume['last'] = ($volume['number'] == $last_volume);
+        }
+    }
+
+    return true;
 }
-?>

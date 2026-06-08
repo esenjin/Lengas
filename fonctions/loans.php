@@ -1,153 +1,155 @@
 <?php
 // Charger les données de prêt
-function load_loans() {
-    if (file_exists(LOAN_FILE)) {
-        $loans = json_decode(file_get_contents(LOAN_FILE), true);
-        return $loans ?: [];
+function load_loans(): array {
+    $db   = get_db();
+    $rows = $db->query("SELECT * FROM loans ORDER BY id")->fetchAll();
+    $result = [];
+    foreach ($rows as $r) {
+        $result[] = [
+            'series_id'     => $r['series_id'],
+            'volume_number' => (int)$r['volume_number'],
+            'borrower_name' => $r['borrower_name'],
+            'loan_date'     => $r['loan_date'],
+        ];
     }
-    return [];
+    return $result;
 }
 
-// Sauvegarder les données de prêt
-function save_loans($loans) {
-    file_put_contents(LOAN_FILE, json_encode($loans, JSON_PRETTY_PRINT));
+// Sauvegarder les données de prêt (remplacement complet)
+function save_loans(array $loans): void {
+    $db = get_db();
+    $db->beginTransaction();
+    try {
+        $db->exec("DELETE FROM loans");
+        $stmt = $db->prepare("
+            INSERT INTO loans (series_id, volume_number, borrower_name, loan_date)
+            VALUES (?, ?, ?, ?)
+        ");
+        foreach ($loans as $l) {
+            $stmt->execute([
+                $l['series_id'],
+                (int)$l['volume_number'],
+                $l['borrower_name'],
+                $l['loan_date'],
+            ]);
+        }
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
+    }
 }
 
 // Ajouter un prêt (un seul tome)
-function add_loan($data, $series_id, $volume_number, $borrower_name) {
-    $loans = load_loans();
-
-    // Vérifier si la série existe
+function add_loan(array $data, string $series_id, int $volume_number, string $borrower_name): array {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
         return [
             'success' => false,
-            'error' => 'series_not_found',
-            'message' => 'La série sélectionnée n\'existe pas dans votre base. Veuillez vérifier votre sélection.'
+            'error'   => 'series_not_found',
+            'message' => "La série sélectionnée n'existe pas dans votre base. Veuillez vérifier votre sélection.",
         ];
     }
 
-    // Vérifier si le tome est possédé
     if (!is_volume_owned($data, $series_id, $volume_number)) {
         return [
             'success' => false,
-            'error' => 'volume_not_owned',
-            'message' => 'Vous ne possédez pas le tome ' . $volume_number . ' de cette série.'
+            'error'   => 'volume_not_owned',
+            'message' => "Vous ne possédez pas le tome $volume_number de cette série.",
         ];
     }
 
-    // Vérifier si le tome est déjà en prêt
-    foreach ($loans as $loan) {
-        if ($loan['series_id'] === $series_id && $loan['volume_number'] == $volume_number) {
-            return [
-                'success' => false,
-                'error' => 'volume_already_loaned',
-                'message' => 'Le tome ' . $volume_number . ' est déjà en prêt.'
-            ];
-        }
+    $db = get_db();
+    $existing = $db->prepare("SELECT id FROM loans WHERE series_id = ? AND volume_number = ?");
+    $existing->execute([$series_id, $volume_number]);
+    if ($existing->fetch()) {
+        return [
+            'success' => false,
+            'error'   => 'volume_already_loaned',
+            'message' => "Le tome $volume_number est déjà en prêt.",
+        ];
     }
 
-    $loans[] = [
-        'series_id' => $series_id,
-        'volume_number' => $volume_number,
-        'borrower_name' => $borrower_name,
-        'loan_date' => date('Y-m-d H:i:s')
-    ];
-    save_loans($loans);
+    $db->prepare("
+        INSERT INTO loans (series_id, volume_number, borrower_name, loan_date)
+        VALUES (?, ?, ?, ?)
+    ")->execute([$series_id, $volume_number, $borrower_name, date('Y-m-d H:i:s')]);
+
     return ['success' => true];
 }
 
 // Ajouter un prêt (plusieurs tomes)
-function add_multiple_loans($data, $series_id, $start_volume, $end_volume, $borrower_name) {
-    $loans = load_loans();
-
-    // Vérifier si la série existe
+function add_multiple_loans(array $data, string $series_id, int $start_volume, int $end_volume, string $borrower_name): array {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
-        return ['success' => false, 'error' => 'series_not_found', 'message' => 'La série sélectionnée n\'existe pas dans votre base. Veuillez vérifier votre sélection.'];
+        return ['success' => false, 'error' => 'series_not_found', 'message' => "La série sélectionnée n'existe pas dans votre base. Veuillez vérifier votre sélection."];
     }
 
-    // Vérifier si tous les tomes sont possédés
     $ownership_check = are_volumes_owned($data, $series_id, $start_volume, $end_volume);
     if (!$ownership_check['owned']) {
         return ['success' => false, 'error' => 'volumes_not_owned', 'message' => 'Vous ne possédez pas tous les tomes sélectionnés. Tomes manquants : ' . implode(', ', $ownership_check['missing_volumes']), 'missing_volumes' => $ownership_check['missing_volumes']];
     }
 
-    // Vérifier si certains tomes sont déjà en prêt
+    $db = get_db();
     $already_loaned = [];
     for ($i = $start_volume; $i <= $end_volume; $i++) {
-        foreach ($loans as $loan) {
-            if ($loan['series_id'] === $series_id && $loan['volume_number'] == $i) {
-                $already_loaned[] = $i;
-                break;
-            }
+        $stmt = $db->prepare("SELECT id FROM loans WHERE series_id = ? AND volume_number = ?");
+        $stmt->execute([$series_id, $i]);
+        if ($stmt->fetch()) {
+            $already_loaned[] = $i;
         }
     }
 
     if (!empty($already_loaned)) {
         return [
-            'success' => false,
-            'error' => 'volumes_already_loaned',
-            'message' => 'Les tomes ' . implode(', ', $already_loaned) . ' sont déjà en prêt.',
-            'already_loaned' => $already_loaned
+            'success'        => false,
+            'error'          => 'volumes_already_loaned',
+            'message'        => 'Les tomes ' . implode(', ', $already_loaned) . ' sont déjà en prêt.',
+            'already_loaned' => $already_loaned,
         ];
     }
 
+    $stmt = $db->prepare("
+        INSERT INTO loans (series_id, volume_number, borrower_name, loan_date)
+        VALUES (?, ?, ?, ?)
+    ");
+    $loan_date = date('Y-m-d H:i:s');
     for ($i = $start_volume; $i <= $end_volume; $i++) {
-        $loans[] = [
-            'series_id' => $series_id,
-            'volume_number' => $i,
-            'borrower_name' => $borrower_name,
-            'loan_date' => date('Y-m-d H:i:s')
-        ];
+        $stmt->execute([$series_id, $i, $borrower_name, $loan_date]);
     }
-    save_loans($loans);
+
     return ['success' => true];
 }
 
 // Supprimer un prêt
-function remove_loan($series_id, $volume_number) {
-    $loans = load_loans();
-    foreach ($loans as $index => $loan) {
-        if ($loan['series_id'] === $series_id && $loan['volume_number'] == $volume_number) {
-            array_splice($loans, $index, 1);
-            save_loans($loans);
-            return true;
-        }
-    }
-    return false;
+function remove_loan(string $series_id, int $volume_number): bool {
+    $db   = get_db();
+    $stmt = $db->prepare("DELETE FROM loans WHERE series_id = ? AND volume_number = ?");
+    $stmt->execute([$series_id, $volume_number]);
+    return $stmt->rowCount() > 0;
 }
 
 // Supprimer tous les prêts d'une série
-function remove_all_loans($series_id) {
-    $loans = load_loans();
-    $loans = array_filter($loans, function($loan) use ($series_id) {
-        return $loan['series_id'] !== $series_id;
-    });
-    save_loans(array_values($loans));
+function remove_all_loans(string $series_id): bool {
+    $db = get_db();
+    $db->prepare("DELETE FROM loans WHERE series_id = ?")->execute([$series_id]);
     return true;
 }
 
 // Vérifier si un tome est possédé
-function is_volume_owned($data, $series_id, $volume_number) {
+function is_volume_owned(array $data, string $series_id, int $volume_number): bool {
     $series = find_series_by_id($data, $series_id);
-    if (!$series) {
-        return false;
-    }
-    foreach ($series['series']['volumes'] as $volume) {
-        if ($volume['number'] == $volume_number) {
-            return true;
-        }
+    if (!$series) return false;
+    foreach ($series['data']['volumes'] as $volume) {
+        if ((int)$volume['number'] === $volume_number) return true;
     }
     return false;
 }
 
 // Vérifier si plusieurs tomes sont possédés
-function are_volumes_owned($data, $series_id, $start_volume, $end_volume) {
+function are_volumes_owned(array $data, string $series_id, int $start_volume, int $end_volume): array {
     $series = find_series_by_id($data, $series_id);
-    if (!$series) {
-        return ['owned' => false, 'error' => 'series_not_found'];
-    }
+    if (!$series) return ['owned' => false, 'error' => 'series_not_found'];
 
     $missing_volumes = [];
     for ($i = $start_volume; $i <= $end_volume; $i++) {
@@ -156,41 +158,28 @@ function are_volumes_owned($data, $series_id, $start_volume, $end_volume) {
         }
     }
 
-    if (empty($missing_volumes)) {
-        return ['owned' => true];
-    } else {
-        return ['owned' => false, 'missing_volumes' => $missing_volumes];
-    }
+    return empty($missing_volumes)
+        ? ['owned' => true]
+        : ['owned' => false, 'missing_volumes' => $missing_volumes];
 }
 
 // Récupérer les prêts par série (y compris les séries supprimées)
-function get_loans_by_series($data) {
-    $loans = load_loans();
+function get_loans_by_series(array $data): array {
+    $loans  = load_loans();
     $result = [];
-    $series_ids = [];
 
-    // Récupérer tous les IDs de séries existantes
-    foreach ($data as $series) {
-        $series_ids[] = $series['id'];
-    }
-
-    // Grouper les prêts par série
     $loans_by_series = [];
     foreach ($loans as $loan) {
-        $series_id = $loan['series_id'];
-        if (!isset($loans_by_series[$series_id])) {
-            $loans_by_series[$series_id] = [];
-        }
-        $loans_by_series[$series_id][] = $loan;
+        $sid = $loan['series_id'];
+        $loans_by_series[$sid][] = $loan;
     }
 
-    // Créer le résultat
-    foreach ($loans_by_series as $series_id => $loans) {
+    foreach ($loans_by_series as $series_id => $series_loans) {
         $series = find_series_by_id($data, $series_id);
         $result[] = [
-            'series' => $series ? $series['data'] : null,
-            'loans' => $loans,
-            'series_exists' => $series !== null
+            'series'        => $series ? $series['data'] : null,
+            'loans'         => $series_loans,
+            'series_exists' => $series !== null,
         ];
     }
 

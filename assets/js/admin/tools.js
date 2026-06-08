@@ -7,9 +7,9 @@ document.getElementById('open-tools-modal').addEventListener('click', () => {
 
 // Création d'une sauvegarde
 document.getElementById('create-backup-btn').addEventListener('click', () => {
-    const button = document.getElementById('create-backup-btn');
+    const button   = document.getElementById('create-backup-btn');
     const textSpan = document.getElementById('create-backup-text');
-    const spinner = document.getElementById('create-backup-spinner');
+    const spinner  = document.getElementById('create-backup-spinner');
 
     button.disabled = true;
     textSpan.textContent = 'Création en cours...';
@@ -17,9 +17,7 @@ document.getElementById('create-backup-btn').addEventListener('click', () => {
 
     fetch('admin.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'backup_action=create_backup'
     })
     .then(response => response.json())
@@ -46,9 +44,7 @@ document.getElementById('create-backup-btn').addEventListener('click', () => {
 function loadBackupsList() {
     fetch('admin.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'backup_action=list_backups'
     })
     .then(response => response.json())
@@ -87,7 +83,6 @@ function displayBackupsList(backups) {
         backupsListDiv.appendChild(backupDiv);
     });
 
-    // Ajouter les événements aux boutons de suppression
     document.querySelectorAll('.delete-backup-btn').forEach(button => {
         button.addEventListener('click', function() {
             const backupFile = this.dataset.backupFile;
@@ -95,9 +90,7 @@ function displayBackupsList(backups) {
                 if (confirmed) {
                     fetch('admin.php', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: `backup_action=delete_backup&backup_file=${encodeURIComponent(backupFile)}`
                     })
                     .then(response => response.json())
@@ -128,39 +121,32 @@ function displayIntegrityResults(results) {
         <div class="integrity-results">
     `;
 
-    // 1. Vérification de l'existence des fichiers/dossiers
+    // 1. Existence des fichiers/dossiers
     html += `
         <div class="integrity-section">
             <h3>Existence des fichiers/dossiers</h3>
             <div class="file-categories">
-                <!-- Fichiers racines -->
                 <div class="file-category">
                     <h4>Fichiers racines</h4>
                     <ul>
     `;
-    const rootFiles = [
-        'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php'
-    ];
+    const rootFiles = ['index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php'];
     rootFiles.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
     });
     html += `</ul></div><br>`;
 
-    // Fichiers d'assets (général)
     html += `
                 <div class="file-category">
                     <h4>Fichiers d'assets (général)</h4>
                     <ul>
     `;
-    const generalAssets = [
-        'assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js', 'assets/js/admin/'
-    ];
+    const generalAssets = ['assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js', 'assets/js/admin/'];
     generalAssets.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
     });
     html += `</ul></div><br>`;
 
-    // Fichiers de fonctions
     html += `
                 <div class="file-category">
                     <h4>Fichiers de fonctions</h4>
@@ -175,35 +161,28 @@ function displayIntegrityResults(results) {
     });
     html += `</ul></div><br>`;
 
-    // Fichiers includes
     html += `
                 <div class="file-category">
                     <h4>Fichiers includes</h4>
                     <ul>
     `;
-    const includeFiles = [
-        'includes/anilist.php', 'includes/auth.php', 'includes/helpers.php'
-    ];
+    const includeFiles = ['includes/anilist.php', 'includes/auth.php', 'includes/helpers.php'];
     includeFiles.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
     });
     html += `</ul></div><br>`;
 
-    // Dossiers principaux
     html += `
                 <div class="file-category">
                     <h4>Dossiers principaux</h4>
                     <ul>
     `;
-    const mainDirectories = [
-        'includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/'
-    ];
+    const mainDirectories = ['includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/'];
     mainDirectories.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
     });
     html += `</ul></div><br>`;
 
-    // Fichiers CSS
     html += `
                 <div class="file-category">
                     <h4>Fichiers CSS</h4>
@@ -220,7 +199,6 @@ function displayIntegrityResults(results) {
     });
     html += `</ul></div><br>`;
 
-    // Fichiers JS (admin)
     html += `
                 <div class="file-category">
                     <h4>Fichiers JS (admin)</h4>
@@ -237,16 +215,13 @@ function displayIntegrityResults(results) {
     });
     html += `</ul></div><br>`;
 
-    // Fichiers JSON dans bdd/
+    // Base de données SQLite
     html += `
                 <div class="file-category">
-                    <h4>Fichiers JSON (bdd/)</h4>
+                    <h4>Base de données (bdd/)</h4>
                     <ul>
     `;
-    const bddFiles = [
-        'bdd/data.json', 'bdd/list.json', 'bdd/loan.json', 'bdd/anilist.json', 'bdd/options.json',
-        'bdd/mdp.json', 'bdd/read.json'
-    ];
+    const bddFiles = ['bdd/lengas.db'];
     bddFiles.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
     });
@@ -257,7 +232,7 @@ function displayIntegrityResults(results) {
         </div>
     `;
 
-    // 2. Vérification de l'absence de generate_password.php
+    // 2. Fichiers interdits
     html += `
         <div class="integrity-section">
             <h3>Fichiers interdits</h3>
@@ -277,7 +252,7 @@ function displayIntegrityResults(results) {
     }
     html += `</div>`;
 
-    // 3. Vérification des permissions
+    // 3. Permissions
     html += `
         <div class="integrity-section">
             <h3>Permissions des fichiers/dossiers</h3>
@@ -308,7 +283,7 @@ function displayIntegrityResults(results) {
         </div>
     `;
 
-    // 4. Vérification des doublons
+    // 4. Doublons
     html += `
         <div class="integrity-section">
             <h3>Doublons</h3>
@@ -335,7 +310,7 @@ function displayIntegrityResults(results) {
     }
     html += `</div>`;
 
-    // 5. Vérification des images orphelines
+    // 5. Images orphelines
     html += `
         <div class="integrity-section">
             <h3>Images orphelines</h3>
@@ -359,7 +334,7 @@ function displayIntegrityResults(results) {
     }
     html += `</div>`;
 
-    // 6. Vérification de la version
+    // 6. Version
     html += `
         <div class="integrity-section">
             <h3>Version du site</h3>
@@ -372,7 +347,7 @@ function displayIntegrityResults(results) {
         </div>
     `;
 
-    // 7. Informations sur le site et le serveur
+    // 7. Informations sur le site
     html += `
         <div class="integrity-section">
             <h3>Informations sur le site</h3>
@@ -386,7 +361,7 @@ function displayIntegrityResults(results) {
         </div>
     `;
 
-    // 8. Informations sur le serveur
+    // 8. Informations serveur
     html += `
         <div class="integrity-section">
             <h3>Informations sur le serveur</h3>
@@ -403,16 +378,14 @@ function displayIntegrityResults(results) {
     html += `</div>`;
     modalContent.innerHTML = html;
 
-    // Ajout des événements pour les boutons de nettoyage
+    // Événements boutons de nettoyage
     if (results.duplicates.collection_wishlist.length > 0 || results.duplicates.deleted_loans.length > 0) {
         document.getElementById('clean-duplicates-btn').addEventListener('click', () => {
             showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir nettoyer les doublons ?').then((confirmed) => {
                 if (confirmed) {
                     fetch('admin.php', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: 'tool_action=clean_duplicates'
                     })
                     .then(response => response.json())
@@ -439,9 +412,7 @@ function displayIntegrityResults(results) {
                 if (confirmed) {
                     fetch('admin.php', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: 'tool_action=clean_orphaned_images'
                     })
                     .then(response => response.json())
@@ -468,9 +439,7 @@ function displayIntegrityResults(results) {
                 if (confirmed) {
                     fetch('admin.php', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: 'tool_action=clean_forbidden_files'
                     })
                     .then(response => response.json())
@@ -492,12 +461,12 @@ function displayIntegrityResults(results) {
     }
 }
 
-// Ajouter un bouton pour la vérification d'intégrité dans la modale "Outils"
+// Ajouter le bouton de vérification d'intégrité dans la modale "Outils"
 function addIntegrityCheckButton() {
     if (document.getElementById('check-integrity-btn')) return;
 
     const toolsModalContent = document.querySelector('#tools-modal .modal-content');
-    const integritySection = document.createElement('div');
+    const integritySection  = document.createElement('div');
     integritySection.className = 'tools-section';
     integritySection.innerHTML = `
         <h3>Vérification d'intégrité</h3>
@@ -510,9 +479,9 @@ function addIntegrityCheckButton() {
     toolsModalContent.appendChild(integritySection);
 
     document.getElementById('check-integrity-btn').addEventListener('click', () => {
-        const button = document.getElementById('check-integrity-btn');
+        const button   = document.getElementById('check-integrity-btn');
         const textSpan = document.getElementById('check-integrity-text');
-        const spinner = document.getElementById('check-integrity-spinner');
+        const spinner  = document.getElementById('check-integrity-spinner');
 
         button.disabled = true;
         textSpan.textContent = 'Vérification en cours...';
@@ -520,9 +489,7 @@ function addIntegrityCheckButton() {
 
         fetch('admin.php', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'tool_action=check_integrity'
         })
         .then(response => response.json())
@@ -576,7 +543,6 @@ function loadCoherences() {
     });
 }
 
-// Labels lisibles par type d'incohérence
 const COHERENCE_LABELS = {
     no_volumes:                 { icon: '📭', label: 'Série vide' },
     multiple_last:              { icon: '🔁', label: 'Plusieurs « derniers »' },
@@ -593,7 +559,6 @@ function renderCoherences(issues) {
     const container = document.getElementById('coherences-results');
     container.innerHTML = '';
 
-    // Résumé
     const summaryDiv = document.createElement('div');
     summaryDiv.className = 'coherences-summary';
 
@@ -610,7 +575,6 @@ function renderCoherences(issues) {
     </p>`;
     container.appendChild(summaryDiv);
 
-    // Filtres par type
     const allTypes = [...new Set(issues.flatMap(s => s.problems.map(p => p.type)))];
     if (allTypes.length > 1) {
         const filterDiv = document.createElement('div');
@@ -642,7 +606,6 @@ function renderCoherences(issues) {
         container.appendChild(filterDiv);
     }
 
-    // Liste des séries
     const listDiv = document.createElement('div');
     listDiv.id = 'coherences-list';
 

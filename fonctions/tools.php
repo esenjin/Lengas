@@ -1,8 +1,8 @@
 <?php
 // Fonction pour récupérer la dernière version depuis Gitea
-function get_latest_version_from_gitea() {
+function get_latest_version_from_gitea(): ?string {
     $url = "https://git.crystalyx.net/api/v1/repos/Esenjin_Asakha/Lengas/releases/latest";
-    $ch = curl_init();
+    $ch  = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_USERAGENT, "Lengas-Version-Checker");
@@ -20,394 +20,312 @@ function get_latest_version_from_gitea() {
 }
 
 // Fonction pour vérifier l'intégrité du site
-function check_site_integrity($data) {
+function check_site_integrity(array $data): array {
     $results = [
-        'file_existence' => [],
+        'file_existence'  => [],
         'forbidden_files' => [],
-        'permissions' => [],
-        'duplicates' => [],
+        'permissions'     => [],
+        'duplicates'      => [],
         'orphaned_images' => [],
-        'version' => null,
-        'site_info' => [],
+        'version'         => null,
+        'site_info'       => [],
     ];
 
-    // 1. Vérifier l'existence de tous les fichiers/dossiers
+    // 1. Existence des fichiers/dossiers
     $required_files = [
-        // Fichiers racines
         'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php',
-        // Fichiers d'assets (général)
         'assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js',
         'assets/js/admin/',
-        // Fichiers de fonctions
-        'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php', 
+        'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php',
         'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php',
-        // Fichiers includes
-        'includes/anilist.php', 'includes/auth.php', 'includes/helpers.php', 
-        // Dossiers principaux
-        'includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/'
+        'includes/anilist.php', 'includes/auth.php', 'includes/helpers.php',
+        'includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/',
+        'migrate.php',
     ];
-
-    // Vérification des fichiers/dossiers principaux
     foreach ($required_files as $file) {
         $results['file_existence'][$file] = file_exists($file);
     }
 
-    // Vérification des fichiers CSS
     $required_css_files = [
         'assets/css/_admin.css', 'assets/css/_base.css', 'assets/css/_buttons.css',
         'assets/css/_forms.css', 'assets/css/_layout.css', 'assets/css/_modals.css',
         'assets/css/_public.css', 'assets/css/_responsive.css', 'assets/css/_series.css',
-        'assets/css/_utils.css', 'assets/css/_variables.css'
+        'assets/css/_utils.css', 'assets/css/_variables.css',
     ];
     foreach ($required_css_files as $file) {
         $results['file_existence'][$file] = file_exists($file);
     }
 
-    // Vérification des fichiers JS (admin)
     $required_js_files = [
         'assets/js/admin/series.js', 'assets/js/admin/volumes.js', 'assets/js/admin/wishlist.js',
-        'assets/js/admin/loans.js', 'assets/js/admin/tools.js', 'assets/js/admin/autocomplete.js',
+        'assets/js/admin/loans.js',  'assets/js/admin/tools.js',   'assets/js/admin/autocomplete.js',
         'assets/js/admin/modals.js', 'assets/js/admin/pagination.js', 'assets/js/admin/main.js',
-        'assets/js/admin/read.js'
+        'assets/js/admin/read.js',
     ];
     foreach ($required_js_files as $file) {
         $results['file_existence'][$file] = file_exists($file);
     }
 
-    // Vérification des fichiers JSON dans bdd/
-    $required_bdd_files = [
-        'bdd/data.json', 'bdd/list.json', 'bdd/loan.json', 'bdd/anilist.json', 'bdd/options.json', 
-        'bdd/mdp.json', 'bdd/read.json'
-    ];
-    foreach ($required_bdd_files as $file) {
-        $results['file_existence'][$file] = file_exists($file);
-    }
+    // Fichier BDD SQLite
+    $results['file_existence']['bdd/lengas.db'] = file_exists('bdd/lengas.db');
 
-    // 2. Vérifier l'absence de generate_password.php
+    // 2. Fichiers interdits
     $results['forbidden_files']['generate_password.php'] = !file_exists('generate_password.php');
 
-    // 3. Vérifier les permissions des dossiers/fichiers
-    $results['permissions'] = [];
+    // 3. Permissions
     $checks = [
-        'uploads/' => '0774',
-        'bdd/' => '0774',
-        'saves/' => '0774',
-        'bdd/data.json' => '0660',
-        'bdd/list.json' => '0660',
-        'bdd/loan.json' => '0660',
-        'bdd/read.json' => '0660',
-        'bdd/anilist.json' => '0660',
-        'bdd/options.json' => '0660',
-        'bdd/mdp.json' => '0660',
+        'uploads/'     => '0774',
+        'bdd/'         => '0774',
+        'saves/'       => '0774',
+        'bdd/lengas.db' => '0660',
     ];
     foreach ($checks as $path => $expected) {
         if (file_exists($path)) {
             $current = substr(sprintf('%o', fileperms($path)), -4);
             $results['permissions'][$path] = [
-                'current' => $current,
+                'current'  => $current,
                 'expected' => $expected,
-                'ok' => ($current === $expected),
+                'ok'       => ($current === $expected),
             ];
         } else {
             $results['permissions'][$path] = [
-                'current' => 'N/A',
+                'current'  => 'N/A',
                 'expected' => $expected,
-                'ok' => false,
+                'ok'       => false,
             ];
         }
     }
 
-    // 4. Vérification des séries doublons (collection, envies, prêts)
-    $wishlist = load_wishlist();
-    $loans = load_loans();
-    $series_names = array_map(function($s) { return strtolower($s['name']); }, $data);
-    $wishlist_names = array_map(function($s) { return strtolower($s['name']); }, $wishlist);
+    // 4. Doublons
+    $wishlist       = load_wishlist();
+    $loans          = load_loans();
+    $series_names   = array_map(fn($s) => strtolower($s['name']), $data);
+    $wishlist_names = array_map(fn($s) => strtolower($s['name']), $wishlist);
     $loan_series_ids = array_unique(array_column($loans, 'series_id'));
 
-    // Doublons collection/envies
     $results['duplicates']['collection_wishlist'] = array_intersect($series_names, $wishlist_names);
 
-    // Doublons collection/prêts (séries supprimées mais encore en prêt)
     $results['duplicates']['deleted_loans'] = [];
     foreach ($loan_series_ids as $id) {
         $found = false;
         foreach ($data as $series) {
-            if ($series['id'] === $id) {
-                $found = true;
-                break;
-            }
+            if ($series['id'] === $id) { $found = true; break; }
         }
         if (!$found) {
             $results['duplicates']['deleted_loans'][] = $id;
         }
     }
 
-    // 5. Vérification que toutes les images (dans uploads) soient attachées à une série
+    // 5. Images orphelines
     $uploaded_images = [];
-    $used_images = [];
+    $used_images     = [];
     if (file_exists('uploads/') && is_dir('uploads/')) {
-        $files = scandir('uploads/');
-        foreach ($files as $file) {
+        foreach (scandir('uploads/') as $file) {
             if ($file !== '.' && $file !== '..' && !is_dir('uploads/' . $file)) {
                 $uploaded_images[] = 'uploads/' . $file;
             }
         }
     }
     foreach ($data as $series) {
-        if (!empty($series['image'])) {
-            $used_images[] = $series['image'];
-        }
+        if (!empty($series['image'])) $used_images[] = $series['image'];
     }
     $results['orphaned_images'] = array_values(array_diff($uploaded_images, $used_images));
 
-    // 6. Vérification de la version du site avec la dernière version Gitea
-    $latest_version = get_latest_version_from_gitea();
+    // 6. Version
+    $latest_version  = get_latest_version_from_gitea();
     $results['version'] = [
-        'current' => SITE_VERSION,
-        'latest' => $latest_version,
-        'needs_update' => ($latest_version !== null && version_compare(SITE_VERSION, $latest_version, '<'))
+        'current'      => SITE_VERSION,
+        'latest'       => $latest_version,
+        'needs_update' => ($latest_version !== null && version_compare(SITE_VERSION, $latest_version, '<')),
     ];
 
-    // 7. Récupérer des informations sur le site
+    // 7. Infos serveur
     $results['site_info'] = [
-        'site_url' => get_site_url(),
-        'uses_https' => uses_https(),
-        'uploads_size' => get_uploads_size(),
-        'max_upload_size' => get_max_upload_size(),
+        'site_url'                  => get_site_url(),
+        'uses_https'                => uses_https(),
+        'uploads_size'              => get_uploads_size(),
+        'max_upload_size'           => get_max_upload_size(),
         'effective_max_upload_size' => get_effective_max_upload_size(),
-        'server_info' => get_server_info(),
+        'server_info'               => get_server_info(),
     ];
 
     return $results;
 }
 
-// Fonction pour obtenir l'URL du site
-function get_site_url() {
+function get_site_url(): string {
     $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'];
-    $uri = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+    $host     = $_SERVER['HTTP_HOST'];
+    $uri      = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
     return "$protocol://$host$uri";
 }
 
-// Fonction pour vérifier si le site utilise HTTPS
-function uses_https() {
+function uses_https(): bool {
     return isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
 }
 
-// Fonction pour obtenir la taille du dossier uploads/
-function get_uploads_size() {
+function get_uploads_size(): string {
     $size = 0;
     if (file_exists('uploads/') && is_dir('uploads/')) {
         $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator('uploads/'));
         foreach ($files as $file) {
-            if ($file->isFile()) {
-                $size += $file->getSize();
-            }
+            if ($file->isFile()) $size += $file->getSize();
         }
     }
     return format_size($size);
 }
 
-// Fonction pour obtenir la taille maximale des fichiers téléversés
-function get_max_upload_size() {
+function get_max_upload_size(): string {
     return ini_get('upload_max_filesize');
 }
 
-// Fonction pour obtenir la taille de fichier effective maximale
-function get_effective_max_upload_size() {
-    $max_upload = parse_size(ini_get('upload_max_filesize'));
-    $max_post = parse_size(ini_get('post_max_size'));
+function get_effective_max_upload_size(): int {
+    $max_upload   = parse_size(ini_get('upload_max_filesize'));
+    $max_post     = parse_size(ini_get('post_max_size'));
     $memory_limit = parse_size(ini_get('memory_limit'));
     return min($max_upload, $max_post, $memory_limit);
 }
 
-// Fonction pour obtenir des informations sur le serveur
-function get_server_info() {
+function get_server_info(): array {
     return [
         'server_architecture' => php_uname('m'),
-        'server_software' => $_SERVER['SERVER_SOFTWARE'],
-        'php_version' => phpversion(),
-        'max_execution_time' => ini_get('max_execution_time'),
-        'memory_limit' => ini_get('memory_limit'),
+        'server_software'     => $_SERVER['SERVER_SOFTWARE'],
+        'php_version'         => phpversion(),
+        'max_execution_time'  => ini_get('max_execution_time'),
+        'memory_limit'        => ini_get('memory_limit'),
     ];
 }
 
-// Fonction pour convertir la taille en octets
-function parse_size($size) {
+function parse_size(string $size): int {
     $unit = preg_replace('/[^bkmgtpezy]/i', '', $size);
     $size = preg_replace('/[^0-9\\.]/', '', $size);
     if ($unit) {
-        return round($size * pow(1024, stripos('bkmgtpezy', $unit[0])));
-    } else {
-        return round($size);
+        return (int)round($size * pow(1024, stripos('bkmgtpezy', $unit[0])));
     }
+    return (int)round($size);
 }
 
-// Fonction pour formater la taille en octets lisible
-function format_size($bytes) {
-    if ($bytes >= 1073741824) {
-        $bytes = number_format($bytes / 1073741824, 2) . ' GB';
-    } elseif ($bytes >= 1048576) {
-        $bytes = number_format($bytes / 1048576, 2) . ' MB';
-    } elseif ($bytes >= 1024) {
-        $bytes = number_format($bytes / 1024, 2) . ' KB';
-    } elseif ($bytes > 1) {
-        $bytes = $bytes . ' bytes';
-    } elseif ($bytes == 1) {
-        $bytes = $bytes . ' byte';
-    } else {
-        $bytes = '0 bytes';
-    }
-    return $bytes;
+function format_size(int $bytes): string {
+    if ($bytes >= 1073741824)      return number_format($bytes / 1073741824, 2) . ' GB';
+    elseif ($bytes >= 1048576)     return number_format($bytes / 1048576,    2) . ' MB';
+    elseif ($bytes >= 1024)        return number_format($bytes / 1024,       2) . ' KB';
+    elseif ($bytes > 1)            return $bytes . ' bytes';
+    elseif ($bytes === 1)          return '1 byte';
+    else                           return '0 bytes';
 }
 
 // Nettoyer les doublons
-function clean_duplicates() {
+function clean_duplicates(): array {
     global $data;
     $wishlist = load_wishlist();
-    $loans = load_loans();
+    $loans    = load_loans();
     $messages = [];
 
-    // Nettoyer les doublons collection/envies
-    $series_names = array_map(function($s) { return strtolower($s['name']); }, $data);
-    $wishlist_names = array_map(function($s) { return strtolower($s['name']); }, $wishlist);
-    $duplicates = array_intersect($series_names, $wishlist_names);
+    $series_names   = array_map(fn($s) => strtolower($s['name']), $data);
+    $wishlist_names = array_map(fn($s) => strtolower($s['name']), $wishlist);
+    $duplicates     = array_intersect($series_names, $wishlist_names);
 
     if (!empty($duplicates)) {
-        $new_wishlist = array_filter($wishlist, function($item) use ($series_names) {
-            return !in_array(strtolower($item['name']), $series_names);
-        });
-        save_wishlist(array_values($new_wishlist));
+        $new_wishlist = array_values(array_filter($wishlist, fn($item) => !in_array(strtolower($item['name']), $series_names)));
+        save_wishlist($new_wishlist);
         $messages[] = "Doublons collection/envies nettoyés.";
     }
 
-    // Nettoyer les prêts de séries supprimées
-    $series_ids = array_column($data, 'id');
-    $deleted_loans = array_filter($loans, function($loan) use ($series_ids) {
-        return !in_array($loan['series_id'], $series_ids);
-    });
+    $series_ids   = array_column($data, 'id');
+    $deleted_loans = array_filter($loans, fn($loan) => !in_array($loan['series_id'], $series_ids));
 
     if (!empty($deleted_loans)) {
-        $new_loans = array_filter($loans, function($loan) use ($series_ids) {
-            return in_array($loan['series_id'], $series_ids);
-        });
-        save_loans(array_values($new_loans));
+        $new_loans = array_values(array_filter($loans, fn($loan) => in_array($loan['series_id'], $series_ids)));
+        save_loans($new_loans);
         $messages[] = "Prêts de séries supprimées nettoyés.";
     }
 
-    return [
-        'success' => true,
-        'message' => implode(' ', $messages) ?: 'Aucun doublon à nettoyer.',
-    ];
+    return ['success' => true, 'message' => implode(' ', $messages) ?: 'Aucun doublon à nettoyer.'];
 }
 
 // Nettoyer les images orphelines
-function clean_orphaned_images() {
+function clean_orphaned_images(): array {
     global $data;
     $uploaded_images = [];
-    $used_images = [];
-    $deleted_images = [];
+    $used_images     = [];
+    $deleted_images  = [];
 
     if (file_exists('uploads/') && is_dir('uploads/')) {
-        $files = scandir('uploads/');
-        foreach ($files as $file) {
+        foreach (scandir('uploads/') as $file) {
             if ($file !== '.' && $file !== '..' && !is_dir('uploads/' . $file)) {
                 $uploaded_images[] = 'uploads/' . $file;
             }
         }
     }
-
     foreach ($data as $series) {
-        if (!empty($series['image'])) {
-            $used_images[] = $series['image'];
-        }
+        if (!empty($series['image'])) $used_images[] = $series['image'];
     }
 
-    $orphaned_images = array_diff($uploaded_images, $used_images);
-    foreach ($orphaned_images as $image) {
-        if (file_exists($image) && unlink($image)) {
-            $deleted_images[] = $image;
-        }
+    foreach (array_diff($uploaded_images, $used_images) as $image) {
+        if (file_exists($image) && unlink($image)) $deleted_images[] = $image;
     }
 
     return [
         'success' => true,
-        'message' => !empty($deleted_images) ?
-            'Images orphelines supprimées : ' . implode(', ', $deleted_images) :
-            'Aucune image orpheline à supprimer.',
+        'message' => !empty($deleted_images)
+            ? 'Images orphelines supprimées : ' . implode(', ', $deleted_images)
+            : 'Aucune image orpheline à supprimer.',
     ];
 }
 
 // Supprimer les fichiers interdits
-function clean_forbidden_files() {
+function clean_forbidden_files(): array {
     $forbidden_files = ['generate_password.php'];
-    $deleted_files = [];
+    $deleted_files   = [];
 
     foreach ($forbidden_files as $file) {
-        if (file_exists($file) && unlink($file)) {
-            $deleted_files[] = $file;
-        }
+        if (file_exists($file) && unlink($file)) $deleted_files[] = $file;
     }
 
     return [
         'success' => true,
-        'message' => !empty($deleted_files) ?
-            'Fichiers interdits supprimés : ' . implode(', ', $deleted_files) :
-            'Aucun fichier interdit à supprimer.',
+        'message' => !empty($deleted_files)
+            ? 'Fichiers interdits supprimés : ' . implode(', ', $deleted_files)
+            : 'Aucun fichier interdit à supprimer.',
     ];
 }
 
-// Gestion des sauvegardes
-function create_backup() {
+// Gestion des sauvegardes — sauvegarde maintenant le fichier SQLite
+function create_backup(): array {
     $backup_dir = 'saves';
-    // Vérifier si le dossier existe, sinon essayer de le créer
     if (!file_exists($backup_dir)) {
         $old_umask = umask(0);
-        $success = mkdir($backup_dir, 0774, true);
+        $success   = mkdir($backup_dir, 0774, true);
         umask($old_umask);
-
         if (!$success) {
-            return ['success' => false, 'message' => "Impossible de créer le dossier 'saves/'. Veuillez vérifier les permissions du dossier parent ou créer le dossier manuellement."];
+            return ['success' => false, 'message' => "Impossible de créer le dossier 'saves/'. Veuillez vérifier les permissions."];
         }
     }
 
-    // Vérifier que le dossier est accessible en écriture
     if (!is_writable($backup_dir)) {
-        return ['success' => false, 'message' => "Le dossier 'saves/' n'est pas accessible en écriture. Veuillez vérifier les permissions."];
+        return ['success' => false, 'message' => "Le dossier 'saves/' n'est pas accessible en écriture."];
     }
 
-    // Suite du code pour créer la sauvegarde...
-    $timestamp = time();
+    $timestamp   = time();
     $backup_name = "save_$timestamp.zip";
     $backup_path = "$backup_dir/$backup_name";
 
     $zip = new ZipArchive();
     if ($zip->open($backup_path, ZipArchive::CREATE) === TRUE) {
-        // Ajouter les fichiers JSON
-        $files_to_backup = [
-            'bdd/data.json',
-            'bdd/list.json',
-            'bdd/loan.json',
-            'bdd/options.json'
-        ];
-
-        foreach ($files_to_backup as $file) {
-            if (file_exists($file)) {
-                $zip->addFile($file, 'bdd/' . basename($file));
-            }
+        // Ajouter le fichier SQLite
+        if (file_exists(DB_FILE)) {
+            $zip->addFile(DB_FILE, 'bdd/lengas.db');
         }
 
-        // Ajouter le dossier uploads/ et ses images
+        // Ajouter le dossier uploads/
         $uploads_dir = 'uploads/';
         if (file_exists($uploads_dir) && is_dir($uploads_dir)) {
             $files = new RecursiveIteratorIterator(
                 new RecursiveDirectoryIterator($uploads_dir),
                 RecursiveIteratorIterator::LEAVES_ONLY
             );
-
-            foreach ($files as $name => $file) {
+            foreach ($files as $file) {
                 if (!$file->isDir()) {
-                    $file_path = $file->getRealPath();
+                    $file_path     = $file->getRealPath();
                     $relative_path = substr($file_path, strlen(realpath($uploads_dir)) + 1);
                     $zip->addFile($file_path, 'uploads/' . $relative_path);
                 }
@@ -416,78 +334,61 @@ function create_backup() {
 
         $zip->close();
         return ['success' => true, 'message' => 'Sauvegarde créée avec succès.'];
-    } else {
-        return ['success' => false, 'message' => 'Impossible de créer la sauvegarde.'];
     }
+
+    return ['success' => false, 'message' => 'Impossible de créer la sauvegarde.'];
 }
 
 // Lister les sauvegardes
-function list_backups() {
+function list_backups(): array {
     $backup_dir = 'saves';
-    $backups = [];
+    $backups    = [];
     if (file_exists($backup_dir)) {
-        $files = scandir($backup_dir);
-        foreach ($files as $file) {
+        foreach (scandir($backup_dir) as $file) {
             if ($file !== '.' && $file !== '..' && pathinfo($file, PATHINFO_EXTENSION) === 'zip') {
-                $timestamp = str_replace(['save_', '.zip'], '', $file);
-                $date = date('d/m/Y H:i', $timestamp);
-                $backups[] = [
-                    'name' => $file,
-                    'date' => $date,
-                    'timestamp' => $timestamp
-                ];
+                $timestamp = (int)str_replace(['save_', '.zip'], '', $file);
+                $date      = date('d/m/Y H:i', $timestamp);
+                $backups[] = ['name' => $file, 'date' => $date, 'timestamp' => $timestamp];
             }
         }
-        usort($backups, function($a, $b) {
-            return $b['timestamp'] - $a['timestamp'];
-        });
+        usort($backups, fn($a, $b) => $b['timestamp'] - $a['timestamp']);
     }
     return ['success' => true, 'backups' => $backups];
 }
 
 // Supprimer une sauvegarde
-function delete_backup($backup_file) {
+function delete_backup(string $backup_file): array {
     if (!empty($backup_file) && file_exists("saves/$backup_file")) {
         unlink("saves/$backup_file");
         return ['success' => true, 'message' => 'Sauvegarde supprimée avec succès.'];
-    } else {
-        return ['success' => false, 'message' => 'Fichier de sauvegarde introuvable.'];
     }
+    return ['success' => false, 'message' => 'Fichier de sauvegarde introuvable.'];
 }
 
 // Générer les notifications pour une série
-function generate_notifications($volumes, $anilist_volumes = null) {
+function generate_notifications(array $volumes, ?int $anilist_volumes = null): array {
     $notifications = [];
-    if (empty($volumes)) {
-        return $notifications;
-    }
+    if (empty($volumes)) return $notifications;
 
-    $numbers = array_map(function($v) { return $v['number']; }, $volumes);
-    $min = min($numbers);
-    $max = max($numbers);
-    $last_volumes = array_filter($volumes, function($v) { return !empty($v['last']); });
+    $numbers      = array_map(fn($v) => $v['number'], $volumes);
+    $min          = min($numbers);
+    $max          = max($numbers);
+    $last_volumes = array_filter($volumes, fn($v) => !empty($v['last']));
 
-    // Vérifier les tomes manquants
     $missing = [];
     for ($i = $min; $i <= $max; $i++) {
-        if (!in_array($i, $numbers)) {
-            $missing[] = $i;
-        }
+        if (!in_array($i, $numbers)) $missing[] = $i;
     }
     if (!empty($missing)) {
-        if (count($missing) == 1) {
-            $notifications[] = "Attention, le tome " . implode(', ', $missing) . " est manquant.";
-        } else {
-            $notifications[] = "Attention, les tomes " . implode(', ', $missing) . " sont manquants.";
-        }
+        $notifications[] = count($missing) == 1
+            ? "Attention, le tome " . implode(', ', $missing) . " est manquant."
+            : "Attention, les tomes " . implode(', ', $missing) . " sont manquants.";
     }
 
-    // Vérifier si le tome étiqueté comme dernier est correct
     if (!empty($last_volumes)) {
-        $last_numbers = array_map(function($v) { return $v['number']; }, $last_volumes);
-        $actual_last = $max;
+        $last_numbers = array_map(fn($v) => $v['number'], $last_volumes);
         foreach ($last_numbers as $num) {
-            if ($num != $actual_last) {
+            if ($num != $max) {
                 $notifications[] = "Attention, le tome tagué dernier ($num) est incorrect.";
             }
         }
@@ -496,22 +397,15 @@ function generate_notifications($volumes, $anilist_volumes = null) {
         }
     }
 
-    // Vérifier si la bibliothèque a plus de tomes que sur Anilist
     if ($anilist_volumes !== null && $max > $anilist_volumes) {
         $notifications[] = "Attention, votre série contient plus de tomes que ce qui est indiqué sur Anilist.";
     }
-
-    // Vérifier si la série est complète selon Anilist mais qu'il y a des tomes manquants
     if ($anilist_volumes !== null && $max < $anilist_volumes) {
         $missing = range($max + 1, $anilist_volumes);
-        if (count($missing) == 1) {
-            $notifications[] = "Attention, il manque le tome " . implode(', ', $missing) . " pour compléter cette série.";
-        } else {
-            $notifications[] = "Attention, il manque les tomes " . implode(', ', $missing) . " pour compléter cette série.";
-        }
+        $notifications[] = count($missing) == 1
+            ? "Attention, il manque le tome " . implode(', ', $missing) . " pour compléter cette série."
+            : "Attention, il manque les tomes " . implode(', ', $missing) . " pour compléter cette série.";
     }
-
-    // Vérifier si le nombre de tomes est égal à Anilist mais que le dernier tome n'est pas tagué comme tel
     if ($anilist_volumes !== null && $max == $anilist_volumes && empty($last_volumes)) {
         $notifications[] = "Attention, cette série semble complète mais le dernier tome n'est pas tagué comme tel.";
     }
@@ -519,10 +413,8 @@ function generate_notifications($volumes, $anilist_volumes = null) {
     return $notifications;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Vérification des incohérences de la collection (sans données Anilist)
-// ──────────────────────────────────────────────────────────────────────────────
-function check_collection_coherence($data) {
+// Vérification des incohérences de la collection
+function check_collection_coherence(array $data): array {
     $issues = [];
 
     foreach ($data as $series) {
@@ -530,13 +422,8 @@ function check_collection_coherence($data) {
         $name    = $series['name'] ?? '(sans nom)';
         $volumes = $series['volumes'] ?? [];
 
-        // ── 1. Série sans tome ────────────────────────────────────────────────
         if (empty($volumes)) {
-            $series_issues[] = [
-                'type'    => 'no_volumes',
-                'message' => 'La série ne possède aucun tome.'
-            ];
-            // Pas besoin d'analyser les tomes si la série est vide
+            $series_issues[] = ['type' => 'no_volumes', 'message' => 'La série ne possède aucun tome.'];
             $issues[] = ['series' => $name, 'series_id' => $series['id'], 'problems' => $series_issues];
             continue;
         }
@@ -546,88 +433,50 @@ function check_collection_coherence($data) {
         $min          = min($numbers);
         $last_volumes = array_values(array_filter($volumes, fn($v) => !empty($v['last'])));
 
-        // ── 2. Plusieurs tomes tagués « dernier » ─────────────────────────────
         if (count($last_volumes) > 1) {
             $last_nums = array_map(fn($v) => $v['number'], $last_volumes);
-            $series_issues[] = [
-                'type'    => 'multiple_last',
-                'message' => 'Plusieurs tomes sont tagués comme dernier : tome(s) ' . implode(', ', $last_nums) . '.'
-            ];
+            $series_issues[] = ['type' => 'multiple_last', 'message' => 'Plusieurs tomes sont tagués comme dernier : tome(s) ' . implode(', ', $last_nums) . '.'];
         }
 
-        // ── 3. Tome tagué « dernier » mais ce n'est pas le numéro le plus élevé
         foreach ($last_volumes as $lv) {
             if ((int)$lv['number'] !== $max) {
-                $series_issues[] = [
-                    'type'    => 'wrong_last',
-                    'message' => 'Le tome ' . $lv['number'] . ' est tagué dernier mais le tome le plus élevé est le ' . $max . '.'
-                ];
+                $series_issues[] = ['type' => 'wrong_last', 'message' => 'Le tome ' . $lv['number'] . ' est tagué dernier mais le tome le plus élevé est le ' . $max . '.'];
             }
         }
 
-        // ── 4. Tomes manquants dans la séquence ──────────────────────────────
         $missing = [];
         for ($i = $min; $i <= $max; $i++) {
-            if (!in_array($i, $numbers, true)) {
-                $missing[] = $i;
-            }
+            if (!in_array($i, $numbers, true)) $missing[] = $i;
         }
         if (!empty($missing)) {
-            $series_issues[] = [
-                'type'    => 'missing_volumes',
-                'message' => 'Tome(s) manquant(s) dans la séquence : ' . implode(', ', $missing) . '.'
-            ];
+            $series_issues[] = ['type' => 'missing_volumes', 'message' => 'Tome(s) manquant(s) dans la séquence : ' . implode(', ', $missing) . '.'];
         }
 
-        // ── 5. Numéros de tomes dupliqués ─────────────────────────────────────
         $duplicates = array_keys(array_filter(array_count_values($numbers), fn($c) => $c > 1));
         if (!empty($duplicates)) {
-            $series_issues[] = [
-                'type'    => 'duplicate_volumes',
-                'message' => 'Numéro(s) de tome en double : ' . implode(', ', $duplicates) . '.'
-            ];
+            $series_issues[] = ['type' => 'duplicate_volumes', 'message' => 'Numéro(s) de tome en double : ' . implode(', ', $duplicates) . '.'];
         }
 
-        // ── 6. Tome avec numéro ≤ 0 ──────────────────────────────────────────
         $invalid = array_filter($numbers, fn($n) => $n <= 0);
         if (!empty($invalid)) {
-            $series_issues[] = [
-                'type'    => 'invalid_number',
-                'message' => 'Tome(s) avec un numéro invalide (≤ 0) : ' . implode(', ', $invalid) . '.'
-            ];
+            $series_issues[] = ['type' => 'invalid_number', 'message' => 'Tome(s) avec un numéro invalide (≤ 0) : ' . implode(', ', $invalid) . '.'];
         }
 
-        // ── 7. Série marquée « terminée » mais sans tome dernier ──────────────
         $status = $series['status'] ?? '';
         if ($status === 'terminee' && empty($last_volumes)) {
-            $series_issues[] = [
-                'type'    => 'finished_no_last',
-                'message' => 'La série est marquée comme terminée mais aucun tome n\'est tagué dernier.'
-            ];
+            $series_issues[] = ['type' => 'finished_no_last', 'message' => "La série est marquée comme terminée mais aucun tome n'est tagué dernier."];
         }
 
-        // ── 8. Série avec un tome « dernier » mais statut non terminé ─────────
         if (!empty($last_volumes) && $status !== 'terminee' && $status !== 'abandonnee') {
-            $series_issues[] = [
-                'type'    => 'last_but_not_finished',
-                'message' => 'Un tome est tagué dernier mais la série n\'est pas marquée comme terminée.'
-            ];
+            $series_issues[] = ['type' => 'last_but_not_finished', 'message' => "Un tome est tagué dernier mais la série n'est pas marquée comme terminée."];
         }
 
-        // ── 9. Séquence ne commençant pas à 1 ────────────────────────────────
         if ($min > 1) {
-            $series_issues[] = [
-                'type'    => 'sequence_not_starting_at_1',
-                'message' => 'La collection ne commence pas au tome 1 (premier tome possédé : ' . $min . ').'
-            ];
+            $series_issues[] = ['type' => 'sequence_not_starting_at_1', 'message' => 'La collection ne commence pas au tome 1 (premier tome possédé : ' . $min . ').'];
         }
 
         if (!empty($series_issues)) {
-            $issues[] = [
-                'series'    => $name,
-                'series_id' => $series['id'],
-                'problems'  => $series_issues
-            ];
+            $issues[] = ['series' => $name, 'series_id' => $series['id'], 'problems' => $series_issues];
         }
     }
 

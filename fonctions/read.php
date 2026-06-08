@@ -1,24 +1,51 @@
 <?php
 // Charger les séries "lues ailleurs"
-function load_read() {
-    if (file_exists(READ_FILE)) {
-        $content = file_get_contents(READ_FILE);
-        if ($content === false) {
-            return [];
-        }
-        $read = json_decode($content, true);
-        return is_array($read) ? $read : [];
+function load_read(): array {
+    $db   = get_db();
+    $rows = $db->query("SELECT * FROM read_elsewhere ORDER BY id")->fetchAll();
+    $result = [];
+    foreach ($rows as $r) {
+        $result[] = [
+            'name'         => $r['name'],
+            'author'       => $r['author'],
+            'publisher'    => $r['publisher'],
+            'volumes_read' => (int)$r['volumes_read'],
+            'status'       => $r['status'],
+            'added_at'     => $r['added_at'],
+        ];
     }
-    return [];
+    return $result;
 }
 
-// Sauvegarder les séries "lues ailleurs"
-function save_read($read) {
-    file_put_contents(READ_FILE, json_encode($read, JSON_PRETTY_PRINT));
+// Sauvegarder les séries "lues ailleurs" (remplacement complet)
+function save_read(array $read): void {
+    $db = get_db();
+    $db->beginTransaction();
+    try {
+        $db->exec("DELETE FROM read_elsewhere");
+        $stmt = $db->prepare("
+            INSERT INTO read_elsewhere (name, author, publisher, volumes_read, status, added_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        foreach ($read as $r) {
+            $stmt->execute([
+                $r['name'],
+                $r['author']       ?? '',
+                $r['publisher']    ?? '',
+                (int)($r['volumes_read'] ?? 0),
+                $r['status']       ?? '',
+                $r['added_at']     ?? date('Y-m-d'),
+            ]);
+        }
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
+    }
 }
 
 // Ajouter une série à "lues ailleurs"
-function add_to_read($read, $name, $author, $publisher, $volumes_read, $status) {
+function add_to_read(array $read, string $name, string $author, string $publisher, int $volumes_read, string $status): array {
     $series_exists = false;
     foreach ($read as $item) {
         if (strcasecmp($item['name'], $name) === 0) {
@@ -28,13 +55,20 @@ function add_to_read($read, $name, $author, $publisher, $volumes_read, $status) 
     }
 
     if (!$series_exists && $name && $author && $publisher && $volumes_read > 0) {
+        $added_at = date('Y-m-d');
+        $db = get_db();
+        $db->prepare("
+            INSERT INTO read_elsewhere (name, author, publisher, volumes_read, status, added_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ")->execute([$name, $author, $publisher, $volumes_read, $status, $added_at]);
+
         $read[] = [
-            'name' => $name,
-            'author' => $author,
-            'publisher' => $publisher,
+            'name'         => $name,
+            'author'       => $author,
+            'publisher'    => $publisher,
             'volumes_read' => $volumes_read,
-            'status' => $status,
-            'added_at' => date('Y-m-d')
+            'status'       => $status,
+            'added_at'     => $added_at,
         ];
         return ['success' => true, 'read' => $read];
     } else {
@@ -43,47 +77,66 @@ function add_to_read($read, $name, $author, $publisher, $volumes_read, $status) 
 }
 
 // Éditer une série dans "lues ailleurs"
-function edit_read_item($read, $index, $name, $author, $publisher, $volumes_read, $status) {
+function edit_read_item(array $read, int $index, string $name, string $author, string $publisher, int $volumes_read, string $status): array {
     if (!isset($read[$index])) {
         return ['success' => false, 'message' => 'Index invalide.'];
     }
 
-    $read[$index] = [
-        'name' => $name,
-        'author' => $author,
-        'publisher' => $publisher,
-        'volumes_read' => $volumes_read,
-        'status' => $status,
-        'added_at' => $read[$index]['added_at'] // Conserver la date d'ajout
-    ];
+    $db  = get_db();
+    $ids = $db->query("SELECT id FROM read_elsewhere ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
 
+    if (!isset($ids[$index])) {
+        return ['success' => false, 'message' => 'Index invalide.'];
+    }
+
+    $db->prepare("
+        UPDATE read_elsewhere
+        SET name = ?, author = ?, publisher = ?, volumes_read = ?, status = ?
+        WHERE id = ?
+    ")->execute([$name, $author, $publisher, $volumes_read, $status, $ids[$index]]);
+
+    $read[$index] = [
+        'name'         => $name,
+        'author'       => $author,
+        'publisher'    => $publisher,
+        'volumes_read' => $volumes_read,
+        'status'       => $status,
+        'added_at'     => $read[$index]['added_at'],
+    ];
     return ['success' => true, 'read' => $read];
 }
 
 // Supprimer une série de "lues ailleurs"
-function remove_from_read($read, $index) {
-    if (isset($read[$index])) {
-        array_splice($read, $index, 1);
-        return ['success' => true, 'read' => $read];
-    } else {
-        return ['success' => false, 'message' => 'Index invalide.'];
-    }
-}
-
-// Ajouter une série de "lues ailleurs" à la collection principale
-function add_from_read($data, $read, $index) {
+function remove_from_read(array $read, int $index): array {
     if (!isset($read[$index])) {
         return ['success' => false, 'message' => 'Index invalide.'];
     }
 
-    $series = $read[$index];
-    $name = $series['name'];
-    $author = $series['author'];
-    $publisher = $series['publisher'];
-    $volumes_read = $series['volumes_read'];
-    $status = $series['status'];
+    $db  = get_db();
+    $ids = $db->query("SELECT id FROM read_elsewhere ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
 
-    // Vérifier si une série avec le même nom existe déjà dans la collection principale
+    if (!isset($ids[$index])) {
+        return ['success' => false, 'message' => 'Index invalide.'];
+    }
+
+    $db->prepare("DELETE FROM read_elsewhere WHERE id = ?")->execute([$ids[$index]]);
+    array_splice($read, $index, 1);
+    return ['success' => true, 'read' => $read];
+}
+
+// Ajouter une série de "lues ailleurs" à la collection principale
+function add_from_read(array $data, array $read, int $index): array {
+    if (!isset($read[$index])) {
+        return ['success' => false, 'message' => 'Index invalide.'];
+    }
+
+    $series       = $read[$index];
+    $name         = $series['name'];
+    $author       = $series['author'];
+    $publisher    = $series['publisher'];
+    $volumes_read = (int)$series['volumes_read'];
+    $status       = $series['status'];
+
     $series_exists = false;
     foreach ($data as $existing_series) {
         if (strcasecmp($existing_series['name'], $name) === 0) {
@@ -93,30 +146,57 @@ function add_from_read($data, $read, $index) {
     }
 
     if (!$series_exists) {
-        // Ajouter la série à la collection principale
-        $data[] = [
-            'id' => generate_uuid(),
-            'name' => $name,
-            'author' => $author,
-            'publisher' => $publisher,
-            'categories' => [''], // Catégorie par défaut
-            'image' => '', // Image par défaut
-            'volumes' => [],
-        ];
+        $new_id = generate_uuid();
+        $db     = get_db();
+        $db->beginTransaction();
+        try {
+            $db->prepare("
+                INSERT INTO series (id, name, author, publisher, categories, image, status)
+                VALUES (?, ?, ?, ?, '', '', 'en cours')
+            ")->execute([$new_id, $name, $author, $publisher]);
 
-        // Ajouter les tomes lus
-        for ($i = 1; $i <= $volumes_read; $i++) {
-            $is_last = (trim(mb_strtolower($status)) === 'terminé' && $i === $volumes_read); // Seulement si "terminé"
-            $data[count($data) - 1]['volumes'][] = [
-                'number' => $i,
-                'status' => $status,
-                'collector' => false,
-                'last' => $is_last,
-                'added_at' => $series['added_at']
-            ];
+            $volStmt = $db->prepare("
+                INSERT INTO volumes (series_id, number, status, collector, last, added_at)
+                VALUES (?, ?, ?, 0, ?, ?)
+            ");
+            for ($i = 1; $i <= $volumes_read; $i++) {
+                $is_last = (trim(mb_strtolower($status)) === 'terminé' && $i === $volumes_read) ? 1 : 0;
+                $volStmt->execute([$new_id, $i, $status, $is_last, $series['added_at'] ?? date('Y-m-d')]);
+            }
+
+            // Supprimer de lues ailleurs
+            $ids = $db->query("SELECT id FROM read_elsewhere ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
+            if (isset($ids[$index])) {
+                $db->prepare("DELETE FROM read_elsewhere WHERE id = ?")->execute([$ids[$index]]);
+            }
+
+            $db->commit();
+        } catch (Exception $e) {
+            $db->rollBack();
+            throw $e;
         }
 
-        // Supprimer la série de "lues ailleurs"
+        // Mettre à jour les tableaux PHP
+        $vols = [];
+        for ($i = 1; $i <= $volumes_read; $i++) {
+            $is_last = (trim(mb_strtolower($status)) === 'terminé' && $i === $volumes_read);
+            $vols[] = ['number' => $i, 'status' => $status, 'collector' => false, 'last' => $is_last, 'added_at' => $series['added_at'] ?? date('Y-m-d')];
+        }
+        $data[] = [
+            'id'                 => $new_id,
+            'name'               => $name,
+            'author'             => $author,
+            'publisher'          => $publisher,
+            'other_contributors' => [''],
+            'categories'         => [''],
+            'genres'             => [''],
+            'image'              => '',
+            'anilist_id'         => '',
+            'mature'             => false,
+            'favorite'           => false,
+            'status'             => 'en cours',
+            'volumes'            => $vols,
+        ];
         array_splice($read, $index, 1);
         return ['success' => true, 'data' => $data, 'read' => $read];
     } else {
@@ -125,8 +205,7 @@ function add_from_read($data, $read, $index) {
 }
 
 // Déplacer une série de la bibliothèque vers "lues ailleurs"
-function move_series_to_read($data, $read, $series_id) {
-    // Trouver la série dans la bibliothèque
+function move_series_to_read(array $data, array $read, string $series_id): array {
     $series_index = null;
     foreach ($data as $index => $series) {
         if (isset($series['id']) && $series['id'] === $series_id) {
@@ -139,13 +218,9 @@ function move_series_to_read($data, $read, $series_id) {
         return ['success' => false, 'message' => 'Série non trouvée.'];
     }
 
-    $series = $data[$series_index];
-
-    // Calculer le nombre de tomes lus (tous les tomes de la série)
+    $series       = $data[$series_index];
     $volumes_read = count($series['volumes']);
-
-    // Déterminer le statut (si tous les tomes sont "terminé", alors "terminé", sinon "en cours")
-    $status = 'terminé';
+    $status       = 'terminé';
     foreach ($series['volumes'] as $volume) {
         if ($volume['status'] !== 'terminé') {
             $status = 'en cours';
@@ -153,17 +228,31 @@ function move_series_to_read($data, $read, $series_id) {
         }
     }
 
-    // Ajouter la série à "Lues ailleurs"
-    $read[] = [
-        'name' => $series['name'],
-        'author' => $series['author'],
-        'publisher' => $series['publisher'],
-        'volumes_read' => $volumes_read,
-        'status' => $status,
-        'added_at' => date('Y-m-d')
-    ];
+    $added_at = date('Y-m-d');
+    $db       = get_db();
+    $db->beginTransaction();
+    try {
+        $db->prepare("
+            INSERT INTO read_elsewhere (name, author, publisher, volumes_read, status, added_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ")->execute([$series['name'], $series['author'], $series['publisher'], $volumes_read, $status, $added_at]);
 
-    // Supprimer la série de la bibliothèque
+        // Supprimer la série (CASCADE supprime aussi les volumes)
+        $db->prepare("DELETE FROM series WHERE id = ?")->execute([$series_id]);
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
+    }
+
+    $read[] = [
+        'name'         => $series['name'],
+        'author'       => $series['author'],
+        'publisher'    => $series['publisher'],
+        'volumes_read' => $volumes_read,
+        'status'       => $status,
+        'added_at'     => $added_at,
+    ];
     array_splice($data, $series_index, 1);
 
     return ['success' => true, 'data' => $data, 'read' => $read];

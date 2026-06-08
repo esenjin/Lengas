@@ -7,6 +7,6 @@
 </IfModule>
 
 # Bloquer l'accès direct aux données et sauvegardes
-<FilesMatch "\.(json|zip)$">
+<FilesMatch "\.(db|db-shm|db-wal|json|zip)$">
     Require all denied
 </FilesMatch>
