@@ -508,11 +508,11 @@ function check_collection_coherence(array $data): array {
         }
 
         $status = $series['status'] ?? '';
-        if ($status === 'terminee' && empty($last_volumes)) {
+        if ($status === 'terminée' && empty($last_volumes)) {
             $series_issues[] = ['type' => 'finished_no_last', 'message' => "La série est marquée comme terminée mais aucun tome n'est tagué dernier."];
         }
 
-        if (!empty($last_volumes) && $status !== 'terminee' && $status !== 'abandonnee') {
+        if (!empty($last_volumes) && $status !== 'terminée' && $status !== 'abandonnée' && $status !== 'en pause') {
             $series_issues[] = ['type' => 'last_but_not_finished', 'message' => "Un tome est tagué dernier mais la série n'est pas marquée comme terminée."];
         }
 
