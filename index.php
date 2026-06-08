@@ -351,6 +351,7 @@ function get_latest_version_from_gitea() {
                             <p><strong>Catégories :</strong> <span id="modal-series-categories"></span></p>
                             <p><strong>Genres :</strong> <span id="modal-series-genres"></span></p>
                             <div class="series-stats" id="modal-series-stats"></div>
+                            <div class="series-badges" id="modal-series-badges"></div>
                         </div>
                     </div>
                     <h3>Liste des tomes :</h3>

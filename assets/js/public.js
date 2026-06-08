@@ -159,6 +159,24 @@ document.querySelectorAll('.series-card').forEach(card => {
             `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} ` +
             `(${readVolumes} lu${readVolumes > 1 ? 's' : ''})`;
 
+        let seriesStatus = 'en cours';
+        if (series.volumes && series.volumes.some(v => v.last)) {
+            seriesStatus = 'terminée';
+        } else if (series.status) {
+            seriesStatus = series.status;
+        }
+        let statusIcon, statusClass;
+        switch (seriesStatus) {
+            case 'terminée':   statusIcon = '✅ publication terminée';   statusClass = 'status-completed';  break;
+            case 'en pause':   statusIcon = '⏳ publication en pause';   statusClass = 'status-paused';     break;
+            case 'abandonnée': statusIcon = '⛔ publication abandonnée'; statusClass = 'status-abandoned';  break;
+            default:           statusIcon = '▶️ publication en cours';   statusClass = 'status-in-progress';
+        }
+        document.getElementById('modal-series-badges').innerHTML =
+            `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
+            `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
+            `${series.anilist_id ? `<a class="anilist-badge" href="https://anilist.co/manga/${series.anilist_id}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="anilistlogo.png" alt="Anilist" class="anilist-logo"></a>` : ''}`;
+
         const volumesList = document.getElementById('modal-volumes-list');
         volumesList.innerHTML = '';
         const sortedVolumes = series.volumes ? [...series.volumes].sort((a, b) => a.number - b.number) : [];
@@ -248,6 +266,24 @@ function loadMoreSeries() {
                         document.getElementById('modal-series-stats').innerHTML =
                             `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} ` +
                             `(${readVolumes} lu${readVolumes > 1 ? 's' : ''})`;
+
+                        let seriesStatus = 'en cours';
+                        if (series.volumes && series.volumes.some(v => v.last)) {
+                            seriesStatus = 'terminée';
+                        } else if (series.status) {
+                            seriesStatus = series.status;
+                        }
+                        let statusIcon, statusClass;
+                        switch (seriesStatus) {
+                            case 'terminée':   statusIcon = '✅ publication terminée';   statusClass = 'status-completed';  break;
+                            case 'en pause':   statusIcon = '⏳ publication en pause';   statusClass = 'status-paused';     break;
+                            case 'abandonnée': statusIcon = '⛔ publication abandonnée'; statusClass = 'status-abandoned';  break;
+                            default:           statusIcon = '▶️ publication en cours';   statusClass = 'status-in-progress';
+                        }
+                        document.getElementById('modal-series-badges').innerHTML =
+                            `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
+                            `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
+                            `${series.anilist_id ? `<a class="anilist-badge" href="https://anilist.co/manga/${series.anilist_id}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="anilistlogo.png" alt="Anilist" class="anilist-logo"></a>` : ''}`;
 
                         const volumesList = document.getElementById('modal-volumes-list');
                         volumesList.innerHTML = '';
@@ -469,6 +505,25 @@ document.addEventListener('DOMContentLoaded', function() {
                             const rv = s.volumes ? s.volumes.filter(v => v.status === 'terminé').length : 0;
                             document.getElementById('modal-series-stats').innerHTML =
                                 `${tv} tome${tv > 1 ? 's' : ''} possédé${tv > 1 ? 's' : ''} (${rv} lu${rv > 1 ? 's' : ''})`;
+
+                            let seriesStatus = 'en cours';
+                            if (s.volumes && s.volumes.some(v => v.last)) {
+                                seriesStatus = 'terminée';
+                            } else if (s.status) {
+                                seriesStatus = s.status;
+                            }
+                            let statusIcon, statusClass;
+                            switch (seriesStatus) {
+                                case 'terminée':   statusIcon = '✅ publication terminée';   statusClass = 'status-completed';  break;
+                                case 'en pause':   statusIcon = '⏳ publication en pause';   statusClass = 'status-paused';     break;
+                                case 'abandonnée': statusIcon = '⛔ publication abandonnée'; statusClass = 'status-abandoned';  break;
+                                default:           statusIcon = '▶️ publication en cours';   statusClass = 'status-in-progress';
+                            }
+                            document.getElementById('modal-series-badges').innerHTML =
+                                `${s.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
+                                `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
+                                `${s.anilist_id ? `<a class="anilist-badge" href="https://anilist.co/manga/${s.anilist_id}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="anilistlogo.png" alt="Anilist" class="anilist-logo"></a>` : ''}`;
+
                             const volumesList = document.getElementById('modal-volumes-list');
                             volumesList.innerHTML = '';
                             const sortedVolumes = s.volumes ? [...s.volumes].sort((a, b) => a.number - b.number) : [];
