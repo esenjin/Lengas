@@ -243,6 +243,11 @@ function get_latest_version_from_gitea() {
 </head>
 <body>
     <div class="container">
+        <div class="logout-container">
+            <a href="admin.php" class="logout-button" title="Administration">
+                <img src="https://api.iconify.design/mdi/lock.svg?color=white" alt="Administration" width="18" height="18">
+            </a>
+        </div>
         <h1><?= htmlspecialchars($options['index_page_title']) ?></h1>
 
         <!-- Bouton Menu Mobile -->
