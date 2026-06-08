@@ -122,7 +122,7 @@ function createLightSeriesCard(series) {
                 <span class="series-status-badge ${statusClass}">${statusIcon}</span>
                 ${series.anilist_id ? `<a class="anilist-badge" href="https://anilist.co/manga/${series.anilist_id}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="anilistlogo.png" alt="Anilist" class="anilist-logo"></a>` : ''}
             </div>
-            <button class="load-volumes-btn" data-series-id="${series.id}">Voir les tomes (${series.volumes_count})</button>
+            <button class="load-volumes-btn" data-series-id="${series.id}" data-volumes-count="${series.volumes_count}">Voir les tomes (${series.volumes_count})</button>
             <div class="volumes-container" data-series-id="${series.id}"></div>
         </div>
     `;
@@ -136,17 +136,33 @@ function formatList(list) {
     return filtered.length > 0 ? filtered.join(', ') : '<em>aucun</em>';
 }
 
-// Charge les tomes d'une série
+// Charge les tomes d'une série (ou les masque si déjà affichés)
 function loadSeriesVolumes(seriesId) {
     const container = document.querySelector(`.volumes-container[data-series-id="${seriesId}"]`);
-    if (container.innerHTML) return;
+    const btn = document.querySelector(`.load-volumes-btn[data-series-id="${seriesId}"]`);
+    const volumesCount = btn ? btn.dataset.volumesCount : '';
 
+    // Toggle : si les tomes sont visibles, on les masque
+    if (container.dataset.loaded === 'true') {
+        if (container.style.display === 'none') {
+            container.style.display = '';
+            if (btn) btn.textContent = `Cacher les tomes (${volumesCount})`;
+        } else {
+            container.style.display = 'none';
+            if (btn) btn.textContent = `Voir les tomes (${volumesCount})`;
+        }
+        return;
+    }
+
+    // Premier chargement
     container.innerHTML = '<p class="loading-text">Chargement des tomes...</p>';
     fetch(`admin.php?get_series_volumes=true&series_id=${encodeURIComponent(seriesId)}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 container.innerHTML = data.volumes_html;
+                container.dataset.loaded = 'true';
+                if (btn) btn.textContent = `Cacher les tomes (${volumesCount})`;
             } else {
                 container.innerHTML = `<p class="error">Erreur : ${data.message}</p>`;
             }
