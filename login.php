@@ -1,20 +1,31 @@
 <?php
 require 'config.php';
-$data = load_data();
 $options = load_options();
+
+const SESSION_LIFETIME = 7 * 24 * 60 * 60; // 7 jours en secondes
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     if (check_password($password)) {
+        ini_set('session.gc_maxlifetime', SESSION_LIFETIME);
+        session_set_cookie_params([
+            'lifetime' => SESSION_LIFETIME,
+            'path'     => '/',
+            'secure'   => true,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
         session_start();
-        $_SESSION['logged_in'] = true;
+        $_SESSION['logged_in']     = true;
+        $_SESSION['last_activity'] = time();
         header('Location: admin.php');
         exit;
     } else {
         $error = 'Mot de passe incorrect.';
     }
 }
+$expired = isset($_GET['expired']);
 ?>
 
 <!DOCTYPE html>
@@ -99,6 +110,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <h1>Connexion</h1>
+    <?php if ($expired): ?>
+        <p style="color: orange; text-align: center;">Votre session a expiré. Veuillez vous reconnecter.</p>
+    <?php endif; ?>
     <?php if ($error): ?>
         <p style="color: red; text-align: center;"><?= $error ?></p>
     <?php endif; ?>
