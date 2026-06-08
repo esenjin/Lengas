@@ -53,16 +53,21 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 Publique
 
 
-![Lengas p1](https://concepts.esenjin.xyz/cyla/fichiers/6989c7f4a197c_1770637300.gif)
+![Lengas p1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b58034a35_1780921728.png)
+![Lengas p1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b5800db38_1780921728.png)
+![Lengas p1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b57fe8034_1780921727.png)
 
 
 Administration
 
 
-![Lengas a1](https://concepts.esenjin.xyz/cyla/fichiers/6989c7f52bb63_1770637301.gif)
+![Lengas a1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b65b4967d_1780921947.png)
+![Lengas a1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b65b3c49a_1780921947.png)
+![Lengas a1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b65b5d86a_1780921947.png)
+![Lengas a1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b65b50547_1780921947.png)
 
 
-*Captures effectuées en v.2.1.0*
+*Captures effectuées en v.3.0.0*
 
 ## Prérequis
 - Serveur web (Apache, Nginx)
