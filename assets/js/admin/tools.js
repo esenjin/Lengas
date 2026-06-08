@@ -192,7 +192,7 @@ function displayIntegrityResults(results) {
         'assets/css/_admin.css', 'assets/css/_base.css', 'assets/css/_buttons.css',
         'assets/css/_forms.css', 'assets/css/_layout.css', 'assets/css/_modals.css',
         'assets/css/_public.css', 'assets/css/_responsive.css', 'assets/css/_series.css',
-        'assets/css/_utils.css', 'assets/css/_variables.css'
+        'assets/css/_stats.css', 'assets/css/_utils.css', 'assets/css/_variables.css'
     ];
     cssFiles.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
@@ -283,7 +283,33 @@ function displayIntegrityResults(results) {
         </div>
     `;
 
-    // 4. Doublons
+    // 4. Accès externe aux dossiers sensibles
+    html += `
+        <div class="integrity-section">
+            <h3>Accès externe aux dossiers sensibles</h3>
+            <ul>
+    `;
+    for (const [folder, info] of Object.entries(results.external_access)) {
+        let statusClass, statusText;
+        if (info.ok === null) {
+            statusClass = 'warn';
+            statusText  = `Indéterminé (code HTTP ${info.status})`;
+        } else if (info.ok) {
+            statusClass = 'ok';
+            statusText  = `Bloqué (${info.status})`;
+        } else {
+            statusClass = 'error';
+            statusText  = `Accessible ! (code HTTP ${info.status})`;
+        }
+        html += `<li>${folder} : <span class="${statusClass}">${statusText}</span></li>`;
+    }
+    html += `</ul>`;
+    if (Object.values(results.external_access).some(i => i.ok === false)) {
+        html += `<p class="hint error">⚠️ Un ou plusieurs dossiers sensibles sont accessibles depuis l'extérieur. Vérifiez votre fichier <code>.htaccess</code>.</p>`;
+    }
+    html += `</div>`;
+
+    // 5. Doublons
     html += `
         <div class="integrity-section">
             <h3>Doublons</h3>

@@ -50,7 +50,7 @@ function check_site_integrity(array $data): array {
         'assets/css/_admin.css', 'assets/css/_base.css', 'assets/css/_buttons.css',
         'assets/css/_forms.css', 'assets/css/_layout.css', 'assets/css/_modals.css',
         'assets/css/_public.css', 'assets/css/_responsive.css', 'assets/css/_series.css',
-        'assets/css/_utils.css', 'assets/css/_variables.css',
+        'assets/css/_stats.css', 'assets/css/_utils.css', 'assets/css/_variables.css',
     ];
     foreach ($required_css_files as $file) {
         $results['file_existence'][$file] = file_exists($file);
@@ -131,7 +131,10 @@ function check_site_integrity(array $data): array {
     }
     $results['orphaned_images'] = array_values(array_diff($uploaded_images, $used_images));
 
-    // 6. Version
+    // 6. Accès externe aux dossiers sensibles
+    $results['external_access'] = check_external_access();
+
+    // 7. Version
     $latest_version  = get_latest_version_from_gitea();
     $results['version'] = [
         'current'      => SITE_VERSION,
@@ -139,7 +142,7 @@ function check_site_integrity(array $data): array {
         'needs_update' => ($latest_version !== null && version_compare(SITE_VERSION, $latest_version, '<')),
     ];
 
-    // 7. Infos serveur
+    // 8. Infos serveur
     $results['site_info'] = [
         'site_url'                  => get_site_url(),
         'uses_https'                => uses_https(),
@@ -149,6 +152,48 @@ function check_site_integrity(array $data): array {
         'server_info'               => get_server_info(),
     ];
 
+    return $results;
+}
+
+// Vérifie que saves/ et bdd/ ne sont pas accessibles depuis l'extérieur
+function check_external_access(): array {
+    $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
+        . '://' . $_SERVER['HTTP_HOST']
+        . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+
+    // Pour chaque dossier, on tente d'accéder à un fichier connu qui doit être bloqué
+    $targets = [
+        'saves/' => $base_url . '/saves/',
+        'bdd/'   => $base_url . '/bdd/',
+    ];
+
+    $results = [];
+    foreach ($targets as $label => $url) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_NOBODY, true);       // HEAD uniquement
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_exec($ch);
+        $http_code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error     = curl_errno($ch);
+        curl_close($ch);
+
+        if ($error) {
+            // Impossible de joindre le serveur (ex: localhost sans accès externe) — indéterminé
+            $results[$label] = ['status' => $http_code, 'ok' => null, 'label' => 'Indéterminé'];
+        } else {
+            // 403 Forbidden ou 404 Not Found = accès bloqué = OK
+            $blocked = in_array($http_code, [403, 404]);
+            $results[$label] = [
+                'status' => $http_code,
+                'ok'     => $blocked,
+                'label'  => $blocked ? 'Bloqué' : 'Accessible',
+            ];
+        }
+    }
     return $results;
 }
 
