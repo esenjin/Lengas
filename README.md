@@ -4,10 +4,10 @@
 Lengas est une application web légère et intuitive pour gérer et suivre votre collection de mangas et light-novels. Elle vous permet de :
 
 - Visualiser et organiser votre collection
-- Suivre l’état de lecture de chaque tome (à lire, en cours, terminé)
+- Suivre l'état de lecture de chaque tome (à lire, en cours, terminé)
 - Ajouter, modifier et supprimer des séries et des tomes
 - Consulter des statistiques détaillées sur votre collection
-- Gérer une liste d’envies pour les séries que vous souhaitez acquérir
+- Gérer une liste d'envies pour les séries que vous souhaitez acquérir
 - Recevoir des notifications pour les tomes manquants ou incorrectement étiquetés
 - Marquer les tomes collectors et les derniers tomes
 - Gérer les prêts de tomes à vos amis
@@ -16,16 +16,16 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 ## Fonctionnalités
 ### Gestion des séries
 - Ajout, modification et suppression de séries
-- Importation de données depuis l’API Anilist
+- Importation de données depuis l'API Anilist
 
 ### Suivi des tomes
 - Ajout, modification et suppression de tomes
 - Statut de lecture personnalisable
 - Gestion des tomes collectors et des derniers tomes
 
-### Liste d’envies
-- Ajout et suppression de séries dans une liste d’envies
-- Possibilité d’ajouter une série de la liste d’envies à votre collection
+### Liste d'envies
+- Ajout et suppression de séries dans une liste d'envies
+- Possibilité d'ajouter une série de la liste d'envies à votre collection
 
 ### Séries à lire
 - Affiche les séries qui ne sont pas entièrement lues.
@@ -66,27 +66,34 @@ Administration
 
 ## Prérequis
 - Serveur web (Apache, Nginx)
-- PHP 7.4 ou supérieur
+- PHP 7.4 ou supérieur avec l'extension **pdo_sqlite** activée (activée par défaut sur la plupart des hébergeurs)
 
 ## Installation
 1. Télécharger la dernière publication
-2. Éditer le fichier `generate_password.php` en y indiquant le mdp souhaité
+2. Éditer le fichier `generate_password.php` en y indiquant le mot de passe souhaité
 3. Téléverser les fichiers sur votre serveur
 4. Exécuter le fichier `generate_password.php`
-5. SUPPRIMER LE FICHIER `generate_password.php`
+5. SUPPRIMER LES FICHIERS `generate_password.php` et `migrate.php`
 6. C'est tout bon ! Vous pouvez profiter.
 
-## Mise à jour
+## Mise à jour depuis une version ≤ 3.0.0 (JSON → SQLite)
 1. Télécharger la dernière publication
-2. SUPPRIMER LE FICHIER `generate_password.php`
-3. Supprimer les dossiers `bdd/` et `uploads/`
-4. Téléverser les fichiers/dossiers restants sur votre serveur (écraser ceux présents)
-5. Bien joué, c'est à jour !
+2. SUPPRIMER LE FICHIER `generate_password.php` de l'archive avant de téléverser
+3. Téléverser les fichiers sur votre serveur **sans supprimer** le dossier `bdd/` existant
+4. Accéder à `migrate.php` depuis votre navigateur et cliquer sur **Lancer la migration**
+5. Une fois la migration terminée, SUPPRIMER LE FICHIER `migrate.php` de votre serveur
+6. Bien joué, c'est à jour !
+
+## Mise à jour depuis une version ≥ 3.0.0
+1. Télécharger la dernière publication
+2. SUPPRIMER LES FICHIER `generate_password.php` et `migrate.php` ainsi que le dossier `uploads/` de l'archive
+3. Téléverser les fichiers/dossiers restants sur votre serveur (écraser ceux présents)
+4. Bien joué, c'est à jour !
 
 ## Importer une base de données
 1. Créer une sauvegarde avec l'outil dédié (modale "Outils")
 2. Extraire l'archive
-3. (facultatif) Supprimer le dossier `uploads/` et les fichiers `data.json`, `list.json`, `loan.json` et `options.json` du dossier `bdd/` de votre site
+3. (facultatif) Supprimer le dossier `uploads/` et le fichier `lengas.db` du dossier `bdd/` de votre site
 4. Déplacer les dossiers `bdd/` et `uploads/` que vous venez d'extraire à la racine de votre site (écraser les fichiers si nécessaire)
 5. (facultatif) Utiliser l'outil de vérification de l'intégrité du site (modale "Outils")
 6. Félicitation, votre base de données est de nouveau là !
@@ -101,6 +108,7 @@ lengas/
 ├── config.php           # Configuration du site
 ├── login.php            # Connexion
 ├── logout.php           # Déconnexion
+├── migrate.php          # Migration JSON → SQLite (à supprimer après usage)
 ├── .htaccess
 ├── assets/
 │   ├── css/             # Fichiers CSS
@@ -146,18 +154,12 @@ lengas/
 │   └── tools.php         # Fonctions de gestion des outils (sauvegardes, intégrité, etc.)
 ├── uploads/             # Images des séries (chmod 0774)
 ├── saves/               # Sauvegardes de la base de données (chmod 0774)
-└── bdd/                 # Fichiers de données (chmod 0774)
-   ├── data.json         # Base de données des séries et tomes possédés (chmod 0660)
-   ├── list.json         # Base de données de la liste d'envies (chmod 0660)
-   ├── loan.json         # Base de données des prêts (chmod 0660)
-   ├── read.json         # Base de données des lues ailleurs (chmod 0660)
-   ├── anilist.json      # Cache des requêtes API Anilist (chmod 0660)
-   ├── options.json      # Options principales éditables (chmod 0660)
-   └── mdp.json          # Contient le mot de passe hashé (chmod 0660)
+└── bdd/                 # Données (chmod 0774)
+   └── lengas.db         # Base de données SQLite (chmod 0660)
 ```
 
 ## Crédits
-- Développé avec l'aide de [Mistral](https://chat.mistral.ai/) (pour les version ≤ 2.2.2)
-- Développé avec l'aide de [Claude](https://claude.ai/) (pour les version > 2.2.2)
+- Développé avec l'aide de [Mistral](https://chat.mistral.ai/) (pour les versions ≤ 2.2.2)
+- Développé avec l'aide de [Claude](https://claude.ai/) (pour les versions > 2.2.2)
 - Utilise l'API d'[Anilist](https://docs.anilist.co/)
 - Utilise [JSDelivr](https://www.jsdelivr.com/)
