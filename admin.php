@@ -525,6 +525,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
             if ($status_filter === 'favorite') {
                 return !empty($series['favorite']);
             }
+            if ($status_filter === 'reading_in_progress') {
+                // Au moins 1 tome "à lire" ou "en cours"
+                foreach ($series['volumes'] ?? [] as $volume) {
+                    if ($volume['status'] === 'à lire' || $volume['status'] === 'en cours') {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            if ($status_filter === 'reading_completed') {
+                // Tous les tomes sont "terminé" (et il y en a au moins 1)
+                $volumes = $series['volumes'] ?? [];
+                if (empty($volumes)) return false;
+                foreach ($volumes as $volume) {
+                    if ($volume['status'] !== 'terminé') {
+                        return false;
+                    }
+                }
+                return true;
+            }
             // Même logique que le JS
             $status = 'en cours';
             if (!empty($series['volumes'])) {
@@ -888,13 +908,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     </select>
                     <select name="status_filter" id="status-filter">
                         <option value="">Tous les statuts</option>
-                        <option value="en cours">En cours ▶️</option>
-                        <option value="terminée">Terminée ✅</option>
-                        <option value="en pause">En pause ⏳</option>
-                        <option value="abandonnée">Abandonnée ⛔</option>
-                        <option value="mature">Mature 🔞</option>
-                        <option value="non_mature">Non mature 👐</option>
-                        <option value="favorite">Favoris ❤️</option>
+                        <option value="en cours">Publication en cours ▶️</option>
+                        <option value="terminée">Publication terminée ✅</option>
+                        <option value="en pause">Publication en pause ⏳</option>
+                        <option value="abandonnée">Publication abandonnée ⛔</option>
+                        <option value="mature">Contenu mature 🔞</option>
+                        <option value="non_mature">Contenu non mature 👐</option>
+                        <option value="favorite">Mes favoris ❤️</option>
+                        <option value="reading_in_progress">Lecture en cours 📖</option>
+                        <option value="reading_completed">Lecture terminée ✔️</option>
                     </select>
                 </div>
                 <button type="submit">Appliquer</button>
