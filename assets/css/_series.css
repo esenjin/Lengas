@@ -61,7 +61,7 @@
     width: 150px;
     height: 150px;
     object-fit: cover;
-    border-radius: var(--border-radius-lg) 0 0 0;
+    border-radius: var(--border-radius-lg);
     display: block;
     flex-shrink: 0;
 }
