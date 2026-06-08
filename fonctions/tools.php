@@ -38,7 +38,7 @@ function check_site_integrity(array $data): array {
         'assets/js/admin/',
         'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php',
         'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php',
-        'includes/anilist.php', 'includes/auth.php', 'includes/helpers.php',
+        'includes/anilist.php', 'includes/auth.php', 'includes/helpers.php', 'includes/nautiljon.php',
         'includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/',
         'migrate.php',
     ];

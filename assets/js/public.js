@@ -175,7 +175,8 @@ document.querySelectorAll('.series-card').forEach(card => {
         document.getElementById('modal-series-badges').innerHTML =
             `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
             `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
-            `${series.anilist_id ? `<a class="anilist-badge" href="https://anilist.co/manga/${series.anilist_id}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="anilistlogo.png" alt="Anilist" class="anilist-logo"></a>` : ''}`;
+            `${series.anilist_id ? `<a class="anilist-badge" href="https://anilist.co/manga/${series.anilist_id}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="anilistlogo.png" alt="Anilist" class="anilist-logo"></a>` : ''}` +
+            `${series.nautiljon_url ? `<a class="nautiljon-badge" href="${series.nautiljon_url}" target="_blank" rel="noopener" title="${series.nautiljon_vf_volumes ? series.nautiljon_vf_volumes + ' tomes VF · ' : ''}Voir sur Nautiljon"><img src="nautiljonlogo.png" alt="Nautiljon" class="nautiljon-logo"></a>` : ''}`;
 
         const volumesList = document.getElementById('modal-volumes-list');
         volumesList.innerHTML = '';
@@ -283,7 +284,8 @@ function loadMoreSeries() {
                         document.getElementById('modal-series-badges').innerHTML =
                             `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
                             `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
-                            `${series.anilist_id ? `<a class="anilist-badge" href="https://anilist.co/manga/${series.anilist_id}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="anilistlogo.png" alt="Anilist" class="anilist-logo"></a>` : ''}`;
+                            `${series.anilist_id ? `<a class="anilist-badge" href="https://anilist.co/manga/${series.anilist_id}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="anilistlogo.png" alt="Anilist" class="anilist-logo"></a>` : ''}` +
+                            `${series.nautiljon_url ? `<a class="nautiljon-badge" href="${series.nautiljon_url}" target="_blank" rel="noopener" title="${series.nautiljon_vf_volumes ? series.nautiljon_vf_volumes + ' tomes VF · ' : ''}Voir sur Nautiljon"><img src="nautiljonlogo.png" alt="Nautiljon" class="nautiljon-logo"></a>` : ''}`;
 
                         const volumesList = document.getElementById('modal-volumes-list');
                         volumesList.innerHTML = '';
@@ -522,7 +524,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             document.getElementById('modal-series-badges').innerHTML =
                                 `${s.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
                                 `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
-                                `${s.anilist_id ? `<a class="anilist-badge" href="https://anilist.co/manga/${s.anilist_id}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="anilistlogo.png" alt="Anilist" class="anilist-logo"></a>` : ''}`;
+                                `${series.anilist_id ? `<a class="anilist-badge" href="https://anilist.co/manga/${series.anilist_id}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="anilistlogo.png" alt="Anilist" class="anilist-logo"></a>` : ''}` +
+                                `${series.nautiljon_url ? `<a class="nautiljon-badge" href="${series.nautiljon_url}" target="_blank" rel="noopener" title="${series.nautiljon_vf_volumes ? series.nautiljon_vf_volumes + ' tomes VF · ' : ''}Voir sur Nautiljon"><img src="nautiljonlogo.png" alt="Nautiljon" class="nautiljon-logo"></a>` : ''}`;
 
                             const volumesList = document.getElementById('modal-volumes-list');
                             volumesList.innerHTML = '';

@@ -59,7 +59,7 @@
     width: 150px;
     height: 150px;
     object-fit: cover;
-    border-radius: var(--border-radius-lg) 0 0 0;
+    border-radius: var(--border-radius-lg);
     display: block;
     flex-shrink: 0;
 }
@@ -128,6 +128,25 @@
     height: 16px;
     width: auto;
     display: block;
+    border-radius: 50%;
+}
+
+.nautiljon-badge {
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.65;
+    transition: opacity 0.2s;
+}
+
+.nautiljon-badge:hover {
+    opacity: 1;
+}
+
+.nautiljon-logo {
+    height: 16px;
+    width: auto;
+    display: block;
+    border-radius: 50%;
 }
 
 /* Badges de statut des séries */

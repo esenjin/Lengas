@@ -1,6 +1,6 @@
 <?php
 // Ajouter une série
-function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours') {
+function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours', $nautiljon_url = '') {
     $volumes = [];
     for ($i = 1; $i <= $volumes_count; $i++) {
         $volumes[] = [
@@ -45,6 +45,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         'mature' => $mature,
         'favorite' => $favorite,
         'status' => $status,
+        'nautiljon_url' => $nautiljon_url,
         'volumes' => $volumes
     ];
 
@@ -52,7 +53,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
 }
 
 // Mettre à jour une série
-function update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null, $new_status = null) {
+function update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null, $new_status = null, $nautiljon_url = null) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
         return ['success' => false, 'message' => "Série introuvable."];
@@ -84,6 +85,16 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
     $data[$series_key]['anilist_id'] = $anilist_id;
     $data[$series_key]['mature'] = $mature;
     $data[$series_key]['favorite'] = $favorite;
+
+    // Nautiljon URL : si modifiée, invalider le cache
+    if ($nautiljon_url !== null) {
+        $old_nj_url = $data[$series_key]['nautiljon_url'] ?? '';
+        if ($nautiljon_url !== $old_nj_url) {
+            // Invalider le cache pour forcer un refresh
+            $data[$series_key]['nautiljon_last_checked'] = 0;
+        }
+        $data[$series_key]['nautiljon_url'] = $nautiljon_url;
+    }
 
     // Gestion de l'image
     if ($remove_image && !empty($data[$series_key]['image']) && file_exists($data[$series_key]['image'])) {

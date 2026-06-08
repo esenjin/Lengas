@@ -12,11 +12,19 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 - Marquer les tomes collectors et les derniers tomes
 - Gérer les prêts de tomes à vos amis
 - Activer un mode privé pour cacher votre bibliothèque
+- Récupérer automatiquement les tomes VF publiés en France via Nautiljon
 
 ## Fonctionnalités
 ### Gestion des séries
 - Ajout, modification et suppression de séries
 - Importation de données depuis l'API Anilist
+- Lien optionnel vers la fiche Nautiljon (URL VF)
+
+### Intégration Nautiljon
+- Scraping automatique des tomes VF publiés en France via Browserless.io
+- Cache SQLite avec délai configurable (30 jours par défaut)
+- Prioritaire sur Anilist pour la détection des séries incomplètes
+- Rafraîchissement asynchrone en arrière-plan (indicateur sablier)
 
 ### Suivi des tomes
 - Ajout, modification et suppression de tomes
@@ -38,7 +46,7 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 
 ### Statistiques
 - Nombre de séries, tomes, répartition par statut
-- Recherche des séries incomplètes
+- Recherche des séries incomplètes (tomes VF Nautiljon en priorité, Anilist en fallback)
 
 ### Interface intuitive
 - Design sombre et responsive
@@ -71,7 +79,9 @@ Administration
 
 ## Prérequis
 - Serveur web (Apache, Nginx)
-- PHP 7.4 ou supérieur avec l'extension **pdo_sqlite** activée (activée par défaut sur la plupart des hébergeurs)
+- PHP 7.4 ou supérieur
+- (Optionnel) Compte [Browserless.io](https://www.browserless.io) gratuit pour l'intégration Nautiljon 
+- Extension **pdo_sqlite** activée
 
 ## Installation
 1. Télécharger la dernière publication
@@ -147,7 +157,8 @@ lengas/
 ├── includes/
 │   ├── auth.php          # Gestion de l'authentification et des sessions
 │   ├── helpers.php       # Fonctions utilitaires générales
-│   └── anilist.php       # API Anilist
+│   ├── anilist.php       # API Anilist
+│   └── nautiljon.php     # Intégration Nautiljon via Browserless.io
 ├── fonctions/
 │   ├── series.php        # Fonctions de gestion des séries
 │   ├── volumes.php       # Fonctions de gestion des tomes
@@ -168,3 +179,4 @@ lengas/
 - Développé avec l'aide de [Claude](https://claude.ai/) (pour les versions > 2.2.2)
 - Utilise l'API d'[Anilist](https://docs.anilist.co/)
 - Utilise [JSDelivr](https://www.jsdelivr.com/)
+- Utilise [Browserless](https://browserless.io/)

@@ -13,6 +13,7 @@ require 'fonctions/loans.php';
 require 'fonctions/options.php';
 require 'fonctions/tools.php';
 require 'fonctions/unread.php';
+require 'includes/nautiljon.php';
 
 $data = load_data();
 $options = load_options();
@@ -75,6 +76,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
             break;
 
+        case 'nautiljon_refresh':
+            $series_id = $_POST['series_id'] ?? '';
+            $force     = !empty($_POST['force']);
+            if ($series_id) {
+                $vf = nautiljon_refresh_series($series_id, $force);
+                $response['success']    = true;
+                $response['vf_volumes'] = $vf;
+                $response['series_id']  = $series_id;
+            } else {
+                $response['message'] = 'ID de série manquant.';
+            }
+            break;
+
         case 'add_all_missing_volumes':
             $series_id = $_POST['series_id'] ?? '';
             $missing_volumes = isset($_POST['missing_volumes']) ? explode(',', $_POST['missing_volumes']) : [];
@@ -131,7 +145,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $volumes_status = $_POST['volumes_status'] ?? 'à lire';
     $all_collector = !empty($_POST['all_collector']);
     $last_volume = !empty($_POST['last_volume']);
-    $status = $_POST['series_status'] ?? 'en cours';
+    $status        = $_POST['series_status'] ?? 'en cours';
+    $nautiljon_url = trim($_POST['nautiljon_url'] ?? '');
 
     // Initialiser $image à null par défaut
     $image = null;
@@ -147,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     }
 
     // Appeler add_series avec $image (qui peut être null)
-    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status);
+    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $nautiljon_url);
 
     if ($result['success']) {
         save_data($result['data']);
@@ -232,7 +247,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $new_volumes_status = $_POST['new_volumes_status'] ?? 'à lire';
     $new_volumes_collector = !empty($_POST['new_volumes_collector']);
     $new_volumes_last = !empty($_POST['new_volumes_last']);
-    $new_status = $_POST['series_status'] ?? null;
+    $new_status         = $_POST['series_status'] ?? null;
+    $edit_nautiljon_url = trim($_POST['edit_nautiljon_url'] ?? '');
 
     $new_image = null;
     if (!empty($_FILES['edit_image']['name'])) {
@@ -245,7 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         }
     }
 
-    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status);
+    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_nautiljon_url);
     if ($result['success']) {
         save_data($result['data']);
     }
@@ -283,8 +299,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $options['custom_button_url'] = trim($_POST['custom_button_url'] ?? '');
     $options['custom_button_name2'] = trim($_POST['custom_button_name2'] ?? '');
     $options['custom_button_url2'] = trim($_POST['custom_button_url2'] ?? '');
-    $options['custom_button_name3'] = trim($_POST['custom_button_name3'] ?? '');
-    $options['custom_button_url3'] = trim($_POST['custom_button_url3'] ?? '');
+    $options['custom_button_name3']    = trim($_POST['custom_button_name3'] ?? '');
+    $options['custom_button_url3']     = trim($_POST['custom_button_url3'] ?? '');
+    $options['browserless_token']      = trim($_POST['browserless_token'] ?? '');
+    $options['nautiljon_cache_days']   = max(1, (int)($_POST['nautiljon_cache_days'] ?? 30));
 
     $admin_password = trim($_POST['admin_password'] ?? '');
 
@@ -596,7 +614,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 'favorite' => $series['favorite'] ?? false,
                 'mature' => $series['mature'] ?? false,
                 'status' => $status,
-                'anilist_id' => $series['anilist_id'] ?? '',
+                'anilist_id'           => $series['anilist_id'] ?? '',
+                'nautiljon_url'        => $series['nautiljon_url'] ?? '',
+                'nautiljon_vf_volumes' => $series['nautiljon_vf_volumes'] ?? null,
             ];
         }, $paginated_data);
 
@@ -628,12 +648,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
         exit;
     }
 
-    // Calcul des notifications
-    $anilist_volumes = null;
-    if (!empty($series['anilist_id'])) {
-        $anilist_volumes = get_series_volumes_from_anilist($series['anilist_id']);
+    // Calcul des notifications — priorité : tomes VF Nautiljon > tomes VO Anilist
+    $ref_volumes = null;
+    if (!empty($series['nautiljon_url'])
+        && isset($series['nautiljon_vf_volumes'])
+        && $series['nautiljon_vf_volumes'] !== null) {
+        $ref_volumes = (int)$series['nautiljon_vf_volumes'];
+    } elseif (!empty($series['anilist_id'])) {
+        $ref_volumes = get_series_volumes_from_anilist($series['anilist_id']);
     }
-    $notifications = generate_notifications($series['volumes'], $anilist_volumes);
+    $notifications = generate_notifications($series['volumes'], $ref_volumes);
 
     // Générer le HTML des tomes
     $volumes_html = '<ul class="volumes-list">';
@@ -883,6 +907,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
 
     <div class="container">
         <div class="logout-container">
+            <div id="nautiljon-indicator" class="nautiljon-indicator" style="display:none" title="">⏳</div>
             <a href="logout.php" class="logout-button" title="Déconnexion">
                 <img src="https://api.iconify.design/mdi/logout.svg?color=white" alt="Déconnexion" width="24" height="24">
             </a>
@@ -983,6 +1008,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <p>ID Anilist :</p>
                     <input type="text" name="anilist_id" placeholder="ID Anilist (facultatif)" autocomplete="off">
                     <p class="hint"><a tabindex="0" data-hint="L'ID Anilist est utilisé pour trouver les tomes manquants des sériées terminées, plus d'infos dans l'outil « Séries incomplètes ». Pour trouver cet identifiant, rendez-vous sur anilist.co, recherchez votre série et accédez à sa fiche, l'ID est la suite de chiffres avant le nom dans l'url.">À quoi ça sert ? Où le trouver ?</a>.</p>
+                    <p>URL Nautiljon (facultatif) :</p>
+                    <input type="text" name="nautiljon_url" placeholder="https://www.nautiljon.com/mangas/nom-de-la-serie.html" autocomplete="off">
+                    <p class="hint">Utilisée pour récupérer automatiquement les tomes VF. Prioritaire sur Anilist pour la détection des séries incomplètes.</p>
                     <label>
                         <input type="checkbox" name="mature"> Contenu mature 🔞
                     </label>
@@ -1016,8 +1044,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                 <span class="close-modal" id="close-incomplete-series-modal">&times;</span>
                 <h2>Séries incomplètes</h2>
                 <p>Cet outil vous permet de trouver les séries dont la publication est terminée, pour lesquelles il vous manque des tomes.</p>
-                <p>Attention, nous utilisons l'API d'Anilist, qui se base sur les dates des publications japonaises uniquement, il peut y avoir un décalage de sortie avec la France.</p>
-                <p>Merci de noter qu'à cause des limitations de l'API d'Anilist, nous ne pouvons pas identifier les tomes manquants des séries en cours de publication.</p>
+                <p>Les séries avec une URL Nautiljon utilisent les données VF françaises (🇫🇷). Les autres utilisent l'API Anilist (données VO japonaises, décalage possible).</p>
                 <button id="search-incomplete-series" class="button">Rechercher les séries incomplètes</button>
                 <div id="incomplete-series-results">
                     <!-- Les résultats seront affichés ici -->
@@ -1109,6 +1136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <input type="text" name="edit_genres" id="edit-series-genres" placeholder="Genres (séparés par des virgules)" autocomplete="off">
                     <p>ID Anilist (facultatif) :</p>
                     <input type="text" name="edit_anilist_id" id="edit-series-anilist-id" placeholder="ID Anilist (facultatif)" autocomplete="off">
+                    <p>URL Nautiljon (facultatif) :</p>
+                    <input type="text" name="edit_nautiljon_url" id="edit-series-nautiljon-url" placeholder="https://www.nautiljon.com/mangas/nom-de-la-serie.html" autocomplete="off">
                     <p>Nombre de nouveaux tomes à créer :</p>
                     <input type="number" name="new_volumes_count" id="edit-series-new-volumes-count" placeholder="Nombre de nouveaux tomes" min="0" value="0" autocomplete="off">
                     <p>Statut des nouveaux tomes :</p>
@@ -1416,6 +1445,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                         <br>
                     </div>
 
+                    <h3 class="options-section-title">Intégration Nautiljon</h3>
+
+                    <label for="browserless-token">Token API Browserless.io</label>
+                    <input type="password" name="browserless_token" id="browserless-token"
+                           placeholder="Votre token Browserless (laisser vide pour désactiver)"
+                           value="<?= htmlspecialchars($options['browserless_token'] ?? '') ?>">
+                    <p class="hint">Compte gratuit sur <a href="https://www.browserless.io" target="_blank" rel="noopener">browserless.io</a>. Utilisé pour récupérer les tomes VF des séries avec une URL Nautiljon.</p>
+
+                    <label for="nautiljon-cache-days">Rafraîchissement du cache Nautiljon (jours)</label>
+                    <input type="number" name="nautiljon_cache_days" id="nautiljon-cache-days"
+                           min="1" max="365"
+                           value="<?= (int)($options['nautiljon_cache_days'] ?? 30) ?>">
+                    <p class="hint">Nombre de jours avant de re-scraper Nautiljon. Défaut : 30 jours.</p>
+
                     <button type="submit" name="update_options" class="button button-opt">Mettre à jour</button>
                     <p style="visibility: hidden;">_</p>
                 </form>
@@ -1512,8 +1555,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
             return $series;
         }, array_values($filtered_data));
     ?>
+    <?php
+        $nautiljon_refresh_queue = [];
+        $bl_token_set = !empty($options['browserless_token'] ?? '');
+        if ($bl_token_set) {
+            $nj_cache_days = max(1, (int)($options['nautiljon_cache_days'] ?? 30));
+            $stale_threshold = time() - ($nj_cache_days * 86400);
+            $nj_stmt = get_db()->prepare("
+                SELECT id FROM series
+                WHERE nautiljon_url != ''
+                AND (nautiljon_last_checked IS NULL OR nautiljon_last_checked = 0 OR nautiljon_last_checked < ?)
+                LIMIT 10
+            ");
+            $nj_stmt->execute([$stale_threshold]);
+            $nautiljon_refresh_queue = array_column($nj_stmt->fetchAll(), 'id');
+        }
+    ?>
     <script>
         window.seriesData = <?= json_encode($series_with_status) ?>;
+        window.nautiljonRefreshQueue = <?= json_encode($nautiljon_refresh_queue) ?>;
+        window.nautiljonEnabled = <?= $bl_token_set ? 'true' : 'false' ?>;
     </script>
     <script src="assets/js/admin/modals.js"></script>
     <script src="assets/js/admin/autocomplete.js"></script>
@@ -1526,6 +1587,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
     <script src="assets/js/admin/main.js"></script>
     <script src="assets/js/admin/read.js"></script>
     <script src="assets/js/admin/unread.js"></script>
+    <script src="assets/js/admin/nautiljon.js"></script>
 
 </body>
 </html>

@@ -141,6 +141,23 @@
     top: 14px;
     right: 14px;
     z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Indicateur de refresh Nautiljon */
+.nautiljon-indicator {
+    font-size: 18px;
+    cursor: default;
+    line-height: 1;
+    animation: nj-pulse 1.8s ease-in-out infinite;
+    user-select: none;
+}
+
+@keyframes nj-pulse {
+    0%, 100% { opacity: 1;   transform: scale(1);    }
+    50%       { opacity: 0.5; transform: scale(0.88); }
 }
 
 .logout-button {

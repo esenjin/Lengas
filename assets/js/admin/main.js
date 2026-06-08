@@ -132,18 +132,23 @@ function displayIncompleteSeries(incomplete_series) {
         const seriesDiv = document.createElement('div');
         seriesDiv.className = 'incomplete-series-item';
 
+        const srcLabel = series.ref_volumes_source === 'nautiljon'
+            ? '🇫🇷 Nautiljon VF'
+            : '🇯🇵 Anilist VO';
+        const refCount = series.ref_volumes ?? '?';
+
         let html = `
             <h3>${series.name}</h3>
             <p><strong>Auteur :</strong> ${series.author}</p>
             <p><strong>Éditeur :</strong> ${series.publisher}</p>
-            <p><strong>Tomes possédés :</strong> ${series.volumes.length}</p>
+            <p><strong>Tomes possédés :</strong> ${series.volumes.length} / ${refCount} <small style="opacity:.6">(source : ${srcLabel})</small></p>
         `;
 
         if (series.missing_volumes && series.missing_volumes.length > 0) {
             html += `<p><strong>Tomes manquants :</strong> ${series.missing_volumes.join(', ')}</p>`;
         } else if (series.has_more_volumes) {
             html += `<p><strong>Tomes manquants :</strong> Aucun</p>`;
-            html += `<p class="issues-list"><strong>Attention :</strong> Votre série contient plus de tomes que ce qui est indiqué sur Anilist.</p>`;
+            html += `<p class="issues-list"><strong>Attention :</strong> Votre série contient plus de tomes que la source de référence (${srcLabel}).</p>`;
         }
 
         html += `<div class="missing-volumes-actions">`;
