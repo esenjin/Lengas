@@ -82,12 +82,34 @@ function update_volume($data, $series_id, $volume_index, $status, $is_collector,
         return ['success' => false, 'message' => "Série ou volume introuvable."];
     }
 
-    $data[$series['index']]['volumes'][$volume_index] = [
-        'number' => $data[$series['index']]['volumes'][$volume_index]['number'],
-        'status' => $status,
+    $idx = $series['index'];
+
+    $data[$idx]['volumes'][$volume_index] = [
+        'number'    => $data[$idx]['volumes'][$volume_index]['number'],
+        'status'    => $status,
         'collector' => $is_collector,
-        'last' => $is_last
+        'last'      => $is_last,
+        'added_at'  => $data[$idx]['volumes'][$volume_index]['added_at'] ?? date('Y-m-d'),
     ];
+
+    // Synchroniser le statut de la série avec l'état du tag "dernier tome"
+    $current_series_status = $data[$idx]['status'] ?? 'en cours';
+    $has_last = false;
+    foreach ($data[$idx]['volumes'] as $v) {
+        if (!empty($v['last'])) { $has_last = true; break; }
+    }
+
+    // Si on vient de cocher "dernier" et que la série n'est pas déjà terminée/abandonnée/en pause,
+    // on la passe à "terminée"
+    if ($has_last && $current_series_status === 'en cours') {
+        $data[$idx]['status'] = 'terminée';
+    }
+
+    // Si on vient de décocher le seul "dernier" et que la série était "terminée",
+    // on repasse à "en cours"
+    if (!$has_last && $current_series_status === 'terminée') {
+        $data[$idx]['status'] = 'en cours';
+    }
 
     return ['success' => true, 'data' => $data];
 }
