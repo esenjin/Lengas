@@ -118,6 +118,14 @@ function init_db(PDO $pdo): void {
         )
     ");
 
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS sessions (
+            id          TEXT PRIMARY KEY,
+            data        TEXT NOT NULL DEFAULT '',
+            last_active INTEGER NOT NULL DEFAULT 0
+        )
+    ");
+
     // Options par défaut si la table est vide
     $count = $pdo->query("SELECT COUNT(*) FROM options")->fetchColumn();
     if ((int)$count === 0) {
@@ -135,6 +143,70 @@ function init_db(PDO $pdo): void {
             $stmt->execute([$k, $v]);
         }
     }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Gestionnaire de sessions SQLite
+// ──────────────────────────────────────────────────────────────────────────────
+class SqliteSessionHandler implements SessionHandlerInterface {
+    private PDO $db;
+    private int $lifetime;
+
+    public function __construct(PDO $db, int $lifetime) {
+        $this->db       = $db;
+        $this->lifetime = $lifetime;
+    }
+
+    public function open(string $path, string $name): bool { return true; }
+    public function close(): bool { return true; }
+
+    public function read(string $id): string|false {
+        $stmt = $this->db->prepare(
+            "SELECT data FROM sessions WHERE id = ? AND last_active >= ?"
+        );
+        $stmt->execute([$id, time() - $this->lifetime]);
+        $row = $stmt->fetch();
+        return $row ? $row['data'] : '';
+    }
+
+    public function write(string $id, string $data): bool {
+        $stmt = $this->db->prepare(
+            "INSERT INTO sessions (id, data, last_active)
+             VALUES (?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET data = excluded.data, last_active = excluded.last_active"
+        );
+        return $stmt->execute([$id, $data, time()]);
+    }
+
+    public function destroy(string $id): bool {
+        return $this->db->prepare("DELETE FROM sessions WHERE id = ?")
+                        ->execute([$id]);
+    }
+
+    public function gc(int $max_lifetime): int|false {
+        $stmt = $this->db->prepare(
+            "DELETE FROM sessions WHERE last_active < ?"
+        );
+        $stmt->execute([time() - $this->lifetime]);
+        return $stmt->rowCount();
+    }
+}
+
+/**
+ * A appeler avant tout session_start().
+ * Configure le handler SQLite + les parametres du cookie (7 jours, HTTPS).
+ */
+function register_session_handler(): void {
+    $lifetime = 7 * 24 * 60 * 60; // 7 jours
+    $handler  = new SqliteSessionHandler(get_db(), $lifetime);
+    session_set_save_handler($handler, true);
+    session_set_cookie_params([
+        'lifetime' => $lifetime,
+        'path'     => '/',
+        'secure'   => true,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

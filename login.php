@@ -2,23 +2,13 @@
 require 'config.php';
 $options = load_options();
 
-const SESSION_LIFETIME = 7 * 24 * 60 * 60; // 7 jours en secondes
-
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     if (check_password($password)) {
-        ini_set('session.gc_maxlifetime', SESSION_LIFETIME);
-        session_set_cookie_params([
-            'lifetime' => SESSION_LIFETIME,
-            'path'     => '/',
-            'secure'   => true,
-            'httponly' => true,
-            'samesite' => 'Lax',
-        ]);
+        register_session_handler();
         session_start();
-        $_SESSION['logged_in']     = true;
-        $_SESSION['last_activity'] = time();
+        $_SESSION['logged_in'] = true;
         header('Location: admin.php');
         exit;
     } else {
