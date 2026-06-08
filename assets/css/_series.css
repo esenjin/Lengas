@@ -14,8 +14,6 @@
     display: grid;
     grid-template-columns: 150px 1fr;
     grid-template-rows: 150px auto;
-    overflow-y: auto;
-    max-height: 480px;
     border: var(--border-subtle);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
                 box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
@@ -61,7 +59,7 @@
     width: 150px;
     height: 150px;
     object-fit: cover;
-    border-radius: var(--border-radius-lg);
+    border-radius: var(--border-radius-lg) 0 0 0;
     display: block;
     flex-shrink: 0;
 }
@@ -83,11 +81,10 @@
 .series-info {
     grid-column: 2;
     grid-row: 1 / -1;
-    padding: 18px 20px;
+    padding: 18px 20px 14px;
     display: flex;
     flex-direction: column;
     min-width: 0;
-    overflow: hidden;
 }
 
 .series-info h2 {
@@ -178,14 +175,42 @@
     border-color: rgba(248, 113, 113, 0.2);
 }
 
+/* Conteneur des tomes (à l'intérieur de .series-info) */
+.volumes-container:not(:empty) {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 14px;
+    margin-top: 8px;
+}
+
 /* Liste des tomes */
 .volumes-list {
     list-style-type: none;
-    margin-top: 10px;
+    margin-top: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
-    gap: 8px;
-    padding-bottom: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+    gap: 6px;
+    padding-bottom: 4px;
+    max-height: 260px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(192, 132, 252, 0.3) transparent;
+}
+
+.volumes-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.volumes-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.volumes-list::-webkit-scrollbar-thumb {
+    background: rgba(192, 132, 252, 0.3);
+    border-radius: 2px;
+}
+
+.volumes-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(192, 132, 252, 0.5);
 }
 
 .volumes-list li {
