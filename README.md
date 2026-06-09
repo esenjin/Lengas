@@ -91,17 +91,14 @@ Administration
 5. SUPPRIMER LES FICHIERS `generate_password.php` et `migrate.php`
 6. C'est tout bon ! Vous pouvez profiter.
 
-## Mise à jour depuis une version ≤ 3.0.0 (JSON → SQLite)
-1. Télécharger la dernière publication
-2. SUPPRIMER LE FICHIER `generate_password.php` de l'archive avant de téléverser
-3. Téléverser les fichiers sur votre serveur **sans supprimer** le dossier `bdd/` existant
-4. Accéder à `migrate.php` depuis votre navigateur et cliquer sur **Lancer la migration**
-5. Une fois la migration terminée, SUPPRIMER LE FICHIER `migrate.php` de votre serveur
-6. Bien joué, c'est à jour !
+## Mise à jour depuis d'anciennes versions majeures
+NE JAMAIS SAUTER PLUSIEURS VERSIONS MAJEURES, merci de les faire une par une. D'abord de 1.x vers 2.0, puis 2.0 vers 3.0 par exemple.
+- 1.x vers 2.0 suivre les instructions de [la publication de la version](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/2.0.0).
+- 2.x vers 3.0 suivre les instructions de [la publication de la version](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.0.0).
 
 ## Mise à jour depuis une version ≥ 3.0.0
 1. Télécharger la dernière publication
-2. SUPPRIMER LES FICHIER `generate_password.php` et `migrate.php` ainsi que le dossier `uploads/` de l'archive
+2. SUPPRIMER LE FICHIER `generate_password.php` ainsi que le dossier `uploads/` de l'archive
 3. Téléverser les fichiers/dossiers restants sur votre serveur (écraser ceux présents)
 4. Bien joué, c'est à jour !
 
