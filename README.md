@@ -96,12 +96,6 @@ NE JAMAIS SAUTER PLUSIEURS VERSIONS MAJEURES, merci de les faire une par une. D'
 - 1.x vers 2.0 suivre les instructions de [la publication de la version](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/2.0.0).
 - 2.x vers 3.0 suivre les instructions de [la publication de la version](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.0.0).
 
-## Mise à jour depuis une version ≥ 3.0.0
-1. Télécharger la dernière publication
-2. SUPPRIMER LE FICHIER `generate_password.php` ainsi que le dossier `uploads/` de l'archive
-3. Téléverser les fichiers/dossiers restants sur votre serveur (écraser ceux présents)
-4. Bien joué, c'est à jour !
-
 ## Importer une base de données
 1. Créer une sauvegarde avec l'outil dédié (modale "Outils")
 2. Extraire l'archive
