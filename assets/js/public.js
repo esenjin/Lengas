@@ -146,7 +146,7 @@ document.querySelectorAll('.series-card').forEach(card => {
         const series = seriesData[seriesIndex];
 
         document.getElementById('modal-series-title').textContent = series.name;
-        document.getElementById('modal-series-image').src = series.image || 'logo.png';
+        document.getElementById('modal-series-image').src = series.image || 'assets/img/logo.png';
         document.getElementById('modal-series-author').textContent = series.author;
         document.getElementById('modal-series-publisher').textContent = series.publisher;
         document.getElementById('modal-series-other-contributors').textContent = series.other_contributors && series.other_contributors.filter(i => i.trim()).length > 0 ? series.other_contributors.filter(i => i.trim()).join(', ') : 'aucun';
@@ -497,7 +497,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         seriesCard.addEventListener('click', function() {
                             const s = seriesData[this.dataset.seriesIndex];
                             document.getElementById('modal-series-title').textContent = s.name;
-                            document.getElementById('modal-series-image').src = s.image || 'logo.png';
+                            document.getElementById('modal-series-image').src = s.image || 'assets/img/logo.png';
                             document.getElementById('modal-series-author').textContent = s.author;
                             document.getElementById('modal-series-publisher').textContent = s.publisher;
                             document.getElementById('modal-series-other-contributors').textContent = s.other_contributors && s.other_contributors.filter(i => i.trim()).length > 0 ? s.other_contributors.filter(i => i.trim()).join(', ') : 'aucun';

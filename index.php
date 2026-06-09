@@ -16,7 +16,7 @@ if ($options['private_mode']) {
         <title><?= htmlspecialchars($options['index_page_title']) ?></title>
         <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
         <meta property="og:image" content="logo.png">
-        <link rel="icon" type="image/x-icon" href="favicon.ico">
+        <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
         <link rel="stylesheet" href="assets/css/main.css">
     </head>
     <body>
@@ -340,7 +340,7 @@ function get_latest_version_from_gitea() {
                     $read_volumes = count(array_filter($series['volumes'] ?? [], fn($v) => $v['status'] === 'terminé'));
                 ?>
                     <div class="series-card <?= isset($series['mature']) && $series['mature'] ? 'mature' : '' ?> <?= isset($series['favorite']) && $series['favorite'] ? 'favorite' : '' ?>" data-series-index="<?= $series_index ?>">
-                        <img class="series-image" src="<?= !empty($series['image']) && file_exists($series['image']) ? $series['image'] : 'logo.png' ?>" alt="<?= $series['name'] ?? '' ?>" loading="lazy">
+                        <img class="series-image" src="<?= !empty($series['image']) && file_exists($series['image']) ? $series['image'] : 'assets/img/logo.png' ?>" alt="<?= $series['name'] ?? '' ?>" loading="lazy">
                         <div class="series-info">
                             <h2><?= $series['name'] ?? '' ?></h2>
                             <p><strong>Auteur :</strong> <?= $series['author'] ?? '' ?></p>
@@ -390,7 +390,7 @@ function get_latest_version_from_gitea() {
             <h2>Légende du site</h2>
             <div class="legend-content">
                 <div class="legend-item">
-                    <img src="logo.png" alt="Contenu mature" class="mature-thumbnail"><br>
+                    <img src="assets/img/logo.png" alt="Contenu mature" class="mature-thumbnail"><br>
                     <span>Vignette floutée : Contenu mature</span>
                 </div><br>
                 <div class="legend-item">

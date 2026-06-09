@@ -320,7 +320,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
             $_SESSION['error_message'] = "Seuls le PNG est autorisés pour le logo.";
         } else {
             // Chemin absolu vers logo.png
-            $logo_path = __DIR__ . '/logo.png';
+            $logo_path = __DIR__ . '/assets/img/logo.png';
 
             // Supprimer l'ancien logo.png s'il existe
             if (file_exists($logo_path)) {
@@ -884,8 +884,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($options['admin_page_title']) ?></title>
     <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
-    <meta property="og:image" content="logo.png">
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <meta property="og:image" content="assets/img/logo.png">
+    <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
 </head>
 <body>
@@ -1442,9 +1442,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                         <input type="file" id="default_logo" name="default_logo" accept="image/png">
                         <p class="hint">L'image téléversée remplacera le fichier logo.png actuel (PNG obligatoire).</p>
                         <p class="hint">Vignette par défaut actuelle :</p>
-                        <?php if (file_exists('logo.png')): ?>
+                        <?php if (file_exists('assets/img/logo.png')): ?>
                             <div>
-                                <img src="logo.png?v=<?= time() ?>" alt="Logo actuel" style="max-width: 100px; max-height: 100px;">
+                                <img src="assets/img/logo.png?v=<?= time() ?>" alt="Logo actuel" style="max-width: 100px; max-height: 100px;">
                             </div>
                         <?php endif; ?>
                         <br>
