@@ -96,16 +96,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         }
 
         // Référence : Anilist uniquement
-        $av = $volumes_by_anilist[$series['anilist_id']] ?? null;
-        if ($av !== null) {
-            $ref_volumes = (int)$av;
-            $source      = 'anilist';
+        // array_key_exists distingue : clé absente (erreur réseau/quota) vs valeur null (série en cours)
+        if (array_key_exists($series['anilist_id'], $volumes_by_anilist)) {
+            $av = $volumes_by_anilist[$series['anilist_id']];
+            if ($av !== null && (int)$av > 0) {
+                $ref_volumes = (int)$av;
+                $source      = 'anilist';
+            } else {
+                // Anilist répond mais n'indique pas de nombre de tomes : publication en cours
+                $failed_series[] = [
+                    'name'   => $series['name'],
+                    'author' => $series['author'] ?? '',
+                    'ref'    => 'anilist',
+                    'reason' => 'Publication en cours — nombre de tomes non encore renseigné sur Anilist',
+                ];
+                continue;
+            }
         } else {
+            // Clé absente : erreur réseau ou quota Anilist dépassé
             $failed_series[] = [
                 'name'   => $series['name'],
                 'author' => $series['author'] ?? '',
                 'ref'    => 'anilist',
-                'reason' => 'Données Anilist indisponibles',
+                'reason' => 'Erreur de récupération Anilist (quota dépassé ou erreur réseau)',
             ];
             continue;
         }
@@ -1122,6 +1135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                 <span class="close-modal" id="close-incomplete-series-modal">&times;</span>
                 <h2>Séries incomplètes</h2>
                 <p>Cet outil vous permet de trouver les séries pour lesquelles il vous manque des tomes, en comparant votre collection aux données de l'API Anilist.</p>
+                <p class="hint">⚠️ Limitations : Anilist ne renseigne le nombre de tomes que pour les séries dont la <strong>publication est terminée</strong>. Les séries en cours de publication apparaîtront dans la section "Non analysées". Les données sont en <strong>VO japonaise</strong> — un décalage avec les sorties VF françaises est possible.</p>
                 <button id="search-incomplete-series" class="button">Rechercher les séries incomplètes</button>
                 <div id="incomplete-series-results">
                     <!-- Les résultats seront affichés ici -->

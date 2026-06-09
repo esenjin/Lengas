@@ -144,9 +144,7 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
             const seriesDiv = document.createElement('div');
             seriesDiv.className = 'incomplete-series-item';
 
-            const srcLabel = series.ref_volumes_source === 'nautiljon'
-                ? '🇫🇷 Nautiljon VF'
-                : '🇯🇵 Anilist VO';
+            const srcLabel = '🇯🇵 Anilist VO';
             const refCount = series.ref_volumes ?? '?';
 
             let html = `
@@ -188,7 +186,7 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
                 <details class="summary-group" open>
                     <summary>
                         <span class="summary-badge summary-badge--warn">⚠ ${failed_series.length}</span>
-                        Analyse échouée — référence présente mais données indisponibles
+                        Non analysées — publication en cours ou données Anilist indisponibles
                     </summary>
                     <ul class="summary-list">
                         ${failed_series.map(s =>
@@ -203,7 +201,7 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
                 <details class="summary-group">
                     <summary>
                         <span class="summary-badge summary-badge--muted">— ${no_reference_series.length}</span>
-                        Non analysées — aucune URL Nautiljon ni ID Anilist renseigné
+                        Non analysées — aucun ID Anilist renseigné
                     </summary>
                     <ul class="summary-list">
                         ${no_reference_series.map(s =>

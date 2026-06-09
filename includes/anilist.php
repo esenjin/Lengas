@@ -60,8 +60,10 @@ function fetch_volumes_for_series_batch(array $series_ids, int $batch_size = 10)
         if ($data && isset($data['data'])) {
             foreach ($batch as $index => $id) {
                 $key = "media_$index";
-                if (isset($data['data'][$key]['volumes'])) {
-                    $results[$id] = $data['data'][$key]['volumes'];
+                // array_key_exists conserve les null (série en cours, volumes non renseignés)
+                // contrairement à isset() qui les ignorerait
+                if (array_key_exists($key, $data['data'])) {
+                    $results[$id] = $data['data'][$key]['volumes'] ?? null;
                 }
             }
         }
