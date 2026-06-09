@@ -33,14 +33,13 @@ function check_site_integrity(array $data): array {
 
     // 1. Existence des fichiers/dossiers
     $required_files = [
-        'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php',
+        'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php', '.htaccess',
         'assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js',
         'assets/js/admin/',
         'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php',
-        'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php',
+        'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php', 'fonctions/unread.php',
         'includes/anilist.php', 'includes/auth.php', 'includes/helpers.php', 'includes/nautiljon.php',
         'includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/',
-        'migrate.php',
     ];
     foreach ($required_files as $file) {
         $results['file_existence'][$file] = file_exists($file);
@@ -60,7 +59,8 @@ function check_site_integrity(array $data): array {
         'assets/js/admin/series.js', 'assets/js/admin/volumes.js', 'assets/js/admin/wishlist.js',
         'assets/js/admin/loans.js',  'assets/js/admin/tools.js',   'assets/js/admin/autocomplete.js',
         'assets/js/admin/modals.js', 'assets/js/admin/pagination.js', 'assets/js/admin/main.js',
-        'assets/js/admin/read.js',
+        'assets/js/admin/read.js',   'assets/js/admin/unread.js',
+        'assets/js/admin/nautiljon.js',
     ];
     foreach ($required_js_files as $file) {
         $results['file_existence'][$file] = file_exists($file);
@@ -70,7 +70,9 @@ function check_site_integrity(array $data): array {
     $results['file_existence']['bdd/lengas.db'] = file_exists('bdd/lengas.db');
 
     // 2. Fichiers interdits
-    $results['forbidden_files']['generate_password.php'] = !file_exists('generate_password.php');
+    $results['forbidden_files']['generate_password.php'] = !file_exists(__DIR__ . '/../generate_password.php');
+    $results['forbidden_files']['migrate.php']           = !file_exists(__DIR__ . '/../migrate.php');
+    $results['forbidden_files']['fix_series_status.php'] = !file_exists(__DIR__ . '/../fix_series_status.php');
 
     // 3. Permissions
     $checks = [
@@ -319,11 +321,26 @@ function clean_orphaned_images(): array {
 
 // Supprimer les fichiers interdits
 function clean_forbidden_files(): array {
-    $forbidden_files = ['generate_password.php'];
+    $forbidden_files = ['generate_password.php', 'migrate.php', 'fix_series_status.php'];
     $deleted_files   = [];
+    $failed_files    = [];
 
     foreach ($forbidden_files as $file) {
-        if (file_exists($file) && unlink($file)) $deleted_files[] = $file;
+        $path = __DIR__ . '/../' . $file;
+        if (file_exists($path)) {
+            if (unlink($path)) {
+                $deleted_files[] = $file;
+            } else {
+                $failed_files[] = $file;
+            }
+        }
+    }
+
+    if (!empty($failed_files)) {
+        return [
+            'success' => false,
+            'message' => 'Impossible de supprimer : ' . implode(', ', $failed_files) . '. Vérifiez les permissions du fichier sur le serveur.',
+        ];
     }
 
     return [
