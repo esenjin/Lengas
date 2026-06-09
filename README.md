@@ -88,7 +88,7 @@ Administration
 2. Éditer le fichier `generate_password.php` en y indiquant le mot de passe souhaité
 3. Téléverser les fichiers sur votre serveur
 4. Exécuter le fichier `generate_password.php`
-5. SUPPRIMER LES FICHIERS `generate_password.php` et `migrate.php`
+5. SUPPRIMER LE FICHIER `generate_password.php`
 6. C'est tout bon ! Vous pouvez profiter.
 
 ## Mise à jour depuis d'anciennes versions majeures
