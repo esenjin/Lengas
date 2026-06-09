@@ -84,175 +84,180 @@ setTimeout(function() {
 // Recherche des séries incomplètes
 document.getElementById('search-incomplete-series')?.addEventListener('click', function() {
     const resultsDiv = document.getElementById('incomplete-series-results');
-    resultsDiv.innerHTML = '<p>Recherche en cours...</p>';
+    const allSeries  = window.seriesData || [];
+    const total      = allSeries.length;
+
+    // Animation de progression : cycle sur les noms de séries
+    let current = 0;
+    const speed = total > 0 ? Math.max(30, Math.min(200, 8000 / total)) : 80;
+
+    const progressInterval = setInterval(() => {
+        if (current >= total) { clearInterval(progressInterval); return; }
+        const name = allSeries[current]?.name ?? '';
+        resultsDiv.innerHTML =
+            `<p class="analysis-progress">` +
+            `<span class="progress-spinner"></span>` +
+            `Analyse\u00a0en\u00a0cours\u00a0: <strong>${name}</strong> ` +
+            `<span class="progress-count">(${current + 1}\u00a0/\u00a0${total})</span>` +
+            `</p>`;
+        current++;
+    }, speed);
 
     fetch('admin.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'action=get_incomplete_series'
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.text();
-    })
-    .then(text => {
-        try {
-            const data = JSON.parse(text);
-            if (data.success) {
-                displayIncompleteSeries(data.incomplete_series);
-            } else {
-                resultsDiv.innerHTML = '<p>Une erreur est survenue lors de la recherche des séries incomplètes.</p>';
-            }
-        } catch (error) {
-            console.error('Erreur de parsing JSON:', error);
+    .then(r => { if (!r.ok) throw new Error('Network error'); return r.json(); })
+    .then(data => {
+        clearInterval(progressInterval);
+        if (data.success) {
+            displayIncompleteSeries(
+                data.incomplete_series    || [],
+                data.no_reference_series  || [],
+                data.failed_series        || []
+            );
+        } else {
             resultsDiv.innerHTML = '<p>Une erreur est survenue lors de la recherche des séries incomplètes.</p>';
         }
     })
-    .catch(error => {
-        console.error('Erreur:', error);
+    .catch(err => {
+        clearInterval(progressInterval);
+        console.error('Erreur:', err);
         resultsDiv.innerHTML = '<p>Une erreur est survenue lors de la recherche des séries incomplètes. Veuillez réessayer plus tard.</p>';
     });
 });
 
 // Affichage des séries incomplètes
-function displayIncompleteSeries(incomplete_series) {
+function displayIncompleteSeries(incomplete_series, no_reference_series, failed_series) {
+    no_reference_series = no_reference_series || [];
+    failed_series       = failed_series       || [];
+
     const resultsDiv = document.getElementById('incomplete-series-results');
     resultsDiv.innerHTML = '';
 
     if (incomplete_series.length === 0) {
-        resultsDiv.innerHTML = '<p>Aucune série incomplète trouvée.</p>';
-        return;
+        resultsDiv.innerHTML += '<p>Aucune série incomplète trouvée.</p>';
+    } else {
+        incomplete_series.forEach(series => {
+            const seriesDiv = document.createElement('div');
+            seriesDiv.className = 'incomplete-series-item';
+
+            const srcLabel = series.ref_volumes_source === 'nautiljon'
+                ? '🇫🇷 Nautiljon VF'
+                : '🇯🇵 Anilist VO';
+            const refCount = series.ref_volumes ?? '?';
+
+            let html = `
+                <h3>${series.name}</h3>
+                <p><strong>Auteur :</strong> ${series.author}</p>
+                <p><strong>Éditeur :</strong> ${series.publisher}</p>
+                <p><strong>Tomes possédés :</strong> ${series.volumes.length} / ${refCount} <small style="opacity:.6">(${srcLabel})</small></p>
+            `;
+
+            if (series.missing_volumes && series.missing_volumes.length > 0) {
+                html += `<p><strong>Tomes manquants :</strong> ${series.missing_volumes.join(', ')}</p>`;
+            } else if (series.has_more_volumes) {
+                html += `<p><strong>Tomes manquants :</strong> Aucun</p>`;
+                html += `<p class="issues-list"><strong>Attention :</strong> Vous possédez plus de tomes que la référence (${srcLabel}).</p>`;
+            }
+
+            html += `<div class="missing-volumes-actions">`;
+            if (series.missing_volumes && series.missing_volumes.length > 0) {
+                series.missing_volumes.forEach(vol => {
+                    html += `<button class="add-missing-volume" data-series-id="${series.id}" data-volume-number="${vol}">+ Tome ${vol}</button>`;
+                });
+                html += `<button class="add-all-missing-volumes" data-series-id="${series.id}" data-missing-volumes="${series.missing_volumes.join(',')}">Tout ajouter</button>`;
+            }
+            html += `</div>`;
+
+            seriesDiv.innerHTML = html;
+            resultsDiv.appendChild(seriesDiv);
+        });
     }
 
-    incomplete_series.forEach(series => {
-        const seriesDiv = document.createElement('div');
-        seriesDiv.className = 'incomplete-series-item';
+    // Récapitulatif : séries en échec + sans référence
+    if (failed_series.length > 0 || no_reference_series.length > 0) {
+        const summaryDiv = document.createElement('div');
+        summaryDiv.className = 'analysis-summary';
+        let summaryHtml = "<h3 class=\"summary-title\">Récapitulatif de l'analyse</h3>";
 
-        const srcLabel = series.ref_volumes_source === 'nautiljon'
-            ? '🇫🇷 Nautiljon VF'
-            : '🇯🇵 Anilist VO';
-        const refCount = series.ref_volumes ?? '?';
-
-        let html = `
-            <h3>${series.name}</h3>
-            <p><strong>Auteur :</strong> ${series.author}</p>
-            <p><strong>Éditeur :</strong> ${series.publisher}</p>
-            <p><strong>Tomes possédés :</strong> ${series.volumes.length} / ${refCount} <small style="opacity:.6">(source : ${srcLabel})</small></p>
-        `;
-
-        if (series.missing_volumes && series.missing_volumes.length > 0) {
-            html += `<p><strong>Tomes manquants :</strong> ${series.missing_volumes.join(', ')}</p>`;
-        } else if (series.has_more_volumes) {
-            html += `<p><strong>Tomes manquants :</strong> Aucun</p>`;
-            html += `<p class="issues-list"><strong>Attention :</strong> Votre série contient plus de tomes que la source de référence (${srcLabel}).</p>`;
+        if (failed_series.length > 0) {
+            summaryHtml += `
+                <details class="summary-group" open>
+                    <summary>
+                        <span class="summary-badge summary-badge--warn">⚠ ${failed_series.length}</span>
+                        Analyse échouée — référence présente mais données indisponibles
+                    </summary>
+                    <ul class="summary-list">
+                        ${failed_series.map(s =>
+                            `<li><strong>${s.name}</strong>${s.author ? ' — ' + s.author : ''} <span class="summary-reason">${s.reason ?? ''}</span></li>`
+                        ).join('')}
+                    </ul>
+                </details>`;
         }
 
-        html += `<div class="missing-volumes-actions">`;
-
-        if (series.missing_volumes && series.missing_volumes.length > 0) {
-            series.missing_volumes.forEach(volume => {
-                html += `
-                    <button class="add-missing-volume" data-series-id="${series.id}" data-volume-number="${volume}">
-                        + Tome ${volume}
-                    </button>
-                `;
-            });
-
-            html += `
-                <button class="add-all-missing-volumes" data-series-id="${series.id}" data-missing-volumes="${series.missing_volumes.join(',')}">
-                    Tout ajouter
-                </button>
-            `;
+        if (no_reference_series.length > 0) {
+            summaryHtml += `
+                <details class="summary-group">
+                    <summary>
+                        <span class="summary-badge summary-badge--muted">— ${no_reference_series.length}</span>
+                        Non analysées — aucune URL Nautiljon ni ID Anilist renseigné
+                    </summary>
+                    <ul class="summary-list">
+                        ${no_reference_series.map(s =>
+                            `<li><strong>${s.name}</strong>${s.author ? ' — ' + s.author : ''}</li>`
+                        ).join('')}
+                    </ul>
+                </details>`;
         }
 
-        html += `</div>`;
+        summaryDiv.innerHTML = summaryHtml;
+        resultsDiv.appendChild(summaryDiv);
+    }
 
-        seriesDiv.innerHTML = html;
-        resultsDiv.appendChild(seriesDiv);
-    });
+    // Boutons d'ajout de tomes
+    function refreshAfterAdd() {
+        fetch('admin.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=get_incomplete_series'
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) displayIncompleteSeries(d.incomplete_series || [], d.no_reference_series || [], d.failed_series || []);
+        });
+    }
 
-    // Ajouter les événements aux boutons
-    document.querySelectorAll('.add-missing-volume').forEach(button => {
-        button.addEventListener('click', function() {
-            const seriesId = this.dataset.seriesId;
-            const volumeNumber = parseInt(this.dataset.volumeNumber);
-
+    document.querySelectorAll('.add-missing-volume').forEach(btn => {
+        btn.addEventListener('click', function() {
             fetch('admin.php', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `action=add_missing_volume&series_id=${seriesId}&volume_number=${volumeNumber}`
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `action=add_missing_volume&series_id=${this.dataset.seriesId}&volume_number=${this.dataset.volumeNumber}`
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Tome ajouté avec succès !');
-                    fetch('admin.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: 'action=get_incomplete_series'
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            displayIncompleteSeries(data.incomplete_series);
-                        }
-                    });
-                } else {
-                    alert('Une erreur est survenue lors de l\'ajout du tome.');
-                }
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) { alert('Tome ajouté avec succès !'); refreshAfterAdd(); }
+                else alert("Une erreur est survenue lors de l'ajout du tome.");
             })
-            .catch(error => {
-                console.error('Erreur:', error);
-                alert('Une erreur est survenue lors de l\'ajout du tome.');
-            });
+            .catch(() => alert("Une erreur est survenue lors de l'ajout du tome."));
         });
     });
 
-    document.querySelectorAll('.add-all-missing-volumes').forEach(button => {
-        button.addEventListener('click', function() {
-            const seriesId = this.dataset.seriesId;
-            const missingVolumes = this.dataset.missingVolumes.split(',').map(Number);
-
+    document.querySelectorAll('.add-all-missing-volumes').forEach(btn => {
+        btn.addEventListener('click', function() {
             fetch('admin.php', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `action=add_all_missing_volumes&series_id=${seriesId}&missing_volumes=${missingVolumes.join(',')}`
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `action=add_all_missing_volumes&series_id=${this.dataset.seriesId}&missing_volumes=${this.dataset.missingVolumes}`
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Tomes ajoutés avec succès !');
-                    fetch('admin.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: 'action=get_incomplete_series'
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            displayIncompleteSeries(data.incomplete_series);
-                        }
-                    });
-                } else {
-                    alert('Une erreur est survenue lors de l\'ajout des tomes.');
-                }
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) { alert('Tomes ajoutés avec succès !'); refreshAfterAdd(); }
+                else alert("Une erreur est survenue lors de l'ajout des tomes.");
             })
-            .catch(error => {
-                console.error('Erreur:', error);
-                alert('Une erreur est survenue lors de l\'ajout des tomes.');
-            });
+            .catch(() => alert("Une erreur est survenue lors de l'ajout des tomes."));
         });
     });
 }

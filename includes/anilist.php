@@ -112,72 +112,108 @@ function get_series_volumes_from_anilist($anilist_id, bool $force_refresh = fals
 }
 
 // Fonction pour obtenir les séries incomplètes
-// Priorité : tomes VF Nautiljon (si disponible) → tomes VO Anilist (fallback)
+// Retourne un tableau associatif avec 3 catégories :
+//   incomplete   → séries avec tomes manquants ou en surplus
+//   no_reference → séries sans URL Nautiljon ni ID Anilist
+//   failed       → séries avec référence mais analyse impossible
 function get_incomplete_series(array $data): array {
     $incomplete_series        = [];
     $series_with_more_volumes = [];
+    $no_reference_series      = [];
+    $failed_series            = [];
 
-    // Collecter les anilist_ids des séries SANS données Nautiljon
+    // Collecter les anilist_ids des séries SANS données Nautiljon valides
     $anilist_ids_needed = [];
     foreach ($data as $series) {
-        $has_nautiljon = !empty($series['nautiljon_url'])
-                      && isset($series['nautiljon_vf_volumes'])
-                      && $series['nautiljon_vf_volumes'] !== null;
-        if (!$has_nautiljon && !empty($series['anilist_id'])) {
+        $has_valid_nautiljon = !empty($series['nautiljon_url'])
+                            && isset($series['nautiljon_vf_volumes'])
+                            && $series['nautiljon_vf_volumes'] !== null;
+        if (!$has_valid_nautiljon && !empty($series['anilist_id'])) {
             $anilist_ids_needed[] = $series['anilist_id'];
         }
     }
-
     $volumes_by_anilist = fetch_volumes_for_series_batch(array_unique($anilist_ids_needed));
 
     foreach ($data as $series) {
         $ref_volumes = null;
         $source      = null;
 
-        // Source 1 : Nautiljon VF
-        if (!empty($series['nautiljon_url'])
-            && isset($series['nautiljon_vf_volumes'])
-            && $series['nautiljon_vf_volumes'] !== null) {
-            $ref_volumes = (int)$series['nautiljon_vf_volumes'];
-            $source      = 'nautiljon';
+        // ── Cas 1 : aucune référence ──────────────────────────────────────────
+        if (empty($series['nautiljon_url']) && empty($series['anilist_id'])) {
+            $no_reference_series[] = [
+                'name'   => $series['name'],
+                'author' => $series['author'] ?? '',
+            ];
+            continue;
         }
-        // Source 2 : Anilist VO (fallback)
+
+        // ── Cas 2 : URL Nautiljon présente ────────────────────────────────────
+        if (!empty($series['nautiljon_url'])) {
+            if (isset($series['nautiljon_vf_volumes']) && $series['nautiljon_vf_volumes'] !== null) {
+                $ref_volumes = (int)$series['nautiljon_vf_volumes'];
+                $source      = 'nautiljon';
+            } else {
+                // URL présente mais pas de données (jamais scrappé ou scrape échoué)
+                $last = (int)($series['nautiljon_last_checked'] ?? 0);
+                $failed_series[] = [
+                    'name'   => $series['name'],
+                    'author' => $series['author'] ?? '',
+                    'ref'    => 'nautiljon',
+                    'reason' => $last === 0
+                                ? 'En attente du premier scrape Nautiljon'
+                                : 'Scrape Nautiljon sans résultat',
+                ];
+                continue;
+            }
+        }
+        // ── Cas 3 : ID Anilist seul (fallback) ───────────────────────────────
         elseif (!empty($series['anilist_id'])) {
-            $anilist_volumes = $volumes_by_anilist[$series['anilist_id']] ?? null;
-            if ($anilist_volumes !== null) {
-                $ref_volumes = (int)$anilist_volumes;
+            $av = $volumes_by_anilist[$series['anilist_id']] ?? null;
+            if ($av !== null) {
+                $ref_volumes = (int)$av;
                 $source      = 'anilist';
+            } else {
+                $failed_series[] = [
+                    'name'   => $series['name'],
+                    'author' => $series['author'] ?? '',
+                    'ref'    => 'anilist',
+                    'reason' => 'Données Anilist indisponibles',
+                ];
+                continue;
             }
         }
 
         if ($ref_volumes === null) continue;
 
-        $owned_volumes = count($series['volumes']);
+        $owned_volumes               = count($series['volumes']);
         $series['ref_volumes_source'] = $source;
         $series['ref_volumes']        = $ref_volumes;
 
         if ($owned_volumes < $ref_volumes) {
-            $missing_volumes = [];
+            $missing = [];
             for ($i = $owned_volumes + 1; $i <= $ref_volumes; $i++) {
-                $missing_volumes[] = $i;
+                $missing[] = $i;
             }
-            $series['missing_volumes'] = $missing_volumes;
+            $series['missing_volumes'] = $missing;
             $incomplete_series[] = $series;
         } elseif ($owned_volumes > $ref_volumes) {
             $series['has_more_volumes'] = true;
             $series['missing_volumes']  = [];
             $series_with_more_volumes[] = $series;
         }
+        // else: série complète → non retournée
     }
 
-    $result = array_merge($incomplete_series, $series_with_more_volumes);
-    foreach ($result as &$serie) {
-        if (!isset($serie['missing_volumes'])) {
-            $serie['missing_volumes'] = [];
-        }
+    $incomplete = array_merge($incomplete_series, $series_with_more_volumes);
+    foreach ($incomplete as &$s) {
+        if (!isset($s['missing_volumes'])) $s['missing_volumes'] = [];
     }
 
-    return $result;
+    return [
+        'incomplete'   => $incomplete,
+        'no_reference' => $no_reference_series,
+        'failed'       => $failed_series,
+    ];
 }
 
 // Fonction pour ajouter tous les tomes manquants à une série

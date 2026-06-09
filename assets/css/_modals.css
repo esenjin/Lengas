@@ -745,3 +745,123 @@
     font-style: italic;
     font-size: 0.9em;
 }
+
+/* ── Animation de progression analyse séries incomplètes ─────────────────── */
+.analysis-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: var(--background-medium);
+    border-radius: var(--border-radius);
+    border: var(--border-subtle);
+    font-size: 0.88rem;
+    color: var(--text-gray);
+}
+
+.analysis-progress strong {
+    color: var(--text-white);
+}
+
+.progress-count {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.progress-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,.15);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin-progress 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes spin-progress {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Récapitulatif d'analyse ─────────────────────────────────────────────── */
+.analysis-summary {
+    margin-top: 20px;
+    padding: 14px 16px;
+    background: var(--background-medium);
+    border-radius: var(--border-radius);
+    border: var(--border-subtle);
+}
+
+.summary-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-gray);
+    margin: 0 0 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.summary-group {
+    margin-bottom: 8px;
+}
+
+.summary-group summary {
+    cursor: pointer;
+    font-size: 0.86rem;
+    color: var(--text-gray);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    user-select: none;
+    list-style: none;
+}
+
+.summary-group summary::-webkit-details-marker { display: none; }
+
+.summary-group[open] summary {
+    margin-bottom: 6px;
+}
+
+.summary-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 99px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.summary-badge--warn {
+    background: var(--warning-subtle);
+    color: var(--warning-color);
+}
+
+.summary-badge--muted {
+    background: var(--background-lighter);
+    color: var(--text-muted);
+}
+
+.summary-list {
+    list-style: none;
+    padding: 0 0 0 10px;
+    margin: 0;
+    font-size: 0.84rem;
+    color: var(--text-gray);
+}
+
+.summary-list li {
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(255,255,255,.03);
+}
+
+.summary-list li:last-child {
+    border-bottom: none;
+}
+
+.summary-reason {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-style: italic;
+}

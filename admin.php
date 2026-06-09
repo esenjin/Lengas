@@ -53,9 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     switch ($action) {
         case 'get_incomplete_series':
             try {
-                $incomplete_series = get_incomplete_series($data);
-                $response['success'] = true;
-                $response['incomplete_series'] = $incomplete_series;
+                $result = get_incomplete_series($data);
+                $response['success']             = true;
+                $response['incomplete_series']   = $result['incomplete'];
+                $response['no_reference_series'] = $result['no_reference'];
+                $response['failed_series']       = $result['failed'];
             } catch (Exception $e) {
                 $response['success'] = false;
                 $response['message'] = "Impossible de récupérer les séries incomplètes. Veuillez réessayer plus tard.";
@@ -299,10 +301,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $options['custom_button_url'] = trim($_POST['custom_button_url'] ?? '');
     $options['custom_button_name2'] = trim($_POST['custom_button_name2'] ?? '');
     $options['custom_button_url2'] = trim($_POST['custom_button_url2'] ?? '');
-    $options['custom_button_name3']    = trim($_POST['custom_button_name3'] ?? '');
-    $options['custom_button_url3']     = trim($_POST['custom_button_url3'] ?? '');
-    $options['browserless_token']      = trim($_POST['browserless_token'] ?? '');
-    $options['nautiljon_cache_days']   = max(1, (int)($_POST['nautiljon_cache_days'] ?? 30));
+    $options['custom_button_name3']   = trim($_POST['custom_button_name3'] ?? '');
+    $options['custom_button_url3']    = trim($_POST['custom_button_url3'] ?? '');
+    $options['browserless_token']     = trim($_POST['browserless_token'] ?? '');
+    $options['nautiljon_cache_days']  = max(1, (int)($_POST['nautiljon_cache_days'] ?? 30));
 
     $admin_password = trim($_POST['admin_password'] ?? '');
 
@@ -648,7 +650,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
         exit;
     }
 
-    // Calcul des notifications — priorité : tomes VF Nautiljon > tomes VO Anilist
+    // Notifications — priorité : tomes VF Nautiljon > tomes VO Anilist
     $ref_volumes = null;
     if (!empty($series['nautiljon_url'])
         && isset($series['nautiljon_vf_volumes'])
@@ -907,7 +909,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
 
     <div class="container">
         <div class="logout-container">
-            <div id="nautiljon-indicator" class="nautiljon-indicator" style="display:none" title="">⏳</div>
+            <div id="nautiljon-indicator" class="nautiljon-indicator" style="display:none">
+                <span class="nautiljon-indicator-emoji">⏳</span>
+                <span id="nautiljon-indicator-label"></span>
+            </div>
             <a href="logout.php" class="logout-button" title="Déconnexion">
                 <img src="https://api.iconify.design/mdi/logout.svg?color=white" alt="Déconnexion" width="24" height="24">
             </a>
@@ -1043,8 +1048,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
             <div class="modal-content">
                 <span class="close-modal" id="close-incomplete-series-modal">&times;</span>
                 <h2>Séries incomplètes</h2>
-                <p>Cet outil vous permet de trouver les séries dont la publication est terminée, pour lesquelles il vous manque des tomes.</p>
-                <p>Les séries avec une URL Nautiljon utilisent les données VF françaises (🇫🇷). Les autres utilisent l'API Anilist (données VO japonaises, décalage possible).</p>
+                <p>Cet outil vous permet de trouver les séries pour lesquelles il vous manque des tomes.</p>
+                <p>Les séries avec une URL Nautiljon comparent vos tomes aux publications VF françaises (🇫🇷), y compris pour les séries en cours. Les autres utilisent l'API Anilist (données VO japonaises) — limité aux séries terminées, décalage possible avec la France.</p>
                 <button id="search-incomplete-series" class="button">Rechercher les séries incomplètes</button>
                 <div id="incomplete-series-results">
                     <!-- Les résultats seront affichés ici -->
