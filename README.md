@@ -123,7 +123,6 @@ lengas/
 ├── config.php           # Configuration du site
 ├── login.php            # Connexion
 ├── logout.php           # Déconnexion
-├── migrate.php          # Migration JSON → SQLite (à supprimer après usage)
 ├── .htaccess
 ├── assets/
 │   ├── css/             # Fichiers CSS
@@ -136,38 +135,45 @@ lengas/
 │   │   ├── _public.css
 │   │   ├── _responsive.css
 │   │   ├── _series.css
+│   │   ├── _stats.css
 │   │   ├── _utils.css
 │   │   ├── _variables.css
 │   │   └── main.css
+│   ├── img/             # Images statiques
+│   │   ├── anilistlogo.png
+│   │   ├── favicon.ico
+│   │   ├── logo.png
+│   │   └── nautiljonlogo.png
 │   └── js/              # Scripts JavaScript
 │       ├── admin/
-│       │   ├── modals.js
 │       │   ├── autocomplete.js
-│       │   ├── series.js
-│       │   ├── volumes.js
-│       │   ├── wishlist.js
 │       │   ├── loans.js
-│       │   ├── tools.js
-│       │   ├── unread.js
+│       │   ├── main.js
+│       │   ├── modals.js
+│       │   ├── nautiljon.js
 │       │   ├── pagination.js
 │       │   ├── read.js
-│       │   └── main.js
-│       ├── stats.js
-│       └── public.js
+│       │   ├── series.js
+│       │   ├── tools.js
+│       │   ├── unread.js
+│       │   ├── volumes.js
+│       │   └── wishlist.js
+│       ├── public.js
+│       └── stats.js
 ├── includes/
+│   ├── anilist.php       # API Anilist
 │   ├── auth.php          # Gestion de l'authentification et des sessions
 │   ├── helpers.php       # Fonctions utilitaires générales
-│   ├── anilist.php       # API Anilist
 │   └── nautiljon.php     # Intégration Nautiljon via Browserless.io
 ├── fonctions/
-│   ├── series.php        # Fonctions de gestion des séries
-│   ├── volumes.php       # Fonctions de gestion des tomes
-│   ├── wishlist.php      # Fonctions de gestion de la liste d'envies
 │   ├── loans.php         # Fonctions de gestion des prêts
-│   ├── read.php          # Fonctions de gestion des lues ailleurs
 │   ├── options.php       # Fonctions de gestion des options du site
+│   ├── read.php          # Fonctions de gestion des lues ailleurs
+│   ├── series.php        # Fonctions de gestion des séries
+│   ├── tools.php         # Fonctions de gestion des outils (sauvegardes, intégrité, etc.)
 │   ├── unread.php        # Fonctions de gestion des séries à lire
-│   └── tools.php         # Fonctions de gestion des outils (sauvegardes, intégrité, etc.)
+│   ├── volumes.php       # Fonctions de gestion des tomes
+│   └── wishlist.php      # Fonctions de gestion de la liste d'envies
 ├── uploads/             # Images des séries (chmod 0774)
 ├── saves/               # Sauvegardes de la base de données (chmod 0774)
 └── bdd/                 # Données (chmod 0774)
