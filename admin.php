@@ -45,6 +45,131 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+
+// ── Endpoint SSE : analyse des séries incomplètes avec progression ────────────
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'incomplete_series_stream') {
+    @ini_set('output_buffering', 'off');
+    @ini_set('zlib.output_compression', false);
+    while (ob_get_level()) ob_end_flush();
+
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('X-Accel-Buffering: no');
+
+    $sse = function(string $event, array $payload): void {
+        echo 'event: ' . $event . "\n";
+        echo 'data: ' . json_encode($payload) . "\n\n";
+        flush();
+    };
+
+    $opts       = load_options();
+    $token      = trim($opts['browserless_token'] ?? '');
+
+    $incomplete_series        = [];
+    $series_with_more_volumes = [];
+    $no_reference_series      = [];
+    $failed_series            = [];
+
+    $total   = count($data);
+    $current = 0;
+
+    $anilist_ids_needed = [];
+    foreach ($data as $series) {
+        $has_valid_nautiljon = !empty($series['nautiljon_url'])
+                            && isset($series['nautiljon_vf_volumes'])
+                            && $series['nautiljon_vf_volumes'] !== null;
+        if (!$has_valid_nautiljon && !empty($series['anilist_id'])) {
+            $anilist_ids_needed[] = $series['anilist_id'];
+        }
+    }
+    $volumes_by_anilist = fetch_volumes_for_series_batch(array_unique($anilist_ids_needed));
+
+    foreach ($data as $series) {
+        $current++;
+        $sse('progress', [
+            'current' => $current,
+            'total'   => $total,
+            'name'    => $series['name'],
+        ]);
+
+        $ref_volumes = null;
+        $source      = null;
+
+        if (empty($series['nautiljon_url']) && empty($series['anilist_id'])) {
+            $no_reference_series[] = ['name' => $series['name'], 'author' => $series['author'] ?? ''];
+            continue;
+        }
+
+        if (!empty($series['nautiljon_url'])) {
+            if (isset($series['nautiljon_vf_volumes']) && $series['nautiljon_vf_volumes'] !== null) {
+                $ref_volumes = (int)$series['nautiljon_vf_volumes'];
+                $source      = 'nautiljon';
+            } else {
+                $scraped = (!empty($token)) ? nautiljon_refresh_series($series['id']) : null;
+                if ($scraped !== null) {
+                    $ref_volumes = $scraped;
+                    $source      = 'nautiljon';
+                } else {
+                    $last = (int)($series['nautiljon_last_checked'] ?? 0);
+                    $failed_series[] = [
+                        'name'   => $series['name'],
+                        'author' => $series['author'] ?? '',
+                        'ref'    => 'nautiljon',
+                        'reason' => $last === 0
+                                    ? 'Premier scrape Nautiljon échoué (token Browserless manquant ou erreur réseau)'
+                                    : 'Scrape Nautiljon sans résultat',
+                    ];
+                    continue;
+                }
+            }
+        } elseif (!empty($series['anilist_id'])) {
+            $av = $volumes_by_anilist[$series['anilist_id']] ?? null;
+            if ($av !== null) {
+                $ref_volumes = (int)$av;
+                $source      = 'anilist';
+            } else {
+                $failed_series[] = [
+                    'name'   => $series['name'],
+                    'author' => $series['author'] ?? '',
+                    'ref'    => 'anilist',
+                    'reason' => 'Données Anilist indisponibles',
+                ];
+                continue;
+            }
+        }
+
+        if ($ref_volumes === null) continue;
+
+        $owned_volumes               = count($series['volumes']);
+        $series['ref_volumes_source'] = $source;
+        $series['ref_volumes']        = $ref_volumes;
+
+        if ($owned_volumes < $ref_volumes) {
+            $missing = [];
+            for ($i = $owned_volumes + 1; $i <= $ref_volumes; $i++) $missing[] = $i;
+            $series['missing_volumes'] = $missing;
+            $incomplete_series[] = $series;
+        } elseif ($owned_volumes > $ref_volumes) {
+            $series['has_more_volumes'] = true;
+            $series['missing_volumes']  = [];
+            $series_with_more_volumes[] = $series;
+        }
+    }
+
+    $incomplete = array_merge($incomplete_series, $series_with_more_volumes);
+    foreach ($incomplete as &$s) {
+        if (!isset($s['missing_volumes'])) $s['missing_volumes'] = [];
+    }
+
+    $sse('done', [
+        'success'             => true,
+        'incomplete_series'   => $incomplete,
+        'no_reference_series' => $no_reference_series,
+        'failed_series'       => $failed_series,
+    ]);
+    exit;
+}
+
 // Gestion des actions pour les séries incomplètes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];

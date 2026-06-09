@@ -14,6 +14,10 @@
     const INDICATOR  = document.getElementById('nautiljon-indicator');
     const LABEL      = document.getElementById('nautiljon-indicator-label');
 
+    // Index id→name depuis seriesData (fallback quand la carte n'est pas dans le DOM)
+    const NAME_MAP = {};
+    (window.seriesData || []).forEach(s => { if (s.id && s.name) NAME_MAP[s.id] = s.name; });
+
     if (!ENABLED || QUEUE.length === 0) return;
 
     // ── Helpers indicateur ────────────────────────────────────────────────────
@@ -58,8 +62,10 @@
     async function processQueue() {
         for (let i = 0; i < QUEUE.length; i++) {
             const seriesId = QUEUE[i];
-            const card     = document.querySelector(`.series-card[data-series-id="${CSS.escape(seriesId)}"]`);
-            const name     = card ? (card.querySelector('h2')?.textContent?.trim() || seriesId) : seriesId;
+            const card = document.querySelector(`.series-card[data-series-id="${CSS.escape(seriesId)}"]`);
+            const name = (card && card.querySelector('h2')?.textContent?.trim())
+                      || NAME_MAP[seriesId]
+                      || seriesId;
 
             indicatorShow(`Nautiljon (${i + 1}/${QUEUE.length}) — ${name}`);
 

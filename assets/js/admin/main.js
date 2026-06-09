@@ -84,33 +84,34 @@ setTimeout(function() {
 // Recherche des séries incomplètes
 document.getElementById('search-incomplete-series')?.addEventListener('click', function() {
     const resultsDiv = document.getElementById('incomplete-series-results');
-    const allSeries  = window.seriesData || [];
-    const total      = allSeries.length;
+    let current = 0, total = 0, currentName = '';
 
-    // Animation de progression : cycle sur les noms de séries
-    let current = 0;
-    const speed = total > 0 ? Math.max(30, Math.min(200, 8000 / total)) : 80;
-
-    const progressInterval = setInterval(() => {
-        if (current >= total) { clearInterval(progressInterval); return; }
-        const name = allSeries[current]?.name ?? '';
+    const renderProgress = () => {
+        const countText = total > 0
+            ? `${current} / ${total}`
+            : `${current}`;
         resultsDiv.innerHTML =
             `<p class="analysis-progress">` +
             `<span class="progress-spinner"></span>` +
-            `Analyse\u00a0en\u00a0cours\u00a0: <strong>${name}</strong> ` +
-            `<span class="progress-count">(${current + 1}\u00a0/\u00a0${total})</span>` +
+            `Analyse : <strong>${currentName || '…'}</strong> ` +
+            `<span class="progress-count">(${countText})</span>` +
             `</p>`;
-        current++;
-    }, speed);
+    };
+    renderProgress();
 
-    fetch('admin.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'action=get_incomplete_series'
-    })
-    .then(r => { if (!r.ok) throw new Error('Network error'); return r.json(); })
-    .then(data => {
-        clearInterval(progressInterval);
+    const es = new EventSource('admin.php?action=incomplete_series_stream');
+
+    es.addEventListener('progress', e => {
+        const d = JSON.parse(e.data);
+        current     = d.current;
+        total       = d.total;
+        currentName = d.name;
+        renderProgress();
+    });
+
+    es.addEventListener('done', e => {
+        es.close();
+        const data = JSON.parse(e.data);
         if (data.success) {
             displayIncompleteSeries(
                 data.incomplete_series    || [],
@@ -120,12 +121,12 @@ document.getElementById('search-incomplete-series')?.addEventListener('click', f
         } else {
             resultsDiv.innerHTML = '<p>Une erreur est survenue lors de la recherche des séries incomplètes.</p>';
         }
-    })
-    .catch(err => {
-        clearInterval(progressInterval);
-        console.error('Erreur:', err);
-        resultsDiv.innerHTML = '<p>Une erreur est survenue lors de la recherche des séries incomplètes. Veuillez réessayer plus tard.</p>';
     });
+
+    es.onerror = () => {
+        es.close();
+        resultsDiv.innerHTML = '<p>Une erreur est survenue lors de la recherche des séries incomplètes. Veuillez réessayer plus tard.</p>';
+    };
 });
 
 // Affichage des séries incomplètes

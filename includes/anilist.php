@@ -153,17 +153,23 @@ function get_incomplete_series(array $data): array {
                 $ref_volumes = (int)$series['nautiljon_vf_volumes'];
                 $source      = 'nautiljon';
             } else {
-                // URL présente mais pas de données (jamais scrappé ou scrape échoué)
-                $last = (int)($series['nautiljon_last_checked'] ?? 0);
-                $failed_series[] = [
-                    'name'   => $series['name'],
-                    'author' => $series['author'] ?? '',
-                    'ref'    => 'nautiljon',
-                    'reason' => $last === 0
-                                ? 'En attente du premier scrape Nautiljon'
-                                : 'Scrape Nautiljon sans résultat',
-                ];
-                continue;
+                // URL présente mais pas de données : tenter le scrape à la volée
+                $scraped = nautiljon_refresh_series($series['id']);
+                if ($scraped !== null) {
+                    $ref_volumes = $scraped;
+                    $source      = 'nautiljon';
+                } else {
+                    $last = (int)($series['nautiljon_last_checked'] ?? 0);
+                    $failed_series[] = [
+                        'name'   => $series['name'],
+                        'author' => $series['author'] ?? '',
+                        'ref'    => 'nautiljon',
+                        'reason' => $last === 0
+                                    ? 'Premier scrape Nautiljon échoué (token Browserless manquant ou erreur réseau)'
+                                    : 'Scrape Nautiljon sans résultat',
+                    ];
+                    continue;
+                }
             }
         }
         // ── Cas 3 : ID Anilist seul (fallback) ───────────────────────────────
