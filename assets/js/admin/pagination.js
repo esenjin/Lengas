@@ -121,7 +121,7 @@ function createLightSeriesCard(series) {
                 ${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}
                 <span class="series-status-badge ${statusClass}">${statusIcon}</span>
                 ${series.anilist_id ? `<a class="anilist-badge" href="https://anilist.co/manga/${series.anilist_id}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="assets/img/anilistlogo.png" alt="Anilist" class="anilist-logo"></a>` : ''}
-                ${series.nautiljon_url ? `<a class="nautiljon-badge" href="${series.nautiljon_url}" target="_blank" rel="noopener" title="${series.nautiljon_vf_volumes !== null && series.nautiljon_vf_volumes !== undefined ? series.nautiljon_vf_volumes + ' tomes VF · ' : ''}Voir sur Nautiljon"><img src="assets/img/nautiljonlogo.png" alt="Nautiljon" class="nautiljon-logo"></a>` : ''}
+                ${series.nautiljon_url ? `<a class="nautiljon-badge" href="${series.nautiljon_url}" target="_blank" rel="noopener" title="Voir sur Nautiljon"><img src="assets/img/nautiljonlogo.png" alt="Nautiljon" class="nautiljon-logo"></a>` : ''}
             </div>
             <button class="load-volumes-btn" data-series-id="${series.id}" data-volumes-count="${series.volumes_count}">Voir les tomes (${series.volumes_count})</button>
             <div class="volumes-container" data-series-id="${series.id}"></div>

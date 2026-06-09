@@ -12,19 +12,12 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 - Marquer les tomes collectors et les derniers tomes
 - Gérer les prêts de tomes à vos amis
 - Activer un mode privé pour cacher votre bibliothèque
-- Récupérer automatiquement les tomes VF publiés en France via Nautiljon
 
 ## Fonctionnalités
 ### Gestion des séries
 - Ajout, modification et suppression de séries
 - Importation de données depuis l'API Anilist
-- Lien optionnel vers la fiche Nautiljon (URL VF)
-
-### Intégration Nautiljon
-- Scraping automatique des tomes VF publiés en France via Browserless.io
-- Cache SQLite avec délai configurable (30 jours par défaut)
-- Prioritaire sur Anilist pour la détection des séries incomplètes
-- Rafraîchissement asynchrone en arrière-plan (indicateur sablier)
+- Lien optionnel vers la fiche Nautiljon (URL cliquable de référence)
 
 ### Suivi des tomes
 - Ajout, modification et suppression de tomes
@@ -46,7 +39,7 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 
 ### Statistiques
 - Nombre de séries, tomes, répartition par statut
-- Recherche des séries incomplètes (tomes VF Nautiljon en priorité, Anilist en fallback)
+- Recherche des séries incomplètes (via l'API Anilist)
 
 ### Interface intuitive
 - Design sombre et responsive
@@ -57,39 +50,25 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 - Mode privé pour cacher votre bibliothèque
 - Gestion des mots de passe et des sessions
 
-## Aperçu visuel
-Publique
-
-
-![Lengas p1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b58034a35_1780921728.png)
-![Lengas p1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b5800db38_1780921728.png)
-![Lengas p1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b57fe8034_1780921727.png)
-
-
-Administration
-
-
-![Lengas a1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b65b4967d_1780921947.png)
-![Lengas a1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b65b3c49a_1780921947.png)
-![Lengas a1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b65b5d86a_1780921947.png)
-![Lengas a1](https://concepts.esenjin.xyz/cyla/fichiers/6a26b65b50547_1780921947.png)
-
-
-*Captures effectuées en v.3.0.0*
-
 ## Prérequis
 - Serveur web (Apache, Nginx)
 - PHP 7.4 ou supérieur
-- (Optionnel) Compte [Browserless.io](https://www.browserless.io) gratuit pour l'intégration Nautiljon 
-- Extension **pdo_sqlite** activée
 
 ## Installation
 1. Télécharger la dernière publication
-2. Éditer le fichier `generate_password.php` en y indiquant le mot de passe souhaité
+2. Éditer le fichier `generate_password.php` en y indiquant le mdp souhaité
 3. Téléverser les fichiers sur votre serveur
 4. Exécuter le fichier `generate_password.php`
 5. SUPPRIMER LE FICHIER `generate_password.php`
 6. C'est tout bon ! Vous pouvez profiter.
+
+## Mise à jour classique
+1. Télécharger la dernière publication
+2. Extraire l'archive téléchargée
+3. Y SUPPRIMER LE FICHIER `generate_password.php`
+4. Sur votre serveur, tout supprimer SAUF les dossiers `bdd/`, `saves/` et `uploads/` (ni ce qu'ils contiennent)
+5. Téléverser les fichiers/dossiers extrait sur votre serveur
+6. Bien joué, c'est à jour !
 
 ## Mise à jour depuis d'anciennes versions majeures
 NE JAMAIS SAUTER PLUSIEURS VERSIONS MAJEURES, merci de les faire une par une. D'abord de 1.x vers 2.0, puis 2.0 vers 3.0 par exemple.
@@ -99,7 +78,7 @@ NE JAMAIS SAUTER PLUSIEURS VERSIONS MAJEURES, merci de les faire une par une. D'
 ## Importer une base de données
 1. Créer une sauvegarde avec l'outil dédié (modale "Outils")
 2. Extraire l'archive
-3. (facultatif) Supprimer le dossier `uploads/` et le fichier `lengas.db` du dossier `bdd/` de votre site
+3. (facultatif) Supprimer le dossier `uploads/` et le fichier `bdd/lengas.db` de votre site
 4. Déplacer les dossiers `bdd/` et `uploads/` que vous venez d'extraire à la racine de votre site (écraser les fichiers si nécessaire)
 5. (facultatif) Utiliser l'outil de vérification de l'intégrité du site (modale "Outils")
 6. Félicitation, votre base de données est de nouveau là !
@@ -126,54 +105,45 @@ lengas/
 │   │   ├── _public.css
 │   │   ├── _responsive.css
 │   │   ├── _series.css
-│   │   ├── _stats.css
 │   │   ├── _utils.css
 │   │   ├── _variables.css
 │   │   └── main.css
-│   ├── img/             # Images statiques
-│   │   ├── anilistlogo.png
-│   │   ├── favicon.ico
-│   │   ├── logo.png
-│   │   └── nautiljonlogo.png
 │   └── js/              # Scripts JavaScript
 │       ├── admin/
-│       │   ├── autocomplete.js
-│       │   ├── loans.js
-│       │   ├── main.js
 │       │   ├── modals.js
-│       │   ├── nautiljon.js
-│       │   ├── pagination.js
-│       │   ├── read.js
+│       │   ├── autocomplete.js
 │       │   ├── series.js
+│       │   ├── volumes.js
+│       │   ├── wishlist.js
+│       │   ├── loans.js
 │       │   ├── tools.js
 │       │   ├── unread.js
-│       │   ├── volumes.js
-│       │   └── wishlist.js
-│       ├── public.js
-│       └── stats.js
+│       │   ├── pagination.js
+│       │   ├── read.js
+│       │   └── main.js
+│       ├── stats.js
+│       └── public.js
 ├── includes/
-│   ├── anilist.php       # API Anilist
 │   ├── auth.php          # Gestion de l'authentification et des sessions
 │   ├── helpers.php       # Fonctions utilitaires générales
-│   └── nautiljon.php     # Intégration Nautiljon via Browserless.io
+│   ├── nautiljon.php     # Stub vide (conservé pour compatibilité)
+│   └── anilist.php       # API Anilist
 ├── fonctions/
-│   ├── loans.php         # Fonctions de gestion des prêts
-│   ├── options.php       # Fonctions de gestion des options du site
-│   ├── read.php          # Fonctions de gestion des lues ailleurs
 │   ├── series.php        # Fonctions de gestion des séries
-│   ├── tools.php         # Fonctions de gestion des outils (sauvegardes, intégrité, etc.)
-│   ├── unread.php        # Fonctions de gestion des séries à lire
 │   ├── volumes.php       # Fonctions de gestion des tomes
-│   └── wishlist.php      # Fonctions de gestion de la liste d'envies
+│   ├── wishlist.php      # Fonctions de gestion de la liste d'envies
+│   ├── loans.php         # Fonctions de gestion des prêts
+│   ├── read.php          # Fonctions de gestion des lues ailleurs
+│   ├── options.php       # Fonctions de gestion des options du site
+│   ├── unread.php        # Fonctions de gestion des séries à lire
+│   └── tools.php         # Fonctions de gestion des outils (sauvegardes, intégrité, etc.)
 ├── uploads/             # Images des séries (chmod 0774)
 ├── saves/               # Sauvegardes de la base de données (chmod 0774)
-└── bdd/                 # Données (chmod 0774)
+└── bdd/                 # Fichiers de données (chmod 0774)
    └── lengas.db         # Base de données SQLite (chmod 0660)
 ```
 
 ## Crédits
-- Développé avec l'aide de [Mistral](https://chat.mistral.ai/) (pour les versions ≤ 2.2.2)
-- Développé avec l'aide de [Claude](https://claude.ai/) (pour les versions > 2.2.2)
+- Développé avec l'aide de [Mistral](https://chat.mistral.ai/) et [Claude](https://claude.ai/)
 - Utilise l'API d'[Anilist](https://docs.anilist.co/)
 - Utilise [JSDelivr](https://www.jsdelivr.com/)
-- Utilise [Browserless](https://browserless.io/)

@@ -126,14 +126,10 @@ function init_db(PDO $pdo): void {
         )
     ");
 
-    // ── Colonnes Nautiljon (ajout progressif, ignoré si déjà présentes) ──────
-    foreach ([
-        "ALTER TABLE series ADD COLUMN nautiljon_url TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE series ADD COLUMN nautiljon_vf_volumes INTEGER",
-        "ALTER TABLE series ADD COLUMN nautiljon_last_checked INTEGER NOT NULL DEFAULT 0",
-    ] as $_nj_sql) {
-        try { $pdo->exec($_nj_sql); } catch (Exception $e) { /* colonne déjà présente */ }
-    }
+    // ── Colonne nautiljon_url (URL de référence cliquable) ────────────────────
+    try {
+        $pdo->exec("ALTER TABLE series ADD COLUMN nautiljon_url TEXT NOT NULL DEFAULT ''");
+    } catch (Exception $e) { /* colonne déjà présente */ }
 
     // Options par défaut si la table est vide
     $count = $pdo->query("SELECT COUNT(*) FROM options")->fetchColumn();
@@ -146,8 +142,6 @@ function init_db(PDO $pdo): void {
             'stats_page_title' => 'Statistiques de Lengas',
             'private_mode'          => '0',
             'hide_mature'           => '0',
-            'browserless_token'     => '',
-            'nautiljon_cache_days'  => '30',
         ];
         $stmt = $pdo->prepare("INSERT OR IGNORE INTO options (key, value) VALUES (?, ?)");
         foreach ($defaults as $k => $v) {
@@ -279,8 +273,6 @@ function load_data(): array {
             'favorite'           => (bool)$s['favorite'],
             'status'                 => $s['status'],
             'nautiljon_url'          => $s['nautiljon_url'] ?? '',
-            'nautiljon_vf_volumes'   => isset($s['nautiljon_vf_volumes']) ? (($s['nautiljon_vf_volumes'] !== null) ? (int)$s['nautiljon_vf_volumes'] : null) : null,
-            'nautiljon_last_checked' => (int)($s['nautiljon_last_checked'] ?? 0),
             'volumes'                => $vols,
         ];
     }
@@ -370,7 +362,6 @@ function load_options(): array {
     // Convertir les booléens
     $opts['private_mode']        = (bool)($opts['private_mode']        ?? false);
     $opts['hide_mature']         = (bool)($opts['hide_mature']         ?? false);
-    $opts['nautiljon_cache_days'] = max(1, (int)($opts['nautiljon_cache_days'] ?? 30));
     return $opts;
 }
 

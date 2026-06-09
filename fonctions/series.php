@@ -86,13 +86,8 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
     $data[$series_key]['mature'] = $mature;
     $data[$series_key]['favorite'] = $favorite;
 
-    // Nautiljon URL : si modifiée, invalider le cache
+    // Nautiljon URL : simple mise à jour du lien de référence
     if ($nautiljon_url !== null) {
-        $old_nj_url = $data[$series_key]['nautiljon_url'] ?? '';
-        if ($nautiljon_url !== $old_nj_url) {
-            // Invalider le cache pour forcer un refresh
-            $data[$series_key]['nautiljon_last_checked'] = 0;
-        }
         $data[$series_key]['nautiljon_url'] = $nautiljon_url;
     }
 
