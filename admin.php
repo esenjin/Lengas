@@ -1453,9 +1453,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <h3 class="options-section-title">Intégration Nautiljon</h3>
 
                     <label for="browserless-token">Token API Browserless.io</label>
-                    <input type="password" name="browserless_token" id="browserless-token"
-                           placeholder="Votre token Browserless (laisser vide pour désactiver)"
-                           value="<?= htmlspecialchars($options['browserless_token'] ?? '') ?>">
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" name="browserless_token" id="browserless-token"
+                            placeholder="Votre token Browserless (laisser vide pour désactiver)"
+                            value="<?= htmlspecialchars($options['browserless_token'] ?? '') ?>"
+                            style="padding-right: 2.4rem; width: 100%;">
+                        <button type="button" id="toggle-browserless-token"
+                                style="position: absolute; right: 0.6rem; background: none; border: none; cursor: pointer; padding: 0; line-height: 1; color: var(--text-gray);"
+                                title="Afficher / masquer le token"
+                                aria-label="Afficher / masquer le token">
+                            <img src="https://api.iconify.design/mdi/eye-outline.svg?color=gray" width="18" height="18" id="toggle-browserless-icon" alt="">
+                        </button>
+                    </div>
                     <p class="hint">Compte gratuit sur <a href="https://www.browserless.io" target="_blank" rel="noopener">browserless.io</a>. Utilisé pour récupérer les tomes VF des séries avec une URL Nautiljon.</p>
 
                     <label for="nautiljon-cache-days">Rafraîchissement du cache Nautiljon (jours)</label>
@@ -1580,6 +1589,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
         window.seriesData = <?= json_encode($series_with_status) ?>;
         window.nautiljonRefreshQueue = <?= json_encode($nautiljon_refresh_queue) ?>;
         window.nautiljonEnabled = <?= $bl_token_set ? 'true' : 'false' ?>;
+    </script>
+    <script>
+        (function () {
+            const btn  = document.getElementById('toggle-browserless-token');
+            const icon = document.getElementById('toggle-browserless-icon');
+            const input = document.getElementById('browserless-token');
+            if (!btn || !input) return;
+            btn.addEventListener('click', function () {
+                const show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                icon.src = show
+                    ? 'https://api.iconify.design/mdi/eye-off-outline.svg?color=gray'
+                    : 'https://api.iconify.design/mdi/eye-outline.svg?color=gray';
+            });
+        })();
     </script>
     <script src="assets/js/admin/modals.js"></script>
     <script src="assets/js/admin/autocomplete.js"></script>
