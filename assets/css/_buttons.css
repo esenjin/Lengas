@@ -146,33 +146,6 @@
     gap: 8px;
 }
 
-/* Indicateur de refresh Nautiljon */
-.nautiljon-indicator {
-    display: none;
-    align-items: center;
-    gap: 5px;
-    animation: nj-pulse 1.8s ease-in-out infinite;
-}
-
-.nautiljon-indicator-emoji {
-    font-size: 16px;
-    line-height: 1;
-    flex-shrink: 0;
-}
-
-#nautiljon-indicator-label {
-    font-size: 0.75rem;
-    color: var(--text-gray);
-    white-space: nowrap;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-@keyframes nj-pulse {
-    0%, 100% { opacity: 1;   }
-    50%       { opacity: 0.4; }
-}
 
 .logout-button {
     display: inline-flex;

@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $total   = count($data);
     $current = 0;
 
-    // Récupérer les volumes Anilist en batch pour les séries qui n'ont pas d'ID Anilist
+    // Récupérer les volumes Anilist en batch
     $anilist_ids_needed = [];
     foreach ($data as $series) {
         if (!empty($series['anilist_id'])) {
