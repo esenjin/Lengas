@@ -16,8 +16,8 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 ## Fonctionnalités
 ### Gestion des séries
 - Ajout, modification et suppression de séries
-- Importation de données depuis l'API Anilist
-- Lien optionnel vers la fiche Nautiljon (URL cliquable de référence)
+- Association à une fiche MangaUpdates (URL) pour le suivi du nombre de tomes et du statut de publication
+- Remplissage automatique des URL MangaUpdates en masse via l'outil « Associer MangaUpdates » (recherche par titre + auteur)
 
 ### Suivi des tomes
 - Ajout, modification et suppression de tomes
@@ -39,7 +39,16 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 
 ### Statistiques
 - Nombre de séries, tomes, répartition par statut
-- Recherche des séries incomplètes (via l'API Anilist)
+- Recherche des séries incomplètes (via MangaUpdates)
+
+### Vérifications de la collection
+- **Séries incomplètes** : détecte les tomes manquants en comparant votre collection au nombre de tomes indiqué par MangaUpdates (le décompte VF est privilégié lorsqu'il est disponible)
+- **Incohérences** : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome », statut différent de MangaUpdates, etc.)
+
+### Outils (modale « Outils », organisée en onglets)
+- **Sauvegardes** : création et téléchargement d'archives de vos données
+- **Association MangaUpdates** : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement
+- **Vérification d'intégrité** : contrôle des fichiers, des permissions, de la structure de la base de données et de la connectivité à l'API MangaUpdates
 
 ### Interface intuitive
 - Design sombre et responsive
@@ -108,6 +117,10 @@ lengas/
 │   │   ├── _utils.css
 │   │   ├── _variables.css
 │   │   └── main.css
+│   ├── img/             # Images (logo, favicon)
+│   │   ├── logo.png
+│   │   ├── favicon.ico
+│   │   └── mulogo.png
 │   └── js/              # Scripts JavaScript
 │       ├── admin/
 │       │   ├── modals.js
@@ -126,8 +139,7 @@ lengas/
 ├── includes/
 │   ├── auth.php          # Gestion de l'authentification et des sessions
 │   ├── helpers.php       # Fonctions utilitaires générales
-│   ├── nautiljon.php     # Stub vide (conservé pour compatibilité)
-│   └── anilist.php       # API Anilist
+│   └── mangaupdates.php  # API MangaUpdates (suivi des tomes et du statut)
 ├── fonctions/
 │   ├── series.php        # Fonctions de gestion des séries
 │   ├── volumes.php       # Fonctions de gestion des tomes
@@ -145,5 +157,5 @@ lengas/
 
 ## Crédits
 - Développé avec l'aide de [Mistral](https://chat.mistral.ai/) et [Claude](https://claude.ai/)
-- Utilise l'API d'[Anilist](https://docs.anilist.co/)
+- Utilise l'API de [MangaUpdates](https://api.mangaupdates.com/)
 - Utilise [JSDelivr](https://www.jsdelivr.com/)
