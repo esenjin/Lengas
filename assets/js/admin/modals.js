@@ -14,7 +14,8 @@ const modals = {
     'incomplete-series': { modal: document.getElementById('incomplete-series-modal'), closeBtn: document.getElementById('close-incomplete-series-modal') },
     'unread': { modal: document.getElementById('unread-modal'), closeBtn: document.getElementById('close-unread-modal') },
     'coherences': { modal: document.getElementById('coherences-modal'), closeBtn: document.getElementById('close-coherences-modal') },
-    'loan': { modal: document.getElementById('loan-modal'), closeBtn: document.getElementById('close-loan-modal') }
+    'loan': { modal: document.getElementById('loan-modal'), closeBtn: document.getElementById('close-loan-modal') },
+    'add-mu-url': { modal: document.getElementById('add-mu-url-modal'), closeBtn: document.getElementById('close-add-mu-url-modal') }
 };
 
 // Ouverture des modales
@@ -38,6 +39,9 @@ document.getElementById('open-unread-modal').addEventListener('click', () => {
 function closeModalAndReloadIfTools(modal) {
     modal.classList.remove('modal-active');
     if (modal.id === 'tools-modal' || modal.id === 'options-modal') {
+        window.location.reload();
+    } else if (modal.id === 'incomplete-series-modal' && window.incompleteSearchDone) {
+        // Une recherche / un ajout d'URL a eu lieu : recharger pour rafraîchir badges et listes
         window.location.reload();
     }
 }

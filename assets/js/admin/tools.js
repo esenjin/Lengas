@@ -2,7 +2,6 @@
 document.getElementById('open-tools-modal').addEventListener('click', () => {
     modals['tools'].modal.classList.add('modal-active');
     loadBackupsList();
-    addIntegrityCheckButton();
 });
 
 // Création d'une sauvegarde
@@ -113,10 +112,11 @@ function displayBackupsList(backups) {
 
 // Fonction pour afficher les résultats de la vérification d'intégrité
 function displayIntegrityResults(results) {
-    const modalContent = document.querySelector('#tools-modal .modal-content');
+    const container = document.getElementById('integrity-results-container');
+    if (!container) return;
     let html = `
         <div class="integrity-header">
-            <h2>Résultats de la vérification d'intégrité</h2>
+            <h3>Résultats de la vérification d'intégrité</h3>
         </div>
         <div class="integrity-results">
     `;
@@ -433,7 +433,7 @@ function displayIntegrityResults(results) {
     `;
 
     html += `</div>`;
-    modalContent.innerHTML = html;
+    container.innerHTML = html;
 
     // Événements boutons de nettoyage
     if (results.duplicates.collection_wishlist.length > 0 || results.duplicates.deleted_loans.length > 0) {
@@ -518,56 +518,53 @@ function displayIntegrityResults(results) {
     }
 }
 
-// Ajouter le bouton de vérification d'intégrité dans la modale "Outils"
-function addIntegrityCheckButton() {
-    if (document.getElementById('check-integrity-btn')) return;
+// Vérification d'intégrité : le bouton est désormais statique (onglet « Vérification d'intégrité »)
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#check-integrity-btn')) return;
+    const button   = document.getElementById('check-integrity-btn');
+    const textSpan = document.getElementById('check-integrity-text');
+    const spinner  = document.getElementById('check-integrity-spinner');
 
-    const toolsModalContent = document.querySelector('#tools-modal .modal-content');
-    const integritySection  = document.createElement('div');
-    integritySection.className = 'tools-section';
-    integritySection.innerHTML = `
-        <h3>Vérification d'intégrité</h3>
-        <p>Vérifie l'intégrité de votre site et de vos données.</p>
-        <button id="check-integrity-btn" class="button button-oas">
-            <span id="check-integrity-text">Vérifier l'intégrité</span>
-            <span id="check-integrity-spinner" class="spinner" style="display: none;"></span>
-        </button>
-    `;
-    toolsModalContent.appendChild(integritySection);
+    button.disabled = true;
+    textSpan.textContent = 'Vérification en cours...';
+    spinner.style.display = 'inline-block';
 
-    document.getElementById('check-integrity-btn').addEventListener('click', () => {
-        const button   = document.getElementById('check-integrity-btn');
-        const textSpan = document.getElementById('check-integrity-text');
-        const spinner  = document.getElementById('check-integrity-spinner');
-
-        button.disabled = true;
-        textSpan.textContent = 'Vérification en cours...';
-        spinner.style.display = 'inline-block';
-
-        fetch('admin.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'tool_action=check_integrity'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displayIntegrityResults(data.results);
-            } else {
-                showErrorModal('Une erreur est survenue lors de la vérification.');
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            showErrorModal('Une erreur est survenue.');
-        })
-        .finally(() => {
-            button.disabled = false;
-            textSpan.textContent = 'Vérifier l\'intégrité';
-            spinner.style.display = 'none';
-        });
+    fetch('admin.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'tool_action=check_integrity'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayIntegrityResults(data.results);
+        } else {
+            showErrorModal('Une erreur est survenue lors de la vérification.');
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        showErrorModal('Une erreur est survenue.');
+    })
+    .finally(() => {
+        button.disabled = false;
+        textSpan.textContent = "Vérifier l'intégrité";
+        spinner.style.display = 'none';
     });
-}
+});
+
+// Onglets de la modale « Outils »
+document.addEventListener('click', (e) => {
+    const tab = e.target.closest('.tools-tab');
+    if (!tab) return;
+    const name  = tab.dataset.tab;
+    const modal = document.getElementById('tools-modal');
+    if (!modal) return;
+    modal.querySelectorAll('.tools-tab').forEach(t => t.classList.toggle('tools-tab--active', t === tab));
+    modal.querySelectorAll('.tools-tab-panel').forEach(p => {
+        p.classList.toggle('tools-tab-panel--active', p.dataset.tabPanel === name);
+    });
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Modale « Incohérences »
@@ -610,6 +607,8 @@ const COHERENCE_LABELS = {
     finished_no_last:           { icon: '🏁', label: 'Terminée sans dernier' },
     last_but_not_finished:      { icon: '🔖', label: 'Dernier sans fin' },
     sequence_not_starting_at_1: { icon: '1️⃣',  label: 'Ne commence pas à 1' },
+    mu_still_ongoing:           { icon: '🔄', label: 'Publication en cours (MangaUpdates)' },
+    mu_complete_unmarked:       { icon: '✔️', label: 'Terminée selon MangaUpdates' },
 };
 
 function renderCoherences(issues) {
@@ -728,92 +727,150 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Lance la recherche côté serveur
+// Bord vert sur l'option choisie (uniquement une vraie correspondance, pas « Aucune »)
+document.addEventListener('change', (e) => {
+    const radio = e.target.closest('#mu-associate-form input[type="radio"]');
+    if (!radio) return;
+    const optionsWrap = radio.closest('.mu-associate-options');
+    if (!optionsWrap) return;
+    optionsWrap.querySelectorAll('.mu-associate-option').forEach(lbl => lbl.classList.remove('is-selected'));
+    const label = radio.closest('.mu-associate-option');
+    if (label && radio.value) label.classList.add('is-selected');
+});
+
+// Lance l'association via le flux SSE : toutes les séries sans URL, avec progression
+let muAssociateSource = null;
 function loadMuAssociate() {
-    const btn     = document.getElementById('mu-associate-btn');
-    const textEl  = document.getElementById('mu-associate-text');
-    const spinner = document.getElementById('mu-associate-spinner');
-    const results = document.getElementById('mu-associate-results');
-    if (!results) return;
+    const btn      = document.getElementById('mu-associate-btn');
+    const textEl   = document.getElementById('mu-associate-text');
+    const spinner  = document.getElementById('mu-associate-spinner');
+    const progress = document.getElementById('mu-associate-progress');
+    const results  = document.getElementById('mu-associate-results');
+    if (!results || !progress) return;
+
+    if (muAssociateSource) { muAssociateSource.close(); muAssociateSource = null; }
 
     if (btn) btn.disabled = true;
     if (textEl) textEl.textContent = 'Recherche en cours...';
     if (spinner) spinner.style.display = 'inline-block';
-    results.innerHTML = '<p class="loading-text">Recherche des correspondances sur MangaUpdates…</p>';
 
-    fetch('admin.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'tool_action=mu_associate_search'
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (!data.success) {
-            results.innerHTML = '<p class="error-text">Erreur lors de la recherche.</p>';
-            return;
-        }
-        renderMuAssociateForm(data.candidates || [], data.remaining || 0);
-    })
-    .catch(() => {
-        results.innerHTML = '<p class="error-text">Une erreur est survenue.</p>';
-    })
-    .finally(() => {
+    results.innerHTML = '<div class="mu-associate-form" id="mu-associate-form"></div>';
+
+    let current = 0, total = 0, currentName = '';
+    const renderProgress = () => {
+        const countText = total > 0 ? `${current} / ${total}` : `${current}`;
+        progress.innerHTML =
+            `<p class="analysis-progress">` +
+            `<span class="progress-spinner"></span>` +
+            `Recherche : <strong>${muEscHtml(currentName) || '…'}</strong> ` +
+            `<span class="progress-count">(${countText})</span>` +
+            `</p>`;
+    };
+    renderProgress();
+
+    let anyMatch = false;
+    const source = new EventSource('admin.php?action=mu_associate_stream');
+    muAssociateSource = source;
+
+    source.addEventListener('progress', (ev) => {
+        const d = JSON.parse(ev.data);
+        current = d.current; total = d.total; currentName = d.name;
+        renderProgress();
+    });
+
+    source.addEventListener('match', (ev) => {
+        const d = JSON.parse(ev.data);
+        if (d.series) { appendMuAssociateSeries(d.series); anyMatch = true; }
+    });
+
+    source.addEventListener('done', (ev) => {
+        const d = JSON.parse(ev.data);
+        source.close(); muAssociateSource = null;
+        finalizeMuAssociate(d, anyMatch);
+        if (btn) btn.disabled = false;
+        if (textEl) textEl.textContent = 'Relancer la recherche';
+        if (spinner) spinner.style.display = 'none';
+    });
+
+    source.onerror = () => {
+        source.close(); muAssociateSource = null;
+        progress.innerHTML = '';
+        if (!anyMatch) results.innerHTML = '<p class="error-text">La recherche a été interrompue. Veuillez réessayer.</p>';
         if (btn) btn.disabled = false;
         if (textEl) textEl.textContent = 'Rechercher les correspondances';
         if (spinner) spinner.style.display = 'none';
-    });
+    };
 }
 
-// Affiche le formulaire de validation
-function renderMuAssociateForm(candidates, remaining) {
-    const results = document.getElementById('mu-associate-results');
-    if (!results) return;
+// Ajoute le bloc d'une série au formulaire, au fil du flux
+function appendMuAssociateSeries(series) {
+    const form = document.getElementById('mu-associate-form');
+    if (!form) return;
+    const list = series.results || [];
 
-    if (candidates.length === 0) {
-        results.innerHTML = '<p class="mu-associate-empty">Toutes vos séries possèdent déjà une URL MangaUpdates. ✅</p>';
-        return;
-    }
+    const wrap = document.createElement('div');
+    wrap.className = 'mu-associate-series';
+    wrap.dataset.seriesId = series.id;
 
-    let html = '<div class="mu-associate-form">';
-    candidates.forEach(series => {
-        const list = series.results || [];
-        html += `<div class="mu-associate-series" data-series-id="${muEscAttr(series.id)}">`;
-        html += `<div class="mu-associate-series-name">${muEscHtml(series.name)}`;
-        if (series.author) html += ` <small>${muEscHtml(series.author)}</small>`;
-        html += `</div>`;
+    let html = `<div class="mu-associate-series-name">${muEscHtml(series.name)}`;
+    if (series.author) html += ` <small>${muEscHtml(series.author)}</small>`;
+    html += `</div><div class="mu-associate-options">`;
 
-        html += `<div class="mu-associate-options">`;
-        // Option « aucune correspondance », cochée par défaut
+    // Toujours « Aucune correspondance » par défaut (aucune présélection)
+    html += `<label class="mu-associate-option">
+                <input type="radio" name="mu_${muEscAttr(series.id)}" value="" checked>
+                <span class="mu-cand-none">Aucune correspondance</span>
+             </label>`;
+
+    list.forEach(r => {
+        const status = r.status_text ? translateMuStatus(r.status_text) : '';
+        const meta   = [r.type, r.year, status].filter(Boolean).map(muEscHtml).join(' · ');
+        const author = (r.authors && r.authors.length) ? r.authors.join(', ') : '';
+        const badges =
+            (r.author_match ? '<span class="mu-cand-badge mu-cand-badge--author">auteur ✓</span>' : '') +
+            (r.title_match  ? '<span class="mu-cand-badge mu-cand-badge--title">titre ✓</span>' : '');
         html += `<label class="mu-associate-option">
-                    <input type="radio" name="mu_${muEscAttr(series.id)}" value="" checked>
-                    <span class="mu-cand-none">Aucune correspondance</span>
-                 </label>`;
-
-        if (list.length === 0) {
-            html += `<p class="mu-associate-noresult">Aucun résultat trouvé pour cette série.</p>`;
-        } else {
-            list.forEach(r => {
-                const meta = [r.type, r.year, r.status].filter(Boolean).map(muEscHtml).join(' · ');
-                html += `<label class="mu-associate-option">
                     <input type="radio" name="mu_${muEscAttr(series.id)}" value="${muEscAttr(r.url)}">
                     <span class="mu-cand-info">
-                        <span class="mu-cand-title">${muEscHtml(r.title)}</span>
+                        <span class="mu-cand-title">${muEscHtml(r.title)} ${badges}</span>
                         ${meta ? `<span class="mu-cand-meta">${meta}</span>` : ''}
+                        ${author ? `<span class="mu-cand-author">${muEscHtml(author)}</span>` : ''}
                     </span>
                     ${r.url ? `<a class="mu-cand-link" href="${muEscAttr(r.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">fiche ↗</a>` : ''}
                  </label>`;
-            });
-        }
-        html += `</div></div>`;
     });
-    html += `</div>`;
 
-    html += `<button id="mu-associate-save-btn" class="button button-ats">Enregistrer les correspondances</button>`;
-    if (remaining > 0) {
-        html += `<p class="hint">${remaining} série(s) supplémentaire(s) non traitée(s) cette fois — relancez l'outil pour continuer.</p>`;
+    html += `</div>`;
+    wrap.innerHTML = html;
+    form.appendChild(wrap);
+}
+
+// Finalise : bouton d'enregistrement + récapitulatif des séries sans correspondance
+function finalizeMuAssociate(d, anyMatch) {
+    const progress = document.getElementById('mu-associate-progress');
+    const results  = document.getElementById('mu-associate-results');
+    if (progress) progress.innerHTML = '';
+    if (!results) return;
+
+    if (!anyMatch) {
+        results.innerHTML = '<p class="mu-associate-empty">Aucune correspondance trouvée — vos séries possèdent peut-être déjà toutes une URL MangaUpdates. ✅</p>';
+        return;
     }
 
-    results.innerHTML = html;
+    const saveBtn = document.createElement('button');
+    saveBtn.id = 'mu-associate-save-btn';
+    saveBtn.className = 'button button-ats';
+    saveBtn.textContent = 'Enregistrer les correspondances';
+    results.appendChild(saveBtn);
+
+    const noRes = (d && d.no_results) || [];
+    if (noRes.length > 0) {
+        const det = document.createElement('details');
+        det.className = 'mu-associate-noresults';
+        det.innerHTML = `<summary>${noRes.length} série(s) sans correspondance trouvée</summary>` +
+            `<ul>${noRes.map(n => `<li>${muEscHtml(n)}</li>`).join('')}</ul>`;
+        results.appendChild(det);
+    }
 }
 
 // Enregistre les correspondances sélectionnées

@@ -709,7 +709,6 @@
 }
 
 .coherence-item {
-    display: flex;
     align-items: baseline;
     gap: 8px;
     font-size: 0.85rem;

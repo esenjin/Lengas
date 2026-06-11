@@ -85,26 +85,26 @@ function mangaupdates_parse_status(string $status): ?array {
     $raw = preg_replace('#<br\s*/?>#i', "\n", $raw);
     $raw = strip_tags($raw);
 
-    // Capturer TOUTES les occurrences "X Volume(s) (…)" quel que soit le séparateur
-    if (!preg_match_all('/(\d+)\s+Volumes?\s+\(([^)]+)\)/i', $raw, $all, PREG_SET_ORDER)) {
+    // Capturer chaque segment « <N> Volume(s) … (parenthèse) », même complexe :
+    //   "14 Volumes + 2 Gaiden Volumes (Ongoing)"                → 14 / Ongoing
+    //   "14 Volumes Tankobon (1998 - Complete) 7 Volumes Deluxe (2017 - Complete)"
+    //                                                            → 14/Complete et 7/Complete
+    // [^(]*? absorbe tout descripteur (édition, « + N Gaiden », …) entre le nombre
+    // de tomes et la parenthèse de statut.
+    if (!preg_match_all('/(\d+)\s+Volumes?\b[^(]*?\(([^)]+)\)/i', $raw, $all, PREG_SET_ORDER)) {
         return null;
     }
 
     $entries = [];
     foreach ($all as $m) {
-        $inside = trim($m[2]);                       // "Complete, France" | "Ongoing"
-        $parts  = array_map('trim', explode(',', $inside));
-        $status_text = $parts[0];                    // "Complete" | "Ongoing"
-        $country     = trim(implode(', ', array_slice($parts, 1))); // "France" | ""
-        $is_france   = $country !== '' &&
-                       (stripos($country, 'france') !== false || stripos($country, 'french') !== false);
+        $info = mangaupdates_parse_paren($m[2]);
         $entries[] = [
             'volumes'     => (int)$m[1],
-            'status_text' => $status_text,
-            'country'     => $country,
-            'completed'   => stripos($status_text, 'complete') !== false,
-            'is_france'   => $is_france,
-            'has_country' => $country !== '',
+            'status_text' => $info['status_text'],
+            'country'     => $info['country'],
+            'completed'   => $info['completed'],
+            'is_france'   => $info['is_france'],
+            'has_country' => $info['country'] !== '',
         ];
     }
     if (empty($entries)) return null;
@@ -123,6 +123,41 @@ function mangaupdates_parse_status(string $status): ?array {
         'completed'   => $chosen['completed'],
         'country'     => $chosen['country'],
         'is_france'   => $chosen['is_france'],
+    ];
+}
+
+// ── Analyse du contenu entre parenthèses d'un statut ──────────────────────────
+// Gère : "Ongoing" | "Complete" | "1998 - Complete" | "Complete, France" | …
+// Le 1er segment (avant une éventuelle virgule) porte le statut (+ années à
+// ignorer) ; ce qui suit la virgule est considéré comme le pays.
+function mangaupdates_parse_paren(string $paren): array {
+    $inside = trim($paren);
+    $parts  = array_map('trim', explode(',', $inside));
+    $status_seg = $parts[0];
+    $country    = count($parts) > 1 ? trim(implode(', ', array_slice($parts, 1))) : '';
+
+    $low = mb_strtolower($status_seg);
+    if (strpos($low, 'complete') !== false)        { $status_text = 'Complete';  $completed = true;  }
+    elseif (strpos($low, 'ongoing') !== false)     { $status_text = 'Ongoing';   $completed = false; }
+    elseif (strpos($low, 'hiatus') !== false)      { $status_text = 'Hiatus';    $completed = false; }
+    elseif (strpos($low, 'cancel') !== false || strpos($low, 'discontinu') !== false) {
+        $status_text = 'Cancelled'; $completed = false;
+    } else {
+        // Statut inconnu : retirer les années (1900-2099) et garder le texte nettoyé
+        $cleaned = preg_replace('/\b(1[89]\d{2}|20\d{2})\b/', '', $status_seg);
+        $cleaned = trim($cleaned, " \t-,\xe2\x80\x93\xe2\x80\x94");
+        $status_text = $cleaned !== '' ? $cleaned : $status_seg;
+        $completed   = false;
+    }
+
+    $is_france = $country !== '' &&
+                 (mb_stripos($country, 'france') !== false || mb_stripos($country, 'french') !== false);
+
+    return [
+        'status_text' => $status_text,
+        'completed'   => $completed,
+        'country'     => $country,
+        'is_france'   => $is_france,
     ];
 }
 
@@ -174,28 +209,18 @@ function mangaupdates_get_volumes(int $series_id, bool $force = false): ?array {
         }
     }
 
-    [$body, $code, $err] = mangaupdates_curl('https://api.mangaupdates.com/v1/series/' . $series_id);
-    if ($err !== '' || $code !== 200) {
+    $rec = mangaupdates_fetch_record($series_id); // récupère la fiche + réchauffe le cache
+    if ($rec === null) {
         return null; // échec : non mis en cache
     }
 
-    $data = json_decode($body, true);
-    if (!is_array($data)) {
-        return null;
-    }
-
-    $parsed      = mangaupdates_parse_status($data['status'] ?? '');
-    $volumes     = $parsed['volumes']     ?? null;
-    $status_text = $parsed['status_text'] ?? null;
-
-    mangaupdates_cache_store($series_id, $volumes, $status_text);
-
+    $parsed = mangaupdates_parse_status($rec['status'] ?? '');
     return [
-        'volumes'   => $volumes,
-        'status'    => $status_text,
-        'completed' => $parsed['completed'] ?? false,
-        'country'   => $parsed['country']   ?? '',
-        'is_france' => $parsed['is_france'] ?? false,
+        'volumes'   => $parsed['volumes']     ?? null,
+        'status'    => $parsed['status_text'] ?? null,
+        'completed' => $parsed['completed']   ?? false,
+        'country'   => $parsed['country']     ?? '',
+        'is_france' => $parsed['is_france']   ?? false,
     ];
 }
 
@@ -258,6 +283,7 @@ function mangaupdates_search(string $query, int $perpage = 5): array {
             'url'         => $url,
             'year'        => $rec['year'] ?? '',
             'type'        => $rec['type'] ?? '',
+            'authors'     => mangaupdates_extract_authors($rec),
         ];
     }
     return $results;
@@ -384,4 +410,117 @@ function get_incomplete_series(array $data): array {
         'no_reference' => $no_reference_series,
         'failed'       => $failed_series,
     ];
+}
+
+// ── Récupérer la fiche brute d'une série (et réchauffer le cache volumes/statut) ─
+function mangaupdates_fetch_record(int $series_id): ?array {
+    if ($series_id <= 0) return null;
+    [$body, $code, $err] = mangaupdates_curl('https://api.mangaupdates.com/v1/series/' . $series_id);
+    if ($err !== '' || $code !== 200) return null;
+    $data = json_decode($body, true);
+    if (!is_array($data)) return null;
+    $parsed = mangaupdates_parse_status($data['status'] ?? '');
+    mangaupdates_cache_store($series_id, $parsed['volumes'] ?? null, $parsed['status_text'] ?? null);
+    return $data;
+}
+
+// ── Extraire la liste des noms d'auteurs d'une fiche (ou d'un résultat de recherche) ─
+function mangaupdates_extract_authors($record): array {
+    $names = [];
+    if (is_array($record) && !empty($record['authors']) && is_array($record['authors'])) {
+        foreach ($record['authors'] as $a) {
+            if (is_array($a)) {
+                $n = $a['name'] ?? ($a['author_name'] ?? '');
+            } else {
+                $n = (string)$a;
+            }
+            $n = trim((string)$n);
+            if ($n !== '') $names[] = $n;
+        }
+    }
+    return $names;
+}
+
+// ── Clés de comparaison d'un nom (insensible à la casse / aux espaces / à l'ordre) ─
+function mangaupdates_author_keys(string $name): array {
+    $s = mb_strtolower(trim($name));
+    $s = preg_replace('/[^\p{L}\p{N}]+/u', ' ', $s);
+    $s = trim($s);
+    if ($s === '') return ['compact' => '', 'sorted' => ''];
+    $tokens = array_values(array_filter(explode(' ', $s), function ($t) { return $t !== ''; }));
+    $compact = implode('', $tokens);   // ordre conservé, sans espace
+    sort($tokens);
+    $sorted = implode('', $tokens);    // ordre indépendant
+    return ['compact' => $compact, 'sorted' => $sorted];
+}
+
+// Deux noms correspondent si leur forme compacte OU triée coïncide.
+function mangaupdates_authors_match(string $a, string $b): bool {
+    if (trim($a) === '' || trim($b) === '') return false;
+    $ka = mangaupdates_author_keys($a);
+    $kb = mangaupdates_author_keys($b);
+    if ($ka['compact'] === '' || $kb['compact'] === '') return false;
+    return ($ka['compact'] === $kb['compact']) || ($ka['sorted'] === $kb['sorted']);
+}
+
+// L'auteur de la série (éventuellement plusieurs séparés par des virgules)
+// correspond-il à l'un des auteurs du candidat ?
+function mangaupdates_authors_overlap(string $series_author, array $candidate_authors): bool {
+    $series_list = array_filter(array_map('trim', explode(',', $series_author)), function ($t) { return $t !== ''; });
+    if (empty($series_list) || empty($candidate_authors)) return false;
+    foreach ($series_list as $sa) {
+        foreach ($candidate_authors as $ca) {
+            if (mangaupdates_authors_match($sa, (string)$ca)) return true;
+        }
+    }
+    return false;
+}
+
+// ── Comparaison de titres (normalisée : casse, espaces, ponctuation ignorés) ───
+function mangaupdates_normalize_title(string $t): string {
+    $s = mb_strtolower(trim($t));
+    return preg_replace('/[^\p{L}\p{N}]+/u', '', $s);
+}
+function mangaupdates_titles_match(string $a, string $b): bool {
+    $na = mangaupdates_normalize_title($a);
+    $nb = mangaupdates_normalize_title($b);
+    return $na !== '' && $na === $nb;
+}
+
+// ── Candidats d'association pour une série, triés par pertinence ───────────────
+// Recherche par titre, enrichit chaque candidat avec ses auteurs (depuis le
+// résultat de recherche si présents, sinon via la fiche), calcule la
+// correspondance titre/auteur, puis trie : (titre+auteur) > auteur > titre > reste.
+// Conserve l'ordre de pertinence de MangaUpdates à score égal.
+function mangaupdates_associate_candidates(string $title, string $author, int $perpage = 5): array {
+    $raw    = mangaupdates_search($title, $perpage); // réchauffe déjà le cache
+    $author = trim($author);
+
+    $out = [];
+    $idx = 0;
+    foreach ($raw as $cand) {
+        $authors = $cand['authors'] ?? [];
+        // Auteurs absents du résultat de recherche : récupérer la fiche pour comparer
+        if (empty($authors) && $author !== '' && !empty($cand['series_id'])) {
+            $rec = mangaupdates_fetch_record((int)$cand['series_id']);
+            if ($rec !== null) $authors = mangaupdates_extract_authors($rec);
+            usleep(120000); // ~120 ms : politesse envers l'API
+        }
+
+        $author_match = $author !== '' && mangaupdates_authors_overlap($author, $authors);
+        $title_match  = mangaupdates_titles_match($title, $cand['title'] ?? '');
+
+        $cand['authors']      = $authors;
+        $cand['author_match'] = $author_match;
+        $cand['title_match']  = $title_match;
+        $cand['_score']       = ($author_match ? 2 : 0) + ($title_match ? 1 : 0);
+        $cand['_idx']         = $idx++;
+        $out[] = $cand;
+    }
+
+    usort($out, function ($x, $y) {
+        if ($x['_score'] !== $y['_score']) return $y['_score'] <=> $x['_score'];
+        return $x['_idx'] <=> $y['_idx'];
+    });
+    return $out;
 }

@@ -35,7 +35,7 @@ function check_site_integrity(array $data): array {
     $required_files = [
         'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php', '.htaccess',
         'assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js',
-        'assets/img/mulogo.png',
+        'assets/img/', 'assets/img/logo.png', 'assets/img/favicon.ico', 'assets/img/mulogo.png',
         'assets/js/admin/',
         'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php',
         'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php', 'fonctions/unread.php',
@@ -73,7 +73,6 @@ function check_site_integrity(array $data): array {
     $results['forbidden_files']['generate_password.php'] = !file_exists(__DIR__ . '/../generate_password.php');
     $results['forbidden_files']['migrate.php']           = !file_exists(__DIR__ . '/../migrate.php');
     $results['forbidden_files']['fix_series_status.php'] = !file_exists(__DIR__ . '/../fix_series_status.php');
-    $results['forbidden_files']['includes/anilist.php']  = !file_exists(__DIR__ . '/../includes/anilist.php');
 
     // 3. Permissions
     $checks = [

@@ -241,3 +241,98 @@
     margin-left: 6px;
     vertical-align: middle;
 }
+
+
+/* ── Modale « Outils » : onglets ─────────────────────────────────────────── */
+.tools-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0 0 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.tools-tab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-gray);
+    padding: 8px 14px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.tools-tab:hover {
+    color: var(--text-white);
+}
+.tools-tab--active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+.tools-tab-panel {
+    display: none;
+}
+.tools-tab-panel--active {
+    display: block;
+}
+
+/* ── Modale étroite : ajout d'une URL MangaUpdates ───────────────────────── */
+.modal-content--narrow {
+    max-width: 480px;
+}
+.add-mu-url-series-name {
+    font-weight: 600;
+    color: var(--text-white);
+    margin-bottom: 10px;
+}
+.add-mu-url-feedback {
+    margin-top: 10px;
+    min-height: 1.2em;
+    font-size: 0.9rem;
+}
+.add-mu-url-feedback.is-success { color: var(--success-color); }
+.add-mu-url-feedback.is-error   { color: var(--error-color); }
+
+/* ── Association MangaUpdates : badges et meilleure correspondance ────────── */
+.mu-cand-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    line-height: 1;
+    padding: 2px 6px;
+    margin-left: 6px;
+    border-radius: var(--border-radius-sm);
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.mu-cand-badge--author {
+    background-color: var(--success-color);
+    color: var(--background-medium);
+    font-weight: 600;
+}
+.mu-cand-badge--title {
+    background-color: var(--background-darker);
+    color: var(--text-gray);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+/* Bord vert sur l'option choisie (appliqué par JS via .is-selected) */
+.mu-associate-option.is-selected {
+    border-color: var(--success-color);
+}
+
+/* Auteur du candidat (sous le titre, dans la liste d'association) */
+.mu-cand-author {
+    color: var(--text-gray);
+    font-size: 0.8em;
+}
+.mu-associate-noresults {
+    margin-top: 14px;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+}
+.mu-associate-noresults summary {
+    cursor: pointer;
+    color: var(--text-gray);
+}
+.mu-associate-noresults ul {
+    margin: 8px 0 0;
+    padding-left: 18px;
+}

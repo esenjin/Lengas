@@ -162,6 +162,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
+// ── Endpoint SSE : association MangaUpdates avec progression ──────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'mu_associate_stream') {
+    @ini_set('output_buffering', 'off');
+    @ini_set('zlib.output_compression', false);
+    @set_time_limit(0);
+    while (ob_get_level()) ob_end_flush();
+
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('X-Accel-Buffering: no');
+
+    $sse = function(string $event, array $payload): void {
+        echo 'event: ' . $event . "\n";
+        echo 'data: ' . json_encode($payload) . "\n\n";
+        flush();
+    };
+
+    // Séries sans URL MangaUpdates
+    $targets = array_values(array_filter($data, function ($s) {
+        return empty($s['mangaupdates_url']);
+    }));
+    $total        = count($targets);
+    $current      = 0;
+    $with_results = 0;
+    $no_results   = [];
+
+    foreach ($targets as $series) {
+        $current++;
+        $sse('progress', [
+            'current' => $current,
+            'total'   => $total,
+            'name'    => $series['name'],
+        ]);
+
+        $candidates = mangaupdates_associate_candidates($series['name'], $series['author'] ?? '', 5);
+
+        if (!empty($candidates)) {
+            $with_results++;
+            $sse('match', [
+                'series' => [
+                    'id'      => $series['id'],
+                    'name'    => $series['name'],
+                    'author'  => $series['author'] ?? '',
+                    'results' => $candidates,
+                ],
+            ]);
+        } else {
+            $no_results[] = $series['name'];
+        }
+
+        usleep(120000); // ~120 ms entre séries
+    }
+
+    $sse('done', [
+        'success'      => true,
+        'total'        => $total,
+        'with_results' => $with_results,
+        'no_results'   => $no_results,
+    ]);
+    exit;
+}
+
 // Gestion des actions pour les séries incomplètes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
@@ -612,44 +674,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
             $response = clean_forbidden_files();
             break;
 
-        case 'mu_associate_search':
-            // Pour chaque série sans URL MangaUpdates, propose les 5 premiers résultats
-            @set_time_limit(120);
-            $candidates = [];
-            $remaining  = 0;
-            $processed  = 0;
-            $max        = 50; // plafond par exécution (relancer pour traiter le reste)
-            foreach ($data as $series) {
-                if (!empty($series['mangaupdates_url'])) continue;
-                if ($processed >= $max) { $remaining++; continue; }
-                $processed++;
-                $results = mangaupdates_search($series['name'], 5);
-                $candidates[] = [
-                    'id'      => $series['id'],
-                    'name'    => $series['name'],
-                    'author'  => $series['author'] ?? '',
-                    'results' => $results,
-                ];
-                usleep(150000); // ~150 ms : on évite de saturer l'API MangaUpdates
-            }
-            $response = ['success' => true, 'candidates' => $candidates, 'remaining' => $remaining];
-            break;
-
         case 'mu_associate_save':
             // Enregistre les URL validées. Format attendu : associations[series_id] = url
             $assoc = $_POST['associations'] ?? [];
             if (!is_array($assoc)) $assoc = [];
             $saved = 0;
+            $warm_ids = [];
             foreach ($data as &$series) {
                 if (!isset($assoc[$series['id']])) continue;
-                $url = trim((string)$assoc[$series['id']]);
-                if ($url !== '' && mangaupdates_get_id_from_url($url) !== null) {
+                $url   = trim((string)$assoc[$series['id']]);
+                $mu_id = $url !== '' ? mangaupdates_get_id_from_url($url) : null;
+                if ($mu_id !== null) {
                     $series['mangaupdates_url'] = $url;
+                    $warm_ids[] = $mu_id;
                     $saved++;
                 }
             }
             unset($series);
-            if ($saved > 0) save_data($data);
+            if ($saved > 0) {
+                save_data($data);
+                // Réchauffer le cache des séries nouvellement associées
+                foreach ($warm_ids as $wid) { @mangaupdates_get_volumes($wid); }
+            }
             $response = ['success' => true, 'saved' => $saved];
             break;
 
@@ -1061,6 +1107,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
 
     <div class="container">
         <div class="logout-container">
+            <a href="admin.php" class="logout-button" title="Recharger la page">
+                <img src="https://api.iconify.design/mdi/refresh.svg?color=white" alt="Recharger la page" width="24" height="24">
+            </a>
             <a href="logout.php" class="logout-button" title="Déconnexion">
                 <img src="https://api.iconify.design/mdi/logout.svg?color=white" alt="Déconnexion" width="24" height="24">
             </a>
@@ -1194,6 +1243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                 <span class="close-modal" id="close-incomplete-series-modal">&times;</span>
                 <h2>Séries incomplètes</h2>
                 <p>Cet outil vous permet de trouver les séries pour lesquelles il vous manque des tomes, en comparant votre collection aux données de l'API MangaUpdates.</p>
+                <br>
                 <p class="hint">⚠️ Limitations : MangaUpdates fournit le nombre de tomes aussi bien pour les séries <strong>terminées</strong> que pour celles <strong>en cours de publication</strong>. En revanche, le décompte se base principalement sur l'édition d'origine (VO) et non sur l'édition française (VF) : un écart est donc possible. Lengas privilégie automatiquement le décompte français lorsque MangaUpdates l'indique (ex. « 8 Volumes (Complete, France) »). Renseignez l'URL MangaUpdates de chaque série — via le champ dédié (ajout / modification) ou l'outil « Associer MangaUpdates » de la modale Outils.</p>
                 <button id="search-incomplete-series" class="button">Rechercher les séries incomplètes</button>
                 <div id="incomplete-series-results">
@@ -1612,39 +1662,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
         </div>
 
         <!-- Modale pour les outils -->
-        <!-- Sauvegardes -->
+        <!-- Outils -->
         <div class="modal" id="tools-modal">
             <div class="modal-content">
                 <span class="close-modal" id="close-tools-modal">&times;</span>
-                <h2>Outils de sauvegarde</h2>
-                <p>Vous pouvez ici sauvegarder vos données. Les fichiers concernés sont : la base de données de votre bibliothèque et leurs images, la liste de vos envies, la liste de vos prêts, ainsi que les options du site.</p>
+                <h2>Outils</h2>
 
-                <div class="tools-section">
-                    <h3>Créer une sauvegarde</h3>
-                    <p>Crée une archive de vos données actuelles.</p>
-                    <button id="create-backup-btn" class="button button-opt">
-                        <span id="create-backup-text">Créer une sauvegarde</span>
-                        <span id="create-backup-spinner" class="spinner" style="display: none;"></span>
-                    </button>
+                <div class="tools-tabs" role="tablist">
+                    <button type="button" class="tools-tab tools-tab--active" data-tab="backups">Sauvegardes</button>
+                    <button type="button" class="tools-tab" data-tab="associate">Association MangaUpdates</button>
+                    <button type="button" class="tools-tab" data-tab="integrity">Vérification d'intégrité</button>
                 </div>
 
-                <div class="tools-section">
-                    <h3>Liste des sauvegardes</h3>
-                    <p>Vous pouvez télécharger ou supprimer vos sauvegardes.</p>
-                    <div id="backups-list">
-                        <!-- Les sauvegardes seront affichées ici -->
+                <!-- Onglet : Sauvegardes -->
+                <div class="tools-tab-panel tools-tab-panel--active" data-tab-panel="backups">
+                    <p>Vous pouvez ici sauvegarder vos données. Les fichiers concernés sont : la base de données de votre bibliothèque et leurs images, la liste de vos envies, la liste de vos prêts, ainsi que les options du site.</p>
+
+                    <div class="tools-section">
+                        <h3>Créer une sauvegarde</h3>
+                        <p>Crée une archive de vos données actuelles.</p>
+                        <button id="create-backup-btn" class="button button-opt">
+                            <span id="create-backup-text">Créer une sauvegarde</span>
+                            <span id="create-backup-spinner" class="spinner" style="display: none;"></span>
+                        </button>
+                    </div>
+
+                    <div class="tools-section">
+                        <h3>Liste des sauvegardes</h3>
+                        <p>Vous pouvez télécharger ou supprimer vos sauvegardes.</p>
+                        <div id="backups-list">
+                            <!-- Les sauvegardes seront affichées ici -->
+                        </div>
                     </div>
                 </div>
 
-                <div class="tools-section">
-                    <h3>Associer MangaUpdates</h3>
-                    <p>Recherche automatiquement une fiche MangaUpdates pour chaque série sans URL renseignée, puis vous laisse valider la bonne correspondance avant l'enregistrement.</p>
-                    <button id="mu-associate-btn" class="button button-opt">
-                        <span id="mu-associate-text">Rechercher les correspondances</span>
-                        <span id="mu-associate-spinner" class="spinner" style="display: none;"></span>
-                    </button>
-                    <div id="mu-associate-results"></div>
+                <!-- Onglet : Association MangaUpdates -->
+                <div class="tools-tab-panel" data-tab-panel="associate">
+                    <div class="tools-section">
+                        <h3>Associer MangaUpdates</h3>
+                        <p>Recherche automatiquement une fiche MangaUpdates pour chaque série sans URL renseignée (titre + auteur), puis vous laisse valider la bonne correspondance avant l'enregistrement. Selon le nombre de séries, l'opération peut prendre quelques minutes.</p>
+                        <button id="mu-associate-btn" class="button button-opt">
+                            <span id="mu-associate-text">Rechercher les correspondances</span>
+                            <span id="mu-associate-spinner" class="spinner" style="display: none;"></span>
+                        </button>
+                        <div id="mu-associate-progress"></div>
+                        <div id="mu-associate-results"></div>
+                    </div>
                 </div>
+
+                <!-- Onglet : Vérification d'intégrité -->
+                <div class="tools-tab-panel" data-tab-panel="integrity">
+                    <div class="tools-section">
+                        <h3>Vérification d'intégrité</h3>
+                        <p>Vérifie l'intégrité de votre site et de vos données (fichiers, permissions, structure de la base, API MangaUpdates…).</p>
+                        <button id="check-integrity-btn" class="button button-oas">
+                            <span id="check-integrity-text">Vérifier l'intégrité</span>
+                            <span id="check-integrity-spinner" class="spinner" style="display: none;"></span>
+                        </button>
+                        <div id="integrity-results-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modale : ajouter une URL MangaUpdates (depuis l'outil des tomes manquants) -->
+        <div class="modal" id="add-mu-url-modal">
+            <div class="modal-content modal-content--narrow">
+                <span class="close-modal" id="close-add-mu-url-modal">&times;</span>
+                <h2>Ajouter une URL MangaUpdates</h2>
+                <p id="add-mu-url-series-name" class="add-mu-url-series-name"></p>
+                <input type="hidden" id="add-mu-url-series-id">
+                <input type="text" id="add-mu-url-input" placeholder="https://www.mangaupdates.com/series/xxxxxxx/nom-de-la-serie" autocomplete="off">
+                <p class="hint">Collez l'URL de la fiche MangaUpdates de cette série.</p>
+                <div class="modal-actions">
+                    <button id="save-add-mu-url-btn" class="button button-ats">Enregistrer</button>
+                </div>
+                <p id="add-mu-url-feedback" class="add-mu-url-feedback"></p>
             </div>
         </div>
 
