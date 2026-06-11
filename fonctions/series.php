@@ -1,6 +1,6 @@
 <?php
 // Ajouter une série
-function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours', $nautiljon_url = '') {
+function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours') {
     $volumes = [];
     for ($i = 1; $i <= $volumes_count; $i++) {
         $volumes[] = [
@@ -41,11 +41,10 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         'categories' => explode(',', $categories),
         'genres' => explode(',', $genres),
         'image' => $image ?? '',
-        'anilist_id' => $anilist_id,
+        'mangaupdates_url' => $mangaupdates_url,
         'mature' => $mature,
         'favorite' => $favorite,
         'status' => $status,
-        'nautiljon_url' => $nautiljon_url,
         'volumes' => $volumes
     ];
 
@@ -53,7 +52,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
 }
 
 // Mettre à jour une série
-function update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null, $new_status = null, $nautiljon_url = null) {
+function update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null, $new_status = null) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
         return ['success' => false, 'message' => "Série introuvable."];
@@ -82,14 +81,9 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
     $data[$series_key]['other_contributors'] = explode(',', clean_comma_separated($other_contributors));
     $data[$series_key]['categories'] = explode(',', clean_comma_separated($categories));
     $data[$series_key]['genres'] = explode(',', clean_comma_separated($genres));
-    $data[$series_key]['anilist_id'] = $anilist_id;
+    $data[$series_key]['mangaupdates_url'] = $mangaupdates_url;
     $data[$series_key]['mature'] = $mature;
     $data[$series_key]['favorite'] = $favorite;
-
-    // Nautiljon URL : simple mise à jour du lien de référence
-    if ($nautiljon_url !== null) {
-        $data[$series_key]['nautiljon_url'] = $nautiljon_url;
-    }
 
     // Gestion de l'image
     if ($remove_image && !empty($data[$series_key]['image']) && file_exists($data[$series_key]['image'])) {

@@ -120,8 +120,7 @@ function createLightSeriesCard(series) {
             <div class="series-badges">
                 ${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}
                 <span class="series-status-badge ${statusClass}">${statusIcon}</span>
-                ${series.anilist_id ? `<a class="anilist-badge" href="https://anilist.co/manga/${series.anilist_id}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="assets/img/anilistlogo.png" alt="Anilist" class="anilist-logo"></a>` : ''}
-                ${series.nautiljon_url ? `<a class="nautiljon-badge" href="${series.nautiljon_url}" target="_blank" rel="noopener" title="Voir sur Nautiljon"><img src="assets/img/nautiljonlogo.png" alt="Nautiljon" class="nautiljon-logo"></a>` : ''}
+                ${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}
             </div>
             <button class="load-volumes-btn" data-series-id="${series.id}" data-volumes-count="${series.volumes_count}">Voir les tomes (${series.volumes_count})</button>
             <div class="volumes-container" data-series-id="${series.id}"></div>
@@ -240,9 +239,7 @@ document.getElementById('series-list').addEventListener('click', (e) => {
                 document.getElementById('edit-series-other-contributors').value = series.other_contributors ? series.other_contributors.join(', ') : '';
                 document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
                 document.getElementById('edit-series-genres').value = series.genres ? series.genres.join(', ') : '';
-                document.getElementById('edit-series-anilist-id').value = series.anilist_id || '';
-                const njUrlField = document.getElementById('edit-series-nautiljon-url');
-                if (njUrlField) njUrlField.value = series.nautiljon_url || '';
+                document.getElementById('edit-series-mangaupdates-url').value = series.mangaupdates_url || '';
                 document.getElementById('edit-series-new-volumes-count').value = 0;
                 document.getElementById('edit-series-new-volumes-status').value = 'à lire';
                 document.querySelector('#edit-series-form [name="new_volumes_collector"]').checked = false;

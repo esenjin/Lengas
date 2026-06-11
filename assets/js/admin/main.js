@@ -144,14 +144,14 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
             const seriesDiv = document.createElement('div');
             seriesDiv.className = 'incomplete-series-item';
 
-            const srcLabel = '🇯🇵 Anilist VO';
+            const srcLabel = 'MangaUpdates';
             const refCount = series.ref_volumes ?? '?';
 
             let html = `
                 <h3>${series.name}</h3>
                 <p><strong>Auteur :</strong> ${series.author}</p>
                 <p><strong>Éditeur :</strong> ${series.publisher}</p>
-                <p><strong>Tomes possédés :</strong> ${series.volumes.length} / ${refCount} <small style="opacity:.6">(${srcLabel})</small></p>
+                <p><strong>Tomes possédés :</strong> ${series.volumes.length} / ${refCount} <small style="opacity:.6">(${srcLabel}${series.ref_status ? ' · ' + series.ref_status : ''})</small></p>
             `;
 
             if (series.missing_volumes && series.missing_volumes.length > 0) {
@@ -186,11 +186,11 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
                 <details class="summary-group" open>
                     <summary>
                         <span class="summary-badge summary-badge--warn">⚠ ${failed_series.length}</span>
-                        Non analysées — publication en cours ou données Anilist indisponibles
+                        Non analysées — données MangaUpdates indisponibles ou nombre de tomes non renseigné
                     </summary>
                     <ul class="summary-list">
                         ${failed_series.map(s =>
-                            `<li><strong>${s.name}</strong>${s.author ? ' — ' + s.author : ''} <span class="summary-reason">${s.reason ?? ''}</span></li>`
+                            `<li><strong>${s.name}</strong>${s.author ? ' — ' + s.author : ''} <span class="summary-reason">${s.reason ?? ''}</span>${s.id ? ` <button class="edit-series-btn summary-edit-btn" data-series-id="${s.id}">Éditer</button>` : ''}</li>`
                         ).join('')}
                     </ul>
                 </details>`;
@@ -201,11 +201,11 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
                 <details class="summary-group">
                     <summary>
                         <span class="summary-badge summary-badge--muted">— ${no_reference_series.length}</span>
-                        Non analysées — aucun ID Anilist renseigné
+                        Non analysées — aucune URL MangaUpdates renseignée
                     </summary>
                     <ul class="summary-list">
                         ${no_reference_series.map(s =>
-                            `<li><strong>${s.name}</strong>${s.author ? ' — ' + s.author : ''}</li>`
+                            `<li><strong>${s.name}</strong>${s.author ? ' — ' + s.author : ''}${s.id ? ` <button class="edit-series-btn summary-edit-btn" data-series-id="${s.id}">Éditer</button>` : ''}</li>`
                         ).join('')}
                     </ul>
                 </details>`;

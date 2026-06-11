@@ -166,7 +166,7 @@ function displayIntegrityResults(results) {
                     <h4>Fichiers includes</h4>
                     <ul>
     `;
-    const includeFiles = ['includes/anilist.php', 'includes/auth.php', 'includes/helpers.php'];
+    const includeFiles = ['includes/mangaupdates.php', 'includes/auth.php', 'includes/helpers.php'];
     includeFiles.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
     });
@@ -359,6 +359,37 @@ function displayIntegrityResults(results) {
         `;
     }
     html += `</div>`;
+
+    // 5b. Structure de la base de données (MangaUpdates)
+    if (results.db_structure) {
+        html += `
+            <div class="integrity-section">
+                <h3>Base de données (MangaUpdates)</h3>
+                <ul>
+        `;
+        for (const [label, ok] of Object.entries(results.db_structure)) {
+            html += `<li>${label} : <span class="${ok ? 'ok' : 'error'}">${ok ? 'OK' : 'Manquant'}</span></li>`;
+        }
+        html += `
+                </ul>
+            </div>
+        `;
+    }
+
+    // 5c. Connectivité de l'API MangaUpdates
+    if (results.mangaupdates_api) {
+        const api = results.mangaupdates_api;
+        html += `
+            <div class="integrity-section">
+                <h3>API MangaUpdates</h3>
+                <ul>
+                    <li>Accès à l'API : <span class="${api.ok ? 'ok' : 'error'}">${api.ok ? 'OK' : 'Échec'}</span>${(!api.ok && api.http) ? ` (HTTP ${api.http})` : ''}</li>
+                    ${(!api.ok && api.error) ? `<li class="error">Erreur : ${api.error}</li>` : ''}
+                    <li>Entrées en cache : ${api.cache_count ?? 0}</li>
+                </ul>
+            </div>
+        `;
+    }
 
     // 6. Version
     html += `
@@ -670,5 +701,162 @@ function applyCoherenceFilter(filter) {
         } else {
             block.style.display = block.dataset.types.split(' ').includes(filter) ? '' : 'none';
         }
+    });
+}
+
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Outil « Associer MangaUpdates » (modale Outils)
+// Recherche une fiche MangaUpdates pour chaque série sans URL, puis laisse
+// l'utilisateur valider la bonne correspondance avant l'enregistrement.
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Échappements locaux
+function muEscHtml(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function muEscAttr(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Délégation : le bouton est dans le HTML statique de la modale Outils
+document.addEventListener('click', (e) => {
+    if (e.target.closest('#mu-associate-btn')) {
+        loadMuAssociate();
+    } else if (e.target.closest('#mu-associate-save-btn')) {
+        saveMuAssociations();
+    }
+});
+
+// Lance la recherche côté serveur
+function loadMuAssociate() {
+    const btn     = document.getElementById('mu-associate-btn');
+    const textEl  = document.getElementById('mu-associate-text');
+    const spinner = document.getElementById('mu-associate-spinner');
+    const results = document.getElementById('mu-associate-results');
+    if (!results) return;
+
+    if (btn) btn.disabled = true;
+    if (textEl) textEl.textContent = 'Recherche en cours...';
+    if (spinner) spinner.style.display = 'inline-block';
+    results.innerHTML = '<p class="loading-text">Recherche des correspondances sur MangaUpdates…</p>';
+
+    fetch('admin.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'tool_action=mu_associate_search'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) {
+            results.innerHTML = '<p class="error-text">Erreur lors de la recherche.</p>';
+            return;
+        }
+        renderMuAssociateForm(data.candidates || [], data.remaining || 0);
+    })
+    .catch(() => {
+        results.innerHTML = '<p class="error-text">Une erreur est survenue.</p>';
+    })
+    .finally(() => {
+        if (btn) btn.disabled = false;
+        if (textEl) textEl.textContent = 'Rechercher les correspondances';
+        if (spinner) spinner.style.display = 'none';
+    });
+}
+
+// Affiche le formulaire de validation
+function renderMuAssociateForm(candidates, remaining) {
+    const results = document.getElementById('mu-associate-results');
+    if (!results) return;
+
+    if (candidates.length === 0) {
+        results.innerHTML = '<p class="mu-associate-empty">Toutes vos séries possèdent déjà une URL MangaUpdates. ✅</p>';
+        return;
+    }
+
+    let html = '<div class="mu-associate-form">';
+    candidates.forEach(series => {
+        const list = series.results || [];
+        html += `<div class="mu-associate-series" data-series-id="${muEscAttr(series.id)}">`;
+        html += `<div class="mu-associate-series-name">${muEscHtml(series.name)}`;
+        if (series.author) html += ` <small>${muEscHtml(series.author)}</small>`;
+        html += `</div>`;
+
+        html += `<div class="mu-associate-options">`;
+        // Option « aucune correspondance », cochée par défaut
+        html += `<label class="mu-associate-option">
+                    <input type="radio" name="mu_${muEscAttr(series.id)}" value="" checked>
+                    <span class="mu-cand-none">Aucune correspondance</span>
+                 </label>`;
+
+        if (list.length === 0) {
+            html += `<p class="mu-associate-noresult">Aucun résultat trouvé pour cette série.</p>`;
+        } else {
+            list.forEach(r => {
+                const meta = [r.type, r.year, r.status].filter(Boolean).map(muEscHtml).join(' · ');
+                html += `<label class="mu-associate-option">
+                    <input type="radio" name="mu_${muEscAttr(series.id)}" value="${muEscAttr(r.url)}">
+                    <span class="mu-cand-info">
+                        <span class="mu-cand-title">${muEscHtml(r.title)}</span>
+                        ${meta ? `<span class="mu-cand-meta">${meta}</span>` : ''}
+                    </span>
+                    ${r.url ? `<a class="mu-cand-link" href="${muEscAttr(r.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">fiche ↗</a>` : ''}
+                 </label>`;
+            });
+        }
+        html += `</div></div>`;
+    });
+    html += `</div>`;
+
+    html += `<button id="mu-associate-save-btn" class="button button-ats">Enregistrer les correspondances</button>`;
+    if (remaining > 0) {
+        html += `<p class="hint">${remaining} série(s) supplémentaire(s) non traitée(s) cette fois — relancez l'outil pour continuer.</p>`;
+    }
+
+    results.innerHTML = html;
+}
+
+// Enregistre les correspondances sélectionnées
+function saveMuAssociations() {
+    const blocks = document.querySelectorAll('#mu-associate-results .mu-associate-series');
+    const params = new URLSearchParams();
+    params.set('tool_action', 'mu_associate_save');
+
+    let count = 0;
+    blocks.forEach(block => {
+        const id  = block.dataset.seriesId;
+        const sel = block.querySelector('input[type="radio"]:checked');
+        if (sel && sel.value) {
+            params.append(`associations[${id}]`, sel.value);
+            count++;
+        }
+    });
+
+    if (count === 0) {
+        showCustomAlert('Information', 'Aucune correspondance sélectionnée.');
+        return;
+    }
+
+    const saveBtn = document.getElementById('mu-associate-save-btn');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Enregistrement...'; }
+
+    fetch('admin.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString()
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showSuccessModal(`${data.saved} association(s) enregistrée(s).`);
+            setTimeout(() => window.location.reload(), 900);
+        } else {
+            showErrorModal(data.message || "Erreur lors de l'enregistrement.");
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Enregistrer les correspondances'; }
+        }
+    })
+    .catch(() => {
+        showErrorModal('Une erreur est survenue.');
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Enregistrer les correspondances'; }
     });
 }

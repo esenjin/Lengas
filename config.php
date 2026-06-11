@@ -126,10 +126,20 @@ function init_db(PDO $pdo): void {
         )
     ");
 
-    // ── Colonne nautiljon_url (URL de référence cliquable) ────────────────────
+    // ── Colonne mangaupdates_url (URL de référence + source du nombre de tomes) ─
     try {
-        $pdo->exec("ALTER TABLE series ADD COLUMN nautiljon_url TEXT NOT NULL DEFAULT ''");
+        $pdo->exec("ALTER TABLE series ADD COLUMN mangaupdates_url TEXT NOT NULL DEFAULT ''");
     } catch (Exception $e) { /* colonne déjà présente */ }
+
+    // ── Cache des appels à l'API MangaUpdates (clé = series_id numérique) ─────
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS mangaupdates_cache (
+            series_id    TEXT PRIMARY KEY,
+            volumes      INTEGER,
+            status_text  TEXT,
+            timestamp    INTEGER NOT NULL
+        )
+    ");
 
     // Options par défaut si la table est vide
     $count = $pdo->query("SELECT COUNT(*) FROM options")->fetchColumn();
@@ -272,7 +282,7 @@ function load_data(): array {
             'mature'             => (bool)$s['mature'],
             'favorite'           => (bool)$s['favorite'],
             'status'                 => $s['status'],
-            'nautiljon_url'          => $s['nautiljon_url'] ?? '',
+            'mangaupdates_url'       => $s['mangaupdates_url'] ?? '',
             'volumes'                => $vols,
         ];
     }
@@ -296,14 +306,14 @@ function save_data(array $data): void {
         }
 
         $upsertSeries = $db->prepare("
-            INSERT INTO series (id, name, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, nautiljon_url)
-            VALUES (:id,:name,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:nautiljon_url)
+            INSERT INTO series (id, name, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url)
+            VALUES (:id,:name,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url)
             ON CONFLICT(id) DO UPDATE SET
                 name=excluded.name, author=excluded.author, publisher=excluded.publisher,
                 other_contributors=excluded.other_contributors, categories=excluded.categories,
                 genres=excluded.genres, image=excluded.image, anilist_id=excluded.anilist_id,
                 mature=excluded.mature, favorite=excluded.favorite, status=excluded.status,
-                nautiljon_url=excluded.nautiljon_url
+                mangaupdates_url=excluded.mangaupdates_url
         ");
 
         $deleteVols  = $db->prepare("DELETE FROM volumes WHERE series_id = ?");
@@ -326,7 +336,7 @@ function save_data(array $data): void {
                 ':mature'              => (int)($s['mature'] ?? false),
                 ':favorite'            => (int)($s['favorite'] ?? false),
                 ':status'              => $s['status'] ?? 'en cours',
-                ':nautiljon_url'       => $s['nautiljon_url'] ?? '',
+                ':mangaupdates_url'    => $s['mangaupdates_url'] ?? '',
             ]);
 
             $deleteVols->execute([$s['id']]);

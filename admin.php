@@ -4,7 +4,7 @@
 require 'config.php';
 require 'includes/auth.php';
 require 'includes/helpers.php';
-require 'includes/anilist.php';
+require 'includes/mangaupdates.php';
 require 'fonctions/series.php';
 require 'fonctions/volumes.php';
 require 'fonctions/read.php';
@@ -69,14 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $total   = count($data);
     $current = 0;
 
-    // Récupérer les volumes Anilist en batch
-    $anilist_ids_needed = [];
-    foreach ($data as $series) {
-        if (!empty($series['anilist_id'])) {
-            $anilist_ids_needed[] = $series['anilist_id'];
-        }
-    }
-    $volumes_by_anilist = fetch_volumes_for_series_batch(array_unique($anilist_ids_needed));
+    // Les volumes MangaUpdates sont récupérés à la volée dans la boucle ci-dessous.
+    // Le cache SQLite (24h) évite de re-solliciter l'API à chaque analyse.
 
     foreach ($data as $series) {
         $current++;
@@ -86,48 +80,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'name'    => $series['name'],
         ]);
 
-        $ref_volumes = null;
-        $source      = null;
+        $url = $series['mangaupdates_url'] ?? '';
 
         // Aucune référence disponible
-        if (empty($series['anilist_id'])) {
-            $no_reference_series[] = ['name' => $series['name'], 'author' => $series['author'] ?? ''];
+        if ($url === '') {
+            $no_reference_series[] = ['id' => $series['id'], 'name' => $series['name'], 'author' => $series['author'] ?? ''];
             continue;
         }
 
-        // Référence : Anilist uniquement
-        // array_key_exists distingue : clé absente (erreur réseau/quota) vs valeur null (série en cours)
-        if (array_key_exists($series['anilist_id'], $volumes_by_anilist)) {
-            $av = $volumes_by_anilist[$series['anilist_id']];
-            if ($av !== null && (int)$av > 0) {
-                $ref_volumes = (int)$av;
-                $source      = 'anilist';
-            } else {
-                // Anilist répond mais n'indique pas de nombre de tomes : publication en cours
-                $failed_series[] = [
-                    'name'   => $series['name'],
-                    'author' => $series['author'] ?? '',
-                    'ref'    => 'anilist',
-                    'reason' => 'Publication en cours — nombre de tomes non encore renseigné sur Anilist',
-                ];
-                continue;
-            }
-        } else {
-            // Clé absente : erreur réseau ou quota Anilist dépassé
+        // URL présente mais invalide
+        $id = mangaupdates_get_id_from_url($url);
+        if ($id === null) {
             $failed_series[] = [
+                'id'     => $series['id'],
                 'name'   => $series['name'],
                 'author' => $series['author'] ?? '',
-                'ref'    => 'anilist',
-                'reason' => 'Erreur de récupération Anilist (quota dépassé ou erreur réseau)',
+                'ref'    => 'mangaupdates',
+                'reason' => 'URL MangaUpdates invalide',
             ];
             continue;
         }
 
-        if ($ref_volumes === null) continue;
+        // Référence : MangaUpdates
+        $info = mangaupdates_get_volumes($id);
+        if ($info === null) {
+            // Échec de récupération : réseau ou service indisponible
+            $failed_series[] = [
+                'id'     => $series['id'],
+                'name'   => $series['name'],
+                'author' => $series['author'] ?? '',
+                'ref'    => 'mangaupdates',
+                'reason' => 'Erreur de récupération MangaUpdates (réseau ou service indisponible)',
+            ];
+            continue;
+        }
 
+        $av = $info['volumes'];
+        if ($av === null || (int)$av <= 0) {
+            // Fiche trouvée mais sans nombre de tomes renseigné
+            $failed_series[] = [
+                'id'     => $series['id'],
+                'name'   => $series['name'],
+                'author' => $series['author'] ?? '',
+                'ref'    => 'mangaupdates',
+                'reason' => 'Nombre de tomes non renseigné sur MangaUpdates',
+            ];
+            continue;
+        }
+
+        $ref_volumes = (int)$av;
         $owned_volumes               = count($series['volumes']);
-        $series['ref_volumes_source'] = $source;
+        $series['ref_volumes_source'] = 'mangaupdates';
         $series['ref_volumes']        = $ref_volumes;
+        $series['ref_status']         = $info['status']    ?? null;
+        $series['ref_completed']      = $info['completed'] ?? false;
+        $series['ref_country']        = $info['country']   ?? '';
 
         if ($owned_volumes < $ref_volumes) {
             $missing = [];
@@ -237,7 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $other_contributors = trim($_POST['other_contributors'] ?? '');
     $categories = trim($_POST['categories'] ?? '');
     $genres = trim($_POST['genres'] ?? '');
-    $anilist_id = trim($_POST['anilist_id'] ?? '');
+    $mangaupdates_url = trim($_POST['mangaupdates_url'] ?? '');
     $mature = !empty($_POST['mature']);
     $favorite = !empty($_POST['favorite']);
     $volumes_count = (int)($_POST['volumes_count'] ?? 1);
@@ -245,7 +252,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $all_collector = !empty($_POST['all_collector']);
     $last_volume = !empty($_POST['last_volume']);
     $status        = $_POST['series_status'] ?? 'en cours';
-    $nautiljon_url = trim($_POST['nautiljon_url'] ?? '');
 
     // Initialiser $image à null par défaut
     $image = null;
@@ -261,10 +267,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     }
 
     // Appeler add_series avec $image (qui peut être null)
-    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $anilist_id, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $nautiljon_url);
+    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status);
 
     if ($result['success']) {
         save_data($result['data']);
+        // Réchauffer le cache MangaUpdates pour la nouvelle série
+        if ($mangaupdates_url !== '') {
+            $mu_id = mangaupdates_get_id_from_url($mangaupdates_url);
+            if ($mu_id !== null) @mangaupdates_get_volumes($mu_id, true);
+        }
         $_SESSION['success_message'] = $result['message'];
     } else {
         $_SESSION['error_message'] = $result['message'];
@@ -338,7 +349,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $other_contributors = trim($_POST['edit_other_contributors'] ?? '');
     $categories = trim($_POST['edit_categories'] ?? '');
     $genres = trim($_POST['edit_genres'] ?? '');
-    $anilist_id = trim($_POST['edit_anilist_id'] ?? '');
+    $mangaupdates_url = trim($_POST['edit_mangaupdates_url'] ?? '');
     $mature = !empty($_POST['edit_mature']);
     $favorite = !empty($_POST['edit_favorite']);
     $remove_image = !empty($_POST['remove_image']);
@@ -347,7 +358,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $new_volumes_collector = !empty($_POST['new_volumes_collector']);
     $new_volumes_last = !empty($_POST['new_volumes_last']);
     $new_status         = $_POST['series_status'] ?? null;
-    $edit_nautiljon_url = trim($_POST['edit_nautiljon_url'] ?? '');
 
     $new_image = null;
     if (!empty($_FILES['edit_image']['name'])) {
@@ -360,9 +370,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         }
     }
 
-    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $anilist_id, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_nautiljon_url);
+    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status);
     if ($result['success']) {
         save_data($result['data']);
+        // Réchauffer le cache MangaUpdates pour la série modifiée
+        if ($mangaupdates_url !== '') {
+            $mu_id = mangaupdates_get_id_from_url($mangaupdates_url);
+            if ($mu_id !== null) @mangaupdates_get_volumes($mu_id, true);
+        }
     }
 
     header("Location: " . $_SERVER['REQUEST_URI']);
@@ -596,6 +611,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
         case 'clean_forbidden_files':
             $response = clean_forbidden_files();
             break;
+
+        case 'mu_associate_search':
+            // Pour chaque série sans URL MangaUpdates, propose les 5 premiers résultats
+            @set_time_limit(120);
+            $candidates = [];
+            $remaining  = 0;
+            $processed  = 0;
+            $max        = 50; // plafond par exécution (relancer pour traiter le reste)
+            foreach ($data as $series) {
+                if (!empty($series['mangaupdates_url'])) continue;
+                if ($processed >= $max) { $remaining++; continue; }
+                $processed++;
+                $results = mangaupdates_search($series['name'], 5);
+                $candidates[] = [
+                    'id'      => $series['id'],
+                    'name'    => $series['name'],
+                    'author'  => $series['author'] ?? '',
+                    'results' => $results,
+                ];
+                usleep(150000); // ~150 ms : on évite de saturer l'API MangaUpdates
+            }
+            $response = ['success' => true, 'candidates' => $candidates, 'remaining' => $remaining];
+            break;
+
+        case 'mu_associate_save':
+            // Enregistre les URL validées. Format attendu : associations[series_id] = url
+            $assoc = $_POST['associations'] ?? [];
+            if (!is_array($assoc)) $assoc = [];
+            $saved = 0;
+            foreach ($data as &$series) {
+                if (!isset($assoc[$series['id']])) continue;
+                $url = trim((string)$assoc[$series['id']]);
+                if ($url !== '' && mangaupdates_get_id_from_url($url) !== null) {
+                    $series['mangaupdates_url'] = $url;
+                    $saved++;
+                }
+            }
+            unset($series);
+            if ($saved > 0) save_data($data);
+            $response = ['success' => true, 'saved' => $saved];
+            break;
+
         case 'check_coherence':
             $issues = check_collection_coherence($data);
             $response = ['success' => true, 'issues' => $issues];
@@ -711,8 +768,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 'favorite' => $series['favorite'] ?? false,
                 'mature' => $series['mature'] ?? false,
                 'status' => $status,
-                'anilist_id'           => $series['anilist_id'] ?? '',
-                'nautiljon_url'        => $series['nautiljon_url'] ?? '',
+                'mangaupdates_url'           => $series['mangaupdates_url'] ?? '',
             ];
         }, $paginated_data);
 
@@ -744,10 +800,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
         exit;
     }
 
-    // Notifications via Anilist
+    // Notifications via MangaUpdates
     $ref_volumes = null;
-    if (!empty($series['anilist_id'])) {
-        $ref_volumes = get_series_volumes_from_anilist($series['anilist_id']);
+    if (!empty($series['mangaupdates_url'])) {
+        $mu_id = mangaupdates_get_id_from_url($series['mangaupdates_url']);
+        if ($mu_id !== null) {
+            $mu = mangaupdates_get_volumes($mu_id);
+            if ($mu !== null && $mu['volumes'] !== null && (int)$mu['volumes'] > 0) {
+                $ref_volumes = (int)$mu['volumes'];
+            }
+        }
     }
     $notifications = generate_notifications($series['volumes'], $ref_volumes);
 
@@ -1096,12 +1158,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                         <option value="en pause">En pause ⏳</option>
                         <option value="abandonnée">Abandonnée ⛔</option>
                     </select>
-                    <p>ID Anilist :</p>
-                    <input type="text" name="anilist_id" placeholder="ID Anilist (facultatif)" autocomplete="off">
-                    <p class="hint"><a tabindex="0" data-hint="L'ID Anilist est utilisé pour trouver les tomes manquants des sériées terminées, plus d'infos dans l'outil « Séries incomplètes ». Pour trouver cet identifiant, rendez-vous sur anilist.co, recherchez votre série et accédez à sa fiche, l'ID est la suite de chiffres avant le nom dans l'url.">À quoi ça sert ? Où le trouver ?</a>.</p>
-                    <p>URL Nautiljon (facultatif) :</p>
-                    <input type="text" name="nautiljon_url" placeholder="https://www.nautiljon.com/mangas/nom-de-la-serie.html" autocomplete="off">
-                    <p class="hint">Lien de référence vers la fiche Nautiljon (lien cliquable dans la carte).</p>
+                    <p>URL MangaUpdates :</p>
+                    <input type="text" name="mangaupdates_url" placeholder="https://www.mangaupdates.com/series/xxxxxxx/nom-de-la-serie (facultatif)" autocomplete="off">
+                    <p class="hint"><a tabindex="0" data-hint="L'URL MangaUpdates sert à détecter les tomes manquants des séries terminées (outil « Séries incomplètes »). Sur mangaupdates.com, ouvrez la fiche de votre série puis copiez l'URL complète. L'outil « Associer MangaUpdates » (modale Outils) peut aussi remplir ce champ automatiquement.">À quoi ça sert ? Où la trouver ?</a></p>
                     <label>
                         <input type="checkbox" name="mature"> Contenu mature 🔞
                     </label>
@@ -1134,8 +1193,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
             <div class="modal-content">
                 <span class="close-modal" id="close-incomplete-series-modal">&times;</span>
                 <h2>Séries incomplètes</h2>
-                <p>Cet outil vous permet de trouver les séries pour lesquelles il vous manque des tomes, en comparant votre collection aux données de l'API Anilist.</p>
-                <p class="hint">⚠️ Limitations : Anilist ne renseigne le nombre de tomes que pour les séries dont la <strong>publication est terminée</strong>. Les séries en cours de publication apparaîtront dans la section "Non analysées". Les données sont en <strong>VO japonaise</strong> — un décalage avec les sorties VF françaises est possible.</p>
+                <p>Cet outil vous permet de trouver les séries pour lesquelles il vous manque des tomes, en comparant votre collection aux données de l'API MangaUpdates.</p>
+                <p class="hint">⚠️ Limitations : MangaUpdates fournit le nombre de tomes aussi bien pour les séries <strong>terminées</strong> que pour celles <strong>en cours de publication</strong>. En revanche, le décompte se base principalement sur l'édition d'origine (VO) et non sur l'édition française (VF) : un écart est donc possible. Lengas privilégie automatiquement le décompte français lorsque MangaUpdates l'indique (ex. « 8 Volumes (Complete, France) »). Renseignez l'URL MangaUpdates de chaque série — via le champ dédié (ajout / modification) ou l'outil « Associer MangaUpdates » de la modale Outils.</p>
                 <button id="search-incomplete-series" class="button">Rechercher les séries incomplètes</button>
                 <div id="incomplete-series-results">
                     <!-- Les résultats seront affichés ici -->
@@ -1225,10 +1284,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <input type="text" name="edit_categories" id="edit-series-categories" placeholder="Catégories (séparées par des virgules)" autocomplete="off" required>
                     <p>Genres :</p>
                     <input type="text" name="edit_genres" id="edit-series-genres" placeholder="Genres (séparés par des virgules)" autocomplete="off">
-                    <p>ID Anilist (facultatif) :</p>
-                    <input type="text" name="edit_anilist_id" id="edit-series-anilist-id" placeholder="ID Anilist (facultatif)" autocomplete="off">
-                    <p>URL Nautiljon (facultatif) :</p>
-                    <input type="text" name="edit_nautiljon_url" id="edit-series-nautiljon-url" placeholder="https://www.nautiljon.com/mangas/nom-de-la-serie.html" autocomplete="off">
+                    <p>URL MangaUpdates (facultatif) :</p>
+                    <input type="text" name="edit_mangaupdates_url" id="edit-series-mangaupdates-url" placeholder="https://www.mangaupdates.com/series/xxxxxxx/nom-de-la-serie" autocomplete="off">
                     <p>Nombre de nouveaux tomes à créer :</p>
                     <input type="number" name="new_volumes_count" id="edit-series-new-volumes-count" placeholder="Nombre de nouveaux tomes" min="0" value="0" autocomplete="off">
                     <p>Statut des nouveaux tomes :</p>
@@ -1547,7 +1604,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
             <div class="modal-content">
                 <span class="close-modal" id="close-coherences-modal">&times;</span>
                 <h2>Incohérences de la collection</h2>
-                <p>Vérification des incohérences internes de vos séries (hors données Anilist).</p>
+                <p>Vérification des incohérences internes de vos séries. Cet outil exploite aussi le statut de publication MangaUpdates mis en cache — lancez d'abord l'outil « Séries incomplètes » pour le remplir.</p>
                 <div id="coherences-results">
                     <!-- Résultats chargés dynamiquement -->
                 </div>
@@ -1577,6 +1634,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <div id="backups-list">
                         <!-- Les sauvegardes seront affichées ici -->
                     </div>
+                </div>
+
+                <div class="tools-section">
+                    <h3>Associer MangaUpdates</h3>
+                    <p>Recherche automatiquement une fiche MangaUpdates pour chaque série sans URL renseignée, puis vous laisse valider la bonne correspondance avant l'enregistrement.</p>
+                    <button id="mu-associate-btn" class="button button-opt">
+                        <span id="mu-associate-text">Rechercher les correspondances</span>
+                        <span id="mu-associate-spinner" class="spinner" style="display: none;"></span>
+                    </button>
+                    <div id="mu-associate-results"></div>
                 </div>
             </div>
         </div>

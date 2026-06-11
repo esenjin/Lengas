@@ -35,10 +35,11 @@ function check_site_integrity(array $data): array {
     $required_files = [
         'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php', '.htaccess',
         'assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js',
+        'assets/img/mulogo.png',
         'assets/js/admin/',
         'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php',
         'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php', 'fonctions/unread.php',
-        'includes/anilist.php', 'includes/auth.php', 'includes/helpers.php',
+        'includes/mangaupdates.php', 'includes/auth.php', 'includes/helpers.php',
         'includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/',
     ];
     foreach ($required_files as $file) {
@@ -72,6 +73,7 @@ function check_site_integrity(array $data): array {
     $results['forbidden_files']['generate_password.php'] = !file_exists(__DIR__ . '/../generate_password.php');
     $results['forbidden_files']['migrate.php']           = !file_exists(__DIR__ . '/../migrate.php');
     $results['forbidden_files']['fix_series_status.php'] = !file_exists(__DIR__ . '/../fix_series_status.php');
+    $results['forbidden_files']['includes/anilist.php']  = !file_exists(__DIR__ . '/../includes/anilist.php');
 
     // 3. Permissions
     $checks = [
@@ -152,6 +154,29 @@ function check_site_integrity(array $data): array {
         'effective_max_upload_size' => get_effective_max_upload_size(),
         'server_info'               => get_server_info(),
     ];
+
+    // 9. Structure de la base de données (intégration MangaUpdates)
+    $results['db_structure'] = [];
+    $cache_count = 0;
+    try {
+        $db = get_db();
+        $col_names = array_column($db->query("PRAGMA table_info(series)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+        $results['db_structure']['Colonne series.mangaupdates_url'] = in_array('mangaupdates_url', $col_names, true);
+        $tbl = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='mangaupdates_cache'")->fetchColumn();
+        $results['db_structure']['Table mangaupdates_cache'] = ($tbl !== false);
+        if ($tbl !== false) {
+            $cache_count = (int)$db->query("SELECT COUNT(*) FROM mangaupdates_cache")->fetchColumn();
+        }
+    } catch (Exception $e) {
+        $results['db_structure']['Lecture impossible'] = false;
+    }
+
+    // 10. Connectivité de l'API MangaUpdates
+    if (function_exists('mangaupdates_check_api')) {
+        $api = mangaupdates_check_api();
+        $api['cache_count'] = $cache_count;
+        $results['mangaupdates_api'] = $api;
+    }
 
     return $results;
 }
@@ -427,7 +452,7 @@ function delete_backup(string $backup_file): array {
 }
 
 // Générer les notifications pour une série
-function generate_notifications(array $volumes, ?int $anilist_volumes = null): array {
+function generate_notifications(array $volumes, ?int $ref_volumes = null): array {
     $notifications = [];
     if (empty($volumes)) return $notifications;
 
@@ -458,16 +483,16 @@ function generate_notifications(array $volumes, ?int $anilist_volumes = null): a
         }
     }
 
-    if ($anilist_volumes !== null && $max > $anilist_volumes) {
-        $notifications[] = "Attention, votre série contient plus de tomes que ce qui est indiqué sur Anilist.";
+    if ($ref_volumes !== null && $max > $ref_volumes) {
+        $notifications[] = "Attention, votre série contient plus de tomes que ce qui est indiqué sur MangaUpdates.";
     }
-    if ($anilist_volumes !== null && $max < $anilist_volumes) {
-        $missing = range($max + 1, $anilist_volumes);
+    if ($ref_volumes !== null && $max < $ref_volumes) {
+        $missing = range($max + 1, $ref_volumes);
         $notifications[] = count($missing) == 1
             ? "Attention, il manque le tome " . implode(', ', $missing) . " pour compléter cette série."
             : "Attention, il manque les tomes " . implode(', ', $missing) . " pour compléter cette série.";
     }
-    if ($anilist_volumes !== null && $max == $anilist_volumes && empty($last_volumes)) {
+    if ($ref_volumes !== null && $max == $ref_volumes && empty($last_volumes)) {
         $notifications[] = "Attention, cette série semble complète mais le dernier tome n'est pas tagué comme tel.";
     }
 
@@ -534,6 +559,28 @@ function check_collection_coherence(array $data): array {
 
         if ($min > 1) {
             $series_issues[] = ['type' => 'sequence_not_starting_at_1', 'message' => 'La collection ne commence pas au tome 1 (premier tome possédé : ' . $min . ').'];
+        }
+
+        // ── Cohérence avec le statut de publication MangaUpdates (cache, sans réseau) ─
+        if (function_exists('mangaupdates_get_cached_status') && function_exists('mangaupdates_get_id_from_url')
+            && !empty($series['mangaupdates_url'])) {
+            $mu_id = mangaupdates_get_id_from_url($series['mangaupdates_url']);
+            if ($mu_id !== null) {
+                $mu_cache = mangaupdates_get_cached_status($mu_id); // lecture seule
+                if ($mu_cache !== null && $mu_cache['status'] !== null && $mu_cache['status'] !== '') {
+                    $mu_completed     = !empty($mu_cache['completed']);
+                    $mu_volumes       = $mu_cache['volumes'];
+                    $is_finished_here = ($status === 'terminée') || !empty($last_volumes);
+
+                    if ($is_finished_here && !$mu_completed) {
+                        $series_issues[] = ['type' => 'mu_still_ongoing', 'message' => 'Vous avez marqué la série comme terminée (ou tagué un tome comme dernier), mais MangaUpdates indique une publication toujours en cours (« ' . $mu_cache['status'] . ' »).'];
+                    }
+
+                    if ($mu_completed && !$is_finished_here && $mu_volumes !== null && $max >= (int)$mu_volumes) {
+                        $series_issues[] = ['type' => 'mu_complete_unmarked', 'message' => 'MangaUpdates indique la série comme terminée (« ' . $mu_cache['status'] . ' », ' . (int)$mu_volumes . ' tomes) et vous semblez la posséder entièrement, mais elle n\'est pas marquée comme terminée.'];
+                    }
+                }
+            }
         }
 
         if (!empty($series_issues)) {
