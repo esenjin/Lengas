@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '3.2.1');
+define('SITE_VERSION', '3.3.0');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Chemin vers la base de données SQLite
@@ -129,6 +129,11 @@ function init_db(PDO $pdo): void {
     // ── Colonne mangaupdates_url (URL de référence + source du nombre de tomes) ─
     try {
         $pdo->exec("ALTER TABLE series ADD COLUMN mangaupdates_url TEXT NOT NULL DEFAULT ''");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
+    // ── Colonne read_elsewhere (séries lues ailleurs intégrées à la biblio) ────
+    try {
+        $pdo->exec("ALTER TABLE series ADD COLUMN read_elsewhere INTEGER NOT NULL DEFAULT 0");
     } catch (Exception $e) { /* colonne déjà présente */ }
 
     // ── Cache des appels à l'API MangaUpdates (clé = series_id numérique) ─────
@@ -283,6 +288,7 @@ function load_data(): array {
             'favorite'           => (bool)$s['favorite'],
             'status'                 => $s['status'],
             'mangaupdates_url'       => $s['mangaupdates_url'] ?? '',
+            'read_elsewhere'         => (bool)($s['read_elsewhere'] ?? false),
             'volumes'                => $vols,
         ];
     }
@@ -306,14 +312,14 @@ function save_data(array $data): void {
         }
 
         $upsertSeries = $db->prepare("
-            INSERT INTO series (id, name, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url)
-            VALUES (:id,:name,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url)
+            INSERT INTO series (id, name, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, read_elsewhere)
+            VALUES (:id,:name,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:read_elsewhere)
             ON CONFLICT(id) DO UPDATE SET
                 name=excluded.name, author=excluded.author, publisher=excluded.publisher,
                 other_contributors=excluded.other_contributors, categories=excluded.categories,
                 genres=excluded.genres, image=excluded.image, anilist_id=excluded.anilist_id,
                 mature=excluded.mature, favorite=excluded.favorite, status=excluded.status,
-                mangaupdates_url=excluded.mangaupdates_url
+                mangaupdates_url=excluded.mangaupdates_url, read_elsewhere=excluded.read_elsewhere
         ");
 
         $deleteVols  = $db->prepare("DELETE FROM volumes WHERE series_id = ?");
@@ -337,6 +343,7 @@ function save_data(array $data): void {
                 ':favorite'            => (int)($s['favorite'] ?? false),
                 ':status'              => $s['status'] ?? 'en cours',
                 ':mangaupdates_url'    => $s['mangaupdates_url'] ?? '',
+                ':read_elsewhere'     => (int)($s['read_elsewhere'] ?? false),
             ]);
 
             $deleteVols->execute([$s['id']]);

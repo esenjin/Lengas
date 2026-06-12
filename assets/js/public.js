@@ -34,22 +34,12 @@ function openModal(modalId) {
 
 // Écouteurs pour les boutons d'ouverture de modale
 document.addEventListener('DOMContentLoaded', function() {
-    // Bouton Légende
+    // Bouton Légende (dans le logout-container)
     const openLegendModalButton = document.getElementById('open-legend-modal');
     if (openLegendModalButton) {
         openLegendModalButton.addEventListener('click', function(e) {
             e.preventDefault();
             openModal('legend-modal');
-        });
-    }
-
-    // Bouton Lues ailleurs
-    const openReadModalButton = document.getElementById('open-read-modal');
-    if (openReadModalButton) {
-        openReadModalButton.addEventListener('click', function(e) {
-            e.preventDefault();
-            loadRead();
-            openModal('read-modal');
         });
     }
 
@@ -66,76 +56,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target.classList.contains('modal')) {
             closeAllModals();
         }
-    });
-});
-
-// Fonction pour charger les séries "lues ailleurs"
-function loadRead() {
-    fetch('index.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'action=get_read'
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Erreur réseau : ' + response.status);
-        }
-        return response.json();
-    })
-    .then(data => {
-        updateReadList(data.read || []);
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        updateReadList([]);
-    });
-}
-
-// Mettre à jour la liste "lues ailleurs" dans le DOM
-function updateReadList(read) {
-    const readList = document.getElementById('read-list');
-    if (!readList) {
-        console.error("L'élément read-list n'existe pas.");
-        return;
-    }
-
-    readList.innerHTML = '';
-
-    if (!read || read.length === 0) {
-        readList.innerHTML = '<p>Aucune série "lue ailleurs" trouvée.</p>';;
-        return;
-    }
-
-    read.forEach(item => {
-        const readItem = document.createElement('div');
-        readItem.className = 'read-item';
-        readItem.innerHTML = `
-            <div class="read-item-content">
-                <div class="read-item-line read-item-line-top">
-                    <span class="read-series-name">${item.name || ''}</span>
-                    <span class="read-series-author">${item.author || ''}</span>
-                    <span class="read-series-publisher">${item.publisher || ''}</span>
-                </div>
-                <div class="read-item-line read-item-line-bottom">
-                    <span class="read-series-volumes">${item.volumes_read || 0} tomes lus, série ${item.status === 'terminé' ? 'terminée' : (item.status === 'en cours' ? 'en cours' : (item.status || 'inconnu'))}</span>
-                </div>
-            </div>
-        `;
-        readList.appendChild(readItem);
-    });
-}
-
-// Écouteur pour le champ de recherche dans la modale "Lues ailleurs"
-document.getElementById('read-search')?.addEventListener('input', function() {
-    const searchTerm = normalizeString(this.value);
-    document.querySelectorAll('.read-item').forEach(item => {
-        const name = normalizeString(item.querySelector('.read-series-name')?.textContent || '');
-        const author = normalizeString(item.querySelector('.read-series-author')?.textContent || '');
-        const publisher = normalizeString(item.querySelector('.read-series-publisher')?.textContent || '');
-
-        item.style.display = (name.includes(searchTerm) || author.includes(searchTerm) || publisher.includes(searchTerm)) ? 'flex' : 'none';
     });
 });
 
@@ -174,6 +94,7 @@ document.querySelectorAll('.series-card').forEach(card => {
         }
         document.getElementById('modal-series-badges').innerHTML =
             `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
+            `${series.read_elsewhere ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}` +
             `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
             `${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}`;
 
@@ -238,7 +159,7 @@ function loadMoreSeries() {
                     const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
 
                     seriesCard.innerHTML = `
-                        <img class="series-image" src="${series.image || 'logo.png'}" alt="${series.name}" loading="lazy">
+                        <img class="series-image" src="${series.image || 'assets/img/logo.png'}" alt="${series.name}" loading="lazy">
                         <div class="series-info">
                             <h2>${series.name}</h2>
                             <p><strong>Auteur :</strong> ${series.author}</p>
@@ -254,7 +175,7 @@ function loadMoreSeries() {
                     seriesCard.addEventListener('click', function() {
                         const series = seriesData[this.dataset.seriesIndex];
                         document.getElementById('modal-series-title').textContent = series.name;
-                        document.getElementById('modal-series-image').src = series.image || 'logo.png';
+                        document.getElementById('modal-series-image').src = series.image || 'assets/img/logo.png';
                         document.getElementById('modal-series-author').textContent = series.author;
                         document.getElementById('modal-series-publisher').textContent = series.publisher;
                         document.getElementById('modal-series-other-contributors').textContent = series.other_contributors && series.other_contributors.filter(i => i.trim()).length > 0 ? series.other_contributors.filter(i => i.trim()).join(', ') : 'aucun';
@@ -282,6 +203,7 @@ function loadMoreSeries() {
                         }
                         document.getElementById('modal-series-badges').innerHTML =
                             `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
+                            `${series.read_elsewhere ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}` +
                             `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
                             `${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}`;
 
@@ -362,7 +284,7 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
                     const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
 
                     seriesCard.innerHTML = `
-                        <img class="series-image" src="${series.image || 'logo.png'}" alt="${series.name}" loading="lazy">
+                        <img class="series-image" src="${series.image || 'assets/img/logo.png'}" alt="${series.name}" loading="lazy">
                         <div class="series-info">
                             <h2>${series.name}</h2>
                             <p><strong>Auteur :</strong> ${series.author}</p>
@@ -378,7 +300,7 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
                     seriesCard.addEventListener('click', function() {
                         const series = seriesData[this.dataset.seriesIndex];
                         document.getElementById('modal-series-title').textContent = series.name;
-                        document.getElementById('modal-series-image').src = series.image || 'logo.png';
+                        document.getElementById('modal-series-image').src = series.image || 'assets/img/logo.png';
                         document.getElementById('modal-series-author').textContent = series.author;
                         document.getElementById('modal-series-publisher').textContent = series.publisher;
                         document.getElementById('modal-series-other-contributors').textContent = series.other_contributors && series.other_contributors.filter(i => i.trim()).length > 0 ? series.other_contributors.filter(i => i.trim()).join(', ') : 'aucun';
@@ -420,20 +342,6 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
         });
 });
 
-// Écouteurs pour la modale "Lues ailleurs"
-document.getElementById('open-read-modal').addEventListener('click', function(e) {
-    e.preventDefault();
-    loadRead();
-    openModal('read-modal');
-
-    // Force l'affichage de la modale
-    setTimeout(() => {
-        const modal = document.getElementById('read-modal');
-        if (modal) {
-            modal.style.display = 'flex';
-        }
-    }, 100);
-});
 
 // Gestion du menu mobile
 document.addEventListener('DOMContentLoaded', function() {
@@ -481,7 +389,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const totalVolumes = series.volumes ? series.volumes.length : 0;
                         const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
                         seriesCard.innerHTML = `
-                            <img class="series-image" src="${series.image || 'logo.png'}" alt="${series.name}" loading="lazy">
+                            <img class="series-image" src="${series.image || 'assets/img/logo.png'}" alt="${series.name}" loading="lazy">
                             <div class="series-info">
                                 <h2>${series.name}</h2>
                                 <p><strong>Auteur :</strong> ${series.author}</p>
@@ -550,3 +458,104 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
 });
+
+// ── Autocomplétion de la barre de recherche publique ──────────────────────
+(function setupPublicSearchAutocomplete() {
+    const input = document.getElementById('search-index');
+    if (!input) return;
+
+    // Créer le conteneur et la liste de suggestions
+    const wrapper = document.createElement('div');
+    wrapper.className = 'autocomplete-container';
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.appendChild(input);
+
+    const suggestionsList = document.createElement('div');
+    suggestionsList.className = 'autocomplete-suggestions';
+    suggestionsList.style.display = 'none';
+    wrapper.appendChild(suggestionsList);
+
+    const fields = ['name', 'author', 'publisher', 'categories', 'genres', 'other_contributors'];
+
+    async function fetchSuggestions(term) {
+        const normalized = normalizeString(term);
+        const promises = fields.map(field =>
+            fetch(`index.php?get_suggestions=true&field=${field}&term=${encodeURIComponent(normalized)}`)
+                .then(r => r.ok ? r.json() : [])
+                .catch(() => [])
+        );
+        const results = await Promise.all(promises);
+        return [...new Set(results.flat())];
+    }
+
+    function selectSuggestion(value) {
+        input.value = value;
+        suggestionsList.style.display = 'none';
+        suggestionsList.querySelectorAll('div').forEach(d => d.classList.remove('autocomplete-active'));
+        const form = input.closest('form');
+        if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    }
+
+    input.addEventListener('input', async function() {
+        const term = this.value.trim();
+        if (term.length < 2) {
+            suggestionsList.style.display = 'none';
+            return;
+        }
+        try {
+            const suggestions = await fetchSuggestions(term);
+            const normalizedTerm = normalizeString(term);
+            const filtered = suggestions.filter(s => normalizeString(s).includes(normalizedTerm));
+            suggestionsList.innerHTML = '';
+            if (filtered.length > 0) {
+                filtered.forEach(suggestion => {
+                    const div = document.createElement('div');
+                    div.textContent = suggestion;
+                    div.addEventListener('click', () => selectSuggestion(suggestion));
+                    suggestionsList.appendChild(div);
+                });
+                suggestionsList.style.display = 'block';
+            } else {
+                suggestionsList.style.display = 'none';
+            }
+        } catch (e) {
+            console.error('Autocomplete error:', e);
+        }
+    });
+
+    // Navigation clavier
+    input.addEventListener('keydown', function(e) {
+        if (suggestionsList.style.display === 'none') return;
+        const items = [...suggestionsList.querySelectorAll('div')];
+        if (!items.length) return;
+        const activeIdx = items.findIndex(d => d.classList.contains('autocomplete-active'));
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = activeIdx < items.length - 1 ? activeIdx + 1 : 0;
+            items.forEach(d => d.classList.remove('autocomplete-active'));
+            items[next].classList.add('autocomplete-active');
+            items[next].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prev = activeIdx > 0 ? activeIdx - 1 : items.length - 1;
+            items.forEach(d => d.classList.remove('autocomplete-active'));
+            items[prev].classList.add('autocomplete-active');
+            items[prev].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter' && activeIdx >= 0) {
+            e.preventDefault();
+            selectSuggestion(items[activeIdx].textContent);
+        } else if (e.key === 'Escape') {
+            suggestionsList.style.display = 'none';
+            items.forEach(d => d.classList.remove('autocomplete-active'));
+        }
+    });
+
+    // Fermeture au clic extérieur
+    document.addEventListener('click', e => {
+        if (!wrapper.contains(e.target)) {
+            suggestionsList.style.display = 'none';
+            suggestionsList.querySelectorAll('div').forEach(d => d.classList.remove('autocomplete-active'));
+        }
+    });
+})();

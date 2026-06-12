@@ -113,6 +113,19 @@
     font-weight: 500;
 }
 
+.read-elsewhere-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.72em;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--button-otl);
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
 .anilist-badge {
     display: inline-flex;
     align-items: center;

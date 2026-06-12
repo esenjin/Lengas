@@ -34,6 +34,7 @@ document.addEventListener('click', function(e) {
             document.querySelector('#edit-series-form [name="new_volumes_collector"]').checked = false;
             document.getElementById('edit-series-mature').checked = series.mature || false;
             document.getElementById('edit-series-favorite').checked = series.favorite || false;
+            document.getElementById('edit-series-read-elsewhere').checked = series.read_elsewhere || false;
             document.getElementById('current-series-image').src = series.image;
             const statusSelect = document.getElementById('edit-series-status');
             Array.from(statusSelect.options).forEach(option => {

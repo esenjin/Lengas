@@ -7,7 +7,6 @@ require 'includes/helpers.php';
 require 'includes/mangaupdates.php';
 require 'fonctions/series.php';
 require 'fonctions/volumes.php';
-require 'fonctions/read.php';
 require 'fonctions/wishlist.php';
 require 'fonctions/loans.php';
 require 'fonctions/options.php';
@@ -29,17 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     echo json_encode([
         'success' => true,
         'unread_series' => $unread_series
-    ]);
-    exit;
-}
-
-// Récupérer les séries "lues ailleurs"
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'get_read') {
-    $read = load_read();
-    header('Content-Type: application/json');
-    echo json_encode([
-        'success' => true,
-        'read' => is_array($read) ? $read : []
     ]);
     exit;
 }
@@ -326,6 +314,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $all_collector = !empty($_POST['all_collector']);
     $last_volume = !empty($_POST['last_volume']);
     $status        = $_POST['series_status'] ?? 'en cours';
+    $read_elsewhere = !empty($_POST['read_elsewhere']);
 
     // Initialiser $image à null par défaut
     $image = null;
@@ -341,7 +330,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     }
 
     // Appeler add_series avec $image (qui peut être null)
-    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status);
+    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere);
 
     if ($result['success']) {
         save_data($result['data']);
@@ -432,6 +421,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $new_volumes_collector = !empty($_POST['new_volumes_collector']);
     $new_volumes_last = !empty($_POST['new_volumes_last']);
     $new_status         = $_POST['series_status'] ?? null;
+    $edit_read_elsewhere = !empty($_POST['edit_read_elsewhere']);
 
     $new_image = null;
     if (!empty($_FILES['edit_image']['name'])) {
@@ -444,7 +434,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         }
     }
 
-    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status);
+    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere);
     if ($result['success']) {
         save_data($result['data']);
         // Réchauffer le cache MangaUpdates pour la série modifiée
@@ -755,6 +745,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
             if ($status_filter === 'favorite') {
                 return !empty($series['favorite']);
             }
+            if ($status_filter === 'read_elsewhere') {
+                return !empty($series['read_elsewhere']);
+            }
             if ($status_filter === 'reading_in_progress') {
                 // Au moins 1 tome "à lire" ou "en cours"
                 foreach ($series['volumes'] ?? [] as $volume) {
@@ -827,6 +820,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 'mature' => $series['mature'] ?? false,
                 'status' => $status,
                 'mangaupdates_url'           => $series['mangaupdates_url'] ?? '',
+                'read_elsewhere'             => (bool)($series['read_elsewhere'] ?? false),
             ];
         }, $paginated_data);
 
@@ -1003,88 +997,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
     exit;
 }
 
-// Gestion des actions pour "lues ailleurs"
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_read'])) {
-    $name = trim($_POST['read_name'] ?? '');
-    $author = trim($_POST['read_author'] ?? '');
-    $publisher = trim($_POST['read_publisher'] ?? '');
-    $volumes_read = (int)($_POST['read_volumes'] ?? 0);
-    $status = $_POST['read_status'] ?? 'terminé';
 
-    $read = load_read();
-    $result = add_to_read($read, $name, $author, $publisher, $volumes_read, $status);
-    if ($result['success']) {
-        save_read($result['read']);
-    }
-
-    header('Content-Type: application/json');
-    echo json_encode($result);
-    exit;
-}
-
-// Supprimer une série de "lues ailleurs"
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_from_read'])) {
-    $index = $_POST['index'] ?? 0;
-    $read = load_read();
-    $result = remove_from_read($read, $index);
-    if ($result['success']) {
-        save_read($result['read']);
-    }
-
-    header('Content-Type: application/json');
-    echo json_encode($result);
-    exit;
-}
-
-// Ajouter une série de "lues ailleurs" à la collection principale
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_from_read'])) {
-    $index = $_POST['index'] ?? 0;
-    $read = load_read();
-    $result = add_from_read($data, $read, $index);
-    if ($result['success']) {
-        save_data($result['data']);
-        save_read($result['read']);
-    }
-
-    header('Content-Type: application/json');
-    echo json_encode($result);
-    exit;
-}
-
-// Déplacer une série vers "Lues ailleurs"
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['move_to_read'])) {
-    $series_id = $_POST['series_id'] ?? '';
-    $read = load_read();
-    $result = move_series_to_read($data, $read, $series_id);
-    if ($result['success']) {
-        save_data($result['data']);
-        save_read($result['read']);
-    }
-
-    header('Content-Type: application/json');
-    echo json_encode($result);
-    exit;
-}
-
-// Éditer une série de "lues ailleurs"
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
-    $index = (int)($_POST['index'] ?? 0);
-    $name = trim($_POST['name'] ?? '');
-    $author = trim($_POST['author'] ?? '');
-    $publisher = trim($_POST['publisher'] ?? '');
-    $volumes_read = (int)($_POST['volumes_read'] ?? 0);
-    $status = $_POST['status'] ?? 'terminé';
-
-    $read = load_read();
-    $result = edit_read_item($read, $index, $name, $author, $publisher, $volumes_read, $status);
-    if ($result['success']) {
-        save_read($result['read']);
-    }
-
-    header('Content-Type: application/json');
-    echo json_encode($result);
-    exit;
-}
 ?>
 
 <!DOCTYPE html>
@@ -1156,6 +1069,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                         <option value="favorite">Mes favoris ❤️</option>
                         <option value="reading_in_progress">Lecture en cours 📖</option>
                         <option value="reading_completed">Lecture terminée ✔️</option>
+                        <option value="read_elsewhere">Lues ailleurs 📖</option>
                     </select>
                 </div>
                 <button type="submit">Appliquer</button>
@@ -1173,7 +1087,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
             <button id="open-incomplete-series-modal" class="button button-aos">Séries incomplètes</button>
             <button id="open-coherences-modal" class="button button-aos">Incohérences</button>
             <button id="open-unread-modal" class="button button-aos">Séries à lire</button>
-            <button id="open-read-modal" class="button button-otl">Lues ailleurs</button>
             <button id="open-loan-modal" class="button button-otl">Livres prêtés</button>
             <button id="open-wishlist-modal" class="button button-otl">Liste d'envies</button>
             <button id="open-options-modal" class="button button-opt">Options</button>
@@ -1228,6 +1141,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <label>
                         <input type="checkbox" name="favorite"> Série favorite ❤️
                     </label>
+                    <label>
+                        <input type="checkbox" name="read_elsewhere" id="add-series-read-elsewhere"> Lue ailleurs 📖
+                    </label>
+                    <p class="hint">Cochez si vous avez lu cette série sans la posséder (chez un ami, en bibliothèque, revendue, etc.).</p>
                     <p>Vignette :</p>
                     <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp">
                     <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
@@ -1373,6 +1290,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                     <label>
                         <input type="checkbox" name="edit_favorite" id="edit-series-favorite" <?= isset($series['favorite']) && $series['favorite'] ? 'checked' : '' ?>> Série favorite ❤️
                     </label>
+                    <label>
+                        <input type="checkbox" name="edit_read_elsewhere" id="edit-series-read-elsewhere"> Lue ailleurs 📖
+                    </label>
+                    <p class="hint">Cochez si vous avez lu cette série sans la posséder (chez un ami, en bibliothèque, revendue, etc.).</p>
                     <div class="current-image-container">
                         <p>Vignette actuelle :</p>
                         <img id="current-series-image" src="" alt="Image actuelle" style="max-width: 100px; margin-bottom: 10px;">
@@ -1394,62 +1315,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                 <p>Cette section vous permet de garder une trace des séries que vous possédez mais que vous n'avez pas encore terminé de lire.</p>
                 <br>
                 <div id="unread-list" class="unread-list"></div>
-            </div>
-        </div>
-
-        <!-- Modale pour "Lues ailleurs" -->
-        <div class="modal" id="read-modal">
-            <div class="modal-content">
-                <span class="close-modal" id="close-read-modal">&times;</span>
-                <h2>Séries lues ailleurs</h2>
-                <p>Cette section vous permet de garder une trace des séries que vous avez lues mais que vous ne possédez pas dans votre collection (lues chez un ami/en bibliothèque, revendues depuis, etc.).</p>
-                <form id="add-to-read-form">
-                    <h3>Ajouter une série</h3>
-                    <p>Nom :</p>
-                    <input type="text" id="read-name" placeholder="Nom de la série" required>
-                    <p>Auteur :</p>
-                    <input type="text" id="read-author" placeholder="Nom de l'auteur" required>
-                    <p>Éditeur :</p>
-                    <input type="text" id="read-publisher" placeholder="Nom de l'éditeur" required>
-                    <p>Nombre de tomes lus :</p>
-                    <input type="number" id="read-volumes" placeholder="Nombre de tomes lus" min="1" required>
-                    <p>Statut :</p>
-                    <select id="read-status" required>
-                        <option value="terminé">Terminé</option>
-                        <option value="en cours">En cours</option>
-                    </select>
-                    <button type="button" id="add-to-read-btn">Ajouter</button>
-                </form>
-                <br>
-                <div class="search-container">
-                    <input type="text" id="read-search" placeholder="Rechercher...">
-                </div>
-                <div id="read-list"></div>
-            </div>
-        </div>
-
-        <!-- Modale pour éditer une série "lue ailleurs" -->
-        <div class="modal" id="edit-read-modal">
-            <div class="modal-content">
-                <span class="close-modal" id="close-edit-read-modal">&times;</span>
-                <h2>Éditer une série</h2>
-                <form id="edit-read-form">
-                    <input type="hidden" id="edit-read-index">
-                    <p>Nom :</p>
-                    <input type="text" id="edit-read-name" required>
-                    <p>Auteur :</p>
-                    <input type="text" id="edit-read-author" required>
-                    <p>Éditeur :</p>
-                    <input type="text" id="edit-read-publisher" required>
-                    <p>Nombre de tomes lus :</p>
-                    <input type="number" id="edit-read-volumes" min="1" required>
-                    <p>Statut :</p>
-                    <select id="edit-read-status" required>
-                        <option value="terminé">Terminé</option>
-                        <option value="en cours">En cours</option>
-                    </select>
-                    <button type="submit">Enregistrer</button>
-                </form>
             </div>
         </div>
 
@@ -1817,7 +1682,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
     <script src="assets/js/admin/tools.js"></script>
     <script src="assets/js/admin/pagination.js"></script>
     <script src="assets/js/admin/main.js"></script>
-    <script src="assets/js/admin/read.js"></script>
     <script src="assets/js/admin/unread.js"></script>
 
 </body>

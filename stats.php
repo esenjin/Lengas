@@ -1,14 +1,15 @@
 <?php
 require 'config.php';
-require 'fonctions/read.php';
 $data = load_data();
 $options = load_options();
-$read = load_read();
 
-$total_series = count($data);
+// Séparer les séries possédées (hors "lues ailleurs") pour les stats globales
+$owned_data = array_values(array_filter($data, fn($s) => empty($s['read_elsewhere'])));
+
+$total_series = count($owned_data);
 $total_volumes = array_sum(array_map(function($series) {
     return count($series['volumes']);
-}, $data));
+}, $owned_data));
 
 $paused_series = 0;
 $abandoned_series = 0;
@@ -22,7 +23,7 @@ if ($options['private_mode']) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title><?= htmlspecialchars($options['index_page_title']) ?></title>
+        <title><?= htmlspecialchars($options['stats_page_title'] ?? $options['index_page_title']) ?></title>
         <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
         <meta property="og:image" content="assets/img/logo.png">
         <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
@@ -72,7 +73,7 @@ $complete_series = 0;
 $unique_authors = [];
 $unique_publishers = [];
 
-foreach ($data as $series) {
+foreach ($owned_data as $series) {
     $has_last_volume = false;
     $last_volume_completed = false;
 
@@ -132,7 +133,7 @@ $reading_time_by_status = [
     'terminé' => 0
 ];
 
-foreach ($data as $series) {
+foreach ($owned_data as $series) {
     foreach ($series['volumes'] as $volume) {
         $reading_time_by_status[$volume['status']] += 40; // 40 minutes par tome
     }
@@ -159,11 +160,10 @@ $chart_values = [
     $abandoned_series
 ];
 
-// Calculer les statistiques pour les séries "lues ailleurs"
-$total_read_series = count($read);
-$total_read_volumes = array_sum(array_map(function($item) {
-    return $item['volumes_read'];
-}, $read));
+// Calculer les statistiques pour les séries "lues ailleurs" (flag read_elsewhere dans series)
+$read_elsewhere_series = array_filter($data, fn($s) => !empty($s['read_elsewhere']));
+$total_read_series = count($read_elsewhere_series);
+$total_read_volumes = array_sum(array_map(fn($s) => count($s['volumes']), $read_elsewhere_series));
 
 // Calculer le temps de lecture pour les séries "lues ailleurs"
 $total_read_reading_time_minutes = $total_read_volumes * 40;

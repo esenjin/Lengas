@@ -1,6 +1,5 @@
 <?php
 require 'config.php';
-require 'fonctions/read.php';
 $data = load_data();
 $options = load_options();
 
@@ -43,16 +42,6 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $per_page_public = 12;
 $offset = ($page - 1) * $per_page_public;
 
-// Récupérer les séries "lues ailleurs"
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'get_read') {
-    $read = load_read();
-    header('Content-Type: application/json');
-    echo json_encode([
-        'success' => true,
-        'read' => is_array($read) ? $read : []
-    ]);
-    exit;
-}
 
 // Endpoint pour la pagination infinie
 if (isset($_GET['get_paginated_series'])) {
@@ -86,6 +75,9 @@ if (isset($_GET['get_paginated_series'])) {
             }
             if ($status_filter === 'favorite') {
                 return !empty($series['favorite']);
+            }
+            if ($status_filter === 'read_elsewhere') {
+                return !empty($series['read_elsewhere']);
             }
             if ($status_filter === 'reading_in_progress') {
                 // Au moins 1 tome "à lire" ou "en cours"
@@ -136,6 +128,33 @@ if (isset($_GET['get_paginated_series'])) {
         'series' => array_values($paginated_data),
         'has_more' => ($offset + $per_page) < count($filtered_data)
     ]);
+    exit;
+}
+
+// ── Endpoint : suggestions d'autocomplétion pour la barre de recherche ──────
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
+    $all_data = load_data();
+    $field = $_GET['field'] ?? '';
+    $term  = trim($_GET['term'] ?? '');
+    $normalizedTerm = normalize_string($term);
+    $suggestions = [];
+
+    if (in_array($field, ['name', 'author', 'publisher', 'other_contributors', 'categories', 'genres'])) {
+        foreach ($all_data as $series) {
+            if (!isset($series[$field])) continue;
+            $values = is_array($series[$field]) ? $series[$field] : [$series[$field]];
+            foreach ($values as $value) {
+                $value = trim((string)$value);
+                if ($value === '') continue;
+                if (str_contains(normalize_string($value), $normalizedTerm) && !in_array($value, $suggestions)) {
+                    $suggestions[] = $value;
+                }
+            }
+        }
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode(array_values(array_unique($suggestions)));
     exit;
 }
 
@@ -267,6 +286,9 @@ function get_latest_version_from_gitea() {
             <a href="admin.php" class="logout-button" title="Administration">
                 <img src="https://api.iconify.design/mdi/lock.svg?color=white" alt="Administration" width="18" height="18">
             </a>
+            <button class="logout-button" id="open-legend-modal" title="Légende" style="background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;padding:4px 6px;">
+                <img src="https://api.iconify.design/mdi/information-outline.svg?color=white" alt="Légende" width="18" height="18">
+            </button>
         </div>
         <h1><?= htmlspecialchars($options['index_page_title']) ?></h1>
 
@@ -285,15 +307,13 @@ function get_latest_version_from_gitea() {
                 <a href="<?= htmlspecialchars($options['custom_button_url3']) ?>" class="button button-otl" target="_blank"><?= htmlspecialchars($options['custom_button_name3']) ?> ↗</a>
             <?php endif; ?>
             <a href="stats.php" class="button" target="_blank">Statistiques Lengas ↗</a>
-            <button class="button" id="open-legend-modal">Légende</button>
-            <button class="button" id="open-read-modal">Lues ailleurs</button>
         </div>
 
         <!-- Barre de filtres et recherche -->
         <div class="filters">
             <form method="get">
-                <input type="text" name="search" placeholder="Rechercher une série, un auteur ou un éditeur..."
-                       value="<?= htmlspecialchars($search_term ?? '') ?>">
+                <input type="text" name="search" id="search-index" placeholder="Rechercher une série, un auteur ou un éditeur..."
+                       value="<?= htmlspecialchars($search_term ?? '') ?>" autocomplete="off">
                 <div class="sort-options">
                     <select name="sort_by">
                         <option value="name" <?= $sort_by === 'name' ? 'selected' : '' ?>>Trier par nom</option>
@@ -317,6 +337,7 @@ function get_latest_version_from_gitea() {
                         <option value="favorite">Mes favoris ❤️</option>
                         <option value="reading_in_progress">Lecture en cours 📖</option>
                         <option value="reading_completed">Lecture terminée ✔️</option>
+                        <option value="read_elsewhere">Lues ailleurs 📖</option>
                     </select>
                 </div>
                 <button type="submit">Appliquer</button>
@@ -418,19 +439,6 @@ function get_latest_version_from_gitea() {
                     <span>Contour doré : Série favorite</span>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Modale pour "Lues ailleurs" -->
-    <div class="modal" id="read-modal">
-        <div class="modal-content">
-            <span class="close-modal" id="close-read-modal">&times;</span>
-            <h2>Séries lues ailleurs</h2>
-            <p>Cette section vous permet de voir les séries lues mais qui ne sont pas dans la collection.</p>
-            <div class="search-container">
-                <input type="text" id="read-search" placeholder="Rechercher...">
-            </div>
-            <div id="read-list"></div>
         </div>
     </div>
 

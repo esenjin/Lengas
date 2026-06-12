@@ -108,7 +108,6 @@ function createLightSeriesCard(series) {
         <div class="series-actions">
             <button class="edit-series-btn" data-series-id="${series.id}">Modifier</button>
             <button class="delete-series-btn" data-series-id="${series.id}">Supprimer</button>
-            <button class="move-to-read-btn" data-series-id="${series.id}">Lues ailleurs</button>
         </div>
         <div class="series-info">
             <h2>${series.name}</h2>
@@ -119,6 +118,7 @@ function createLightSeriesCard(series) {
             <p><strong>Genres :</strong> ${formatList(series.genres)}</p>
             <div class="series-badges">
                 ${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}
+                ${series.read_elsewhere ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}
                 <span class="series-status-badge ${statusClass}">${statusIcon}</span>
                 ${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}
             </div>
@@ -245,6 +245,7 @@ document.getElementById('series-list').addEventListener('click', (e) => {
                 document.querySelector('#edit-series-form [name="new_volumes_collector"]').checked = false;
                 document.getElementById('edit-series-mature').checked = series.mature || false;
                 document.getElementById('edit-series-favorite').checked = series.favorite || false;
+                document.getElementById('edit-series-read-elsewhere').checked = series.read_elsewhere || false;
                 document.getElementById('current-series-image').src = series.image || 'logo.png';
                 const statusSelect = document.getElementById('edit-series-status');
                 Array.from(statusSelect.options).forEach(option => {
@@ -267,27 +268,6 @@ document.getElementById('series-list').addEventListener('click', (e) => {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: `delete_series=true&series_id=${encodeURIComponent(seriesId)}&no_redirect=true`
-                    })
-                    .then(() => window.location.reload())
-                    .catch(error => console.error('Erreur:', error));
-                }
-            });
-        return;
-    }
-
-    // Bouton "Lues ailleurs"
-    const moveBtn = e.target.closest('.move-to-read-btn');
-    if (moveBtn) {
-        e.preventDefault();
-        const seriesId = moveBtn.dataset.seriesId;
-        const seriesName = moveBtn.closest('.series-card').querySelector('h2').textContent;
-        showCustomConfirm('Confirmation', `Déplacer "${seriesName}" vers "Lues ailleurs" ?`)
-            .then((confirmed) => {
-                if (confirmed) {
-                    fetch('admin.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `move_to_read=true&series_id=${encodeURIComponent(seriesId)}`
                     })
                     .then(() => window.location.reload())
                     .catch(error => console.error('Erreur:', error));
