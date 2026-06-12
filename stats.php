@@ -24,8 +24,8 @@ if ($options['private_mode']) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title><?= htmlspecialchars($options['index_page_title']) ?></title>
         <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
-        <meta property="og:image" content="logo.png">
-        <link rel="icon" type="image/x-icon" href="favicon.ico">
+        <meta property="og:image" content="assets/img/logo.png">
+        <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
         <link rel="stylesheet" href="assets/css/main.css">
     </head>
     <body>
@@ -210,7 +210,7 @@ function get_latest_version_from_gitea() {
     <meta charset="UTF-8">
     <title><?= htmlspecialchars($options['index_page_title']) ?></title>
     <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
