@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         // Aucune référence disponible
         if ($url === '') {
-            $no_reference_series[] = ['id' => $series['id'], 'name' => $series['name'], 'author' => $series['author'] ?? ''];
+            $no_reference_series[] = ['id' => $series['id'], 'name' => $series['name'], 'author' => $series['author'] ?? '', 'read_elsewhere' => !empty($series['read_elsewhere'])];
             continue;
         }
 
@@ -82,12 +82,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $id = mangaupdates_get_id_from_url($url);
         if ($id === null) {
             $failed_series[] = [
-                'id'       => $series['id'],
-                'name'     => $series['name'],
-                'author'   => $series['author'] ?? '',
-                'ref'      => 'mangaupdates',
-                'reason'   => 'URL MangaUpdates invalide',
-                'has_mu_url' => false, // URL présente mais invalide : on propose l'ajout
+                'id'             => $series['id'],
+                'name'           => $series['name'],
+                'author'         => $series['author'] ?? '',
+                'ref'            => 'mangaupdates',
+                'reason'         => 'URL MangaUpdates invalide',
+                'has_mu_url'     => false, // URL présente mais invalide : on propose l'ajout
+                'read_elsewhere' => !empty($series['read_elsewhere']),
             ];
             continue;
         }
@@ -104,12 +105,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         if ($info === null) {
             // Échec de récupération : réseau ou service indisponible
             $failed_series[] = [
-                'id'       => $series['id'],
-                'name'     => $series['name'],
-                'author'   => $series['author'] ?? '',
-                'ref'      => 'mangaupdates',
-                'reason'   => 'Erreur de récupération MangaUpdates (réseau ou service indisponible)',
-                'has_mu_url' => true, // URL valide : pas besoin du bouton Ajouter
+                'id'             => $series['id'],
+                'name'           => $series['name'],
+                'author'         => $series['author'] ?? '',
+                'ref'            => 'mangaupdates',
+                'reason'         => 'Erreur de récupération MangaUpdates (réseau ou service indisponible)',
+                'has_mu_url'     => true, // URL valide : pas besoin du bouton Ajouter
+                'read_elsewhere' => !empty($series['read_elsewhere']),
             ];
             continue;
         }
@@ -118,12 +120,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         if ($av === null || (int)$av <= 0) {
             // Fiche trouvée mais sans nombre de tomes renseigné
             $failed_series[] = [
-                'id'       => $series['id'],
-                'name'     => $series['name'],
-                'author'   => $series['author'] ?? '',
-                'ref'      => 'mangaupdates',
-                'reason'   => 'Nombre de tomes non renseigné sur MangaUpdates',
-                'has_mu_url' => true, // URL valide : pas besoin du bouton Ajouter
+                'id'             => $series['id'],
+                'name'           => $series['name'],
+                'author'         => $series['author'] ?? '',
+                'ref'            => 'mangaupdates',
+                'reason'         => 'Nombre de tomes non renseigné sur MangaUpdates',
+                'has_mu_url'     => true, // URL valide : pas besoin du bouton Ajouter
+                'read_elsewhere' => !empty($series['read_elsewhere']),
             ];
             continue;
         }

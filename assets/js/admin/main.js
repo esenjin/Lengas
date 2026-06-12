@@ -174,8 +174,12 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
             const srcLabel = 'MangaUpdates';
             const refCount = series.ref_volumes ?? '?';
 
+            const readElsewhereBadge = series.read_elsewhere
+                ? ` <span class="read-elsewhere-badge" title="Série marquée comme lue ailleurs">Lue ailleurs</span>`
+                : '';
+
             let html = `
-                <h3>${series.name}</h3>
+                <h3>${series.name}${readElsewhereBadge}</h3>
                 <p><strong>Auteur :</strong> ${series.author}</p>
                 <p><strong>Éditeur :</strong> ${series.publisher}</p>
                 <p><strong>Tomes possédés :</strong> ${series.volumes.length} / ${refCount} <small style="opacity:.6">(${srcLabel}${series.ref_status ? ' · ' + translateMuStatus(series.ref_status) : ''})</small></p>
@@ -217,7 +221,7 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
                     </summary>
                     <ul class="summary-list">
                         ${failed_series.map(s =>
-                            `<li><strong>${s.name}</strong>${s.author ? ' — ' + s.author : ''} <span class="summary-reason">${s.reason ?? ''}</span>${s.id && !s.has_mu_url ? ` <button class="add-mu-url-btn summary-edit-btn" data-series-id="${s.id}" data-series-name="${(s.name || '').replace(/"/g, '&quot;')}">Ajouter</button>` : ''}</li>`
+                            `<li><strong>${s.name}</strong>${s.read_elsewhere ? ' <span class="read-elsewhere-badge">Lue ailleurs</span>' : ''}${s.author ? ' — ' + s.author : ''} <span class="summary-reason">${s.reason ?? ''}</span>${s.id && !s.has_mu_url ? ` <button class="add-mu-url-btn summary-edit-btn" data-series-id="${s.id}" data-series-name="${(s.name || '').replace(/"/g, '&quot;')}">Ajouter</button>` : ''}</li>`
                         ).join('')}
                     </ul>
                 </details>`;
@@ -232,7 +236,7 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
                     </summary>
                     <ul class="summary-list">
                         ${no_reference_series.map(s =>
-                            `<li><strong>${s.name}</strong>${s.author ? ' — ' + s.author : ''}${s.id ? ` <button class="add-mu-url-btn summary-edit-btn" data-series-id="${s.id}" data-series-name="${(s.name || '').replace(/"/g, '&quot;')}">Ajouter</button>` : ''}</li>`
+                            `<li><strong>${s.name}</strong>${s.read_elsewhere ? ' <span class="read-elsewhere-badge">Lue ailleurs</span>' : ''}${s.author ? ' — ' + s.author : ''}${s.id ? ` <button class="add-mu-url-btn summary-edit-btn" data-series-id="${s.id}" data-series-name="${(s.name || '').replace(/"/g, '&quot;')}">Ajouter</button>` : ''}</li>`
                         ).join('')}
                     </ul>
                 </details>`;
