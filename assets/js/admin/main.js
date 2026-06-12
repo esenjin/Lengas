@@ -82,7 +82,7 @@ setTimeout(function() {
 }, 3000);
 
 // Recherche des séries incomplètes
-document.getElementById('search-incomplete-series')?.addEventListener('click', function() {
+function launchIncompleteSearch(forceUncached) {
     window.incompleteSearchDone = true; // une recherche a été lancée → recharger à la fermeture de la modale
     const resultsDiv = document.getElementById('incomplete-series-results');
     let current = 0, total = 0, currentName = '';
@@ -100,7 +100,10 @@ document.getElementById('search-incomplete-series')?.addEventListener('click', f
     };
     renderProgress();
 
-    const es = new EventSource('admin.php?action=incomplete_series_stream');
+    const url = forceUncached
+        ? 'admin.php?action=incomplete_series_stream&force_uncached=1'
+        : 'admin.php?action=incomplete_series_stream';
+    const es = new EventSource(url);
 
     es.addEventListener('progress', e => {
         const d = JSON.parse(e.data);
@@ -128,6 +131,14 @@ document.getElementById('search-incomplete-series')?.addEventListener('click', f
         es.close();
         resultsDiv.innerHTML = '<p>Une erreur est survenue lors de la recherche des séries incomplètes. Veuillez réessayer plus tard.</p>';
     };
+}
+
+document.getElementById('search-incomplete-series')?.addEventListener('click', function() {
+    launchIncompleteSearch(false);
+});
+
+document.getElementById('force-incomplete-search')?.addEventListener('click', function() {
+    launchIncompleteSearch(true);
 });
 
 // Traduit en français le statut de publication MangaUpdates (affichage utilisateur)
@@ -206,7 +217,7 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
                     </summary>
                     <ul class="summary-list">
                         ${failed_series.map(s =>
-                            `<li><strong>${s.name}</strong>${s.author ? ' — ' + s.author : ''} <span class="summary-reason">${s.reason ?? ''}</span>${s.id ? ` <button class="add-mu-url-btn summary-edit-btn" data-series-id="${s.id}" data-series-name="${(s.name || '').replace(/"/g, '&quot;')}">Ajouter</button>` : ''}</li>`
+                            `<li><strong>${s.name}</strong>${s.author ? ' — ' + s.author : ''} <span class="summary-reason">${s.reason ?? ''}</span>${s.id && !s.has_mu_url ? ` <button class="add-mu-url-btn summary-edit-btn" data-series-id="${s.id}" data-series-name="${(s.name || '').replace(/"/g, '&quot;')}">Ajouter</button>` : ''}</li>`
                         ).join('')}
                     </ul>
                 </details>`;

@@ -196,13 +196,19 @@ function mangaupdates_get_cached_status(int $series_id, int $max_age = 0): ?arra
 // (volumes peut être null = pas de nombre de tomes renseigné), ou null en cas
 // d'échec (réseau, code HTTP non 200, JSON invalide). Les échecs ne sont PAS
 // mis en cache afin de réessayer au prochain appel.
+// Un cache avec volumes=null n'est PAS considéré comme valide : l'API sera
+// re-sollicitée pour tenter d'obtenir le décompte (cas fréquent si le cache
+// avait été peuplé avant que MangaUpdates renseigne le nombre de tomes).
 function mangaupdates_get_volumes(int $series_id, bool $force = false): ?array {
     if ($series_id <= 0) return null;
     $cache_ttl = 86400; // 24h
 
     if (!$force) {
         $cached = mangaupdates_get_cached_status($series_id, $cache_ttl);
-        if ($cached !== null) {
+        // On n'utilise le cache que s'il contient un décompte valide (> 0).
+        // Un cache volumes=null signifie que l'API n'avait pas encore de données
+        // à ce moment-là ; on re-fetch pour voir si c'est toujours le cas.
+        if ($cached !== null && $cached['volumes'] !== null && (int)$cached['volumes'] > 0) {
             $cached['country']   = $cached['country']   ?? '';
             $cached['is_france'] = $cached['is_france'] ?? false;
             return $cached;
@@ -413,13 +419,27 @@ function get_incomplete_series(array $data): array {
 }
 
 // ── Récupérer la fiche brute d'une série (et réchauffer le cache volumes/statut) ─
+// Tente d'abord le champ 'status', puis 'status_in_country' si le premier
+// n'a pas permis d'extraire un décompte de volumes (cas courants sur MU où
+// le champ principal est vide mais l'édition d'origine est renseignée).
 function mangaupdates_fetch_record(int $series_id): ?array {
     if ($series_id <= 0) return null;
     [$body, $code, $err] = mangaupdates_curl('https://api.mangaupdates.com/v1/series/' . $series_id);
     if ($err !== '' || $code !== 200) return null;
     $data = json_decode($body, true);
     if (!is_array($data)) return null;
+
+    // Tentative 1 : champ 'status' standard
     $parsed = mangaupdates_parse_status($data['status'] ?? '');
+
+    // Tentative 2 : champ 'status_in_country' si le premier n'a pas de volumes
+    if (($parsed === null || ($parsed['volumes'] ?? null) === null) && !empty($data['status_in_country'])) {
+        $parsed2 = mangaupdates_parse_status((string)$data['status_in_country']);
+        if ($parsed2 !== null && ($parsed2['volumes'] ?? null) !== null) {
+            $parsed = $parsed2;
+        }
+    }
+
     mangaupdates_cache_store($series_id, $parsed['volumes'] ?? null, $parsed['status_text'] ?? null);
     return $data;
 }
@@ -441,6 +461,16 @@ function mangaupdates_extract_authors($record): array {
     return $names;
 }
 
+// ── Normalisation vocalique VO→VF : "oo","ou"→"o" et "uu"→"u" ───────────────
+// Permet de faire correspondre "Ooima"↔"Oima", "Satou"↔"Sato", "Yuu"↔"Yu", etc.
+function mangaupdates_normalize_vowels(string $s): string {
+    // oo → o, ou → o, uu → u  (insensible à la casse, déjà en minuscules ici)
+    $s = preg_replace('/oo/', 'o', $s);
+    $s = preg_replace('/ou/', 'o', $s);
+    $s = preg_replace('/uu/', 'u', $s);
+    return $s;
+}
+
 // ── Clés de comparaison d'un nom (insensible à la casse / aux espaces / à l'ordre) ─
 function mangaupdates_author_keys(string $name): array {
     $s = mb_strtolower(trim($name));
@@ -451,16 +481,34 @@ function mangaupdates_author_keys(string $name): array {
     $compact = implode('', $tokens);   // ordre conservé, sans espace
     sort($tokens);
     $sorted = implode('', $tokens);    // ordre indépendant
-    return ['compact' => $compact, 'sorted' => $sorted];
+
+    // Variantes avec normalisation vocalique
+    $compact_norm = mangaupdates_normalize_vowels($compact);
+    $sorted_norm  = mangaupdates_normalize_vowels($sorted);
+
+    return [
+        'compact'      => $compact,
+        'sorted'       => $sorted,
+        'compact_norm' => $compact_norm,
+        'sorted_norm'  => $sorted_norm,
+    ];
 }
 
-// Deux noms correspondent si leur forme compacte OU triée coïncide.
+// Deux noms correspondent si leur forme compacte OU triée coïncide,
+// y compris après normalisation vocalique (oo/ou→o, uu→u).
 function mangaupdates_authors_match(string $a, string $b): bool {
     if (trim($a) === '' || trim($b) === '') return false;
     $ka = mangaupdates_author_keys($a);
     $kb = mangaupdates_author_keys($b);
     if ($ka['compact'] === '' || $kb['compact'] === '') return false;
-    return ($ka['compact'] === $kb['compact']) || ($ka['sorted'] === $kb['sorted']);
+    // Correspondance exacte
+    if ($ka['compact'] === $kb['compact'] || $ka['sorted'] === $kb['sorted']) return true;
+    // Correspondance après normalisation vocalique
+    if ($ka['compact_norm'] === $kb['compact_norm'] || $ka['sorted_norm'] === $kb['sorted_norm']) return true;
+    // Correspondance croisée (l'un normalisé, l'autre non — ex. "Oima" vs "Ooima")
+    if ($ka['compact'] === $kb['compact_norm'] || $ka['compact_norm'] === $kb['compact']) return true;
+    if ($ka['sorted']  === $kb['sorted_norm']  || $ka['sorted_norm']  === $kb['sorted'])  return true;
+    return false;
 }
 
 // L'auteur de la série (éventuellement plusieurs séparés par des virgules)
@@ -476,24 +524,35 @@ function mangaupdates_authors_overlap(string $series_author, array $candidate_au
     return false;
 }
 
-// ── Comparaison de titres (normalisée : casse, espaces, ponctuation ignorés) ───
+// ── Comparaison de titres (normalisée : casse, espaces, ponctuation, voyelles longues) ─
 function mangaupdates_normalize_title(string $t): string {
     $s = mb_strtolower(trim($t));
-    return preg_replace('/[^\p{L}\p{N}]+/u', '', $s);
+    $s = preg_replace('/[^\p{L}\p{N}]+/u', '', $s);
+    return $s;
+}
+// Variante avec normalisation vocalique
+function mangaupdates_normalize_title_vowels(string $t): string {
+    return mangaupdates_normalize_vowels(mangaupdates_normalize_title($t));
 }
 function mangaupdates_titles_match(string $a, string $b): bool {
     $na = mangaupdates_normalize_title($a);
     $nb = mangaupdates_normalize_title($b);
-    return $na !== '' && $na === $nb;
+    if ($na === '' || $nb === '') return false;
+    if ($na === $nb) return true;
+    // Correspondance après normalisation vocalique
+    $nav = mangaupdates_normalize_title_vowels($a);
+    $nbv = mangaupdates_normalize_title_vowels($b);
+    return ($nav === $nbv) || ($na === $nbv) || ($nav === $nb);
 }
 
 // ── Candidats d'association pour une série, triés par pertinence ───────────────
-// Recherche par titre, enrichit chaque candidat avec ses auteurs (depuis le
-// résultat de recherche si présents, sinon via la fiche), calcule la
-// correspondance titre/auteur, puis trie : (titre+auteur) > auteur > titre > reste.
-// Conserve l'ordre de pertinence de MangaUpdates à score égal.
-function mangaupdates_associate_candidates(string $title, string $author, int $perpage = 5): array {
-    $raw    = mangaupdates_search($title, $perpage); // réchauffe déjà le cache
+// Recherche par titre dans les N premiers résultats MangaUpdates (large filet),
+// enrichit chaque candidat avec ses auteurs, calcule la correspondance titre/auteur,
+// puis trie : (titre+auteur) > auteur > titre > reste.
+// Ne retourne que les $max_shown meilleurs (par défaut 5), mais la recherche porte
+// sur $search_perpage résultats (par défaut 25) pour ne rater aucune correspondance d'auteur.
+function mangaupdates_associate_candidates(string $title, string $author, int $max_shown = 5, int $search_perpage = 25): array {
+    $raw    = mangaupdates_search($title, $search_perpage);
     $author = trim($author);
 
     $out = [];
@@ -522,5 +581,6 @@ function mangaupdates_associate_candidates(string $title, string $author, int $p
         if ($x['_score'] !== $y['_score']) return $y['_score'] <=> $x['_score'];
         return $x['_idx'] <=> $y['_idx'];
     });
-    return $out;
+    // Ne retourner que les max_shown meilleurs candidats
+    return array_slice($out, 0, $max_shown);
 }

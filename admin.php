@@ -66,11 +66,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $no_reference_series      = [];
     $failed_series            = [];
 
-    $total   = count($data);
-    $current = 0;
+    $total          = count($data);
+    $current        = 0;
+    $force_uncached = isset($_GET['force_uncached']) && $_GET['force_uncached'] === '1';
 
     // Les volumes MangaUpdates sont récupérés à la volée dans la boucle ci-dessous.
     // Le cache SQLite (24h) évite de re-solliciter l'API à chaque analyse.
+    // Avec force_uncached=1, seules les séries sans cache récent sont rechargées depuis l'API.
 
     foreach ($data as $series) {
         $current++;
@@ -92,25 +94,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $id = mangaupdates_get_id_from_url($url);
         if ($id === null) {
             $failed_series[] = [
-                'id'     => $series['id'],
-                'name'   => $series['name'],
-                'author' => $series['author'] ?? '',
-                'ref'    => 'mangaupdates',
-                'reason' => 'URL MangaUpdates invalide',
+                'id'       => $series['id'],
+                'name'     => $series['name'],
+                'author'   => $series['author'] ?? '',
+                'ref'      => 'mangaupdates',
+                'reason'   => 'URL MangaUpdates invalide',
+                'has_mu_url' => false, // URL présente mais invalide : on propose l'ajout
             ];
             continue;
         }
 
         // Référence : MangaUpdates
-        $info = mangaupdates_get_volumes($id);
+        // force_uncached : on force le rechargement uniquement si la série n'a pas
+        // de cache récent (< 24h), pour ne pas re-appeler les fiches déjà fraîches.
+        $force_this = false;
+        if ($force_uncached) {
+            $cached_check = mangaupdates_get_cached_status($id, 86400);
+            $force_this   = ($cached_check === null); // pas de cache valide → forcer
+        }
+        $info = mangaupdates_get_volumes($id, $force_this);
         if ($info === null) {
             // Échec de récupération : réseau ou service indisponible
             $failed_series[] = [
-                'id'     => $series['id'],
-                'name'   => $series['name'],
-                'author' => $series['author'] ?? '',
-                'ref'    => 'mangaupdates',
-                'reason' => 'Erreur de récupération MangaUpdates (réseau ou service indisponible)',
+                'id'       => $series['id'],
+                'name'     => $series['name'],
+                'author'   => $series['author'] ?? '',
+                'ref'      => 'mangaupdates',
+                'reason'   => 'Erreur de récupération MangaUpdates (réseau ou service indisponible)',
+                'has_mu_url' => true, // URL valide : pas besoin du bouton Ajouter
             ];
             continue;
         }
@@ -119,11 +130,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         if ($av === null || (int)$av <= 0) {
             // Fiche trouvée mais sans nombre de tomes renseigné
             $failed_series[] = [
-                'id'     => $series['id'],
-                'name'   => $series['name'],
-                'author' => $series['author'] ?? '',
-                'ref'    => 'mangaupdates',
-                'reason' => 'Nombre de tomes non renseigné sur MangaUpdates',
+                'id'       => $series['id'],
+                'name'     => $series['name'],
+                'author'   => $series['author'] ?? '',
+                'ref'      => 'mangaupdates',
+                'reason'   => 'Nombre de tomes non renseigné sur MangaUpdates',
+                'has_mu_url' => true, // URL valide : pas besoin du bouton Ajouter
             ];
             continue;
         }
@@ -1246,6 +1258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_read'])) {
                 <br>
                 <p class="hint">⚠️ Limitations : MangaUpdates fournit le nombre de tomes aussi bien pour les séries <strong>terminées</strong> que pour celles <strong>en cours de publication</strong>. En revanche, le décompte se base principalement sur l'édition d'origine (VO) et non sur l'édition française (VF) : un écart est donc possible. Lengas privilégie automatiquement le décompte français lorsque MangaUpdates l'indique (ex. « 8 Volumes (Complete, France) »). Renseignez l'URL MangaUpdates de chaque série — via le champ dédié (ajout / modification) ou l'outil « Associer MangaUpdates » de la modale Outils.</p>
                 <button id="search-incomplete-series" class="button">Rechercher les séries incomplètes</button>
+                <button id="force-incomplete-search" class="button button-opt" title="Interroge MangaUpdates pour les séries sans cache récent (ignore les résultats mis en cache il y a moins de 24 h)">Forcer la recherche (non analysées)</button>
                 <div id="incomplete-series-results">
                     <!-- Les résultats seront affichés ici -->
                 </div>
