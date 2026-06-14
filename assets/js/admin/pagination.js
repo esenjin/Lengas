@@ -58,6 +58,10 @@ async function loadMoreSeries() {
             hasMoreSeries = data.has_more;
         } else {
             hasMoreSeries = false;
+            // Afficher le message uniquement si la liste est vide (premier appel ou filtre sans résultat)
+            if (seriesList.children.length === 0) {
+                seriesList.innerHTML = '<p>Aucune série trouvée.</p>';
+            }
         }
     } catch (error) {
         console.error('Erreur:', error);

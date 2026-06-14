@@ -79,25 +79,36 @@ if (isset($_GET['get_paginated_series'])) {
             if ($status_filter === 'read_elsewhere') {
                 return !empty($series['read_elsewhere']);
             }
-            if ($status_filter === 'reading_in_progress') {
-                // Au moins 1 tome "à lire" ou "en cours"
+            if ($status_filter === 'reading_not_started') {
+                if (!empty($series['reading_abandoned'])) return false;
                 foreach ($series['volumes'] ?? [] as $volume) {
-                    if ($volume['status'] === 'à lire' || $volume['status'] === 'en cours') {
-                        return true;
-                    }
-                }
-                return false;
-            }
-            if ($status_filter === 'reading_completed') {
-                // Tous les tomes sont "terminé" (et il y en a au moins 1)
-                $volumes = $series['volumes'] ?? [];
-                if (empty($volumes)) return false;
-                foreach ($volumes as $volume) {
-                    if ($volume['status'] !== 'terminé') {
-                        return false;
-                    }
+                    if ($volume['status'] === 'terminé') return false;
                 }
                 return true;
+            }
+            if ($status_filter === 'reading_in_progress') {
+                if (!empty($series['reading_abandoned'])) return false;
+                $has_read = false;
+                $is_pub_finished = false;
+                foreach ($series['volumes'] ?? [] as $volume) {
+                    if ($volume['status'] === 'terminé') $has_read = true;
+                    if (!empty($volume['last'])) $is_pub_finished = true;
+                }
+                return $has_read && !$is_pub_finished;
+            }
+            if ($status_filter === 'reading_completed') {
+                if (!empty($series['reading_abandoned'])) return false;
+                $volumes = $series['volumes'] ?? [];
+                if (empty($volumes)) return false;
+                $has_last = false;
+                foreach ($volumes as $volume) {
+                    if ($volume['status'] !== 'terminé') return false;
+                    if (!empty($volume['last'])) $has_last = true;
+                }
+                return $has_last;
+            }
+            if ($status_filter === 'reading_abandoned') {
+                return !empty($series['reading_abandoned']);
             }
             $status = 'en cours';
             if (!empty($series['volumes'])) {
@@ -195,6 +206,7 @@ if ($options['private_mode']) {
 $sort_by = $_GET['sort_by'] ?? 'name';
 $sort_order = $_GET['sort_order'] ?? 'asc';
 $search_term = $_GET['search'] ?? '';
+$status_filter = $_GET['status_filter'] ?? '';
 
 function sort_series(&$data, $sort_by, $sort_order) {
     usort($data, function($a, $b) use ($sort_by, $sort_order) {
@@ -328,16 +340,18 @@ function get_latest_version_from_gitea() {
                     </select>
                     <select name="status_filter" id="status-filter">
                         <option value="">Tous les statuts</option>
-                        <option value="en cours">Publication en cours ▶️</option>
-                        <option value="terminée">Publication terminée ✅</option>
-                        <option value="en pause">Publication en pause ⏳</option>
-                        <option value="abandonnée">Publication abandonnée ⛔</option>
-                        <option value="mature">Contenu mature 🔞</option>
-                        <option value="non_mature">Contenu non mature 👐</option>
-                        <option value="favorite">Mes favoris ❤️</option>
-                        <option value="reading_in_progress">Lecture en cours 📖</option>
-                        <option value="reading_completed">Lecture terminée ✔️</option>
-                        <option value="read_elsewhere">Lues ailleurs 📚</option>
+                        <option value="en cours" <?= $status_filter === 'en cours' ? 'selected' : '' ?>>Publication en cours ▶️</option>
+                        <option value="terminée" <?= $status_filter === 'terminée' ? 'selected' : '' ?>>Publication terminée ✅</option>
+                        <option value="en pause" <?= $status_filter === 'en pause' ? 'selected' : '' ?>>Publication en pause ⏳</option>
+                        <option value="abandonnée" <?= $status_filter === 'abandonnée' ? 'selected' : '' ?>>Publication abandonnée ⛔</option>
+                        <option value="mature" <?= $status_filter === 'mature' ? 'selected' : '' ?>>Contenu mature 🔞</option>
+                        <option value="non_mature" <?= $status_filter === 'non_mature' ? 'selected' : '' ?>>Contenu non mature 👐</option>
+                        <option value="favorite" <?= $status_filter === 'favorite' ? 'selected' : '' ?>>Mes favoris ❤️</option>
+                        <option value="reading_not_started" <?= $status_filter === 'reading_not_started' ? 'selected' : '' ?>>Lecture à débuter 📖</option>
+                        <option value="reading_in_progress" <?= $status_filter === 'reading_in_progress' ? 'selected' : '' ?>>Lecture en cours 📘</option>
+                        <option value="reading_completed" <?= $status_filter === 'reading_completed' ? 'selected' : '' ?>>Lecture terminée 📗</option>
+                        <option value="reading_abandoned" <?= $status_filter === 'reading_abandoned' ? 'selected' : '' ?>>Lecture abandonnée 📕</option>
+                        <option value="read_elsewhere" <?= $status_filter === 'read_elsewhere' ? 'selected' : '' ?>>Lues ailleurs 📚</option>
                     </select>
                 </div>
                 <button type="submit">Appliquer</button>

@@ -318,6 +318,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $last_volume = !empty($_POST['last_volume']);
     $status        = $_POST['series_status'] ?? 'en cours';
     $read_elsewhere = !empty($_POST['read_elsewhere']);
+    $reading_abandoned = !empty($_POST['reading_abandoned']);
 
     // Initialiser $image à null par défaut
     $image = null;
@@ -333,7 +334,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     }
 
     // Appeler add_series avec $image (qui peut être null)
-    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere);
+    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned);
 
     if ($result['success']) {
         save_data($result['data']);
@@ -425,6 +426,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $new_volumes_last = !empty($_POST['new_volumes_last']);
     $new_status         = $_POST['series_status'] ?? null;
     $edit_read_elsewhere = !empty($_POST['edit_read_elsewhere']);
+    $edit_reading_abandoned = !empty($_POST['edit_reading_abandoned']);
 
     $new_image = null;
     if (!empty($_FILES['edit_image']['name'])) {
@@ -437,7 +439,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         }
     }
 
-    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere);
+    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned);
     if ($result['success']) {
         save_data($result['data']);
         // Réchauffer le cache MangaUpdates pour la série modifiée
@@ -751,40 +753,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
             if ($status_filter === 'read_elsewhere') {
                 return !empty($series['read_elsewhere']);
             }
-            if ($status_filter === 'reading_in_progress') {
-                // Au moins 1 tome "à lire" ou "en cours"
+            if ($status_filter === 'reading_not_started') {
+                // Aucun tome lu
+                if (!empty($series['reading_abandoned'])) return false;
                 foreach ($series['volumes'] ?? [] as $volume) {
-                    if ($volume['status'] === 'à lire' || $volume['status'] === 'en cours') {
-                        return true;
-                    }
-                }
-                return false;
-            }
-            if ($status_filter === 'reading_completed') {
-                // Tous les tomes sont "terminé" (et il y en a au moins 1)
-                $volumes = $series['volumes'] ?? [];
-                if (empty($volumes)) return false;
-                foreach ($volumes as $volume) {
-                    if ($volume['status'] !== 'terminé') {
-                        return false;
-                    }
+                    if ($volume['status'] === 'terminé') return false;
                 }
                 return true;
             }
-            // Même logique que le JS
-            $status = 'en cours';
-            if (!empty($series['volumes'])) {
-                foreach ($series['volumes'] as $volume) {
-                    if (!empty($volume['last'])) {
-                        $status = 'terminée';
-                        break;
-                    }
+            if ($status_filter === 'reading_in_progress') {
+                // Au moins 1 tome lu ET publication pas terminée (pas de "last")
+                if (!empty($series['reading_abandoned'])) return false;
+                $has_read = false;
+                $is_pub_finished = false;
+                foreach ($series['volumes'] ?? [] as $volume) {
+                    if ($volume['status'] === 'terminé') $has_read = true;
+                    if (!empty($volume['last'])) $is_pub_finished = true;
                 }
+                return $has_read && !$is_pub_finished;
             }
-            if ($status === 'en cours' && !empty($series['status'])) {
-                $status = $series['status'];
+            if ($status_filter === 'reading_completed') {
+                // Tous les tomes lus ET publication terminée (a un "last")
+                if (!empty($series['reading_abandoned'])) return false;
+                $volumes = $series['volumes'] ?? [];
+                if (empty($volumes)) return false;
+                $has_last = false;
+                foreach ($volumes as $volume) {
+                    if ($volume['status'] !== 'terminé') return false;
+                    if (!empty($volume['last'])) $has_last = true;
+                }
+                return $has_last;
             }
-            return $status === $status_filter;
+            if ($status_filter === 'reading_abandoned') {
+                return !empty($series['reading_abandoned']);
+            }
         });
     }
     sort_series($filtered_data, $sort_by, $sort_order);
@@ -795,11 +797,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
     // En mode "light", on ne renvoie que les métadonnées
     if ($light_mode) {
         $light_series = array_map(function($series) {
-            // Détermine le statut de la série
+            // Détermine le statut de publication
             $status = 'en cours';
+            $has_last = false;
             if (isset($series['volumes']) && is_array($series['volumes'])) {
                 foreach ($series['volumes'] as $volume) {
                     if (!empty($volume['last'])) {
+                        $has_last = true;
                         $status = 'terminée';
                         break;
                     }
@@ -807,6 +811,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
             }
             if (isset($series['status'])) {
                 $status = $series['status'];
+            }
+
+            // Calcule le statut de lecture
+            $reading_status = 'not_started';
+            if (!empty($series['reading_abandoned'])) {
+                $reading_status = 'abandoned';
+            } else {
+                $read_count = 0;
+                $total_count = 0;
+                foreach ($series['volumes'] ?? [] as $volume) {
+                    $total_count++;
+                    if ($volume['status'] === 'terminé') $read_count++;
+                }
+                if ($total_count > 0 && $read_count === $total_count && $has_last) {
+                    $reading_status = 'completed';
+                } elseif ($read_count > 0 && !$has_last) {
+                    $reading_status = 'in_progress';
+                } elseif ($read_count > 0) {
+                    // Des tomes lus mais publication terminée sans tous avoir lu
+                    $reading_status = 'in_progress';
+                }
             }
 
             return [
@@ -822,8 +847,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 'favorite' => $series['favorite'] ?? false,
                 'mature' => $series['mature'] ?? false,
                 'status' => $status,
+                'reading_status' => $reading_status,
                 'mangaupdates_url'           => $series['mangaupdates_url'] ?? '',
                 'read_elsewhere'             => (bool)($series['read_elsewhere'] ?? false),
+                'reading_abandoned'          => (bool)($series['reading_abandoned'] ?? false),
             ];
         }, $paginated_data);
 
@@ -1070,8 +1097,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <option value="mature">Contenu mature 🔞</option>
                         <option value="non_mature">Contenu non mature 👐</option>
                         <option value="favorite">Mes favoris ❤️</option>
-                        <option value="reading_in_progress">Lecture en cours 📖</option>
-                        <option value="reading_completed">Lecture terminée ✔️</option>
+                        <option value="reading_not_started">Lecture à débuter 📖</option>
+                        <option value="reading_in_progress">Lecture en cours 📘</option>
+                        <option value="reading_completed">Lecture terminée 📗</option>
+                        <option value="reading_abandoned">Lecture abandonnée 📕</option>
                         <option value="read_elsewhere">Lues ailleurs 📚</option>
                     </select>
                 </div>
@@ -1145,9 +1174,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <input type="checkbox" name="favorite"> Série favorite ❤️
                     </label>
                     <label>
-                        <input type="checkbox" name="read_elsewhere" id="add-series-read-elsewhere"> Lue ailleurs 📚
+                        <input type="checkbox" name="read_elsewhere" id="add-series-read-elsewhere"> Lue ailleurs 📖
                     </label>
                     <p class="hint">Cochez si vous avez lu cette série sans la posséder (chez un ami, en bibliothèque, revendue, etc.).</p>
+                    <label>
+                        <input type="checkbox" name="reading_abandoned" id="add-series-reading-abandoned"> Lecture abandonnée 📕
+                    </label>
+                    <p class="hint">Cochez si vous avez arrêté de lire cette série.</p>
                     <p>Vignette :</p>
                     <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp">
                     <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
@@ -1294,9 +1327,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <input type="checkbox" name="edit_favorite" id="edit-series-favorite" <?= isset($series['favorite']) && $series['favorite'] ? 'checked' : '' ?>> Série favorite ❤️
                     </label>
                     <label>
-                        <input type="checkbox" name="edit_read_elsewhere" id="edit-series-read-elsewhere"> Lue ailleurs 📚
+                        <input type="checkbox" name="edit_read_elsewhere" id="edit-series-read-elsewhere"> Lue ailleurs 📖
                     </label>
                     <p class="hint">Cochez si vous avez lu cette série sans la posséder (chez un ami, en bibliothèque, revendue, etc.).</p>
+                    <label>
+                        <input type="checkbox" name="edit_reading_abandoned" id="edit-series-reading-abandoned"> Lecture abandonnée 📕
+                    </label>
+                    <p class="hint">Cochez si vous avez arrêté de lire cette série.</p>
                     <div class="current-image-container">
                         <p>Vignette actuelle :</p>
                         <img id="current-series-image" src="" alt="Image actuelle" style="max-width: 100px; margin-bottom: 10px;">

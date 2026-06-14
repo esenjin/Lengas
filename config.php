@@ -136,6 +136,11 @@ function init_db(PDO $pdo): void {
         $pdo->exec("ALTER TABLE series ADD COLUMN read_elsewhere INTEGER NOT NULL DEFAULT 0");
     } catch (Exception $e) { /* colonne déjà présente */ }
 
+    // ── Colonne reading_abandoned (lecture abandonnée par l'utilisateur) ────────
+    try {
+        $pdo->exec("ALTER TABLE series ADD COLUMN reading_abandoned INTEGER NOT NULL DEFAULT 0");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
     // ── Cache des appels à l'API MangaUpdates (clé = series_id numérique) ─────
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS mangaupdates_cache (
@@ -289,6 +294,7 @@ function load_data(): array {
             'status'                 => $s['status'],
             'mangaupdates_url'       => $s['mangaupdates_url'] ?? '',
             'read_elsewhere'         => (bool)($s['read_elsewhere'] ?? false),
+            'reading_abandoned'      => (bool)($s['reading_abandoned'] ?? false),
             'volumes'                => $vols,
         ];
     }
@@ -312,14 +318,15 @@ function save_data(array $data): void {
         }
 
         $upsertSeries = $db->prepare("
-            INSERT INTO series (id, name, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, read_elsewhere)
-            VALUES (:id,:name,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:read_elsewhere)
+            INSERT INTO series (id, name, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, read_elsewhere, reading_abandoned)
+            VALUES (:id,:name,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:read_elsewhere,:reading_abandoned)
             ON CONFLICT(id) DO UPDATE SET
                 name=excluded.name, author=excluded.author, publisher=excluded.publisher,
                 other_contributors=excluded.other_contributors, categories=excluded.categories,
                 genres=excluded.genres, image=excluded.image, anilist_id=excluded.anilist_id,
                 mature=excluded.mature, favorite=excluded.favorite, status=excluded.status,
-                mangaupdates_url=excluded.mangaupdates_url, read_elsewhere=excluded.read_elsewhere
+                mangaupdates_url=excluded.mangaupdates_url, read_elsewhere=excluded.read_elsewhere,
+                reading_abandoned=excluded.reading_abandoned
         ");
 
         $deleteVols  = $db->prepare("DELETE FROM volumes WHERE series_id = ?");
@@ -344,6 +351,7 @@ function save_data(array $data): void {
                 ':status'              => $s['status'] ?? 'en cours',
                 ':mangaupdates_url'    => $s['mangaupdates_url'] ?? '',
                 ':read_elsewhere'     => (int)($s['read_elsewhere'] ?? false),
+                ':reading_abandoned'  => (int)($s['reading_abandoned'] ?? false),
             ]);
 
             $deleteVols->execute([$s['id']]);
