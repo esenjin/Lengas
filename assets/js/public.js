@@ -429,8 +429,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                             document.getElementById('modal-series-badges').innerHTML =
                                 `${s.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
+                                `${s.read_elsewhere ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}` +
                                 `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
-                                `${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}`;
+                                `${s.mangaupdates_url ? `<a class="mu-badge" href="${s.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}`;
 
                             const volumesList = document.getElementById('modal-volumes-list');
                             volumesList.innerHTML = '';
