@@ -20,7 +20,7 @@
     .series-image {
         width: 110px;
         height: 110px;
-        border-radius: var(--border-radius) 0 0 0;
+        border-radius: var(--border-radius-lg);
     }
 
     .series-card > .series-actions {
@@ -173,7 +173,7 @@
         color: var(--text-color);
         margin: 0 auto 16px;
         width: fit-content;
-        z-index: 1001;
+        z-index: 99;
         position: relative;
         transition: var(--transition);
     }

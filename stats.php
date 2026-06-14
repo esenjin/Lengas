@@ -296,7 +296,7 @@ function get_latest_version_from_gitea() {
             </div>
 
             <h2>Répartition par statut</h2>
-            <div style="display: flex; justify-content: space-between;">
+            <div class="stats-chart-row">
                 <div class="chart-container">
                     <canvas id="statusChart"></canvas>
                 </div>

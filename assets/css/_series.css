@@ -52,7 +52,7 @@
     border-color: var(--favorite-border) !important;
 }
 
-/* ── Image : 150×150 fixe, carrée, coin arrondi haut-gauche ── */
+/* ── Image : 150×150 fixe, carrée, tous les coins arrondis ── */
 .series-image {
     grid-column: 1;
     grid-row: 1;

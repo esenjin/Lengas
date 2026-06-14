@@ -1,4 +1,13 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // 0. Gestion du menu mobile (stats.php charge stats.js mais pas public.js)
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const publicMenu = document.getElementById('public-menu');
+    if (mobileMenuButton && publicMenu) {
+        mobileMenuButton.addEventListener('click', function() {
+            publicMenu.classList.toggle('active');
+        });
+    }
+
     // 1. Graphique existant (si présent)
     if (typeof Chart !== 'undefined') {
         const ctx = document.getElementById('statusChart').getContext('2d');
