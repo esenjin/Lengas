@@ -367,8 +367,12 @@ function get_latest_version_from_gitea() {
                             <p><strong>Auteur :</strong> <?= $series['author'] ?? '' ?></p>
                             <p><strong>Éditeur :</strong> <?= $series['publisher'] ?? '' ?></p>
                             <div class="series-stats">
-                                <?= $total_volumes ?> tome<?= $total_volumes > 1 ? 's' : '' ?> possédé<?= $total_volumes > 1 ? 's' : '' ?>
-                                (<?= $read_volumes ?> lu<?= $read_volumes > 1 ? 's' : '' ?>)
+                                <?php if (empty($series['read_elsewhere'])): ?>
+                                    <?= $total_volumes ?> tome<?= $total_volumes > 1 ? 's' : '' ?> possédé<?= $total_volumes > 1 ? 's' : '' ?>
+                                    (<?= $read_volumes ?> lu<?= $read_volumes > 1 ? 's' : '' ?>)
+                                <?php else: ?>
+                                    <?= $read_volumes ?> tome<?= $read_volumes > 1 ? 's' : '' ?> lu<?= $read_volumes > 1 ? 's' : '' ?>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>

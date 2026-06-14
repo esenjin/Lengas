@@ -75,9 +75,14 @@ document.querySelectorAll('.series-card').forEach(card => {
 
         const totalVolumes = series.volumes ? series.volumes.length : 0;
         const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
-        document.getElementById('modal-series-stats').innerHTML =
-            `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} ` +
-            `(${readVolumes} lu${readVolumes > 1 ? 's' : ''})`;
+        if (series.read_elsewhere) {
+            document.getElementById('modal-series-stats').innerHTML =
+                `${readVolumes} tome${readVolumes > 1 ? 's' : ''} lu${readVolumes > 1 ? 's' : ''}`;
+        } else {
+            document.getElementById('modal-series-stats').innerHTML =
+                `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} ` +
+                `(${readVolumes} lu${readVolumes > 1 ? 's' : ''})`;
+        }
 
         let seriesStatus = 'en cours';
         if (series.volumes && series.volumes.some(v => v.last)) {
@@ -165,8 +170,10 @@ function loadMoreSeries() {
                             <p><strong>Auteur :</strong> ${series.author}</p>
                             <p><strong>Éditeur :</strong> ${series.publisher}</p>
                             <div class="series-stats">
-                                ${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''}
-                                (${readVolumes} lu${readVolumes > 1 ? 's' : ''})
+                                ${series.read_elsewhere
+                                    ? `${readVolumes} tome${readVolumes > 1 ? 's' : ''} lu${readVolumes > 1 ? 's' : ''}`
+                                    : `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} (${readVolumes} lu${readVolumes > 1 ? 's' : ''})`
+                                }
                             </div>
                         </div>
                     `;
@@ -184,28 +191,14 @@ function loadMoreSeries() {
 
                         const totalVolumes = series.volumes ? series.volumes.length : 0;
                         const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
-                        document.getElementById('modal-series-stats').innerHTML =
-                            `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} ` +
-                            `(${readVolumes} lu${readVolumes > 1 ? 's' : ''})`;
-
-                        let seriesStatus = 'en cours';
-                        if (series.volumes && series.volumes.some(v => v.last)) {
-                            seriesStatus = 'terminée';
-                        } else if (series.status) {
-                            seriesStatus = series.status;
+                        if (series.read_elsewhere) {
+                            document.getElementById('modal-series-stats').innerHTML =
+                                `${readVolumes} tome${readVolumes > 1 ? 's' : ''} lu${readVolumes > 1 ? 's' : ''}`;
+                        } else {
+                            document.getElementById('modal-series-stats').innerHTML =
+                                `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} ` +
+                                `(${readVolumes} lu${readVolumes > 1 ? 's' : ''})`;
                         }
-                        let statusIcon, statusClass;
-                        switch (seriesStatus) {
-                            case 'terminée':   statusIcon = '✅ publication terminée';   statusClass = 'status-completed';  break;
-                            case 'en pause':   statusIcon = '⏳ publication en pause';   statusClass = 'status-paused';     break;
-                            case 'abandonnée': statusIcon = '⛔ publication abandonnée'; statusClass = 'status-abandoned';  break;
-                            default:           statusIcon = '▶️ publication en cours';   statusClass = 'status-in-progress';
-                        }
-                        document.getElementById('modal-series-badges').innerHTML =
-                            `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
-                            `${series.read_elsewhere ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}` +
-                            `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
-                            `${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}`;
 
                         const volumesList = document.getElementById('modal-volumes-list');
                         volumesList.innerHTML = '';
@@ -290,8 +283,10 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
                             <p><strong>Auteur :</strong> ${series.author}</p>
                             <p><strong>Éditeur :</strong> ${series.publisher}</p>
                             <div class="series-stats">
-                                ${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''}
-                                (${readVolumes} lu${readVolumes > 1 ? 's' : ''})
+                                ${series.read_elsewhere
+                                    ? `${readVolumes} tome${readVolumes > 1 ? 's' : ''} lu${readVolumes > 1 ? 's' : ''}`
+                                    : `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} (${readVolumes} lu${readVolumes > 1 ? 's' : ''})`
+                                }
                             </div>
                         </div>
                     `;
@@ -309,9 +304,14 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
 
                         const totalVolumes = series.volumes ? series.volumes.length : 0;
                         const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
-                        document.getElementById('modal-series-stats').innerHTML =
-                            `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} ` +
-                            `(${readVolumes} lu${readVolumes > 1 ? 's' : ''})`;
+                        if (series.read_elsewhere) {
+                            document.getElementById('modal-series-stats').innerHTML =
+                                `${readVolumes} tome${readVolumes > 1 ? 's' : ''} lu${readVolumes > 1 ? 's' : ''}`;
+                        } else {
+                            document.getElementById('modal-series-stats').innerHTML =
+                                `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} ` +
+                                `(${readVolumes} lu${readVolumes > 1 ? 's' : ''})`;
+                        }
 
                         const volumesList = document.getElementById('modal-volumes-list');
                         volumesList.innerHTML = '';
@@ -395,8 +395,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <p><strong>Auteur :</strong> ${series.author}</p>
                                 <p><strong>Éditeur :</strong> ${series.publisher}</p>
                                 <div class="series-stats">
-                                    ${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''}
-                                    (${readVolumes} lu${readVolumes > 1 ? 's' : ''})
+                                    ${series.read_elsewhere
+                                        ? `${readVolumes} tome${readVolumes > 1 ? 's' : ''} lu${readVolumes > 1 ? 's' : ''}`
+                                        : `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} (${readVolumes} lu${readVolumes > 1 ? 's' : ''})`
+                                    }
                                 </div>
                             </div>
                         `;
@@ -411,8 +413,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             document.getElementById('modal-series-genres').textContent = s.genres && s.genres.filter(i => i.trim()).length > 0 ? s.genres.filter(i => i.trim()).join(', ') : 'aucun';
                             const tv = s.volumes ? s.volumes.length : 0;
                             const rv = s.volumes ? s.volumes.filter(v => v.status === 'terminé').length : 0;
-                            document.getElementById('modal-series-stats').innerHTML =
-                                `${tv} tome${tv > 1 ? 's' : ''} possédé${tv > 1 ? 's' : ''} (${rv} lu${rv > 1 ? 's' : ''})`;
+                            if (s.read_elsewhere) {
+                                document.getElementById('modal-series-stats').innerHTML =
+                                    `${rv} tome${rv > 1 ? 's' : ''} lu${rv > 1 ? 's' : ''}`;
+                            } else {
+                                document.getElementById('modal-series-stats').innerHTML =
+                                    `${tv} tome${tv > 1 ? 's' : ''} possédé${tv > 1 ? 's' : ''} (${rv} lu${rv > 1 ? 's' : ''})`;
+                            }
 
                             let seriesStatus = 'en cours';
                             if (s.volumes && s.volumes.some(v => v.last)) {

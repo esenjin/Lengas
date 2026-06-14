@@ -182,7 +182,7 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
                 <h3>${series.name}${readElsewhereBadge}</h3>
                 <p><strong>Auteur :</strong> ${series.author}</p>
                 <p><strong>Éditeur :</strong> ${series.publisher}</p>
-                <p><strong>Tomes possédés :</strong> ${series.volumes.length} / ${refCount} <small style="opacity:.6">(${srcLabel}${series.ref_status ? ' · ' + translateMuStatus(series.ref_status) : ''})</small></p>
+                <p><strong>${series.read_elsewhere ? 'Tomes lus' : 'Tomes possédés'} :</strong> ${series.volumes.length} / ${refCount} <small style="opacity:.6">(${srcLabel}${series.ref_status ? ' · ' + translateMuStatus(series.ref_status) : ''})</small></p>
             `;
 
             if (series.missing_volumes && series.missing_volumes.length > 0) {
