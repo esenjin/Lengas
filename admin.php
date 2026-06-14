@@ -1072,7 +1072,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <option value="favorite">Mes favoris ❤️</option>
                         <option value="reading_in_progress">Lecture en cours 📖</option>
                         <option value="reading_completed">Lecture terminée ✔️</option>
-                        <option value="read_elsewhere">Lues ailleurs 📖</option>
+                        <option value="read_elsewhere">Lues ailleurs 📚</option>
                     </select>
                 </div>
                 <button type="submit">Appliquer</button>
