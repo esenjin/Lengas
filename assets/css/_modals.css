@@ -55,6 +55,10 @@
     animation: modalSlideIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.modal-content--wide {
+    max-width: 640px;
+}
+
 .modal-active {
     display: flex;
 }
@@ -837,6 +841,219 @@
     color: var(--text-gray);
     font-style: italic;
     font-size: 0.9em;
+}
+
+/* ── Modale d'édition rapide Incohérences ────────────────────────────────── */
+
+#coherence-edit-modal .modal-content--wide {
+    max-width: 640px;
+}
+
+.cedit-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    margin-bottom: 4px;
+}
+
+.cedit-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cedit-info-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.cedit-info-value {
+    font-size: 0.9rem;
+    color: var(--text-white);
+    font-weight: 500;
+}
+
+.cedit-divider {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    margin: 14px 0;
+}
+
+.cedit-field-group {
+    margin-bottom: 12px;
+}
+
+.cedit-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-gray);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+}
+
+.cedit-label--checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.875rem;
+    cursor: pointer;
+    color: var(--text-color);
+}
+
+.cedit-select {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-color);
+    padding: 6px 10px;
+    font-size: 0.875rem;
+    outline: none;
+    transition: var(--transition-fast);
+    cursor: pointer;
+}
+
+.cedit-select:focus {
+    border-color: var(--input-border-focus);
+}
+
+.cedit-select--sm {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+}
+
+/* Header tomes */
+.cedit-volumes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+/* Liste des tomes */
+.cedit-volumes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-bottom: 10px;
+}
+
+.cedit-volume-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--background-medium);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid transparent;
+    transition: border-color 0.15s;
+    flex-wrap: wrap;
+}
+
+.cedit-volume-row.cedit-vol-pending-delete {
+    border-color: var(--error-color);
+    opacity: 0.55;
+    text-decoration: line-through;
+}
+
+.cedit-volume-row.cedit-vol-pending-add {
+    border-color: rgba(52, 211, 153, 0.4);
+    background: rgba(52, 211, 153, 0.04);
+}
+
+.cedit-vol-num {
+    font-size: 0.82rem;
+    color: var(--text-white);
+    font-weight: 600;
+    min-width: 70px;
+    flex-shrink: 0;
+}
+
+.cedit-inline-check {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.8rem;
+    color: var(--text-gray);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.cedit-vol-delete {
+    margin-left: auto;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    background: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: var(--error-color);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.cedit-vol-delete:hover,
+.cedit-vol-delete--active {
+    background: var(--error-color);
+    color: #fff;
+    border-color: var(--error-color);
+    transform: none;
+    box-shadow: none;
+}
+
+.cedit-no-volumes {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 8px 0;
+}
+
+/* Actions bas de modale */
+.cedit-actions {
+    margin-top: 14px;
+}
+
+.cedit-feedback {
+    font-size: 0.84rem;
+    margin-top: 8px;
+    min-height: 1.2em;
+}
+
+/* Bouton Modifier dans l'en-tête d'un bloc incohérence */
+.coherence-series-name {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.cedit-open-btn {
+    font-size: 0.72rem;
+    padding: 2px 10px;
+    flex-shrink: 0;
+    opacity: 0.75;
+    transition: var(--transition-fast);
+    background: var(--background-darker);
+    border: 1px solid rgba(192, 132, 252, 0.25);
+    color: var(--primary-color);
+    border-radius: var(--border-radius-sm);
+}
+
+.cedit-open-btn:hover {
+    opacity: 1;
+    background: var(--primary-subtle);
+    transform: none;
+    box-shadow: none;
 }
 
 /* ── Animation de progression analyse séries incomplètes ─────────────────── */

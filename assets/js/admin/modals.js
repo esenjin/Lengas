@@ -14,6 +14,7 @@ const modals = {
     'incomplete-series': { modal: document.getElementById('incomplete-series-modal'), closeBtn: document.getElementById('close-incomplete-series-modal') },
     'unread': { modal: document.getElementById('unread-modal'), closeBtn: document.getElementById('close-unread-modal') },
     'coherences': { modal: document.getElementById('coherences-modal'), closeBtn: document.getElementById('close-coherences-modal') },
+    'coherence-edit': { modal: document.getElementById('coherence-edit-modal'), closeBtn: document.getElementById('close-coherence-edit-modal') },
     'loan': { modal: document.getElementById('loan-modal'), closeBtn: document.getElementById('close-loan-modal') },
     'add-mu-url': { modal: document.getElementById('add-mu-url-modal'), closeBtn: document.getElementById('close-add-mu-url-modal') }
 };
@@ -43,6 +44,10 @@ function closeModalAndReloadIfTools(modal) {
     } else if (modal.id === 'incomplete-series-modal' && window.incompleteSearchDone) {
         // Une recherche / un ajout d'URL a eu lieu : recharger pour rafraîchir badges et listes
         window.location.reload();
+    } else if (modal.id === 'coherence-edit-modal' && window.coherenceEditDirty) {
+        // Des modifications ont été enregistrées : recharger l'analyse des incohérences
+        window.coherenceEditDirty = false;
+        if (typeof loadCoherences === 'function') loadCoherences();
     }
 }
 

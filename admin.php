@@ -711,6 +711,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
             $issues = check_collection_coherence($data);
             $response = ['success' => true, 'issues' => $issues];
             break;
+
+        case 'coherence_quick_edit':
+            // Édition rapide depuis la modale Incohérences
+            // Reçoit : series_id, series_status, read_elsewhere,
+            //          volumes (JSON : [{index, status, last}]),
+            //          delete_volumes (JSON : [index, ...]),
+            //          add_volumes (JSON : [{number, status, last}])
+            $series_id      = trim($_POST['series_id'] ?? '');
+            $new_status     = trim($_POST['series_status'] ?? '');
+            $read_elsewhere = isset($_POST['read_elsewhere']) ? (bool)$_POST['read_elsewhere'] : null;
+
+            $series_ref = find_series_by_id($data, $series_id);
+            if (!$series_ref) {
+                $response = ['success' => false, 'message' => 'Série introuvable.'];
+                break;
+            }
+            $idx = $series_ref['key'];
+
+            // Statut de publication
+            if ($new_status !== '') {
+                $data[$idx]['status'] = $new_status;
+            }
+
+            // Lue ailleurs
+            if ($read_elsewhere !== null) {
+                $data[$idx]['read_elsewhere'] = $read_elsewhere;
+            }
+
+            // Suppressions de tomes (par index dans l'ordre décroissant pour ne pas décaler)
+            $delete_indexes_raw = $_POST['delete_volumes'] ?? '[]';
+            $delete_indexes = json_decode($delete_indexes_raw, true);
+            if (is_array($delete_indexes) && !empty($delete_indexes)) {
+                rsort($delete_indexes);
+                foreach ($delete_indexes as $vi) {
+                    if (isset($data[$idx]['volumes'][(int)$vi])) {
+                        array_splice($data[$idx]['volumes'], (int)$vi, 1);
+                    }
+                }
+            }
+
+            // Mises à jour des tomes existants
+            $volumes_updates_raw = $_POST['volumes_updates'] ?? '[]';
+            $volumes_updates = json_decode($volumes_updates_raw, true);
+            if (is_array($volumes_updates)) {
+                foreach ($volumes_updates as $vu) {
+                    $vi = (int)($vu['index'] ?? -1);
+                    if (isset($data[$idx]['volumes'][$vi])) {
+                        $data[$idx]['volumes'][$vi]['status'] = $vu['status'] ?? $data[$idx]['volumes'][$vi]['status'];
+                        $data[$idx]['volumes'][$vi]['last']   = !empty($vu['last']);
+                    }
+                }
+            }
+
+            // Ajouts de tomes
+            $add_volumes_raw = $_POST['add_volumes'] ?? '[]';
+            $add_volumes = json_decode($add_volumes_raw, true);
+            if (is_array($add_volumes)) {
+                $existing_numbers = array_column($data[$idx]['volumes'], 'number');
+                foreach ($add_volumes as $av) {
+                    $num = (int)($av['number'] ?? 0);
+                    if ($num > 0 && !in_array($num, $existing_numbers, true)) {
+                        $data[$idx]['volumes'][] = [
+                            'number'   => $num,
+                            'status'   => $av['status'] ?? 'à lire',
+                            'collector'=> false,
+                            'last'     => !empty($av['last']),
+                            'added_at' => date('Y-m-d'),
+                        ];
+                        $existing_numbers[] = $num;
+                    }
+                }
+                // Trier par numéro après ajout
+                usort($data[$idx]['volumes'], fn($a, $b) => $a['number'] - $b['number']);
+            }
+
+            save_data($data);
+
+            // Retourner les nouvelles données de la série pour rafraîchir la vue
+            $updated_series = $data[$idx];
+            $response = ['success' => true, 'series' => $updated_series];
+            break;
     }
 
     header('Content-Type: application/json');
@@ -1604,6 +1685,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                 <div id="coherences-results">
                     <!-- Résultats chargés dynamiquement -->
                 </div>
+            </div>
+        </div>
+
+        <!-- Modale d'édition rapide depuis Incohérences -->
+        <div class="modal" id="coherence-edit-modal">
+            <div class="modal-content modal-content--wide">
+                <span class="close-modal" id="close-coherence-edit-modal">&times;</span>
+                <h2>Corriger la série</h2>
+
+                <input type="hidden" id="cedit-series-id">
+
+                <!-- Infos lecture seule -->
+                <div class="cedit-info-grid">
+                    <div class="cedit-info-item">
+                        <span class="cedit-info-label">Titre</span>
+                        <span class="cedit-info-value" id="cedit-name"></span>
+                    </div>
+                    <div class="cedit-info-item">
+                        <span class="cedit-info-label">Auteur</span>
+                        <span class="cedit-info-value" id="cedit-author"></span>
+                    </div>
+                    <div class="cedit-info-item">
+                        <span class="cedit-info-label">Éditeur</span>
+                        <span class="cedit-info-value" id="cedit-publisher"></span>
+                    </div>
+                    <div class="cedit-info-item">
+                        <span class="cedit-info-label">Catégories</span>
+                        <span class="cedit-info-value" id="cedit-categories"></span>
+                    </div>
+                </div>
+
+                <hr class="cedit-divider">
+
+                <!-- Champs éditables -->
+                <div class="cedit-field-group">
+                    <label class="cedit-label" for="cedit-status">Statut de publication</label>
+                    <select id="cedit-status" class="cedit-select">
+                        <option value="en cours">En cours</option>
+                        <option value="terminée">Terminée</option>
+                        <option value="en pause">En pause</option>
+                        <option value="abandonnée">Abandonnée</option>
+                    </select>
+                </div>
+
+                <div class="cedit-field-group">
+                    <label class="cedit-label cedit-label--checkbox">
+                        <input type="checkbox" id="cedit-read-elsewhere">
+                        Lue ailleurs
+                    </label>
+                    <p class="hint">La série est lue en dehors de la collection physique.</p>
+                </div>
+
+                <hr class="cedit-divider">
+
+                <!-- Liste des tomes -->
+                <div class="cedit-volumes-header">
+                    <span class="cedit-label">Tomes</span>
+                    <button type="button" class="button button-sm button-ats" id="cedit-add-volume-btn">+ Ajouter un tome</button>
+                </div>
+                <div id="cedit-volumes-list" class="cedit-volumes-list">
+                    <!-- Tomes injectés dynamiquement -->
+                </div>
+
+                <div class="modal-actions cedit-actions">
+                    <button type="button" class="button button-ats" id="cedit-save-btn">
+                        <span id="cedit-save-text">Enregistrer</span>
+                        <span id="cedit-save-spinner" class="spinner" style="display:none;"></span>
+                    </button>
+                </div>
+                <p id="cedit-feedback" class="cedit-feedback"></p>
             </div>
         </div>
 
