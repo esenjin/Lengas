@@ -6,26 +6,22 @@ const modals = {
     'edit-series': { modal: document.getElementById('edit-series-modal'), closeBtn: document.getElementById('close-edit-series-modal') },
     'read': { modal: document.getElementById('read-modal'), closeBtn: document.getElementById('close-read-modal') },
     'edit-read': { modal: document.getElementById('edit-read-modal'), closeBtn: document.getElementById('close-edit-read-modal') },
-    'wishlist': { modal: document.getElementById('wishlist-modal'), closeBtn: document.getElementById('close-wishlist-modal') },
-    'edit-wishlist': { modal: document.getElementById('edit-wishlist-modal'), closeBtn: document.getElementById('close-edit-wishlist-modal') },
     'tools': { modal: document.getElementById('tools-modal'), closeBtn: document.getElementById('close-tools-modal') },
     'options': { modal: document.getElementById('options-modal'), closeBtn: document.getElementById('close-options-modal') },
     'incomplete-series': { modal: document.getElementById('incomplete-series-modal'), closeBtn: document.getElementById('close-incomplete-series-modal') },
     'coherences': { modal: document.getElementById('coherences-modal'), closeBtn: document.getElementById('close-coherences-modal') },
     'coherence-edit': { modal: document.getElementById('coherence-edit-modal'), closeBtn: document.getElementById('close-coherence-edit-modal') },
-    'loan': { modal: document.getElementById('loan-modal'), closeBtn: document.getElementById('close-loan-modal') },
     'add-mu-url': { modal: document.getElementById('add-mu-url-modal'), closeBtn: document.getElementById('close-add-mu-url-modal') }
 };
 
 // Ouverture des modales
-document.getElementById('open-add-series-modal').addEventListener('click', () => modals['add-series'].modal.classList.add('modal-active'));
-document.getElementById('open-add-multiple-volumes-modal').addEventListener('click', () => {
+document.getElementById('open-add-series-modal')?.addEventListener('click', () => modals['add-series'].modal.classList.add('modal-active'));
+document.getElementById('open-add-multiple-volumes-modal')?.addEventListener('click', () => {
     modals['add-multiple-volumes'].modal.classList.add('modal-active');
     document.getElementById('multiple-series-results').style.display = 'block';
 });
-document.getElementById('open-wishlist-modal').addEventListener('click', () => modals['wishlist'].modal.classList.add('modal-active'));
-document.getElementById('open-options-modal').addEventListener('click', () => modals['options'].modal.classList.add('modal-active'));
-document.getElementById('open-incomplete-series-modal').addEventListener('click', () => modals['incomplete-series'].modal.classList.add('modal-active'));
+document.getElementById('open-options-modal')?.addEventListener('click', () => modals['options'].modal.classList.add('modal-active'));
+document.getElementById('open-incomplete-series-modal')?.addEventListener('click', () => modals['incomplete-series'].modal.classList.add('modal-active'));
 
 // Fonction pour fermer une modale et recharger la page si c'est la modale d'outils ou d'options
 function closeModalAndReloadIfTools(modal) {

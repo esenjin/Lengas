@@ -1070,7 +1070,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
 </head>
-<body>
+<body class="with-sidebar">
+    <?php include 'includes/sidebar.php'; ?>
+
     <?php if (isset($_SESSION['error_message'])): ?>
         <div id="error-message" class="error-message">
             <?= $_SESSION['error_message'] ?>
@@ -1090,14 +1092,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
     <?php endif; ?>
 
     <div class="container">
-        <div class="logout-container">
-            <a href="admin.php" class="logout-button" title="Recharger la page">
-                <img src="https://api.iconify.design/mdi/refresh.svg?color=white" alt="Recharger la page" width="24" height="24">
-            </a>
-            <a href="logout.php" class="logout-button" title="Déconnexion">
-                <img src="https://api.iconify.design/mdi/logout.svg?color=white" alt="Déconnexion" width="24" height="24">
-            </a>
-        </div>
         <h1><?= htmlspecialchars($options['admin_page_title']) ?></h1>
 
         <!-- Barre de filtres et recherche -->
@@ -1137,21 +1131,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
             </form>
         </div>
 
-        <!-- Bouton Menu Mobile -->
-        <button class="mobile-menu-button" id="mobile-menu-button">☰ Menu</button>
-
-        <!-- Menu d'actions -->
-        <div class="admin-menu" id="admin-menu">
-            <button id="open-add-series-modal" class="button button-ats">Ajouter une série</button>
-            <button id="open-add-multiple-volumes-modal" class="button button-ats">Ajouter des tomes</button>
-            <button id="open-incomplete-series-modal" class="button button-aos">Séries incomplètes</button>
-            <button id="open-coherences-modal" class="button button-aos">Incohérences</button>
-            <button id="open-loan-modal" class="button button-otl">Livres prêtés</button>
-            <button id="open-wishlist-modal" class="button button-otl">Liste d'envies</button>
-            <button id="open-options-modal" class="button button-opt">Options</button>
-            <button id="open-tools-modal" class="button button-opt">Outils</button>
-            <a href="index.php" class="button button-ext" target="_blank">Accueil ↗</a>
-            <a href="stats.php" class="button button-ext" target="_blank">Statistiques ↗</a>
+        <!-- Boutons déclencheurs de modales (cachés — crochet JS uniquement) -->
+        <div id="modal-triggers" style="display:none">
+            <button id="open-add-series-modal"></button>
+            <button id="open-add-multiple-volumes-modal"></button>
+            <button id="open-incomplete-series-modal"></button>
+            <button id="open-coherences-modal"></button>
+            <button id="open-options-modal"></button>
+            <button id="open-tools-modal"></button>
         </div>
 
         <!-- Modales -->
@@ -1385,118 +1372,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <input type="file" name="edit_image" id="edit-series-image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp">
                     <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
                     <button type="submit" name="update_series">Mettre à jour</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Modale pour les livres prêtés -->
-        <div class="modal" id="loan-modal">
-            <div class="modal-content">
-                <span class="close-modal" id="close-loan-modal">&times;</span>
-                <h2>Livres prêtés</h2>
-
-                <!-- Ajouter un prêt (un seul tome) -->
-                <div class="loan-section">
-                    <h3>Ajouter un tome prêté</h3>
-                    <form id="add-single-loan-form">
-                        <p>Choisir une série :</p>
-                        <input type="text" id="loan-series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
-                        <div class="series-results" id="loan-series-results">
-                            <?php foreach ($data as $series): ?>
-                                <div data-id="<?= $series['id'] ?>"><?= $series['name'] ?></div>
-                            <?php endforeach; ?>
-                        </div>
-                        <input type="hidden" name="series_id" id="loan-selected-series-id" required>
-                        <p>Numéro du tome :</p>
-                        <input type="number" inputmode="numeric" name="volume_number" placeholder="Numéro du tome" min="1" autocomplete="off" required>
-                        <p>Nom de l'emprunteur :</p>
-                        <input type="text" name="borrower_name" placeholder="Nom de l'emprunteur" autocomplete="off" required>
-                        <button type="submit" class="button">Ajouter</button>
-                    </form>
-                </div>
-
-                <!-- Ajouter un prêt (plusieurs tomes) -->
-                <div class="loan-section">
-                    <h3>Ajouter des tomes prêtés en lot</h3>
-                    <form id="add-multiple-loans-form">
-                        <p>Choisir une série :</p>
-                        <input type="text" id="multiple-loan-series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
-                        <div class="series-results" id="multiple-loan-series-results">
-                            <?php foreach ($data as $series): ?>
-                                <div data-id="<?= $series['id'] ?>"><?= $series['name'] ?></div>
-                            <?php endforeach; ?>
-                        </div>
-                        <input type="hidden" name="series_id" id="multiple-loan-selected-series-id" required>
-                        <p>Plage de tomes :</p>
-                        <div class="volume-range">
-                            <input type="number" inputmode="numeric" name="start_volume" placeholder="Numéro de début" min="1" autocomplete="off" required>
-                            <span>à</span>
-                            <input type="number" inputmode="numeric" name="end_volume" placeholder="Numéro de fin" min="1" autocomplete="off" required>
-                        </div>
-                        <p>Nom de l'emprunteur :</p>
-                        <input type="text" name="borrower_name" placeholder="Nom de l'emprunteur" autocomplete="off" required>
-                        <button type="submit" class="button">Ajouter</button>
-                    </form>
-                </div>
-
-                <!-- Liste des prêts -->
-                <div class="loan-section">
-                    <h3>Liste des livres prêtés</h3>
-                    <input type="text" id="loan-search" placeholder="Rechercher une série ou un emprunteur..." autocomplete="off">
-                    <div id="loan-list">
-                        <!-- Les prêts seront affichés ici -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modale pour la liste d'envies -->
-        <div class="modal" id="wishlist-modal">
-            <div class="modal-content">
-                <span class="close-modal" id="close-wishlist-modal">&times;</span>
-                <h2>Liste d'envies</h2>
-                <div class="wishlist-container">
-                    <div class="wishlist-header">
-                        <input type="text" id="wishlist-name" placeholder="Nom de la série" autocomplete="off" required>
-                        <input type="text" id="wishlist-author" placeholder="Auteur" autocomplete="off" required>
-                        <input type="text" id="wishlist-publisher" placeholder="Éditeur" autocomplete="off" required>
-                        <button id="add-to-wishlist-btn" class="button">Ajouter à la liste</button>
-                        <input type="text" id="wishlist-search" placeholder="Rechercher une série, un auteur ou un éditeur..." autocomplete="off">
-                    </div>
-                    <div class="wishlist-list" id="wishlist-list">
-                        <?php foreach (load_wishlist() as $index => $item): ?>
-                            <div class="wishlist-item" data-index="<?= $index ?>">
-                                <div class="wishlist-item-info">
-                                    <span class="wishlist-series-name"><?= $item['name'] ?></span>
-                                    <span class="wishlist-series-author"><?= $item['author'] ?></span>
-                                    <span class="wishlist-series-publisher"><?= $item['publisher'] ?></span>
-                                </div>    
-                                <div class="wishlist-item-actions">
-                                    <button class="add-from-wishlist-btn" data-index="<?= $index ?>">+</button>
-                                    <button class="edit-wishlist-btn" data-index="<?= $index ?>">...</button>
-                                    <button class="remove-from-wishlist-btn" data-index="<?= $index ?>">x</button>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Modale pour éditer une série de la liste d'envies -->
-        <div class="modal" id="edit-wishlist-modal">
-            <div class="modal-content">
-                <span class="close-modal" id="close-edit-wishlist-modal">&times;</span>
-                <h2>Éditer une série de la liste d'envies</h2>
-                <form id="edit-wishlist-form">
-                    <input type="hidden" id="edit-wishlist-index">
-                    <p>Nom :</p>
-                    <input type="text" id="edit-wishlist-name" placeholder="Nom de la série" autocomplete="off" required>
-                    <p>Auteur :</p>
-                    <input type="text" id="edit-wishlist-author" placeholder="Nom de l'auteur" autocomplete="off" required>
-                    <p>Éditeur :</p>
-                    <input type="text" id="edit-wishlist-publisher" placeholder="Nom de l'éditeur" autocomplete="off" required>
-                    <button type="submit" class="button">Mettre à jour</button>
                 </form>
             </div>
         </div>
@@ -1818,8 +1693,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
     <script src="assets/js/admin/autocomplete.js"></script>
     <script src="assets/js/admin/series.js"></script>
     <script src="assets/js/admin/volumes.js"></script>
-    <script src="assets/js/admin/wishlist.js"></script>
-    <script src="assets/js/admin/loans.js"></script>
     <script src="assets/js/admin/tools.js"></script>
     <script src="assets/js/admin/pagination.js"></script>
     <script src="assets/js/admin/main.js"></script>

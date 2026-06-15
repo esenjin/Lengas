@@ -1,0 +1,262 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   sidebar.css — Navigation latérale de l'administration Lengas
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Mise en page générale avec sidebar ── */
+body.with-sidebar {
+    display: flex;
+    min-height: 100vh;
+    padding: 0;
+    background: var(--background-dark);
+}
+
+/* La page principale décalée par la sidebar */
+.page-main {
+    flex: 1;
+    min-width: 0;
+    padding: 32px 36px;
+    overflow-x: hidden;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────────────── */
+.sidebar {
+    width: 58px;
+    flex-shrink: 0;
+    background: var(--background-card);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    z-index: 200;
+    box-shadow: 2px 0 16px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Logo ──────────────────────────────────────────────────────────────── */
+.sidebar-brand {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-logo {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    border-radius: var(--border-radius-sm);
+    opacity: 0.85;
+    transition: opacity 0.2s ease;
+}
+
+.sidebar-logo:hover { opacity: 1; }
+
+/* ── Listes de nav ─────────────────────────────────────────────────────── */
+.sidebar-nav {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+}
+
+.sidebar-nav--bottom {
+    flex: 0;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-nav li {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+/* ── Séparateurs ───────────────────────────────────────────────────────── */
+li.sidebar-separator {
+    width: 28px !important;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 6px 0 !important;
+    border-radius: 1px;
+    display: block;
+}
+
+/* ── Liens / boutons de la sidebar ────────────────────────────────────── */
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius-sm);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    text-decoration: none;
+    transition: background 0.15s ease, transform 0.15s ease;
+    color: var(--text-gray);
+    /* Clé : overflow visible pour que les pseudo-éléments sortent du bouton */
+    overflow: visible;
+}
+
+.sidebar-link img {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    opacity: 0.65;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+    /* Empêche l'image d'intercepter le survol */
+    position: relative;
+    z-index: 1;
+}
+
+.sidebar-link:hover {
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateY(-1px);
+}
+
+.sidebar-link:hover img { opacity: 1; }
+
+/* ── État actif (violet par défaut) ───────────────────────────────────── */
+.sidebar-link.is-active {
+    background: rgba(192, 132, 252, 0.12);
+}
+
+.sidebar-link.is-active img {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px rgba(192, 132, 252, 0.4));
+}
+
+/* Barre gauche active — uniquement sur <a>, via ::after pour ne pas
+   conflictueur avec le tooltip ::before sur les <button> */
+a.sidebar-link.is-active::after {
+    content: '' !important;
+    position: absolute !important;
+    left: -9px !important; /* déborde à gauche de la sidebar */
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 3px !important;
+    height: 20px !important;
+    background: var(--primary-color) !important;
+    border-radius: 0 2px 2px 0 !important;
+    opacity: 1 !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+    /* Annuler les propriétés tooltip */
+    white-space: normal !important;
+    padding: 0 !important;
+    color: transparent !important;
+    font-size: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+/* ── Variante active bleue (liste d'envies) ────────────────────────────── */
+.sidebar-link.is-active--blue {
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.sidebar-link.is-active--blue img {
+    filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.35));
+}
+
+a.sidebar-link.is-active--blue::after {
+    background: #38bdf8 !important;
+}
+
+/* ── Variante danger (déconnexion) ─────────────────────────────────────── */
+.sidebar-link--danger:hover {
+    background: rgba(248, 113, 113, 0.1);
+}
+
+/* ── Tooltip au survol ─────────────────────────────────────────────────── */
+/* Flèche gauche du tooltip */
+.sidebar-link[data-tooltip]::before {
+    content: '';
+    position: absolute;
+    left: calc(100% + 6px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    border: 5px solid transparent;
+    border-right-color: var(--background-darker);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 9999;
+    /* Éviter que l'image en z-index:1 ne passe dessus */
+    isolation: isolate;
+}
+
+/* Bulle texte du tooltip */
+.sidebar-link[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    white-space: nowrap;
+    background: var(--background-darker);
+    color: var(--text-white);
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: var(--box-shadow-sm);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 9999;
+}
+
+.sidebar-link[data-tooltip]:hover::before {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+}
+
+.sidebar-link[data-tooltip]:hover::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+}
+
+/* Sur les <a> actifs, le ::after est utilisé pour la barre gauche,
+   pas pour le tooltip. On remet le tooltip via un état hover explicite. */
+a.sidebar-link.is-active:hover::after {
+    /* le hover annule la barre et montre le tooltip */
+    content: attr(data-tooltip) !important;
+    left: calc(100% + 12px) !important;
+    top: 50% !important;
+    transform: translateY(-50%) translateX(0) !important;
+    width: auto !important;
+    height: auto !important;
+    background: var(--background-darker) !important;
+    color: var(--text-white) !important;
+    font-size: 0.78rem !important;
+    font-weight: 500 !important;
+    padding: 5px 10px !important;
+    border-radius: var(--border-radius-sm) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: var(--box-shadow-sm) !important;
+    opacity: 1 !important;
+    pointer-events: none !important;
+    white-space: nowrap !important;
+    z-index: 9999 !important;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .sidebar { width: 50px; }
+    .page-main { padding: 20px 18px; }
+    body.with-sidebar .container { padding: 20px 18px; }
+}

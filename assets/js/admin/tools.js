@@ -130,7 +130,7 @@ function displayIntegrityResults(results) {
                     <h4>Fichiers racines</h4>
                     <ul>
     `;
-    const rootFiles = ['index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php', '.htaccess'];
+    const rootFiles = ['index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php', '.htaccess', 'page-prets.php', 'page-wishlist.php'];
     rootFiles.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
     });
@@ -166,7 +166,7 @@ function displayIntegrityResults(results) {
                     <h4>Fichiers includes</h4>
                     <ul>
     `;
-    const includeFiles = ['includes/mangaupdates.php', 'includes/auth.php', 'includes/helpers.php'];
+    const includeFiles = ['includes/mangaupdates.php', 'includes/auth.php', 'includes/helpers.php', 'includes/sidebar.php'];
     includeFiles.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
     });
@@ -192,7 +192,8 @@ function displayIntegrityResults(results) {
         'assets/css/_admin.css', 'assets/css/_base.css', 'assets/css/_buttons.css',
         'assets/css/_forms.css', 'assets/css/_layout.css', 'assets/css/_modals.css',
         'assets/css/_public.css', 'assets/css/_responsive.css', 'assets/css/_series.css',
-        'assets/css/_stats.css', 'assets/css/_utils.css', 'assets/css/_variables.css'
+        'assets/css/_stats.css', 'assets/css/_utils.css', 'assets/css/_variables.css',
+        'assets/css/_sidebar.css', 'assets/css/_pages.css'
     ];
     cssFiles.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
@@ -610,6 +611,8 @@ const COHERENCE_LABELS = {
     read_elsewhere_unread:      { icon: '👁️', label: 'Lue ailleurs — tomes non lus' },
     mu_still_ongoing:           { icon: '🔄', label: 'Publication en cours (MangaUpdates)' },
     mu_complete_unmarked:       { icon: '✔️', label: 'Terminée selon MangaUpdates' },
+    loan_deleted_series:        { icon: '👻', label: 'Prêt — série supprimée' },
+    loan_read_elsewhere:        { icon: '📤', label: 'Prêt — lue ailleurs' },
 };
 
 function renderCoherences(issues) {
@@ -680,12 +683,24 @@ function renderCoherences(issues) {
         header.appendChild(nameSpan);
 
         if (item.series_id) {
-            const editBtn = document.createElement('button');
-            editBtn.type = 'button';
-            editBtn.className = 'button button-sm cedit-open-btn';
-            editBtn.dataset.seriesId = item.series_id;
-            editBtn.textContent = 'Modifier';
-            header.appendChild(editBtn);
+            // Issues exclusivement liées aux prêts → lien vers page-prets
+            const loanTypes = new Set(['loan_deleted_series', 'loan_read_elsewhere']);
+            const isLoanIssue = item.problems.every(p => loanTypes.has(p.type));
+
+            if (isLoanIssue) {
+                const loansLink = document.createElement('a');
+                loansLink.href = 'page-prets.php';
+                loansLink.className = 'button button-sm button-otl';
+                loansLink.textContent = 'Gérer les prêts';
+                header.appendChild(loansLink);
+            } else {
+                const editBtn = document.createElement('button');
+                editBtn.type = 'button';
+                editBtn.className = 'button button-sm cedit-open-btn';
+                editBtn.dataset.seriesId = item.series_id;
+                editBtn.textContent = 'Modifier';
+                header.appendChild(editBtn);
+            }
         }
 
         block.appendChild(header);

@@ -34,12 +34,13 @@ function check_site_integrity(array $data): array {
     // 1. Existence des fichiers/dossiers
     $required_files = [
         'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php', '.htaccess',
+        'page-prets.php', 'page-wishlist.php',
         'assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js',
         'assets/img/', 'assets/img/logo.png', 'assets/img/favicon.ico', 'assets/img/mulogo.png',
         'assets/js/admin/',
         'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php',
         'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php',
-        'includes/mangaupdates.php', 'includes/auth.php', 'includes/helpers.php',
+        'includes/mangaupdates.php', 'includes/auth.php', 'includes/helpers.php', 'includes/sidebar.php',
         'includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/',
     ];
     foreach ($required_files as $file) {
@@ -51,6 +52,7 @@ function check_site_integrity(array $data): array {
         'assets/css/_forms.css', 'assets/css/_layout.css', 'assets/css/_modals.css',
         'assets/css/_public.css', 'assets/css/_responsive.css', 'assets/css/_series.css',
         'assets/css/_stats.css', 'assets/css/_utils.css', 'assets/css/_variables.css',
+        'assets/css/_sidebar.css', 'assets/css/_pages.css',
     ];
     foreach ($required_css_files as $file) {
         $results['file_existence'][$file] = file_exists($file);
@@ -596,6 +598,48 @@ function check_collection_coherence(array $data): array {
 
         if (!empty($series_issues)) {
             $issues[] = ['series' => $name, 'series_id' => $series['id'], 'problems' => $series_issues];
+        }
+    }
+
+    // ── Prêts vers des séries inexistantes ou "lues ailleurs" ────────────────
+    if (function_exists('load_loans')) {
+        $loans          = load_loans();
+        $loans_by_series = [];
+        foreach ($loans as $loan) {
+            $loans_by_series[$loan['series_id']][] = $loan;
+        }
+
+        // Indexer les séries existantes par ID pour recherche rapide
+        $series_map = [];
+        foreach ($data as $s) {
+            $series_map[$s['id']] = $s;
+        }
+
+        foreach ($loans_by_series as $sid => $sid_loans) {
+            $n = count($sid_loans);
+            $vols = implode(', ', array_map(fn($l) => 'T' . $l['volume_number'], $sid_loans));
+
+            if (!isset($series_map[$sid])) {
+                // Série supprimée
+                $issues[] = [
+                    'series'    => '(Série supprimée)',
+                    'series_id' => $sid,
+                    'problems'  => [[
+                        'type'    => 'loan_deleted_series',
+                        'message' => $n . ' tome(s) prêté(s) (' . $vols . ') pour une série qui n\'existe plus dans la collection.',
+                    ]],
+                ];
+            } elseif (!empty($series_map[$sid]['read_elsewhere'])) {
+                // Série marquée "lue ailleurs" (physiquement absente)
+                $issues[] = [
+                    'series'    => $series_map[$sid]['name'],
+                    'series_id' => $sid,
+                    'problems'  => [[
+                        'type'    => 'loan_read_elsewhere',
+                        'message' => $n . ' tome(s) prêté(s) (' . $vols . ') pour une série marquée « lue ailleurs » — elle n\'est pas physiquement dans votre collection.',
+                    ]],
+                ];
+            }
         }
     }
 

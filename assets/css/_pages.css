@@ -1,0 +1,386 @@
+/* ── Mise en page pages dédiées ─────────────────────────────────────────── */
+.page-header {
+    margin-bottom: 32px;
+}
+
+.page-header h1 {
+    margin: 0 0 6px;
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-white);
+}
+
+.page-subtitle {
+    color: var(--text-gray);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* ── Adapatation admin.php avec sidebar ─────────────────────────────────── */
+body.with-sidebar .container {
+    padding: 32px 36px;
+}
+
+body.with-sidebar .logout-container {
+    display: none;
+}
+
+/* ── Grille Prêts ──────────────────────────────────────────────────────── */
+.loans-page-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.loans-panel {
+    background: var(--background-card);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius-lg);
+    padding: 22px 24px;
+}
+
+.loans-panel--full {
+    grid-column: 1 / -1;
+}
+
+.loans-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-white);
+    margin: 0 0 18px;
+}
+
+.loans-panel-title img {
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+
+.loans-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.loans-form label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    margin-top: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.loans-form label:first-child { margin-top: 0; }
+.loans-form input[type="text"],
+.loans-form input[type="number"] { margin-bottom: 0; }
+.loans-form button[type="submit"] { margin-top: 18px; align-self: flex-start; }
+
+.loans-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.loans-list-header .loans-panel-title { margin-bottom: 0; }
+
+.loans-search-input {
+    max-width: 280px;
+    margin-bottom: 0 !important;
+    font-size: 0.85rem;
+}
+
+.loan-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.loan-series-item {
+    background: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius);
+    padding: 14px 16px;
+    transition: var(--transition);
+}
+
+.loan-series-item:hover { border-color: rgba(56, 189, 248, 0.15); }
+
+.loan-series-item h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-white);
+    margin: 0 0 2px;
+}
+
+.loan-series-author {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0 0 10px;
+}
+
+.loan-series-deleted { color: var(--error-color) !important; }
+
+.loan-series-deleted-hint {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 0 0 10px;
+}
+
+.loan-volumes-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.loan-volumes-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    color: var(--text-color);
+    padding: 5px 8px;
+    background: rgba(56, 189, 248, 0.04);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid rgba(56, 189, 248, 0.08);
+}
+
+.remove-loan-btn {
+    background: transparent;
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    color: var(--error-color);
+    border-radius: var(--border-radius-sm);
+    padding: 2px 10px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.remove-loan-btn:hover { background: var(--error-subtle); border-color: var(--error-color); }
+
+.remove-all-loans-btn {
+    background: transparent;
+    border: 1px solid rgba(248, 113, 113, 0.25);
+    color: var(--text-muted);
+    border-radius: var(--border-radius-sm);
+    padding: 4px 12px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.remove-all-loans-btn:hover {
+    background: var(--error-subtle);
+    color: var(--error-color);
+    border-color: var(--error-color);
+}
+
+.loans-empty {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 12px 0;
+    font-style: italic;
+}
+
+/* ── Grille Wishlist ───────────────────────────────────────────────────── */
+.wishlist-page-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    align-items: start;
+    /* Étirer jusqu'en bas */
+    min-height: calc(100vh - 160px);
+}
+
+.wishlist-add-panel {
+    background: var(--background-card);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius-lg);
+    padding: 22px 24px;
+    position: sticky;
+    top: 24px;
+}
+
+.wishlist-add-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.wishlist-add-form input { margin-bottom: 0; }
+
+.wishlist-list-panel {
+    background: var(--background-card);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius-lg);
+    padding: 22px 24px;
+    min-height: calc(100vh - 180px);
+    display: flex;
+    flex-direction: column;
+    /* Pas de overflow:hidden — la liste gère elle-même son débordement */
+}
+
+.wishlist-list-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.wishlist-list-header .loans-panel-title { margin-bottom: 0; flex: 1; }
+
+.wishlist-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 6px;
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    border-radius: 10px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    font-family: 'Outfit', system-ui, sans-serif;
+    margin-left: 4px;
+}
+
+/* ── Barre de tri + recherche wishlist ──────────────────────────────────── */
+.wishlist-controls {
+    display: flex;
+    flex-direction: row;      /* Forcer la ligne horizontale */
+    flex-wrap: nowrap;        /* Pas de retour à la ligne */
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-bottom: 0;
+}
+
+/* Annuler width:100% et margin-bottom:14px hérités de _base.css */
+.wishlist-controls input,
+.wishlist-controls select {
+    width: auto !important;
+    margin-bottom: 0 !important;
+}
+
+.wishlist-controls .loans-search-input {
+    flex: 1;
+    min-width: 140px;
+}
+
+.wishlist-sort-select {
+    padding: 6px 10px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-color);
+    font-size: 0.82em;
+    cursor: pointer;
+    outline: none;
+    transition: var(--transition-fast);
+    min-width: 130px;
+    flex-shrink: 0;
+}
+
+.wishlist-sort-select:focus { border-color: var(--input-border-focus); }
+
+.wishlist-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    /* min-height explicite pour garantir que la liste remplit le panel
+       quand flex:1 ne suffit pas (parent en min-height, pas en height fixe) */
+    min-height: calc(100vh - 360px);
+    margin-top: 16px;
+    overflow-y: auto;
+}
+
+.wishlist-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+}
+
+.wishlist-item:hover {
+    border-color: rgba(56, 189, 248, 0.12);
+    background: var(--background-lighter);
+}
+
+.wishlist-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.wishlist-series-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wishlist-series-meta {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.wishlist-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.button-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--border-radius-sm);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.button-icon:hover { background: rgba(255, 255, 255, 0.06); }
+
+.button-icon img {
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
+}
+
+.button-icon:hover img { opacity: 1; }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    .loans-page-layout { grid-template-columns: 1fr; }
+    .loans-panel--full { grid-column: auto; }
+    .wishlist-page-layout { grid-template-columns: 1fr; }
+    .wishlist-add-panel { position: static; }
+    .wishlist-list-panel { min-height: 300px; }
+}
