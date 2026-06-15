@@ -120,13 +120,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         if ($av === null || (int)$av <= 0) {
             // Fiche trouvée mais sans nombre de tomes renseigné
             $failed_series[] = [
-                'id'             => $series['id'],
-                'name'           => $series['name'],
-                'author'         => $series['author'] ?? '',
-                'ref'            => 'mangaupdates',
-                'reason'         => 'Nombre de tomes non renseigné sur MangaUpdates',
-                'has_mu_url'     => true, // URL valide : pas besoin du bouton Ajouter
-                'read_elsewhere' => !empty($series['read_elsewhere']),
+                'id'              => $series['id'],
+                'name'            => $series['name'],
+                'author'          => $series['author'] ?? '',
+                'ref'             => 'mangaupdates',
+                'reason'          => 'Nombre de tomes non renseigné sur MangaUpdates',
+                'has_mu_url'      => true, // URL valide : pas besoin du bouton Ajouter
+                'mangaupdates_url'=> $url, // URL pour afficher le badge MU
+                'read_elsewhere'  => !empty($series['read_elsewhere']),
             ];
             continue;
         }

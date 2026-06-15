@@ -373,11 +373,12 @@ function get_incomplete_series(array $data): array {
         $ref_volumes = $info['volumes'];
         if ($ref_volumes === null || (int)$ref_volumes <= 0) {
             $failed_series[] = [
-                'id'     => $series['id'],
-                'name'   => $series['name'],
-                'author' => $series['author'] ?? '',
-                'ref'    => 'mangaupdates',
-                'reason' => 'Nombre de tomes non renseigné sur MangaUpdates',
+                'id'              => $series['id'],
+                'name'            => $series['name'],
+                'author'          => $series['author'] ?? '',
+                'ref'             => 'mangaupdates',
+                'reason'          => 'Nombre de tomes non renseigné sur MangaUpdates',
+                'mangaupdates_url'=> $url, // URL pour afficher le badge MU
             ];
             continue;
         }

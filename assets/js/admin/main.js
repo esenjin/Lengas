@@ -220,9 +220,15 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
                         Non analysées — données MangaUpdates indisponibles ou nombre de tomes non renseigné
                     </summary>
                     <ul class="summary-list">
-                        ${failed_series.map(s =>
-                            `<li><strong>${s.name}</strong>${s.read_elsewhere ? ' <span class="read-elsewhere-badge">Lue ailleurs</span>' : ''}${s.author ? ' — ' + s.author : ''} <span class="summary-reason">${s.reason ?? ''}</span>${s.id && !s.has_mu_url ? ` <button class="add-mu-url-btn summary-edit-btn" data-series-id="${s.id}" data-series-name="${(s.name || '').replace(/"/g, '&quot;')}">Ajouter</button>` : ''}</li>`
-                        ).join('')}
+                        ${failed_series.map(s => {
+                            const muBadge = (s.reason === 'Nombre de tomes non renseigné sur MangaUpdates' && s.mangaupdates_url)
+                                ? ` <a class="mu-badge" href="${s.mangaupdates_url}" target="_blank" rel="noopener" title="Voir la fiche sur MangaUpdates (nombre de tomes non renseigné)"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>`
+                                : '';
+                            const addBtn = s.id && !s.has_mu_url
+                                ? ` <button class="add-mu-url-btn summary-edit-btn" data-series-id="${s.id}" data-series-name="${(s.name || '').replace(/"/g, '&quot;')}">Ajouter</button>`
+                                : '';
+                            return `<li><strong>${s.name}</strong>${s.read_elsewhere ? ' <span class="read-elsewhere-badge">Lue ailleurs</span>' : ''}${s.author ? ' — ' + s.author : ''} <span class="summary-reason">${s.reason ?? ''}</span>${muBadge}${addBtn}</li>`;
+                        }).join('')}
                     </ul>
                 </details>`;
         }
