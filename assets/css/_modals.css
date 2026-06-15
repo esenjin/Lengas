@@ -305,11 +305,99 @@
     overflow-y: auto;
 }
 
-#incomplete-series-results {
-    max-height: 60vh;
-    overflow-y: auto;
+/* ── Barre de filtres ── */
+.incomplete-filters-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
     margin-top: 14px;
+    margin-bottom: 4px;
+    padding: 10px 12px;
+    background: var(--background-medium);
+    border-radius: var(--border-radius);
+    border: var(--border-subtle);
+}
+
+.incomplete-search-input {
+    flex: 1 1 180px;
+    min-width: 140px;
+    padding: 6px 10px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-color);
+    font-size: 0.85em;
+    outline: none;
+    transition: var(--transition-fast);
+}
+
+.incomplete-search-input:focus {
+    border-color: var(--input-border-focus);
+}
+
+.incomplete-filter-selects {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.incomplete-status-filter,
+.incomplete-sort-date {
+    padding: 6px 10px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-color);
+    font-size: 0.82em;
+    cursor: pointer;
+    outline: none;
+    transition: var(--transition-fast);
+}
+
+.incomplete-status-filter:focus,
+.incomplete-sort-date:focus {
+    border-color: var(--input-border-focus);
+}
+
+.incomplete-filter-count {
+    font-size: 0.78em;
+    color: var(--text-muted);
+    white-space: nowrap;
+    margin-left: auto;
+}
+
+#incomplete-series-results {
+    max-height: 55vh;
+    overflow-y: auto;
+    margin-top: 10px;
     padding-right: 8px;
+}
+
+/* En-tête d'une card série incomplète (titre + date côte à côte) */
+.incomplete-series-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 2px;
+}
+
+.incomplete-series-header h3 {
+    margin: 0;
+}
+
+.incomplete-last-date {
+    font-size: 0.78em;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.incomplete-empty-msg {
+    color: var(--text-gray);
+    font-size: 0.9em;
+    padding: 8px 0;
 }
 
 .incomplete-series-item {

@@ -156,57 +156,236 @@ function translateMuStatus(status) {
     return map[key] || status;
 }
 
-// Affichage des séries incomplètes
+// ──────────────────────────────────────────────────────────────────────────────
+// Modale « Séries incomplètes » — données brutes + filtres/tri
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Cache global des données brutes (rempli après chaque recherche)
+window._incompleteCacheData = {
+    incomplete: [],
+    no_reference: [],
+    failed: []
+};
+
+// Normalise un texte pour la comparaison insensible à la casse/accents
+function normalizeForFilter(str) {
+    return (str || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+}
+
+// Renvoie la date du dernier tome ajouté pour une série (chaîne YYYY-MM-DD ou '')
+function getLastVolumeDate(series) {
+    if (!series.volumes || series.volumes.length === 0) return '';
+    // Les tomes peuvent ne pas avoir added_at — on prend le max des dates présentes
+    const dates = series.volumes
+        .map(v => v.added_at || '')
+        .filter(Boolean)
+        .sort();
+    return dates.length ? dates[dates.length - 1] : '';
+}
+
+// Applique les filtres/tri et re-rend uniquement la liste des séries incomplètes
+function applyIncompleteFilters() {
+    const searchVal  = normalizeForFilter(document.getElementById('incomplete-search-input')?.value || '');
+    const statusVal  = (document.getElementById('incomplete-status-filter')?.value || '').toLowerCase().trim();
+    const sortVal    = document.getElementById('incomplete-sort-date')?.value || '';
+
+    let list = [...window._incompleteCacheData.incomplete];
+
+    // Filtre textuel (titre, auteur, éditeur)
+    if (searchVal) {
+        list = list.filter(s =>
+            normalizeForFilter(s.name).includes(searchVal) ||
+            normalizeForFilter(s.author).includes(searchVal) ||
+            normalizeForFilter(s.publisher).includes(searchVal)
+        );
+    }
+
+    // Filtre par statut MangaUpdates
+    if (statusVal) {
+        list = list.filter(s => {
+            const st = String(s.ref_status || '').toLowerCase().trim();
+            // "cancelled" et "canceled" sont synonymes
+            if (statusVal === 'cancelled') return st === 'cancelled' || st === 'canceled';
+            return st === statusVal;
+        });
+    }
+
+    // Tri par date du dernier tome
+    if (sortVal === 'recent') {
+        list.sort((a, b) => getLastVolumeDate(b).localeCompare(getLastVolumeDate(a)));
+    } else if (sortVal === 'oldest') {
+        list.sort((a, b) => getLastVolumeDate(a).localeCompare(getLastVolumeDate(b)));
+    }
+
+    // Compteur
+    const countEl = document.getElementById('incomplete-filter-count');
+    if (countEl) {
+        const total = window._incompleteCacheData.incomplete.length;
+        countEl.textContent = list.length < total
+            ? `${list.length} / ${total} série${total > 1 ? 's' : ''}`
+            : `${total} série${total > 1 ? 's' : ''}`;
+    }
+
+    // Re-rendu de la liste filtrée (sans toucher au récapitulatif)
+    renderIncompleteList(list);
+}
+
+// Rend uniquement les cards de séries incomplètes dans la zone dédiée
+function renderIncompleteList(list) {
+    const resultsDiv = document.getElementById('incomplete-series-results');
+
+    // Supprimer les anciens items (garder l'éventuel récapitulatif déjà présent)
+    resultsDiv.querySelectorAll('.incomplete-series-item').forEach(el => el.remove());
+    // Supprimer aussi l'éventuel message "aucune série"
+    resultsDiv.querySelectorAll('.incomplete-empty-msg').forEach(el => el.remove());
+
+    if (list.length === 0) {
+        const msg = document.createElement('p');
+        msg.className = 'incomplete-empty-msg';
+        msg.textContent = window._incompleteCacheData.incomplete.length === 0
+            ? 'Aucune série incomplète trouvée.'
+            : 'Aucune série ne correspond aux filtres.';
+        // Insérer avant le récapitulatif s'il existe
+        const summary = resultsDiv.querySelector('.analysis-summary');
+        resultsDiv.insertBefore(msg, summary || null);
+        bindIncompleteButtons();
+        return;
+    }
+
+    const summary = resultsDiv.querySelector('.analysis-summary');
+
+    list.forEach(series => {
+        const seriesDiv = document.createElement('div');
+        seriesDiv.className = 'incomplete-series-item';
+
+        const srcLabel = 'MangaUpdates';
+        const refCount = series.ref_volumes ?? '?';
+
+        const readElsewhereBadge = series.read_elsewhere
+            ? ` <span class="read-elsewhere-badge" title="Série marquée comme lue ailleurs">Lue ailleurs</span>`
+            : '';
+
+        // Date du dernier tome pour affichage
+        const lastDate = getLastVolumeDate(series);
+        const lastDateHtml = lastDate
+            ? `<span class="incomplete-last-date" title="Date du dernier tome ajouté">📅 ${lastDate.split('-').reverse().join('/')}</span>`
+            : '';
+
+        let html = `
+            <div class="incomplete-series-header">
+                <h3>${series.name}${readElsewhereBadge}</h3>
+                ${lastDateHtml}
+            </div>
+            <p><strong>Auteur :</strong> ${series.author}</p>
+            <p><strong>Éditeur :</strong> ${series.publisher}</p>
+            <p><strong>${series.read_elsewhere ? 'Tomes lus' : 'Tomes possédés'} :</strong> ${series.volumes.length} / ${refCount} <small style="opacity:.6">(${srcLabel}${series.ref_status ? ' · ' + translateMuStatus(series.ref_status) : ''})</small></p>
+        `;
+
+        if (series.missing_volumes && series.missing_volumes.length > 0) {
+            html += `<p><strong>Tomes manquants :</strong> ${series.missing_volumes.join(', ')}</p>`;
+        } else if (series.has_more_volumes) {
+            html += `<p><strong>Tomes manquants :</strong> Aucun</p>`;
+            html += `<p class="issues-list"><strong>Attention :</strong> Vous possédez plus de tomes que la référence (${srcLabel}).</p>`;
+        }
+
+        html += `<div class="missing-volumes-actions">`;
+        if (series.missing_volumes && series.missing_volumes.length > 0) {
+            series.missing_volumes.forEach(vol => {
+                html += `<button class="add-missing-volume" data-series-id="${series.id}" data-volume-number="${vol}">+ Tome ${vol}</button>`;
+            });
+            html += `<button class="add-all-missing-volumes" data-series-id="${series.id}" data-missing-volumes="${series.missing_volumes.join(',')}">Tout ajouter</button>`;
+        }
+        html += `</div>`;
+
+        seriesDiv.innerHTML = html;
+        // Insérer avant le récapitulatif
+        resultsDiv.insertBefore(seriesDiv, summary || null);
+    });
+
+    bindIncompleteButtons();
+}
+
+// Attache les listeners sur les boutons d'ajout de tomes (après chaque rendu)
+function bindIncompleteButtons() {
+    function refreshAfterAdd() {
+        fetch('admin.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=get_incomplete_series'
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) displayIncompleteSeries(d.incomplete_series || [], d.no_reference_series || [], d.failed_series || []);
+        });
+    }
+
+    document.querySelectorAll('.add-missing-volume').forEach(btn => {
+        btn.addEventListener('click', function() {
+            fetch('admin.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `action=add_missing_volume&series_id=${this.dataset.seriesId}&volume_number=${this.dataset.volumeNumber}`
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) { alert('Tome ajouté avec succès !'); refreshAfterAdd(); }
+                else alert("Une erreur est survenue lors de l'ajout du tome.");
+            })
+            .catch(() => alert("Une erreur est survenue lors de l'ajout du tome."));
+        });
+    });
+
+    document.querySelectorAll('.add-all-missing-volumes').forEach(btn => {
+        btn.addEventListener('click', function() {
+            fetch('admin.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `action=add_all_missing_volumes&series_id=${this.dataset.seriesId}&missing_volumes=${this.dataset.missingVolumes}`
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) { alert('Tomes ajoutés avec succès !'); refreshAfterAdd(); }
+                else alert("Une erreur est survenue lors de l'ajout des tomes.");
+            })
+            .catch(() => alert("Une erreur est survenue lors de l'ajout des tomes."));
+        });
+    });
+}
+
+// ── Initialisation des listeners de filtres (appelée une fois au chargement) ──
+(function initIncompleteFilters() {
+    const searchInput  = document.getElementById('incomplete-search-input');
+    const statusSelect = document.getElementById('incomplete-status-filter');
+    const sortSelect   = document.getElementById('incomplete-sort-date');
+    if (searchInput)  searchInput.addEventListener('input',  applyIncompleteFilters);
+    if (statusSelect) statusSelect.addEventListener('change', applyIncompleteFilters);
+    if (sortSelect)   sortSelect.addEventListener('change',   applyIncompleteFilters);
+})();
+
+// Affichage des séries incomplètes (point d'entrée principal)
 function displayIncompleteSeries(incomplete_series, no_reference_series, failed_series) {
     no_reference_series = no_reference_series || [];
     failed_series       = failed_series       || [];
 
+    // Stocker les données brutes pour les filtres
+    window._incompleteCacheData = {
+        incomplete:   incomplete_series,
+        no_reference: no_reference_series,
+        failed:       failed_series
+    };
+
+    // Afficher la barre de filtres si des séries incomplètes existent
+    const filtersBar = document.getElementById('incomplete-filters-bar');
+    if (filtersBar) {
+        filtersBar.style.display = incomplete_series.length > 0 ? 'flex' : 'none';
+    }
+
+    // Vider la zone de résultats
     const resultsDiv = document.getElementById('incomplete-series-results');
     resultsDiv.innerHTML = '';
 
-    if (incomplete_series.length === 0) {
-        resultsDiv.innerHTML += '<p>Aucune série incomplète trouvée.</p>';
-    } else {
-        incomplete_series.forEach(series => {
-            const seriesDiv = document.createElement('div');
-            seriesDiv.className = 'incomplete-series-item';
-
-            const srcLabel = 'MangaUpdates';
-            const refCount = series.ref_volumes ?? '?';
-
-            const readElsewhereBadge = series.read_elsewhere
-                ? ` <span class="read-elsewhere-badge" title="Série marquée comme lue ailleurs">Lue ailleurs</span>`
-                : '';
-
-            let html = `
-                <h3>${series.name}${readElsewhereBadge}</h3>
-                <p><strong>Auteur :</strong> ${series.author}</p>
-                <p><strong>Éditeur :</strong> ${series.publisher}</p>
-                <p><strong>${series.read_elsewhere ? 'Tomes lus' : 'Tomes possédés'} :</strong> ${series.volumes.length} / ${refCount} <small style="opacity:.6">(${srcLabel}${series.ref_status ? ' · ' + translateMuStatus(series.ref_status) : ''})</small></p>
-            `;
-
-            if (series.missing_volumes && series.missing_volumes.length > 0) {
-                html += `<p><strong>Tomes manquants :</strong> ${series.missing_volumes.join(', ')}</p>`;
-            } else if (series.has_more_volumes) {
-                html += `<p><strong>Tomes manquants :</strong> Aucun</p>`;
-                html += `<p class="issues-list"><strong>Attention :</strong> Vous possédez plus de tomes que la référence (${srcLabel}).</p>`;
-            }
-
-            html += `<div class="missing-volumes-actions">`;
-            if (series.missing_volumes && series.missing_volumes.length > 0) {
-                series.missing_volumes.forEach(vol => {
-                    html += `<button class="add-missing-volume" data-series-id="${series.id}" data-volume-number="${vol}">+ Tome ${vol}</button>`;
-                });
-                html += `<button class="add-all-missing-volumes" data-series-id="${series.id}" data-missing-volumes="${series.missing_volumes.join(',')}">Tout ajouter</button>`;
-            }
-            html += `</div>`;
-
-            seriesDiv.innerHTML = html;
-            resultsDiv.appendChild(seriesDiv);
-        });
-    }
-
-    // Récapitulatif : séries en échec + sans référence
+    // Construire le récapitulatif (séries en échec + sans référence) en premier
+    // pour qu'il soit toujours visible indépendamment des filtres
     if (failed_series.length > 0 || no_reference_series.length > 0) {
         const summaryDiv = document.createElement('div');
         summaryDiv.className = 'analysis-summary';
@@ -252,50 +431,8 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
         resultsDiv.appendChild(summaryDiv);
     }
 
-    // Boutons d'ajout de tomes
-    function refreshAfterAdd() {
-        fetch('admin.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'action=get_incomplete_series'
-        })
-        .then(r => r.json())
-        .then(d => {
-            if (d.success) displayIncompleteSeries(d.incomplete_series || [], d.no_reference_series || [], d.failed_series || []);
-        });
-    }
-
-    document.querySelectorAll('.add-missing-volume').forEach(btn => {
-        btn.addEventListener('click', function() {
-            fetch('admin.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `action=add_missing_volume&series_id=${this.dataset.seriesId}&volume_number=${this.dataset.volumeNumber}`
-            })
-            .then(r => r.json())
-            .then(d => {
-                if (d.success) { alert('Tome ajouté avec succès !'); refreshAfterAdd(); }
-                else alert("Une erreur est survenue lors de l'ajout du tome.");
-            })
-            .catch(() => alert("Une erreur est survenue lors de l'ajout du tome."));
-        });
-    });
-
-    document.querySelectorAll('.add-all-missing-volumes').forEach(btn => {
-        btn.addEventListener('click', function() {
-            fetch('admin.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `action=add_all_missing_volumes&series_id=${this.dataset.seriesId}&missing_volumes=${this.dataset.missingVolumes}`
-            })
-            .then(r => r.json())
-            .then(d => {
-                if (d.success) { alert('Tomes ajoutés avec succès !'); refreshAfterAdd(); }
-                else alert("Une erreur est survenue lors de l'ajout des tomes.");
-            })
-            .catch(() => alert("Une erreur est survenue lors de l'ajout des tomes."));
-        });
-    });
+    // Rendre la liste filtrée/triée (applique l'état courant des filtres)
+    applyIncompleteFilters();
 }
 
 // Gestion du menu mobile

@@ -1213,6 +1213,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                 <p class="hint">⚠️ Limitations : MangaUpdates fournit le nombre de tomes aussi bien pour les séries <strong>terminées</strong> que pour celles <strong>en cours de publication</strong>. En revanche, le décompte se base principalement sur l'édition d'origine (VO) et non sur l'édition française (VF) : un écart est donc possible. Lengas privilégie automatiquement le décompte français lorsque MangaUpdates l'indique (ex. « 8 Volumes (Complete, France) »). Renseignez l'URL MangaUpdates de chaque série — via le champ dédié (ajout / modification) ou l'outil « Associer MangaUpdates » de la modale Outils.</p>
                 <button id="search-incomplete-series" class="button">Rechercher les séries incomplètes</button>
                 <button id="force-incomplete-search" class="button button-opt" title="Interroge MangaUpdates pour les séries sans cache récent (ignore les résultats mis en cache il y a moins de 24 h)">Forcer la recherche (non analysées)</button>
+
+                <!-- Barre de filtres (masquée jusqu'à l'obtention des résultats) -->
+                <div id="incomplete-filters-bar" class="incomplete-filters-bar" style="display:none;">
+                    <input
+                        type="text"
+                        id="incomplete-search-input"
+                        class="incomplete-search-input"
+                        placeholder="Filtrer par titre, auteur, éditeur…"
+                        autocomplete="off"
+                    >
+                    <div class="incomplete-filter-selects">
+                        <select id="incomplete-status-filter" class="incomplete-status-filter">
+                            <option value="">Tous les statuts MU</option>
+                            <option value="complete">Terminé</option>
+                            <option value="ongoing">En cours</option>
+                            <option value="hiatus">En pause</option>
+                            <option value="cancelled">Annulé</option>
+                        </select>
+                        <select id="incomplete-sort-date" class="incomplete-sort-date">
+                            <option value="">Tri par défaut</option>
+                            <option value="recent">Plus récent d'abord</option>
+                            <option value="oldest">Plus ancien d'abord</option>
+                        </select>
+                    </div>
+                    <span id="incomplete-filter-count" class="incomplete-filter-count"></span>
+                </div>
+
                 <div id="incomplete-series-results">
                     <!-- Les résultats seront affichés ici -->
                 </div>
