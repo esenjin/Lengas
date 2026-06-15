@@ -560,6 +560,18 @@ function check_collection_coherence(array $data): array {
             $series_issues[] = ['type' => 'sequence_not_starting_at_1', 'message' => 'La collection ne commence pas au tome 1 (premier tome possédé : ' . $min . ').'];
         }
 
+        // ── Tomes non lus dans une série "lue ailleurs" ──────────────────────
+        if (!empty($series['read_elsewhere'])) {
+            $unread = array_values(array_filter($volumes, fn($v) => ($v['status'] ?? '') !== 'terminé'));
+            if (!empty($unread)) {
+                $unread_nums = array_map(fn($v) => $v['number'], $unread);
+                $series_issues[] = [
+                    'type'    => 'read_elsewhere_unread',
+                    'message' => 'Série marquée « lue ailleurs » mais ' . count($unread_nums) . ' tome(s) non lu(s) : ' . implode(', ', $unread_nums) . '.',
+                ];
+            }
+        }
+
         // ── Cohérence avec le statut de publication MangaUpdates (cache, sans réseau) ─
         if (function_exists('mangaupdates_get_cached_status') && function_exists('mangaupdates_get_id_from_url')
             && !empty($series['mangaupdates_url'])) {

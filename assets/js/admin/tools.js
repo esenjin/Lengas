@@ -607,6 +607,7 @@ const COHERENCE_LABELS = {
     finished_no_last:           { icon: '🏁', label: 'Terminée sans dernier' },
     last_but_not_finished:      { icon: '🔖', label: 'Dernier sans fin' },
     sequence_not_starting_at_1: { icon: '1️⃣',  label: 'Ne commence pas à 1' },
+    read_elsewhere_unread:      { icon: '👁️', label: 'Lue ailleurs — tomes non lus' },
     mu_still_ongoing:           { icon: '🔄', label: 'Publication en cours (MangaUpdates)' },
     mu_complete_unmarked:       { icon: '✔️', label: 'Terminée selon MangaUpdates' },
 };
