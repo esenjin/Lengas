@@ -11,7 +11,6 @@ require 'fonctions/wishlist.php';
 require 'fonctions/loans.php';
 require 'fonctions/options.php';
 require 'fonctions/tools.php';
-require 'fonctions/unread.php';
 
 $data = load_data();
 $options = load_options();
@@ -20,18 +19,6 @@ $options = load_options();
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $per_page_admin = 9;
 $offset = ($page - 1) * $per_page_admin;
-
-// Récupérer les séries non lues
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_unread_series') {
-    $unread_series = get_unread_series($data);
-    header('Content-Type: application/json');
-    echo json_encode([
-        'success' => true,
-        'unread_series' => $unread_series
-    ]);
-    exit;
-}
-
 
 // ── Endpoint SSE : analyse des séries incomplètes avec progression ────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'incomplete_series_stream') {
@@ -281,20 +268,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
             break;
 
-        case 'mark_first_unread_as_read':
-            $series_id = $_POST['series_id'] ?? '';
-            if ($series_id) {
-                $result = mark_first_unread_volume_as_read($data, $series_id);
-                if ($result['success']) {
-                    save_data($result['data']);
-                    $response['success'] = true;
-                } else {
-                    $response['message'] = $result['message'];
-                }
-            } else {
-                $response['message'] = 'ID de série invalide.';
-            }
-            break;
     }
 
     header('Content-Type: application/json');
@@ -1065,32 +1038,6 @@ if ($search_term) {
     });
 }
 
-// Gestion de la récupération des séries en cours
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_current_series'])) {
-    $current_series = [];
-    foreach ($data as $series) {
-        $has_last_volume = false;
-        foreach ($series['volumes'] as $volume) {
-            if (isset($volume['last']) && $volume['last']) {
-                $has_last_volume = true;
-                break;
-            }
-        }
-        if (!$has_last_volume && !empty($series['volumes'])) {
-            $last_volume = end($series['volumes']);
-            $current_series[] = [
-                'id' => $series['id'],
-                'name' => $series['name'],
-                'last_volume' => $last_volume['number'],
-                'last_volume_added_at' => $last_volume['added_at'] ?? 'Inconnue'
-            ];
-        }
-    }
-    header('Content-Type: application/json');
-    echo json_encode(['success' => true, 'series' => $current_series]);
-    exit;
-}
-
 // Éditer une série de la liste d'envies
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
     $index = (int)($_POST['index'] ?? 0);
@@ -1197,10 +1144,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
         <div class="admin-menu" id="admin-menu">
             <button id="open-add-series-modal" class="button button-ats">Ajouter une série</button>
             <button id="open-add-multiple-volumes-modal" class="button button-ats">Ajouter des tomes</button>
-            <button id="open-current-series-modal" class="button button-aos">Séries en cours</button>
             <button id="open-incomplete-series-modal" class="button button-aos">Séries incomplètes</button>
             <button id="open-coherences-modal" class="button button-aos">Incohérences</button>
-            <button id="open-unread-modal" class="button button-aos">Séries à lire</button>
             <button id="open-loan-modal" class="button button-otl">Livres prêtés</button>
             <button id="open-wishlist-modal" class="button button-otl">Liste d'envies</button>
             <button id="open-options-modal" class="button button-opt">Options</button>
@@ -1269,18 +1214,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <input type="hidden" id="add-volume-series-id" name="series_id">
                     <button type="submit" name="add_series">Ajouter</button>
                 </form>
-            </div>
-        </div>
-
-        <!-- Modale pour les séries en cours -->
-        <div class="modal" id="current-series-modal">
-            <div class="modal-content">
-                <span class="close-modal" id="close-current-series-modal">&times;</span>
-                <h2>Séries en cours de publication</h2>
-                <p>Voici la liste de vos séries en cours de publication (sans le tag "dernier tome").</p>
-                <div id="current-series-list">
-                    <!-- La liste sera remplie par JavaScript -->
-                </div>
             </div>
         </div>
 
@@ -1453,17 +1386,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
                     <button type="submit" name="update_series">Mettre à jour</button>
                 </form>
-            </div>
-        </div>
-
-        <!-- Modale "À lire" -->
-        <div id="unread-modal" class="modal">
-            <div class="modal-content">
-                <span class="close-modal" id="close-unread-modal">&times;</span>
-                <h2>Séries à lire</h2>
-                <p>Cette section vous permet de garder une trace des séries que vous possédez mais que vous n'avez pas encore terminé de lire.</p>
-                <br>
-                <div id="unread-list" class="unread-list"></div>
             </div>
         </div>
 
@@ -1901,7 +1823,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
     <script src="assets/js/admin/tools.js"></script>
     <script src="assets/js/admin/pagination.js"></script>
     <script src="assets/js/admin/main.js"></script>
-    <script src="assets/js/admin/unread.js"></script>
 
 </body>
 </html>
