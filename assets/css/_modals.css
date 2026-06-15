@@ -554,12 +554,18 @@
     color: var(--text-gray);
 }
 
+.unread-series-info {
+    min-width: 0;
+    overflow: hidden;
+}
+
 .unread-series-name {
     color: var(--primary-color);
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: block;
 }
 
 .unread-series-author {
