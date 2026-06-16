@@ -21,6 +21,11 @@
     flex-wrap: wrap;
 }
 
+/* Caché sur desktop, affiché uniquement sur mobile via le media query */
+.mobile-menu-button {
+    display: none;
+}
+
 .filters {
     margin-bottom: 20px;
     display: flex;
