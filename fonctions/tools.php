@@ -503,6 +503,23 @@ function generate_notifications(array $volumes, ?int $ref_volumes = null): array
 function check_collection_coherence(array $data): array {
     $issues = [];
 
+    // ── Pré-charger le cache MangaUpdates en lot (appel réseau si nécessaire) ──
+    // Même logique que get_incomplete_series : on récupère les données MU pour
+    // toutes les séries qui ont une URL, afin que les checks mu_* fonctionnent
+    // sans avoir eu besoin de lancer "Séries incomplètes" au préalable.
+    $mu_cache_map = [];
+    if (function_exists('mangaupdates_get_id_from_url') && function_exists('mangaupdates_get_volumes_batch')) {
+        $ids_needed = [];
+        foreach ($data as $series) {
+            $url = $series['mangaupdates_url'] ?? '';
+            if ($url !== '') {
+                $id = mangaupdates_get_id_from_url($url);
+                if ($id !== null) $ids_needed[] = $id;
+            }
+        }
+        $mu_cache_map = mangaupdates_get_volumes_batch($ids_needed);
+    }
+
     foreach ($data as $series) {
         $series_issues = [];
         $name    = $series['name'] ?? '(sans nom)';
@@ -573,23 +590,38 @@ function check_collection_coherence(array $data): array {
             }
         }
 
-        // ── Cohérence avec le statut de publication MangaUpdates (cache, sans réseau) ─
-        if (function_exists('mangaupdates_get_cached_status') && function_exists('mangaupdates_get_id_from_url')
-            && !empty($series['mangaupdates_url'])) {
+        // ── Cohérence avec le statut de publication MangaUpdates ────────────────
+        // On utilise d'abord mu_cache_map (pré-chargé en lot, avec appels réseau
+        // si nécessaire), puis on se rabat sur mangaupdates_get_cached_status en
+        // lecture seule si la série n'y figure pas (URL invalide, échec réseau…).
+        if (!empty($series['mangaupdates_url']) && function_exists('mangaupdates_get_id_from_url')) {
             $mu_id = mangaupdates_get_id_from_url($series['mangaupdates_url']);
             if ($mu_id !== null) {
-                $mu_cache = mangaupdates_get_cached_status($mu_id); // lecture seule
-                if ($mu_cache !== null && $mu_cache['status'] !== null && $mu_cache['status'] !== '') {
-                    $mu_completed     = !empty($mu_cache['completed']);
-                    $mu_volumes       = $mu_cache['volumes'];
+                $mu_info = $mu_cache_map[$mu_id]
+                    ?? (function_exists('mangaupdates_get_volumes') ? mangaupdates_get_volumes($mu_id) : null);
+
+                if ($mu_info !== null) {
+                    $mu_completed     = !empty($mu_info['completed']);
+                    $mu_volumes       = $mu_info['volumes'] ?? null;
+                    $mu_status_text   = $mu_info['status'] ?? null;
                     $is_finished_here = ($status === 'terminée') || !empty($last_volumes);
 
-                    if ($is_finished_here && !$mu_completed) {
-                        $series_issues[] = ['type' => 'mu_still_ongoing', 'message' => 'Vous avez marqué la série comme terminée (ou tagué un tome comme dernier), mais MangaUpdates indique une publication toujours en cours (« ' . $mu_cache['status'] . ' »).'];
+                    // mu_still_ongoing et mu_complete_unmarked nécessitent le statut textuel
+                    if ($mu_status_text !== null && $mu_status_text !== '') {
+                        if ($is_finished_here && !$mu_completed) {
+                            $series_issues[] = ['type' => 'mu_still_ongoing', 'message' => 'Vous avez marqué la série comme terminée (ou tagué un tome comme dernier), mais MangaUpdates indique une publication toujours en cours (« ' . $mu_status_text . ' »).'];
+                        }
+
+                        if ($mu_completed && !$is_finished_here && $mu_volumes !== null && $max >= (int)$mu_volumes) {
+                            $series_issues[] = ['type' => 'mu_complete_unmarked', 'message' => 'MangaUpdates indique la série comme terminée (« ' . $mu_status_text . ' », ' . (int)$mu_volumes . ' tomes) et vous semblez la posséder entièrement, mais elle n\'est pas marquée comme terminée.'];
+                        }
                     }
 
-                    if ($mu_completed && !$is_finished_here && $mu_volumes !== null && $max >= (int)$mu_volumes) {
-                        $series_issues[] = ['type' => 'mu_complete_unmarked', 'message' => 'MangaUpdates indique la série comme terminée (« ' . $mu_cache['status'] . ' », ' . (int)$mu_volumes . ' tomes) et vous semblez la posséder entièrement, mais elle n\'est pas marquée comme terminée.'];
+                    // mu_more_volumes : le nombre de tomes seul suffit (pas besoin du statut textuel)
+                    // On utilise count($volumes) pour être cohérent avec la modale "Séries incomplètes"
+                    $owned_count = count($volumes);
+                    if ($mu_volumes !== null && $owned_count > (int)$mu_volumes) {
+                        $series_issues[] = ['type' => 'mu_more_volumes', 'message' => 'Vous possédez plus de tomes (' . $owned_count . ') que ce qu\'indique MangaUpdates (' . (int)$mu_volumes . ').'];
                     }
                 }
             }

@@ -610,6 +610,7 @@ const COHERENCE_LABELS = {
     read_elsewhere_unread:      { icon: '👁️', label: 'Lue ailleurs — tomes non lus' },
     mu_still_ongoing:           { icon: '🔄', label: 'Publication en cours (MangaUpdates)' },
     mu_complete_unmarked:       { icon: '✔️', label: 'Terminée selon MangaUpdates' },
+    mu_more_volumes:            { icon: '📦', label: 'Plus de tomes que MangaUpdates' },
     loan_deleted_series:        { icon: '👻', label: 'Prêt — série supprimée' },
     loan_read_elsewhere:        { icon: '📤', label: 'Prêt — lue ailleurs' },
 };
