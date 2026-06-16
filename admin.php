@@ -950,17 +950,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
     }
     $notifications = generate_notifications($series['volumes'], $ref_volumes);
 
+    // Charger les prêts pour cette série
+    $all_loans = load_loans();
+    $loaned_volumes = [];
+    foreach ($all_loans as $loan) {
+        if ($loan['series_id'] === $series_id) {
+            $loaned_volumes[$loan['volume_number']] = $loan['borrower_name'];
+        }
+    }
+
     // Générer le HTML des tomes
     $volumes_html = '<ul class="volumes-list">';
     foreach ($series['volumes'] as $volume_index => $volume) {
+        $is_loaned = isset($loaned_volumes[$volume['number']]);
+        $loan_attr = $is_loaned ? ' volume-loaned" title="Prêté à ' . htmlspecialchars($loaned_volumes[$volume['number']]) . '"' : '"';
         $volumes_html .= sprintf(
-            '<li class="status-%s%s%s" data-series-id="%s" data-volume-index="%d">%d</li>',
+            '<li class="status-%s%s%s%s data-series-id="%s" data-volume-index="%d">%d%s</li>',
             str_replace(' ', '-', strtolower($volume['status'])),
             !empty($volume['collector']) ? ' volume-collector' : '',
             !empty($volume['last']) ? ' volume-last' : '',
+            $loan_attr,
             $series_id,
             $volume_index,
-            $volume['number']
+            $volume['number'],
+            $is_loaned ? '<span class="volume-loan-badge" aria-label="En prêt">🤝</span>' : ''
         );
     }
     $volumes_html .= '</ul>';

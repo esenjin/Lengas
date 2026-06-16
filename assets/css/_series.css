@@ -335,6 +335,15 @@
     font-size: 0.8em;
 }
 
+/* Indicateur "tome prêté" */
+.volume-loan-badge {
+    font-size: 0.75em;
+    margin-left: 3px;
+    line-height: 1;
+    display: inline-block;
+    pointer-events: none;
+}
+
 /* Échantillons de légende */
 .legend-sample {
     width: 20px;
