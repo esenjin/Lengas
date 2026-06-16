@@ -40,7 +40,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     data-tooltip="Ajouter des tomes"
                     data-modal-trigger="open-add-multiple-volumes-modal"
                     data-admin-redirect="admin.php">
-                <img src="https://api.iconify.design/mdi/bookshelf.svg?color=%234ade80" width="22" height="22" alt="">
+                <img src="https://api.iconify.design/mdi/book-plus-multiple.svg?color=%234ade80" width="22" height="22" alt="">
             </button>
         </li>
 
@@ -66,7 +66,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     data-tooltip="Incohérences"
                     data-modal-trigger="open-coherences-modal"
                     data-admin-redirect="admin.php#open-coherences">
-                <img src="https://api.iconify.design/mdi/alert-circle.svg?color=%23a78bfa" width="22" height="22" alt="">
+                <img src="https://api.iconify.design/mdi/alert-decagram.svg?color=%23a78bfa" width="22" height="22" alt="">
             </button>
         </li>
 
