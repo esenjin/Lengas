@@ -208,8 +208,7 @@ function displayIntegrityResults(results) {
     const jsFiles = [
         'assets/js/admin/series.js', 'assets/js/admin/volumes.js', 'assets/js/admin/wishlist.js',
         'assets/js/admin/loans.js', 'assets/js/admin/tools.js', 'assets/js/admin/autocomplete.js',
-        'assets/js/admin/modals.js', 'assets/js/admin/pagination.js', 'assets/js/admin/main.js',
-        'assets/js/admin/read.js'
+        'assets/js/admin/modals.js', 'assets/js/admin/pagination.js', 'assets/js/admin/main.js'
     ];
     jsFiles.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;

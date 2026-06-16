@@ -62,7 +62,6 @@ function check_site_integrity(array $data): array {
         'assets/js/admin/series.js', 'assets/js/admin/volumes.js', 'assets/js/admin/wishlist.js',
         'assets/js/admin/loans.js',  'assets/js/admin/tools.js',   'assets/js/admin/autocomplete.js',
         'assets/js/admin/modals.js', 'assets/js/admin/pagination.js', 'assets/js/admin/main.js',
-        'assets/js/admin/read.js',
     ];
     foreach ($required_js_files as $file) {
         $results['file_existence'][$file] = file_exists($file);
