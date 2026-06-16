@@ -1,104 +1,309 @@
-/* Media queries pour le responsive */
+/* ══════════════════════════════════════════════════════════════════════
+   _responsive.css — Adaptations mobile
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Animation bottom-sheet pour les modales (définie globalement) ── */
+@keyframes modalSlideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE  ≤ 768px
+   ══════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
+
+    /* ── Base ─────────────────────────────────────────────────────── */
     body {
-        padding: 16px;
+        padding: 0;
     }
 
-    .series-list {
-        grid-template-columns: 1fr;
-        gap: 14px;
+    /* ── Titres ── */
+    h1 {
+        font-size: 1.45em;
+        margin-bottom: 20px;
     }
 
-    /* Carte mobile : colonne image + actions à gauche, infos à droite */
-    .series-card {
-        grid-template-columns: 110px 1fr;
-        grid-template-rows: 110px auto;
-        max-height: none;
-        border-radius: var(--border-radius);
-    }
-
-    .series-image {
-        width: 110px;
-        height: 110px;
-        border-radius: var(--border-radius-lg);
-    }
-
-    .series-card > .series-actions {
-        padding: 8px 8px 12px;
-        gap: 5px;
-        border-radius: 0 0 0 var(--border-radius);
-    }
-
-    .series-card > .series-actions button {
-        font-size: 0.75em;
-        padding: 5px 8px;
-    }
-
-    .series-info {
-        padding: 12px 14px;
-    }
-
-    .series-info h2 {
-        font-size: 1em;
-    }
-
-    .volumes-list {
-        grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
-    }
-
-    .admin-menu, .public-menu {
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 6px;
-    }
-
-    .admin-menu button,
-    .admin-menu a.button,
-    .public-menu button,
-    .public-menu a.button {
-        flex: 1 1 calc(50% - 6px);
-        max-width: 200px;
-        padding: 10px;
+    /* ── Toasts : pleine largeur en haut ── */
+    .error-message,
+    .success-message,
+    .alert-warning,
+    .alert-success {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+        max-width: none;
         font-size: 0.85em;
-        text-align: center;
-        justify-content: center;
+        padding: 10px 14px;
     }
 
-    .button-ext,
-    .button-otl,
-    .button-opt {
-        max-width: 150px;
+    /* ── Barre de filtres ───────────────────────────────────────── */
+    .filters {
+        padding: 12px;
+        gap: 8px;
     }
 
-    form {
+    .filters form {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
         width: 100%;
     }
 
-    .filters {
-        padding: 12px;
-    }
-
     .filters input[type="text"] {
-        min-width: 100%;
-    }
-
-    .series-search,
-    .filters input[type="text"] {
-        min-width: 200px;
+        min-width: 0;
+        width: 100%;
+        flex: none;
+        margin-bottom: 0;
     }
 
     .sort-options {
         flex-direction: column;
         width: 100%;
+        gap: 8px;
     }
 
     .sort-options select {
         width: 100%;
+        min-width: 0;
+        margin-bottom: 0;
     }
 
+    .filters button[type="submit"] {
+        width: 100%;
+        padding: 11px;
+    }
+
+    /* ── Grille des séries ─────────────────────────────────────── */
+    .series-list {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-top: 20px;
+        min-height: auto;
+    }
+
+    /* ── Carte de série ─────────────────────────────────────────── */
+    .series-card {
+        grid-template-columns: 90px 1fr;
+        grid-template-rows: 90px auto;
+        max-height: none;
+        border-radius: var(--border-radius);
+    }
+
+    /* Pas de lift sur touch */
+    .series-card:hover {
+        transform: none;
+        box-shadow: var(--box-shadow-sm);
+    }
+
+    .series-card::before {
+        display: none; /* Masquer l'overlay gradient hover */
+    }
+
+    .series-image {
+        width: 90px;
+        height: 90px;
+        border-radius: var(--border-radius);
+    }
+
+    /* Boutons d'actions dans la colonne gauche */
+    .series-card > .series-actions {
+        padding: 5px 6px 8px;
+        gap: 4px;
+        border-radius: 0 0 0 var(--border-radius);
+    }
+
+    .series-card > .series-actions button {
+        font-size: 0.7em;
+        padding: 6px 4px;
+        min-height: 36px;
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+
+    /* Info série */
+    .series-info {
+        padding: 10px 12px 8px;
+        overflow: hidden;
+    }
+
+    .series-info h2 {
+        font-size: 0.88em;
+        /* Autoriser le retour à la ligne sur mobile (2 lignes max) */
+        white-space: normal;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        text-overflow: ellipsis;
+        margin-bottom: 4px;
+        line-height: 1.3;
+    }
+
+    .series-stats {
+        font-size: 0.76em;
+        padding-top: 6px;
+    }
+
+    .series-badges {
+        gap: 4px;
+        margin-top: 4px;
+    }
+
+    .series-status-badge,
+    .reading-status-badge,
+    .read-elsewhere-badge {
+        font-size: 0.68em;
+        padding: 2px 6px;
+    }
+
+    /* ── Liste des tomes ─────────────────────────────────────────── */
+    .volumes-list {
+        grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+        max-height: 180px;
+        gap: 5px;
+    }
+
+    .volumes-list li {
+        font-size: 0.82em;
+        padding: 6px 8px;
+    }
+
+    /* ── Modales : bottom sheet ──────────────────────────────────── */
+    .modal {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .modal-content {
+        width: 100%;
+        max-width: none;
+        /* Arrondi en haut uniquement (bottom sheet) */
+        border-radius: var(--border-radius-xl) var(--border-radius-xl) 0 0;
+        max-height: 92dvh;
+        max-height: 92vh; /* fallback */
+        padding: 0 16px 32px; /* padding-bottom extra pour l'encoche iOS */
+        animation: modalSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Trait "poignée" en haut de la bottom sheet */
+    .modal-content::before {
+        content: '';
+        display: block;
+        width: 36px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.14);
+        border-radius: 2px;
+        margin: 12px auto 16px;
+        flex-shrink: 0;
+    }
+
+    /* Bouton fermer : plus grand et tactile */
+    .close-modal {
+        width: 36px;
+        height: 36px;
+        font-size: 1.4em;
+    }
+
+    /* Actions en bas de modale : pleine largeur */
+    .modal-actions {
+        display: flex;
+        gap: 10px;
+        flex-direction: column;
+        margin-top: 16px;
+    }
+
+    .modal-actions button,
+    .modal-actions a.button {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+        padding: 12px;
+        font-size: 0.9em;
+    }
+
+    /* Modales larges : aussi pleine largeur */
+    #incomplete-series-modal .modal-content,
+    .modal-content--wide,
+    .modal-content--narrow {
+        width: 100%;
+        max-width: none;
+    }
+
+    #incomplete-series-results {
+        max-height: 48vh;
+        padding-right: 4px;
+    }
+
+    #modal-series-content {
+        max-height: 50vh;
+    }
+
+    /* Onglets outils : plus compacts */
+    .tools-tabs {
+        gap: 2px;
+        padding-bottom: 2px;
+    }
+
+    .tools-tab {
+        font-size: 0.78rem;
+        padding: 8px 10px;
+        flex: 1;
+        text-align: center;
+    }
+
+    /* ── Éléments liste d'envies (modale) ────────────────────────── */
+    .wishlist-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .wishlist-item-actions {
+        margin-top: 0;
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    /* ── Éléments "lues ailleurs" ────────────────────────────────── */
+    .read-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .read-item-actions {
+        margin-top: 8px;
+        width: 100%;
+    }
+
+    /* ── Éléments sauvegarde ─────────────────────────────────────── */
+    .backup-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .backup-actions {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .backup-actions button {
+        flex: 1;
+        min-width: 120px;
+        text-align: center;
+        justify-content: center;
+    }
+
+    /* ── Plage de tomes ─────────────────────────────────────────── */
     .volume-range {
         flex-direction: column;
         align-items: stretch;
+        gap: 8px;
     }
 
     .volume-range input {
@@ -106,127 +311,61 @@
         margin-bottom: 0;
     }
 
-    #tools-modal .modal-content {
-        width: 95%;
-    }
-
-    .backup-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-    }
-
-    .backup-actions {
-        width: 100%;
-        justify-content: space-between;
-    }
-
-    .backup-actions button {
-        flex: 1;
-        text-align: center;
-    }
-
-    .wishlist-item {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .wishlist-item-actions {
-        margin-top: 10px;
-        width: 100%;
-    }
-
-    .read-item {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .read-item-actions {
-        margin-top: 10px;
-        width: 100%;
-    }
-
-    .modal-content {
-        width: 95%;
-        max-width: none;
-        padding: 20px;
-        border-radius: var(--border-radius-lg);
-        max-height: 88vh;
-    }
-
-    #modal-series-content {
-        max-height: 60vh;
-    }
-
-    /* ── Menu mobile ────────────────────────────────────────────────────── */
-
-    /* Le bouton hamburger reste visible en haut */
-    .mobile-menu-button {
-        display: block;
-        padding: 10px 16px;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: var(--border-radius-sm);
-        cursor: pointer;
+    /* ── Bouton retour en haut ──────────────────────────────────── */
+    #back-to-top {
+        bottom: 20px;
+        right: 16px;
+        width: 44px;
+        height: 44px;
         font-size: 1em;
-        font-weight: 600;
-        background: var(--background-medium);
-        color: var(--text-color);
-        margin: 0 auto 16px;
-        width: fit-content;
-        z-index: 99;
-        position: relative;
-        transition: var(--transition);
     }
 
-    .mobile-menu-button:hover {
-        background: var(--background-lighter);
-        transform: none;
-        box-shadow: none;
+    /* ── Formulaire dans les modales : labels plus lisibles ── */
+    .modal-content p:not(.hint) {
+        font-size: 0.85em;
+        margin-bottom: 4px;
     }
 
-    /* Menu masqué par défaut */
-    .public-menu,
-    .admin-menu {
-        display: none;
+    /* ── Grille info édition rapide incohérences ─────────────────── */
+    .cedit-info-grid {
+        grid-template-columns: 1fr;
+        gap: 6px 0;
+    }
+
+    /* ── Association MangaUpdates ────────────────────────────────── */
+    .mu-associate-option {
+        flex-wrap: wrap;
+    }
+
+    /* ── Filtres séries incomplètes ──────────────────────────────── */
+    .incomplete-filters-bar {
         flex-direction: column;
         align-items: stretch;
-        gap: 8px;
-        padding: 16px;
-        background: var(--background-card);
-        border: var(--border-subtle);
-        border-radius: var(--border-radius);
-        margin-bottom: 16px;
-        box-shadow: var(--box-shadow);
-        /* Pas de position fixed : le menu s'insère dans le flux normal */
     }
 
-    /* Menu visible quand actif */
-    .public-menu.active,
-    .admin-menu.active {
-        display: flex;
+    .incomplete-filter-selects {
+        flex-direction: column;
+        gap: 6px;
     }
 
-    /* Les boutons du menu mobile prennent toute la largeur */
-    .public-menu.active button,
-    .public-menu.active a.button,
-    .admin-menu.active button,
-    .admin-menu.active a.button {
-        flex: 1 1 100%;
-        max-width: none;
-        width: 100%;
-        text-align: center;
-        justify-content: center;
+    .incomplete-filter-count {
+        margin-left: 0;
     }
-}
 
-/* Masquer le bouton menu sur desktop */
-@media (min-width: 769px) {
+    /* ── Supprime les anciens .mobile-menu-button ─────────────────── */
     .mobile-menu-button {
-        display: none;
+        display: none !important;
+    }
+
+    .admin-menu,
+    .public-menu {
+        display: none !important;
     }
 }
 
-/* Grille 2 colonnes sur écrans intermédiaires */
+/* ══════════════════════════════════════════════════════════════════════
+   TABLETTE  769px – 1200px
+   ══════════════════════════════════════════════════════════════════════ */
 @media (max-width: 1200px) and (min-width: 769px) {
     .series-list {
         grid-template-columns: repeat(2, 1fr);

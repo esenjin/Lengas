@@ -105,7 +105,6 @@ li.sidebar-separator {
     text-decoration: none;
     transition: background 0.15s ease, transform 0.15s ease;
     color: var(--text-gray);
-    /* Clé : overflow visible pour que les pseudo-éléments sortent du bouton */
     overflow: visible;
 }
 
@@ -116,7 +115,6 @@ li.sidebar-separator {
     opacity: 0.65;
     transition: opacity 0.15s ease;
     pointer-events: none;
-    /* Empêche l'image d'intercepter le survol */
     position: relative;
     z-index: 1;
 }
@@ -138,12 +136,10 @@ li.sidebar-separator {
     filter: drop-shadow(0 0 4px rgba(192, 132, 252, 0.4));
 }
 
-/* Barre gauche active — uniquement sur <a>, via ::after pour ne pas
-   conflictueur avec le tooltip ::before sur les <button> */
 a.sidebar-link.is-active::after {
     content: '' !important;
     position: absolute !important;
-    left: -9px !important; /* déborde à gauche de la sidebar */
+    left: -9px !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
     width: 3px !important;
@@ -153,7 +149,6 @@ a.sidebar-link.is-active::after {
     opacity: 1 !important;
     pointer-events: none !important;
     z-index: 0 !important;
-    /* Annuler les propriétés tooltip */
     white-space: normal !important;
     padding: 0 !important;
     color: transparent !important;
@@ -180,8 +175,7 @@ a.sidebar-link.is-active--blue::after {
     background: rgba(248, 113, 113, 0.1);
 }
 
-/* ── Tooltip au survol ─────────────────────────────────────────────────── */
-/* Flèche gauche du tooltip */
+/* ── Tooltip au survol (desktop uniquement) ────────────────────────────── */
 .sidebar-link[data-tooltip]::before {
     content: '';
     position: absolute;
@@ -194,11 +188,9 @@ a.sidebar-link.is-active--blue::after {
     opacity: 0;
     transition: opacity 0.15s ease, transform 0.15s ease;
     z-index: 9999;
-    /* Éviter que l'image en z-index:1 ne passe dessus */
     isolation: isolate;
 }
 
-/* Bulle texte du tooltip */
 .sidebar-link[data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
@@ -230,10 +222,7 @@ a.sidebar-link.is-active--blue::after {
     transform: translateY(-50%) translateX(0);
 }
 
-/* Sur les <a> actifs, le ::after est utilisé pour la barre gauche,
-   pas pour le tooltip. On remet le tooltip via un état hover explicite. */
 a.sidebar-link.is-active:hover::after {
-    /* le hover annule la barre et montre le tooltip */
     content: attr(data-tooltip) !important;
     left: calc(100% + 12px) !important;
     top: 50% !important;
@@ -254,9 +243,308 @@ a.sidebar-link.is-active:hover::after {
     z-index: 9999 !important;
 }
 
-/* ── Responsive ───────────────────────────────────────────────────────── */
+/* ── Hamburger (caché sur desktop) ────────────────────────────────────── */
+.sidebar-hamburger {
+    display: none;
+}
+
+/* ── Overlay (caché sur desktop) ───────────────────────────────────────── */
+.sidebar-overlay {
+    display: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE : Drawer latéral + hamburger
+   ══════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
-    .sidebar { width: 50px; }
-    .page-main { padding: 20px 18px; }
-    body.with-sidebar .container { padding: 20px 18px; }
+
+    /* ── Layout body : la sidebar est fixed, plus dans le flux ── */
+    body.with-sidebar {
+        display: block;
+        padding-top: 0;
+    }
+
+    /* Contenu principal : pleine largeur */
+    .page-main {
+        padding: 72px 16px 32px;
+        width: 100%;
+    }
+
+    body.with-sidebar .container {
+        padding: 72px 16px 32px;
+    }
+
+    /* Bloquer le scroll du body quand le drawer est ouvert */
+    body.drawer-open {
+        overflow: hidden;
+    }
+
+    /* ── Sidebar : drawer fixe caché hors écran ── */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 272px;
+        height: 100dvh;
+        height: 100vh; /* fallback */
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 20px 0 16px;
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 6px 0 40px rgba(0, 0, 0, 0.7);
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 502;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .sidebar.is-open {
+        transform: translateX(0);
+    }
+
+    /* ── Logo dans le drawer ── */
+    .sidebar-brand {
+        margin-bottom: 16px;
+        padding: 0 20px;
+        justify-content: flex-start;
+    }
+
+    /* ── Nav : colonne, pleine largeur ── */
+    .sidebar-nav {
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+        flex: 1;
+        gap: 2px;
+        padding: 0;
+    }
+
+    .sidebar-nav--bottom {
+        flex: 0;
+        width: 100%;
+        margin-top: 0;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .sidebar-nav li,
+    .sidebar-nav--bottom li {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    /* ── Liens du drawer : pleine largeur + label texte ── */
+    .sidebar-link {
+        width: 100%;
+        height: 52px;
+        justify-content: flex-start;
+        padding: 0 20px;
+        gap: 14px;
+        border-radius: 0;
+        overflow: hidden; /* Dans le drawer on n'a plus besoin du overflow: visible */
+    }
+
+    .sidebar-link img {
+        opacity: 0.8;
+        flex-shrink: 0;
+    }
+
+    .sidebar-link:hover {
+        transform: none; /* Pas de déplacement sur touch */
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Affichage du label via l'attribut data-tooltip ── */
+    .sidebar-link[data-tooltip]::before {
+        display: none; /* Supprimer la flèche du tooltip */
+    }
+
+    .sidebar-link[data-tooltip]::after {
+        /* Réinitialiser complètement le style tooltip pour un label inline */
+        content: attr(data-tooltip);
+        position: static;
+        left: auto;
+        top: auto;
+        transform: none;
+        white-space: nowrap;
+        background: transparent;
+        color: var(--text-color);
+        font-size: 0.9rem;
+        font-weight: 500;
+        padding: 0;
+        border-radius: 0;
+        border: none;
+        box-shadow: none;
+        pointer-events: none;
+        opacity: 1;
+        transition: none;
+        z-index: auto;
+        isolation: auto;
+    }
+
+    .sidebar-link[data-tooltip]:hover::before { display: none; }
+
+    .sidebar-link[data-tooltip]:hover::after {
+        opacity: 1;
+        transform: none;
+        left: auto;
+        top: auto;
+    }
+
+    /* ── État actif dans le drawer ── */
+    .sidebar-link.is-active {
+        background: rgba(192, 132, 252, 0.1);
+        border-left: 3px solid var(--primary-color);
+        padding-left: 17px; /* compense le border-left */
+    }
+
+    /* Écraser la barre active absolue — afficher le label coloré à la place */
+    a.sidebar-link.is-active::after {
+        content: attr(data-tooltip) !important;
+        position: static !important;
+        left: auto !important;
+        top: auto !important;
+        transform: none !important;
+        width: auto !important;
+        height: auto !important;
+        background: transparent !important;
+        color: var(--primary-color) !important;
+        font-size: 0.9rem !important;
+        font-weight: 600 !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        opacity: 1 !important;
+        pointer-events: none !important;
+        white-space: nowrap !important;
+        z-index: auto !important;
+        isolation: auto !important;
+    }
+
+    a.sidebar-link.is-active:hover::after {
+        content: attr(data-tooltip) !important;
+        position: static !important;
+        left: auto !important;
+        top: auto !important;
+        transform: none !important;
+        width: auto !important;
+        height: auto !important;
+        background: transparent !important;
+        color: var(--primary-color) !important;
+        font-size: 0.9rem !important;
+        font-weight: 600 !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        opacity: 1 !important;
+        pointer-events: none !important;
+        white-space: nowrap !important;
+        z-index: auto !important;
+    }
+
+    /* Active bleue dans le drawer */
+    .sidebar-link.is-active--blue {
+        background: rgba(56, 189, 248, 0.08);
+        border-left-color: #38bdf8;
+    }
+
+    a.sidebar-link.is-active--blue::after {
+        color: #38bdf8 !important;
+    }
+
+    /* Séparateurs dans le drawer */
+    li.sidebar-separator {
+        width: calc(100% - 40px) !important;
+        margin: 4px 20px !important;
+    }
+
+    /* ── Bouton hamburger : fixe en haut à gauche ── */
+    .sidebar-hamburger {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        z-index: 1100; /* au-dessus des modales (z-index: 1000) */
+        width: 44px;
+        height: 44px;
+        background: var(--background-card);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: var(--border-radius-sm);
+        cursor: pointer;
+        box-shadow: var(--box-shadow-sm);
+        transition: background 0.15s ease, border-color 0.15s ease;
+        padding: 0;
+        pointer-events: auto;       /* jamais annulé par un parent */
+        touch-action: manipulation; /* supprime le délai 300ms d'iOS Safari */
+        -webkit-tap-highlight-color: transparent; /* retire le flash gris au tap */
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    .sidebar-hamburger:hover {
+        background: var(--background-lighter);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: none;
+        box-shadow: var(--box-shadow-sm);
+    }
+
+    /* Trois barres du hamburger */
+    .sidebar-hamburger .bar {
+        display: block;
+        width: 18px;
+        height: 2px;
+        background: var(--text-color);
+        border-radius: 2px;
+        transition: background 0.2s ease;
+        position: relative;
+    }
+
+    .sidebar-hamburger .bar::before,
+    .sidebar-hamburger .bar::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        width: 18px;
+        height: 2px;
+        background: var(--text-color);
+        border-radius: 2px;
+        transition: transform 0.22s ease, top 0.22s ease, opacity 0.22s ease;
+    }
+
+    .sidebar-hamburger .bar::before { top: -6px; }
+    .sidebar-hamburger .bar::after  { top:  6px; }
+
+    /* Animation → croix quand ouvert */
+    .sidebar-hamburger.is-open .bar            { background: transparent; }
+    .sidebar-hamburger.is-open .bar::before    { transform: rotate(45deg); top: 0; }
+    .sidebar-hamburger.is-open .bar::after     { transform: rotate(-45deg); top: 0; }
+
+    /* ── Overlay semi-transparent derrière le drawer ── */
+    .sidebar-overlay {
+        display: none !important; /* Par défaut caché */
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.65);
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+        z-index: 501;
+        animation: overlayFadeIn 0.25s ease;
+    }
+
+    .sidebar-overlay.is-visible {
+        display: block !important;
+    }
+
+    @keyframes overlayFadeIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
 }

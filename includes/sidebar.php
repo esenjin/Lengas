@@ -160,20 +160,82 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
 </nav>
 
+<!-- Bouton hamburger mobile (en dehors de la nav pour être toujours visible) -->
+<button class="sidebar-hamburger" id="sidebar-hamburger" aria-label="Ouvrir le menu" aria-expanded="false">
+    <span class="bar"></span>
+</button>
+
+<!-- Overlay derrière le drawer mobile -->
+<div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
 <script>
 (function() {
     var isAdmin = <?= json_encode($current_page === 'admin.php') ?>;
 
-    // Click listeners sur les boutons de la sidebar (déjà dans le DOM, pas besoin d'attendre)
+    /* ── Lookups frais à chaque appel (résiste aux rechargements JS) ─── */
+    function getSidebar()   { return document.getElementById('sidebar');           }
+    function getHamburger() { return document.getElementById('sidebar-hamburger'); }
+    function getOverlay()   { return document.getElementById('sidebar-overlay');   }
+
+    function openDrawer() {
+        var s = getSidebar(), h = getHamburger(), o = getOverlay();
+        if (!s || !o) return;
+        s.classList.add('is-open');
+        o.classList.add('is-visible');
+        if (h) { h.classList.add('is-open'); h.setAttribute('aria-expanded', 'true'); }
+        document.body.classList.add('drawer-open');
+    }
+
+    function closeDrawer() {
+        var s = getSidebar(), h = getHamburger(), o = getOverlay();
+        if (!s || !o) return;
+        s.classList.remove('is-open');
+        o.classList.remove('is-visible');
+        if (h) { h.classList.remove('is-open'); h.setAttribute('aria-expanded', 'false'); }
+        document.body.classList.remove('drawer-open');
+    }
+
+    /* ── Phase CAPTURE : s'exécute en premier, avant modals.js,
+       pagination.js, series.js, etc. — non bloquable par stopPropagation
+       de la phase bubble ni par d'autres listeners admin ── */
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('#sidebar-hamburger')) {
+            e.stopPropagation(); /* bloque la remontée vers d'autres listeners */
+            var s = getSidebar();
+            s && s.classList.contains('is-open') ? closeDrawer() : openDrawer();
+            return;
+        }
+        if (e.target === getOverlay()) {
+            closeDrawer();
+        }
+    }, true /* capture phase */);
+
+    /* Redondance : listener bubble sur l'overlay */
+    var ov = getOverlay();
+    if (ov) ov.addEventListener('click', closeDrawer);
+
+    /* Fermer avec Échap */
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') { var s = getSidebar(); if (s && s.classList.contains('is-open')) closeDrawer(); }
+    });
+
+    /* ── Liens du drawer : ferme le menu puis navigue/ouvre la modale ── */
     document.querySelectorAll('.sidebar-link[data-modal-trigger]').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var triggerId = btn.dataset.modalTrigger;
             var redirect  = btn.dataset.adminRedirect;
 
+            /* Sur mobile, ferme le drawer avant d'ouvrir la modale */
+            if (window.innerWidth <= 768) {
+                closeDrawer();
+            }
+
             if (isAdmin) {
                 var hiddenBtn = document.getElementById(triggerId);
                 if (hiddenBtn) {
-                    hiddenBtn.click();
+                    /* Petit délai pour laisser l'animation du drawer se terminer */
+                    var delay = window.innerWidth <= 768 ? 250 : 0;
+                    setTimeout(function() { hiddenBtn.click(); }, delay);
                 }
             } else {
                 window.location.href = redirect || 'admin.php';
@@ -181,13 +243,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
         });
     });
 
-    // Hash et query-string : les modales cibles n'existent qu'après le DOM complet
+    /* Liens de navigation (non-modal) : ferme aussi le drawer sur mobile */
+    document.querySelectorAll('.sidebar-link:not([data-modal-trigger])').forEach(function(link) {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 768) {
+                closeDrawer();
+            }
+        });
+    });
+
+    /* ── Hash et query-string : modales ciblées au chargement ─────────── */
     if (isAdmin) {
         document.addEventListener('DOMContentLoaded', function() {
             var hash = window.location.hash;
 
-            // Effacer le hash immédiatement pour ne pas rouvrir la modale
-            // si closeModalAndReloadIfTools() déclenche un window.location.reload()
             if (hash) {
                 history.replaceState(null, '', window.location.pathname + window.location.search);
             }
@@ -197,7 +266,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             if (hash === '#open-options')     document.getElementById('open-options-modal')?.click();
             if (hash === '#open-tools')       document.getElementById('open-tools-modal')?.click();
 
-            // Pré-remplissage depuis page-wishlist.php → ajouter une série
+            /* Pré-remplissage depuis page-wishlist.php → ajouter une série */
             var params = new URLSearchParams(window.location.search);
             if (params.get('open_add_series') === '1') {
                 var nameEl      = document.getElementById('add-series-name');
