@@ -628,7 +628,12 @@ function check_collection_coherence(array $data): array {
         }
 
         if (!empty($series_issues)) {
-            $issues[] = ['series' => $name, 'series_id' => $series['id'], 'problems' => $series_issues];
+            $issues[] = [
+                'series'           => $name,
+                'series_id'        => $series['id'],
+                'mangaupdates_url' => $series['mangaupdates_url'] ?? '',
+                'problems'         => $series_issues,
+            ];
         }
     }
 

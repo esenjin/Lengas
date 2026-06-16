@@ -682,6 +682,17 @@ function renderCoherences(issues) {
         nameSpan.textContent = item.series;
         header.appendChild(nameSpan);
 
+        if (item.mangaupdates_url) {
+            const muBadge = document.createElement('a');
+            muBadge.href = item.mangaupdates_url;
+            muBadge.target = '_blank';
+            muBadge.rel = 'noopener';
+            muBadge.className = 'mu-badge';
+            muBadge.title = 'Voir sur MangaUpdates';
+            muBadge.innerHTML = '<img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo">';
+            header.appendChild(muBadge);
+        }
+
         if (item.series_id) {
             // Issues exclusivement liées aux prêts → lien vers page-prets
             const loanTypes = new Set(['loan_deleted_series', 'loan_read_elsewhere']);
