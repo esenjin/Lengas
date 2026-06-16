@@ -73,13 +73,22 @@ document.getElementById('back-to-top').addEventListener('click', function() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
-// Masquer le message d'erreur après 3 secondes
-setTimeout(function() {
-    var errorMessage = document.getElementById('error-message');
-    if (errorMessage) {
-        errorMessage.style.display = 'none';
-    }
-}, 3000);
+// Retirer du DOM les toasts (erreur ET succès) une fois affichés.
+// L'animation CSS « toastOut … forwards » les laisse à opacity:0 mais
+// présents : sur mobile ils recouvraient le bouton hamburger et bloquaient
+// les taps. On les supprime donc complètement après l'animation.
+(function () {
+    var toasts = document.querySelectorAll(
+        '#error-message, .error-message, .alert-success, .alert-warning, .success-message'
+    );
+    toasts.forEach(function (toast) {
+        setTimeout(function () {
+            if (toast && toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 5200); // après la fin de toastOut (4.5s + 0.4s)
+    });
+})();
 
 // Recherche des séries incomplètes
 function launchIncompleteSearch(forceUncached) {

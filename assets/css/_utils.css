@@ -36,6 +36,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    /* Le toast ne doit jamais intercepter les clics/taps : une fois
+       l'animation terminée il reste dans le DOM avec opacity:0 (forwards)
+       et bloquait sinon le bouton hamburger en dessous sur mobile. */
+    pointer-events: none;
 }
 
 @keyframes toastIn {
