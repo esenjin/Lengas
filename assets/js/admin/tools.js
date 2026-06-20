@@ -154,7 +154,7 @@ function displayIntegrityResults(results) {
     `;
     const functionFiles = [
         'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php',
-        'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php'
+        'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php', 'fonctions/stats_compute.php'
     ];
     functionFiles.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;

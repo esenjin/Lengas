@@ -39,7 +39,7 @@ function check_site_integrity(array $data): array {
         'assets/img/', 'assets/img/logo.png', 'assets/img/favicon.ico', 'assets/img/mulogo.png',
         'assets/js/admin/',
         'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php',
-        'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php',
+        'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php', 'fonctions/stats_compute.php',
         'includes/mangaupdates.php', 'includes/auth.php', 'includes/helpers.php', 'includes/sidebar.php',
         'includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/',
     ];
