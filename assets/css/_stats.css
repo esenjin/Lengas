@@ -251,6 +251,16 @@
 .apex-chart {
     width: 100%;
     min-height: 60px;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* ApexCharts génère son propre SVG en JS : on s'assure qu'il ne dépasse
+   jamais la largeur de son conteneur (cause fréquente de scroll horizontal
+   sur mobile avec les libellés longs des graphiques en barres). */
+.apex-chart .apexcharts-canvas,
+.apex-chart svg {
+    max-width: 100% !important;
 }
 
 /* ── Toggles ── */
@@ -506,10 +516,44 @@
 
 @media (max-width: 600px) {
     .stats-page .container { padding: 16px 12px 40px; }
-    .panel { padding: 18px 16px; border-radius: var(--border-radius-lg); }
+    .panel { padding: 18px 16px; border-radius: var(--border-radius-lg); overflow: hidden; }
     .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
     .kpi-value { font-size: 1.45em; }
     .panel-head { flex-direction: column; align-items: flex-start; }
     .stats-page .result-item { flex-direction: column; gap: 2px; }
     .stats-page .result-meta { flex: none; }
+
+    /* KPI inline (bandeaux auteurs/éditeurs/contributeurs) : éviter qu'un
+       libellé long ne force la largeur du flex container. */
+    .kpi-strip { gap: 8px; }
+    .kpi-inline { padding: 7px 11px; font-size: 0.84em; }
+
+    /* Le funfact grid passe sur une seule colonne avant que les cartes
+       ne deviennent trop étroites pour leur contenu. */
+    .funfact-grid { grid-template-columns: 1fr; }
+
+    /* Les libellés longs (noms d'auteurs/séries) doivent pouvoir casser
+       plutôt que pousser le conteneur en largeur. */
+    .funfact-value,
+    .mini-stat span,
+    .mini-stat b,
+    .kpi-label {
+        overflow-wrap: break-word;
+        word-break: break-word;
+    }
+
+    .mini-stat {
+        flex-wrap: wrap;
+    }
+
+    /* Sur très petit mobile, les labels d'axe Y des barres ApexCharts
+       (yaxis.labels.maxWidth fixé en JS) sont réduits côté JS ; ici on
+       borne aussi visuellement la hauteur/scroll des panels concernés. */
+    .apex-chart { font-size: 0.85em; }
+}
+
+@media (max-width: 380px) {
+    .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+    .kpi-card { padding: 14px 12px; }
+    .kpi-value { font-size: 1.25em; }
 }

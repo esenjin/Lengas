@@ -25,6 +25,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const fmtInt = n => new Intl.NumberFormat('fr-FR').format(n);
 
+    // Détection mobile : réduit la largeur réservée aux libellés d'axe Y
+    // des graphiques en barres horizontales, qui sinon peuvent forcer le
+    // graphique (et donc toute la page) à dépasser la largeur de l'écran.
+    const isMobile = window.matchMedia('(max-width: 600px)').matches;
+    const yAxisMaxWidth = (full) => isMobile ? Math.min(full, 110) : full;
+
     // Couleurs dégradées pour les listes (treemaps, barres)
     const RAMP = ['#c084fc', '#a855f7', '#8b5cf6', '#7c6df2', '#6d8bf2', '#38bdf8', '#34d399', '#5ad1a8', '#fbbf24', '#fb923c'];
     function rampColor(i, total) {
@@ -217,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function () {
             chart: { ...apexBase.chart, type: 'bar', height: Math.max(220, top.length * 38) },
             series: [{ name: unit, data: top.map(d => d[key]) }],
             xaxis: { categories: top.map(d => d.name || d.x), labels: { style: { colors: C.textGray } } },
-            yaxis: { labels: { style: { colors: C.text }, maxWidth: 220 } },
+            yaxis: { labels: { style: { colors: C.text }, maxWidth: yAxisMaxWidth(220) } },
             colors: [color],
             plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '68%', distributed: false } },
             dataLabels: { enabled: true, textAnchor: 'start', offsetX: 4, style: { colors: ['#fff'] } },
@@ -300,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 chart: { ...apexBase.chart, type: 'bar', height: Math.max(260, top.length * 30) },
                 series: [{ name: 'Tomes', data: top.map(g => g.volumes) }],
                 xaxis: { categories: top.map(g => g.name), labels: { style: { colors: C.textGray } } },
-                yaxis: { labels: { style: { colors: C.text }, maxWidth: 200 } },
+                yaxis: { labels: { style: { colors: C.text }, maxWidth: yAxisMaxWidth(200) } },
                 colors: top.map((g, i) => colorFor(g, i)),
                 plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '70%', distributed: true } },
                 dataLabels: { enabled: true, textAnchor: 'start', offsetX: 4, style: { colors: ['#fff'] } },
@@ -348,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 chart: { ...apexBase.chart, type: 'bar', height: Math.max(220, list.length * 34) },
                 series: [{ name: 'Tomes', data: list.map(c => c.volumes) }],
                 xaxis: { categories: list.map(c => c.name), labels: { style: { colors: C.textGray } } },
-                yaxis: { labels: { style: { colors: C.text }, maxWidth: 220 } },
+                yaxis: { labels: { style: { colors: C.text }, maxWidth: yAxisMaxWidth(220) } },
                 colors: [C.pink],
                 plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '68%' } },
                 dataLabels: { enabled: true, textAnchor: 'start', offsetX: 4, style: { colors: ['#fff'] } },
