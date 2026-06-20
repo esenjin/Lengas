@@ -1175,3 +1175,103 @@
     color: var(--text-muted);
     font-style: italic;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Section "Statistiques" de la modale Options
+   Grille : nom de catégorie + 3 champs (min/tome, € normal, € collector)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.stats-defaults {
+    margin-bottom: 14px;
+}
+
+.stats-defaults > label {
+    display: block;
+    font-size: 0.85em;
+    color: var(--text-gray);
+    margin-bottom: 6px;
+}
+
+.stats-cat-list {
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-bottom: 6px;
+}
+
+.stats-cat-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.stats-cat-labels {
+    margin-bottom: 8px;
+}
+
+.stats-cat-labels span {
+    font-size: 0.72em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.stats-cat-labels .stats-cat-name {
+    text-align: left;
+}
+
+.stats-cat-head .stats-cat-name {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 0.9em;
+}
+
+.stats-cat-name {
+    font-size: 0.88em;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.stats-cat-row input[type="number"] {
+    width: 100%;
+    padding: 7px 9px;
+    box-sizing: border-box;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-color);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.85em;
+    text-align: right;
+    transition: var(--transition-fast);
+    /* retirer les flèches natives */
+    -moz-appearance: textfield;
+}
+
+.stats-cat-row input[type="number"]::-webkit-outer-spin-button,
+.stats-cat-row input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.stats-cat-row input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-subtle);
+}
+
+@media (max-width: 520px) {
+    .stats-cat-row {
+        grid-template-columns: minmax(0, 1.2fr) repeat(3, minmax(0, 1fr));
+        gap: 5px;
+    }
+    .stats-cat-row input[type="number"] {
+        padding: 6px 5px;
+        font-size: 0.78em;
+    }
+    .stats-cat-name { font-size: 0.8em; }
+}

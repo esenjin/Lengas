@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '3.4.1');
+define('SITE_VERSION', '3.5.0');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Chemin vers la base de données SQLite
@@ -162,6 +162,11 @@ function init_db(PDO $pdo): void {
             'stats_page_title' => 'Statistiques de Lengas',
             'private_mode'          => '0',
             'hide_mature'           => '0',
+            // Réglages "Statistiques" : temps & valeur moyens par tome (repli global)
+            'stats_default_minutes'         => '40',
+            'stats_default_value'           => '7',
+            'stats_default_value_collector' => '15',
+            'stats_category_settings'       => '{}',
         ];
         $stmt = $pdo->prepare("INSERT OR IGNORE INTO options (key, value) VALUES (?, ?)");
         foreach ($defaults as $k => $v) {

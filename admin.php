@@ -459,6 +459,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $options['custom_button_name3']   = trim($_POST['custom_button_name3'] ?? '');
     $options['custom_button_url3']    = trim($_POST['custom_button_url3'] ?? '');
 
+    // ── Section "Statistiques" : valeurs de repli globales + par catégorie ──
+    $norm_num = function ($v) {
+        $v = str_replace(',', '.', trim((string) $v));
+        return ($v === '' || !is_numeric($v)) ? '' : (string) (float) $v;
+    };
+
+    $options['stats_default_minutes']         = $norm_num($_POST['stats_default_minutes']         ?? '');
+    $options['stats_default_value']           = $norm_num($_POST['stats_default_value']           ?? '');
+    $options['stats_default_value_collector'] = $norm_num($_POST['stats_default_value_collector'] ?? '');
+    if ($options['stats_default_minutes'] === '')         $options['stats_default_minutes']         = '40';
+    if ($options['stats_default_value'] === '')           $options['stats_default_value']           = '7';
+    if ($options['stats_default_value_collector'] === '') $options['stats_default_value_collector'] = '15';
+
+    $cat_settings = [];
+    if (!empty($_POST['stats_cat']) && is_array($_POST['stats_cat'])) {
+        foreach ($_POST['stats_cat'] as $cat_name => $fields) {
+            $cat_name = trim((string) $cat_name);
+            if ($cat_name === '') continue;
+            $minutes = $norm_num($fields['minutes'] ?? '');
+            $value   = $norm_num($fields['value']   ?? '');
+            $valuec  = $norm_num($fields['value_collector'] ?? '');
+            // N'enregistrer que si au moins un champ est renseigné
+            if ($minutes === '' && $value === '' && $valuec === '') continue;
+            $cat_settings[$cat_name] = [
+                'minutes'         => $minutes,
+                'value'           => $value,
+                'value_collector' => $valuec,
+            ];
+        }
+    }
+    $options['stats_category_settings'] = json_encode($cat_settings, JSON_UNESCAPED_UNICODE);
+
     $admin_password = trim($_POST['admin_password'] ?? '');
 
     // Gestion du remplacement de logo.png
@@ -1450,11 +1482,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <input type="text" name="custom_button_url3" id="custom-button-url3" placeholder="URL du bouton" value="<?= htmlspecialchars($options['custom_button_url3'] ?? '') ?>">
                     <p class="hint">Laisser vide pour masquer le bouton.</p>
 
-                    <h3 class="options-section-title">Autres options</h3>
+                    <!-- ══ STATISTIQUES ══════════════════════════════════════ -->
+                    <h3 class="options-section-title">Statistiques</h3>
+                    <p class="hint">Réglez le temps de lecture moyen et la valeur moyenne d'un tome, par catégorie. Ces valeurs alimentent la page de statistiques (temps de lecture et valeur de la collection).</p>
 
-                    <label for="admin-password">Mot de passe admin</label>
-                    <input type="password" name="admin_password" id="admin-password" placeholder="Mot de passe admin">
-                    <p class="hint">Laisser vide pour ne pas modifier.</p>
+                    <?php
+                    // Réglages courants
+                    $stats_cat_settings = [];
+                    if (!empty($options['stats_category_settings'])) {
+                        $decoded = json_decode($options['stats_category_settings'], true);
+                        if (is_array($decoded)) $stats_cat_settings = $decoded;
+                    }
+
+                    // Liste des catégories présentes en collection
+                    $all_categories = [];
+                    foreach ($data as $___s) {
+                        foreach (($___s['categories'] ?? []) as $___c) {
+                            $___c = trim((string) $___c);
+                            if ($___c !== '' && !in_array($___c, $all_categories, true)) {
+                                $all_categories[] = $___c;
+                            }
+                        }
+                    }
+                    // Inclure aussi les catégories déjà réglées mais absentes de la collection
+                    foreach (array_keys($stats_cat_settings) as $___c) {
+                        if (!in_array($___c, $all_categories, true)) $all_categories[] = $___c;
+                    }
+                    sort($all_categories, SORT_NATURAL | SORT_FLAG_CASE);
+                    ?>
+
+                    <div class="stats-defaults">
+                        <label>Valeurs par défaut (catégories non renseignées)</label>
+                        <div class="stats-cat-row stats-cat-head">
+                            <span class="stats-cat-name">Par défaut</span>
+                            <input type="number" step="any" min="0" name="stats_default_minutes" placeholder="Min/tome" value="<?= htmlspecialchars($options['stats_default_minutes'] ?? '40') ?>">
+                            <input type="number" step="any" min="0" name="stats_default_value" placeholder="€ normal" value="<?= htmlspecialchars($options['stats_default_value'] ?? '7') ?>">
+                            <input type="number" step="any" min="0" name="stats_default_value_collector" placeholder="€ collector" value="<?= htmlspecialchars($options['stats_default_value_collector'] ?? '15') ?>">
+                        </div>
+                    </div>
+
+                    <?php if (empty($all_categories)): ?>
+                        <p class="hint">Aucune catégorie dans votre collection pour le moment.</p>
+                    <?php else: ?>
+                        <div class="stats-cat-row stats-cat-labels">
+                            <span class="stats-cat-name">Catégorie</span>
+                            <span>Min/tome</span>
+                            <span>€ normal</span>
+                            <span>€ collector</span>
+                        </div>
+                        <div class="stats-cat-list">
+                            <?php foreach ($all_categories as $cat):
+                                $cfg = $stats_cat_settings[$cat] ?? ['minutes' => '', 'value' => '', 'value_collector' => ''];
+                                $cat_attr = htmlspecialchars($cat); ?>
+                                <div class="stats-cat-row">
+                                    <span class="stats-cat-name" title="<?= $cat_attr ?>"><?= $cat_attr ?></span>
+                                    <input type="number" step="any" min="0" name="stats_cat[<?= $cat_attr ?>][minutes]"         placeholder="<?= htmlspecialchars($options['stats_default_minutes'] ?? '40') ?>"         value="<?= htmlspecialchars($cfg['minutes'] ?? '') ?>">
+                                    <input type="number" step="any" min="0" name="stats_cat[<?= $cat_attr ?>][value]"           placeholder="<?= htmlspecialchars($options['stats_default_value'] ?? '7') ?>"           value="<?= htmlspecialchars($cfg['value'] ?? '') ?>">
+                                    <input type="number" step="any" min="0" name="stats_cat[<?= $cat_attr ?>][value_collector]" placeholder="<?= htmlspecialchars($options['stats_default_value_collector'] ?? '15') ?>" value="<?= htmlspecialchars($cfg['value_collector'] ?? '') ?>">
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <p class="hint">Laissez un champ vide pour utiliser la valeur par défaut. Les séries à plusieurs catégories utilisent la moyenne de leurs catégories.</p>
+                    <?php endif; ?>
+
+                    <!-- ══ VIGNETTE ══════════════════════════════════════════ -->
+                    <h3 class="options-section-title">Vignette</h3>
+
+                    <div class="form-group">
+                        <label for="default_logo">Remplacer la vignette par défaut :</label>
+                        <input type="file" id="default_logo" name="default_logo" accept="image/png">
+                        <p class="hint">L'image téléversée remplacera le fichier logo.png actuel (PNG obligatoire).</p>
+                        <p class="hint">Vignette par défaut actuelle :</p>
+                        <?php if (file_exists('assets/img/logo.png')): ?>
+                            <div>
+                                <img src="assets/img/logo.png?v=<?= time() ?>" alt="Logo actuel" style="max-width: 100px; max-height: 100px;">
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- ══ VISIBILITÉ ════════════════════════════════════════ -->
+                    <h3 class="options-section-title">Visibilité</h3>
 
                     <label>
                         <input type="checkbox" name="private_mode" <?= $options['private_mode'] ? 'checked' : '' ?>> Mode privé
@@ -1466,19 +1573,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     </label>
                     <p class="hint">Vos séries matures ne seront pas visibles au public.</p>
 
-                    <div class="form-group">
-                        <br>
-                        <label for="default_logo">Remplacer la vignette par défaut :</label>
-                        <input type="file" id="default_logo" name="default_logo" accept="image/png">
-                        <p class="hint">L'image téléversée remplacera le fichier logo.png actuel (PNG obligatoire).</p>
-                        <p class="hint">Vignette par défaut actuelle :</p>
-                        <?php if (file_exists('assets/img/logo.png')): ?>
-                            <div>
-                                <img src="assets/img/logo.png?v=<?= time() ?>" alt="Logo actuel" style="max-width: 100px; max-height: 100px;">
-                            </div>
-                        <?php endif; ?>
-                        <br>
-                    </div>
+                    <!-- ══ MOT DE PASSE ══════════════════════════════════════ -->
+                    <h3 class="options-section-title">Mot de passe</h3>
+
+                    <label for="admin-password">Mot de passe admin</label>
+                    <input type="password" name="admin_password" id="admin-password" placeholder="Mot de passe admin">
+                    <p class="hint">Laisser vide pour ne pas modifier.</p>
 
                     <button type="submit" name="update_options" class="button button-opt">Mettre à jour</button>
                     <p style="visibility: hidden;">_</p>
