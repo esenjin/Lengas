@@ -123,8 +123,9 @@ $chart_payload = [
     ],
     'authors'      => array_map(fn($a) => ['x' => $a['name'], 'y' => $a['volumes'], 'series' => $a['series']], $stats['authors']),
     'publishers'   => array_map(fn($p) => ['x' => $p['name'], 'y' => $p['volumes'], 'series' => $p['series']], $stats['publishers']),
-    'genres'       => array_map(fn($g) => ['name' => $g['name'], 'volumes' => $g['volumes']], $stats['genres']),
+    'genres'       => array_map(fn($g) => ['name' => $g['name'], 'series' => $g['series'] ?? 0, 'volumes' => $g['volumes']], $stats['genres']),
     'genres_none'  => $stats['genres_none'],
+    'genres_none_series' => $stats['genres_none_series'] ?? 0,
     'categories'   => array_map(fn($c) => ['name' => $c['name'], 'series' => $c['series'], 'volumes' => $c['volumes']], $stats['categories']),
     'contributors' => array_map(fn($c) => ['name' => $c['name'], 'series' => $c['series'], 'volumes' => $c['volumes']], $stats['contributors']),
     'value' => (function () use ($stats) {
@@ -343,11 +344,23 @@ $chart_payload = [
             <div class="section-eyebrow">Genres &amp; catégories</div>
             <div class="panel-row">
                 <div class="panel">
-                    <div class="panel-head"><h3>Genres</h3></div>
+                    <div class="panel-head">
+                        <h3>Genres</h3>
+                        <div class="toggle-group" data-target="genres">
+                            <button class="toggle-btn is-active" data-metric="volumes">Par tomes</button>
+                            <button class="toggle-btn" data-metric="series">Par séries</button>
+                        </div>
+                    </div>
                     <div id="genres-chart" class="apex-chart"></div>
                 </div>
                 <div class="panel">
-                    <div class="panel-head"><h3>Catégories</h3></div>
+                    <div class="panel-head">
+                        <h3>Catégories</h3>
+                        <div class="toggle-group" data-target="categories">
+                            <button class="toggle-btn is-active" data-metric="volumes">Par tomes</button>
+                            <button class="toggle-btn" data-metric="series">Par séries</button>
+                        </div>
+                    </div>
                     <div id="categories-chart" class="apex-chart"></div>
                 </div>
             </div>

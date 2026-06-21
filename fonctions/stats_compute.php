@@ -180,8 +180,9 @@ if (!function_exists('compute_stats')) {
         // Agrégats par dimension
         $authors      = [];   // name => ['series'=>n, 'volumes'=>n]
         $publishers   = [];
-        $genres       = [];   // name => volumes
+        $genres       = [];   // name => ['series'=>n, 'volumes'=>n]
         $genres_none  = 0;    // tomes des séries sans aucun genre
+        $genres_none_series = 0; // séries sans aucun genre
         $categories   = [];   // name => ['series'=>n, 'volumes'=>n]
         $contributors = [];   // name => ['series'=>n, 'volumes'=>n]
 
@@ -256,10 +257,12 @@ if (!function_exists('compute_stats')) {
             $series_genres = stats_clean_list($series['genres'] ?? []);
             if (count($series_genres) === 0) {
                 $genres_none += $vcount;
+                $genres_none_series += 1;
             } else {
                 foreach ($series_genres as $g) {
-                    if (!isset($genres[$g])) $genres[$g] = 0;
-                    $genres[$g] += $vcount;
+                    if (!isset($genres[$g])) $genres[$g] = ['series' => 0, 'volumes' => 0];
+                    $genres[$g]['series']  += 1;
+                    $genres[$g]['volumes'] += $vcount;
                 }
             }
 
@@ -564,6 +567,7 @@ if (!function_exists('compute_stats')) {
             'publishers'        => $publishers_sorted,
             'genres'            => $genres_sorted,
             'genres_none'       => $genres_none,
+            'genres_none_series' => $genres_none_series,
             'categories'        => $categories_sorted,
             'contributors'      => $contributors_sorted,
 

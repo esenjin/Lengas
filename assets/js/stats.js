@@ -272,77 +272,107 @@ document.addEventListener('DOMContentLoaded', function () {
         charts.publishersBar = horizontalBar('bar-publishers', top, 'volumes', C.sky, 'Tomes');
     }
 
-    // ── 6. Genres ─────────────────────────────────────────────────────────────
+    // ── 6. Genres (toggle par tomes / par séries) ─────────────────────────────
     if (((S.genres && S.genres.length) || S.genres_none > 0) && document.getElementById('genres-chart')) {
-        // Liste des genres + tranche "Sans genre" en fin (couleur neutre)
-        const genreList = (S.genres || []).slice();
         const NONE_COLOR = C.textGray;
-        if (S.genres_none > 0) {
-            genreList.push({ name: 'Sans genre', volumes: S.genres_none, _none: true });
-        }
-        const colorFor = (g, i) => g._none ? NONE_COLOR : rampColor(i);
-
-        const useDonut = genreList.length <= 6;
         const el = document.getElementById('genres-chart');
-        if (useDonut) {
-            new ApexCharts(el, {
-                ...apexBase,
-                chart: { ...apexBase.chart, type: 'donut', height: 340 },
-                series: genreList.map(g => g.volumes),
-                labels: genreList.map(g => g.name),
-                colors: genreList.map((g, i) => colorFor(g, i)),
-                legend: { position: 'bottom', labels: { colors: C.text } },
-                plotOptions: { pie: { donut: { size: '60%' } } },
-                dataLabels: { enabled: true, formatter: (v) => Math.round(v) + '%' },
-                tooltip: { theme: 'dark', y: { formatter: v => `${fmtInt(v)} tomes` } }
-            }).render();
-        } else {
-            // Barres : on garde "Sans genre" visible en dernier même au-delà du top 14
+
+        function buildGenres(metric) {
+            const valOf = g => metric === 'series' ? (g.series || 0) : g.volumes;
+            const noneVal = metric === 'series' ? (S.genres_none_series || 0) : (S.genres_none || 0);
+            const unit = metric === 'series' ? 'séries' : 'tomes';
+
+            // Liste triée selon la métrique + tranche "Sans genre" en fin
+            const genreList = (S.genres || []).slice()
+                .map(g => ({ name: g.name, volumes: g.volumes, series: g.series || 0 }))
+                .sort((a, b) => valOf(b) - valOf(a));
+            if (noneVal > 0) {
+                genreList.push({ name: 'Sans genre', volumes: S.genres_none || 0, series: S.genres_none_series || 0, _none: true });
+            }
+            const colorFor = (g, i) => g._none ? NONE_COLOR : rampColor(i);
+            const useDonut = genreList.length <= 6;
+
+            if (useDonut) {
+                return {
+                    ...apexBase,
+                    chart: { ...apexBase.chart, type: 'donut', height: 340 },
+                    series: genreList.map(valOf),
+                    labels: genreList.map(g => g.name),
+                    colors: genreList.map((g, i) => colorFor(g, i)),
+                    legend: { position: 'bottom', labels: { colors: C.text } },
+                    plotOptions: { pie: { donut: { size: '60%' } } },
+                    dataLabels: { enabled: true, formatter: (v) => Math.round(v) + '%' },
+                    tooltip: { theme: 'dark', y: { formatter: v => `${fmtInt(v)} ${unit}` } }
+                };
+            }
+            // Barres : "Sans genre" reste visible en dernier même au-delà du top 14
             const named = genreList.filter(g => !g._none).slice(0, 14);
             const noneSlice = genreList.filter(g => g._none);
             const top = named.concat(noneSlice);
-            new ApexCharts(el, {
+            return {
                 ...apexBase,
                 chart: { ...apexBase.chart, type: 'bar', height: Math.max(260, top.length * 30) },
-                series: [{ name: 'Tomes', data: top.map(g => g.volumes) }],
+                series: [{ name: metric === 'series' ? 'Séries' : 'Tomes', data: top.map(valOf) }],
                 xaxis: { categories: top.map(g => g.name), labels: { style: { colors: C.textGray } } },
                 yaxis: { labels: { style: { colors: C.text }, maxWidth: yAxisMaxWidth(200) } },
                 colors: top.map((g, i) => colorFor(g, i)),
                 plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '70%', distributed: true } },
                 dataLabels: { enabled: true, textAnchor: 'start', offsetX: 4, style: { colors: ['#fff'] } },
-                legend: { show: false }
-            }).render();
+                legend: { show: false },
+                tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
+                    const g = top[dataPointIndex];
+                    return `<div class="apex-tip"><b>${g.name}</b><br>${fmtInt(g.volumes)} tome(s) · ${fmtInt(g.series)} série(s)</div>`;
+                } }
+            };
         }
+
+        charts.genres = new ApexCharts(el, buildGenres('volumes'));
+        charts.genres.render();
+        charts._buildGenres = buildGenres;
     }
 
-    // ── 6b. Catégories ────────────────────────────────────────────────────────
+    // ── 6b. Catégories (toggle par tomes / par séries) ────────────────────────
     if (S.categories && S.categories.length && document.getElementById('categories-chart')) {
-        const cats = S.categories;
         const el = document.getElementById('categories-chart');
-        if (cats.length <= 6) {
-            new ApexCharts(el, {
-                ...apexBase,
-                chart: { ...apexBase.chart, type: 'donut', height: 340 },
-                series: cats.map(c => c.volumes),
-                labels: cats.map(c => c.name),
-                colors: cats.map((c, i) => rampColor(i)),
-                legend: { position: 'bottom', labels: { colors: C.text } },
-                plotOptions: { pie: { donut: { size: '60%' } } },
-                dataLabels: { enabled: true, formatter: v => Math.round(v) + '%' },
-                tooltip: { theme: 'dark', y: { formatter: v => `${fmtInt(v)} tomes` } }
-            }).render();
-        } else {
-            new ApexCharts(el, {
+
+        function buildCategories(metric) {
+            const valOf = c => metric === 'series' ? (c.series || 0) : c.volumes;
+            const unit = metric === 'series' ? 'séries' : 'tomes';
+            const cats = S.categories.slice().sort((a, b) => valOf(b) - valOf(a));
+
+            if (cats.length <= 6) {
+                return {
+                    ...apexBase,
+                    chart: { ...apexBase.chart, type: 'donut', height: 340 },
+                    series: cats.map(valOf),
+                    labels: cats.map(c => c.name),
+                    colors: cats.map((c, i) => rampColor(i)),
+                    legend: { position: 'bottom', labels: { colors: C.text } },
+                    plotOptions: { pie: { donut: { size: '60%' } } },
+                    dataLabels: { enabled: true, formatter: v => Math.round(v) + '%' },
+                    tooltip: { theme: 'dark', y: { formatter: v => `${fmtInt(v)} ${unit}` } }
+                };
+            }
+            return {
                 ...apexBase,
                 chart: { ...apexBase.chart, type: 'bar', height: Math.max(220, cats.length * 32) },
-                series: [{ name: 'Tomes', data: cats.map(c => c.volumes) }],
+                series: [{ name: metric === 'series' ? 'Séries' : 'Tomes', data: cats.map(valOf) }],
                 xaxis: { categories: cats.map(c => c.name), labels: { style: { colors: C.textGray } } },
+                yaxis: { labels: { style: { colors: C.text }, maxWidth: yAxisMaxWidth(200) } },
                 colors: [C.teal],
                 plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '68%' } },
                 dataLabels: { enabled: true, textAnchor: 'start', offsetX: 4, style: { colors: ['#fff'] } },
-                legend: { show: false }
-            }).render();
+                legend: { show: false },
+                tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
+                    const c = cats[dataPointIndex];
+                    return `<div class="apex-tip"><b>${c.name}</b><br>${fmtInt(c.volumes)} tome(s) · ${fmtInt(c.series)} série(s)</div>`;
+                } }
+            };
         }
+
+        charts.categories = new ApexCharts(el, buildCategories('volumes'));
+        charts.categories.render();
+        charts._buildCategories = buildCategories;
     }
 
     // ── 7. Contributeurs (toggle par tomes / par séries) ──────────────────────
@@ -503,6 +533,36 @@ document.addEventListener('DOMContentLoaded', function () {
                         return `<div class="apex-tip"><b>${c.name}</b><br>${fmtInt(c.volumes)} tome(s) · ${fmtInt(c.series)} série(s)</div>`;
                     } }
                 });
+            }
+        });
+    });
+
+    // Genres : par tomes / par séries (rebuild car le type peut passer de donut à barres)
+    document.querySelectorAll('.toggle-group[data-target="genres"] .toggle-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.toggle-group[data-target="genres"] .toggle-btn').forEach(b => b.classList.remove('is-active'));
+            this.classList.add('is-active');
+            const metric = this.dataset.metric;
+            const el = document.getElementById('genres-chart');
+            if (charts.genres && charts._buildGenres && el) {
+                charts.genres.destroy();
+                charts.genres = new ApexCharts(el, charts._buildGenres(metric));
+                charts.genres.render();
+            }
+        });
+    });
+
+    // Catégories : par tomes / par séries
+    document.querySelectorAll('.toggle-group[data-target="categories"] .toggle-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.toggle-group[data-target="categories"] .toggle-btn').forEach(b => b.classList.remove('is-active'));
+            this.classList.add('is-active');
+            const metric = this.dataset.metric;
+            const el = document.getElementById('categories-chart');
+            if (charts.categories && charts._buildCategories && el) {
+                charts.categories.destroy();
+                charts.categories = new ApexCharts(el, charts._buildCategories(metric));
+                charts.categories.render();
             }
         });
     });
