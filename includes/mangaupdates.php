@@ -585,3 +585,98 @@ function mangaupdates_associate_candidates(string $title, string $author, int $m
     // Ne retourner que les max_shown meilleurs candidats
     return array_slice($out, 0, $max_shown);
 }
+
+// ── Traduction FR des genres MangaUpdates ─────────────────────────────────────
+// Les genres « démographiques » (Josei, Seinen, Shounen, Yaoi, Yuri, …) ne sont
+// pas traduits. Les autres sont traduits selon le tableau ci-dessous. Tout genre
+// inconnu est conservé tel quel (verbatim).
+function mangaupdates_genre_translation_map(): array {
+    return [
+        // Genres « type » (traduits)
+        'action'        => 'Action',
+        'adult'         => 'Adulte',
+        'adventure'     => 'Aventure',
+        'comedy'        => 'Comédie',
+        'doujinshi'     => 'Doujin',
+        'drama'         => 'Drame',
+        'ecchi'         => 'Ecchi',
+        'fantasy'       => 'Fantaisie',
+        'gender bender' => 'Changement de sexe',
+        'harem'         => 'Harem',
+        'hentai'        => 'Hentai',
+        'historical'    => 'Historique',
+        'horror'        => 'Horreur',
+        'martial arts'  => 'Arts martiaux',
+        'mature'        => 'Mature',
+        'mecha'         => 'Meccha',
+        'mystery'       => 'Mystère',
+        'psychological' => 'Psychologique',
+        'romance'       => 'Romance',
+        'school life'   => 'Vie scolaire',
+        'sci-fi'        => 'Science fiction',
+        'slice of life' => 'Tranche de vie',
+        'smut'          => 'Érotique',
+        'sports'        => 'Sport',
+        'supernatural'  => 'Surnaturel',
+        'tragedy'       => 'Tragédie',
+        // Genres « démographiques » : conservés tels quels (clé = valeur)
+        'josei'      => 'Josei',
+        'lolicon'    => 'Lolicon',
+        'seinen'     => 'Seinen',
+        'shotacon'   => 'Shotacon',
+        'shoujo'     => 'Shoujo',
+        'shoujo ai'  => 'Shoujo Ai',
+        'shounen'    => 'Shounen',
+        'shounen ai' => 'Shounen Ai',
+        'yaoi'       => 'Yaoi',
+        'yuri'       => 'Yuri',
+    ];
+}
+
+// Traduit un genre MangaUpdates (anglais) en français. Genre inconnu → verbatim.
+function mangaupdates_translate_genre(string $genre): string {
+    $genre = trim($genre);
+    if ($genre === '') return '';
+    $map = mangaupdates_genre_translation_map();
+    $key = mb_strtolower($genre);
+    return $map[$key] ?? $genre;
+}
+
+// ── Extraire les genres d'une fiche MangaUpdates ──────────────────────────────
+// L'API renvoie un champ « genres » sous forme d'un tableau d'objets
+// [{"genre":"Action"}, {"genre":"Romance"}, …]. On en extrait les libellés bruts.
+function mangaupdates_extract_genres($record): array {
+    $genres = [];
+    if (is_array($record) && !empty($record['genres']) && is_array($record['genres'])) {
+        foreach ($record['genres'] as $g) {
+            if (is_array($g)) {
+                $name = $g['genre'] ?? ($g['name'] ?? '');
+            } else {
+                $name = (string)$g;
+            }
+            $name = trim((string)$name);
+            if ($name !== '') $genres[] = $name;
+        }
+    }
+    return $genres;
+}
+
+// ── Récupérer les genres FR d'une série depuis son URL MangaUpdates ────────────
+// Retourne un tableau de genres traduits en français (peut être vide), ou null
+// en cas d'échec (URL invalide, réseau, fiche introuvable).
+function mangaupdates_get_genres_from_url(string $url): ?array {
+    $id = mangaupdates_get_id_from_url($url);
+    if ($id === null) return null;
+    $record = mangaupdates_fetch_record($id);
+    if ($record === null) return null;
+    $raw = mangaupdates_extract_genres($record);
+    $translated = array_map('mangaupdates_translate_genre', $raw);
+    // Dédoublonner en conservant l'ordre
+    $seen = [];
+    $out  = [];
+    foreach ($translated as $g) {
+        $k = mb_strtolower($g);
+        if ($g !== '' && !isset($seen[$k])) { $seen[$k] = true; $out[] = $g; }
+    }
+    return $out;
+}

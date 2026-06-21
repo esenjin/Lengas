@@ -336,3 +336,68 @@
     margin: 8px 0 0;
     padding-left: 18px;
 }
+
+/* ── Association des genres MangaUpdates ──────────────────────────────────── */
+.mu-genres-form {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.mu-genres-series {
+    background-color: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius);
+    padding: 12px 14px;
+}
+.mu-genres-series.mu-genres-saved {
+    border-color: var(--success-color);
+    opacity: 0.85;
+}
+.mu-genres-series-name {
+    font-weight: 600;
+    color: var(--text-white);
+    margin-bottom: 8px;
+}
+.mu-genres-series-name small {
+    font-weight: 400;
+    color: var(--text-gray);
+    margin-left: 6px;
+}
+.mu-genres-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.mu-genres-input {
+    flex: 1;
+    min-width: 200px;
+    padding: 7px 10px;
+    background-color: var(--background-darker);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-color);
+    font-size: 0.9em;
+}
+.mu-genres-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+.mu-genres-input:disabled {
+    opacity: 0.6;
+}
+.mu-genres-validate-btn {
+    padding: 6px 14px;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+}
+.mu-genres-feedback {
+    font-size: 0.82rem;
+    min-width: 80px;
+}
+.mu-genres-feedback.is-success { color: var(--success-color); }
+.mu-genres-feedback.is-error   { color: var(--error-color); }
+#mu-genres-save-btn {
+    margin-top: 16px;
+}
