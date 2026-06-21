@@ -495,7 +495,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 charts.contrib.updateOptions({
                     chart: { height: Math.max(220, list.length * 34) },
                     xaxis: { categories: list.map(c => c.name) },
-                    series: [{ name: metric === 'series' ? 'Séries' : 'Tomes', data: list.map(valOf) }]
+                    series: [{ name: metric === 'series' ? 'Séries' : 'Tomes', data: list.map(valOf) }],
+                    tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
+                        const c = list[dataPointIndex];
+                        return `<div class="apex-tip"><b>${c.name}</b><br>${fmtInt(c.volumes)} tome(s) · ${fmtInt(c.series)} série(s)</div>`;
+                    } }
                 });
             }
         });
