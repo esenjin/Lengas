@@ -2,18 +2,23 @@
    sidebar.css — Navigation latérale de l'administration Lengas
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* ── Mise en page générale avec sidebar ── */
+/* ── Mise en page générale avec sidebar ──
+   La sidebar est en position FIXED (et non sticky) afin de rester ancrée à
+   l'écran quelle que soit la structure des ancêtres : un simple
+   "overflow-x: hidden" sur html/body (filet de sécurité anti-scroll
+   horizontal présent ailleurs dans le site) suffit à neutraliser
+   position:sticky, qui se met alors à défiler avec le contenu. La sidebar
+   sort donc du flux et l'espace qu'elle occupait est réservé via un
+   padding-left sur le body, plutôt que via display:flex. ── */
 body.with-sidebar {
-    display: flex;
     min-height: 100vh;
     padding: 0;
+    padding-left: 58px;
     background: var(--background-dark);
 }
 
 /* La page principale décalée par la sidebar */
 .page-main {
-    flex: 1;
-    min-width: 0;
     padding: 32px 36px;
     overflow-x: hidden;
 }
@@ -28,8 +33,9 @@ body.with-sidebar {
     flex-direction: column;
     align-items: center;
     padding: 16px 0;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
     height: 100vh;
     z-index: 200;
     box-shadow: 2px 0 16px rgba(0, 0, 0, 0.3);
@@ -262,6 +268,7 @@ a.sidebar-link.is-active:hover::after {
     body.with-sidebar {
         display: block;
         padding-top: 0;
+        padding-left: 0;
     }
 
     /* Contenu principal : pleine largeur */
