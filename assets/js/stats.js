@@ -373,20 +373,22 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ── 8. Valeur ─────────────────────────────────────────────────────────────
-    if (S.value && document.getElementById('value-chart')) {
+    if (S.value && S.value.labels && S.value.labels.length && document.getElementById('value-chart')) {
+        const valHeight = Math.max(200, S.value.labels.length * 64);
         new ApexCharts(document.getElementById('value-chart'), {
             ...apexBase,
-            chart: { ...apexBase.chart, type: 'bar', height: 200 },
-            series: [{ name: 'Valeur', data: S.value.values }],
-            xaxis: { categories: S.value.labels, labels: { style: { colors: C.textGray } } },
-            colors: [C.amber],
-            plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '55%', distributed: true } },
+            chart: { ...apexBase.chart, type: 'bar', height: valHeight },
+            series: S.value.series,
+            xaxis: { categories: S.value.labels, labels: { style: { colors: C.textGray },
+                formatter: v => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v) } },
+            yaxis: { labels: { style: { colors: C.textGray } } },
             colors: [C.primary, C.amber],
+            plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '70%' } },
             dataLabels: { enabled: true, textAnchor: 'start', offsetX: 4,
-                formatter: v => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v),
+                formatter: v => (v == null ? '' : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v)),
                 style: { colors: ['#fff'] } },
-            legend: { show: false },
-            tooltip: { theme: 'dark', y: { formatter: v => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v) } }
+            legend: { show: true, labels: { colors: C.textGray } },
+            tooltip: { theme: 'dark', y: { formatter: v => (v == null ? '—' : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v)) } }
         }).render();
     }
 

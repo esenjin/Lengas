@@ -173,6 +173,9 @@ if (!function_exists('compute_stats')) {
         $time_by_status = ['à lire' => 0.0, 'en cours' => 0.0, 'terminé' => 0.0];
         $value_total      = 0.0;
         $value_collector  = 0.0;
+        // Valeur ventilée par catégorie : nom => ['normal'=>x, 'collector'=>y]
+        // Clé spéciale '' = séries sans catégorie.
+        $value_by_category = [];
 
         // Agrégats par dimension
         $authors      = [];   // name => ['series'=>n, 'volumes'=>n]
@@ -220,6 +223,11 @@ if (!function_exists('compute_stats')) {
 
             // Moyennes de la série (temps/valeur)
             $avg = stats_series_averages($series, $settings);
+
+            // Clés de catégorie de la série pour la ventilation de la valeur
+            // (chaque catégorie reçoit une part égale du tome ; '' = sans catégorie)
+            $series_cat_keys = stats_clean_list($series['categories'] ?? []);
+            if (count($series_cat_keys) === 0) $series_cat_keys = [''];
 
             // Auteur
             $author = trim((string) ($series['author'] ?? ''));
@@ -286,12 +294,23 @@ if (!function_exists('compute_stats')) {
 
                 // Valeur (collector = valeur collector, sinon valeur normale)
                 $is_collector = !empty($v['collector']);
+                $vval  = $is_collector ? $avg['value_collector'] : $avg['value'];
                 if ($is_collector) {
                     $value_total     += $avg['value_collector'];
                     $value_collector += $avg['value_collector'];
                     $collector_count += 1;
                 } else {
                     $value_total += $avg['value'];
+                }
+
+                // Ventilation par catégorie (part égale entre les catégories de la série)
+                $cat_share = $vval / count($series_cat_keys);
+                $val_key   = $is_collector ? 'collector' : 'normal';
+                foreach ($series_cat_keys as $ck) {
+                    if (!isset($value_by_category[$ck])) {
+                        $value_by_category[$ck] = ['normal' => 0.0, 'collector' => 0.0];
+                    }
+                    $value_by_category[$ck][$val_key] += $cat_share;
                 }
 
                 if ($vstatus === 'terminé') $has_read = true;
@@ -419,6 +438,23 @@ if (!function_exists('compute_stats')) {
         $publishers_by_series   = $to_sorted($publishers, 'series');
         $contributors_by_series = $to_sorted($contributors, 'series');
 
+        // ── Valeur ventilée par catégorie (normal + collector) ──────────────
+        // Ordonnée par valeur totale décroissante ; 'sans catégorie' placé en fin.
+        $value_categories = [];
+        foreach ($value_by_category as $ck => $vals) {
+            $value_categories[] = [
+                'name'      => $ck === '' ? 'Sans catégorie' : $ck,
+                'is_none'   => $ck === '',
+                'normal'    => round($vals['normal'], 2),
+                'collector' => round($vals['collector'], 2),
+                'total'     => round($vals['normal'] + $vals['collector'], 2),
+            ];
+        }
+        usort($value_categories, function ($a, $b) {
+            if ($a['is_none'] !== $b['is_none']) return $a['is_none'] <=> $b['is_none'];
+            return $b['total'] <=> $a['total'];
+        });
+
         // ── Croissance cumulée ──────────────────────────────────────────────
         ksort($purchases_by_month);
         $growth = [];
@@ -521,6 +557,7 @@ if (!function_exists('compute_stats')) {
             'value_total'       => $value_total,
             'value_collector'   => $value_collector,
             'value_normal'      => $value_total - $value_collector,
+            'value_categories'  => $value_categories,
 
             // Dimensions (triées, complètes — le front coupera en topN)
             'authors'           => $authors_sorted,

@@ -127,10 +127,28 @@ $chart_payload = [
     'genres_none'  => $stats['genres_none'],
     'categories'   => array_map(fn($c) => ['name' => $c['name'], 'series' => $c['series'], 'volumes' => $c['volumes']], $stats['categories']),
     'contributors' => array_map(fn($c) => ['name' => $c['name'], 'series' => $c['series'], 'volumes' => $c['volumes']], $stats['contributors']),
-    'value' => [
-        'labels' => ['Tomes normaux', 'Tomes collectors'],
-        'values' => [round($stats['value_normal'], 2), round($stats['value_collector'], 2)],
-    ],
+    'value' => (function () use ($stats) {
+        // Une barre par catégorie pour les tomes normaux et pour les collectors.
+        // Une barre n'est pas incluse si elle vaut 0 €.
+        $cats = $stats['value_categories'] ?? [];
+        $labels    = [];
+        $normal    = [];
+        $collector = [];
+        foreach ($cats as $c) {
+            if ($c['total'] <= 0) continue; // catégorie entièrement à 0 €
+            $labels[]    = $c['name'];
+            // null => barre masquée (valeur 0)
+            $normal[]    = $c['normal']    > 0 ? $c['normal']    : null;
+            $collector[] = $c['collector'] > 0 ? $c['collector'] : null;
+        }
+        return [
+            'labels' => $labels,
+            'series' => [
+                ['name' => 'Tomes normaux',    'data' => $normal],
+                ['name' => 'Tomes collectors', 'data' => $collector],
+            ],
+        ];
+    })(),
     'purchases' => $stats['purchases_by_month'],
     'growth'    => $stats['growth'],
     'completion' => [
