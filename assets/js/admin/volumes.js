@@ -15,11 +15,21 @@ document.querySelectorAll('.volumes-list li').forEach(li => {
             document.querySelector('#edit-volume-modal [name="status"]').value = volume.status;
             document.querySelector('#edit-volume-modal [name="is_collector"]').checked = !!volume.collector;
             document.querySelector('#edit-volume-modal [name="is_last"]').checked = !!volume.last;
+            document.getElementById('edit-volume-read-at').value = volume.read_at || '';
+            updateReadAtVisibility();
 
             modals['edit-volume'].modal.classList.add('modal-active');
         }
     });
 });
+
+// Affiche le champ "Date de lecture" uniquement quand le statut est "terminé"
+function updateReadAtVisibility() {
+    const status = document.getElementById('edit-volume-status').value;
+    const label = document.getElementById('edit-volume-read-at-label');
+    label.style.display = (status === 'terminé') ? '' : 'none';
+}
+document.getElementById('edit-volume-status').addEventListener('change', updateReadAtVisibility);
 
 // Gestion de la suppression d'un tome
 document.getElementById('delete-volume-btn').addEventListener('click', function() {

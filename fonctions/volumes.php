@@ -21,7 +21,8 @@ function add_volume_to_series($data, $series_id, $volume_number, $status, $is_co
             'status' => $status,
             'collector' => $is_collector,
             'last' => $is_last,
-            'added_at' => date('Y-m-d')
+            'added_at' => date('Y-m-d'),
+            'read_at' => ($status === 'terminé') ? date('Y-m-d') : ''
         ];
         return ['success' => true, 'data' => $data];
     } else {
@@ -61,7 +62,8 @@ function add_multiple_volumes_to_series($data, $series_id, $volumes_count, $stat
                 'status' => $status,
                 'collector' => $is_collector,
                 'last' => ($is_last && $i == $volumes_count),
-                'added_at' => date('Y-m-d')
+                'added_at' => date('Y-m-d'),
+                'read_at' => ($status === 'terminé') ? date('Y-m-d') : ''
             ];
         } else {
             $existing_volumes[] = $new_volume_number;
@@ -76,13 +78,35 @@ function add_multiple_volumes_to_series($data, $series_id, $volumes_count, $stat
 }
 
 // Mettre à jour un tome
-function update_volume($data, $series_id, $volume_index, $status, $is_collector, $is_last) {
+function update_volume($data, $series_id, $volume_index, $status, $is_collector, $is_last, $read_at = null) {
     $series = find_series_by_id($data, $series_id);
     if (!$series || !isset($data[$series['index']]['volumes'][$volume_index])) {
         return ['success' => false, 'message' => "Série ou volume introuvable."];
     }
 
     $idx = $series['index'];
+    $previous_status  = $data[$idx]['volumes'][$volume_index]['status'] ?? '';
+    $previous_read_at = $data[$idx]['volumes'][$volume_index]['read_at'] ?? '';
+
+    // Détermination de read_at :
+    // - si une date a été fournie explicitement (édition manuelle), elle prime, à condition que le statut reste "terminé"
+    // - sinon, si on passe de non-"terminé" à "terminé", on date au jour
+    // - si on était déjà "terminé" et qu'on le reste, on conserve la date existante
+    // - si on quitte le statut "terminé", on efface la date
+    if ($status === 'terminé') {
+        if ($read_at !== null && $read_at !== '') {
+            $new_read_at = $read_at;
+        } elseif ($previous_status === 'terminé' && $previous_read_at !== '') {
+            $new_read_at = $previous_read_at;
+        } else {
+            // Soit on vient de passer à "terminé", soit le tome était déjà
+            // "terminé" mais sans date connue (ancienne donnée jamais migrée) :
+            // dans les deux cas on date au jour plutôt que de laisser un trou.
+            $new_read_at = date('Y-m-d');
+        }
+    } else {
+        $new_read_at = '';
+    }
 
     $data[$idx]['volumes'][$volume_index] = [
         'number'    => $data[$idx]['volumes'][$volume_index]['number'],
@@ -90,6 +114,7 @@ function update_volume($data, $series_id, $volume_index, $status, $is_collector,
         'collector' => $is_collector,
         'last'      => $is_last,
         'added_at'  => $data[$idx]['volumes'][$volume_index]['added_at'] ?? date('Y-m-d'),
+        'read_at'   => $new_read_at,
     ];
 
     // Synchroniser le statut de la série avec l'état du tag "dernier tome"

@@ -8,7 +8,8 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
             'status' => $volumes_status,
             'collector' => $all_collector,
             'last' => false,
-            'added_at' => date('Y-m-d')
+            'added_at' => date('Y-m-d'),
+            'read_at' => ($volumes_status === 'terminé') ? date('Y-m-d') : ''
         ];
     }
 
@@ -118,7 +119,8 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
                 'status' => $new_volumes_status,
                 'collector' => $new_volumes_collector,
                 'last' => false,
-                'added_at' => date('Y-m-d')
+                'added_at' => date('Y-m-d'),
+                'read_at' => ($new_volumes_status === 'terminé') ? date('Y-m-d') : ''
             ];
         }
     }

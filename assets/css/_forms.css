@@ -83,3 +83,17 @@ form {
     border-left: 3px solid var(--primary-color);
     padding-left: 11px;
 }
+
+/* Date de lecture d'un tome (modale d'édition) */
+.volume-read-at-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.volume-read-at-label input[type="date"] {
+    width: auto;
+    margin-bottom: 0;
+}

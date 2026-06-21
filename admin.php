@@ -354,8 +354,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
     $status = $_POST['status'] ?? 'à lire';
     $is_collector = !empty($_POST['is_collector']);
     $is_last = !empty($_POST['is_last']);
+    $read_at = trim($_POST['read_at'] ?? '');
+    // Validation basique du format de date (évite d'enregistrer une valeur invalide)
+    if ($read_at !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $read_at)) {
+        $read_at = null;
+    }
 
-    $result = update_volume($data, $series_id, $volume_index, $status, $is_collector, $is_last);
+    $result = update_volume($data, $series_id, $volume_index, $status, $is_collector, $is_last, $read_at);
     if ($result['success']) {
         save_data($result['data']);
     }
@@ -763,8 +768,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
                 foreach ($volumes_updates as $vu) {
                     $vi = (int)($vu['index'] ?? -1);
                     if (isset($data[$idx]['volumes'][$vi])) {
-                        $data[$idx]['volumes'][$vi]['status'] = $vu['status'] ?? $data[$idx]['volumes'][$vi]['status'];
+                        $new_vol_status = $vu['status'] ?? $data[$idx]['volumes'][$vi]['status'];
+                        $prev_vol_status = $data[$idx]['volumes'][$vi]['status'];
+                        $data[$idx]['volumes'][$vi]['status'] = $new_vol_status;
                         $data[$idx]['volumes'][$vi]['last']   = !empty($vu['last']);
+
+                        // Gestion de read_at : on date si on passe à "terminé"
+                        // (ou si le tome était déjà "terminé" mais sans date connue,
+                        // cas d'une ancienne donnée jamais migrée), on efface si on
+                        // en sort, on conserve sinon
+                        if ($new_vol_status === 'terminé') {
+                            $prev_read_at = $data[$idx]['volumes'][$vi]['read_at'] ?? '';
+                            if ($prev_vol_status !== 'terminé' || $prev_read_at === '') {
+                                $data[$idx]['volumes'][$vi]['read_at'] = date('Y-m-d');
+                            }
+                            // sinon : déjà terminé avec une date connue, on la garde
+                        } else {
+                            $data[$idx]['volumes'][$vi]['read_at'] = '';
+                        }
                     }
                 }
             }
@@ -777,12 +798,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
                 foreach ($add_volumes as $av) {
                     $num = (int)($av['number'] ?? 0);
                     if ($num > 0 && !in_array($num, $existing_numbers, true)) {
+                        $av_status = $av['status'] ?? 'à lire';
                         $data[$idx]['volumes'][] = [
                             'number'   => $num,
-                            'status'   => $av['status'] ?? 'à lire',
+                            'status'   => $av_status,
                             'collector'=> false,
                             'last'     => !empty($av['last']),
                             'added_at' => date('Y-m-d'),
+                            'read_at'  => ($av_status === 'terminé') ? date('Y-m-d') : '',
                         ];
                         $existing_numbers[] = $num;
                     }
@@ -1336,11 +1359,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <input type="hidden" name="series_id" id="edit-series-id">
                     <input type="hidden" name="volume_index" id="edit-volume-index">
                     <p id="edit-volume-number-display" class="volume-number-display"></p>
-                    <select name="status" required>
+                    <select name="status" id="edit-volume-status" required>
                         <option value="à lire">À lire</option>
                         <option value="en cours">En cours</option>
                         <option value="terminé">Terminé</option>
                     </select>
+                    <label id="edit-volume-read-at-label" class="volume-read-at-label">
+                        Date de lecture
+                        <input type="date" name="read_at" id="edit-volume-read-at">
+                    </label>
                     <label>
                         <input type="checkbox" name="is_collector"> Collector ⭐
                     </label>

@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '3.5.1');
+define('SITE_VERSION', '3.6.0');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Chemin vers la base de données SQLite
@@ -60,6 +60,7 @@ function init_db(PDO $pdo): void {
             collector   INTEGER NOT NULL DEFAULT 0,
             last        INTEGER NOT NULL DEFAULT 0,
             added_at    TEXT NOT NULL DEFAULT '',
+            read_at     TEXT NOT NULL DEFAULT '',
             UNIQUE(series_id, number)
         )
     ");
@@ -139,6 +140,11 @@ function init_db(PDO $pdo): void {
     // ── Colonne reading_abandoned (lecture abandonnée par l'utilisateur) ────────
     try {
         $pdo->exec("ALTER TABLE series ADD COLUMN reading_abandoned INTEGER NOT NULL DEFAULT 0");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
+    // ── Colonne read_at (date de passage au statut "terminé" d'un tome) ────────
+    try {
+        $pdo->exec("ALTER TABLE volumes ADD COLUMN read_at TEXT NOT NULL DEFAULT ''");
     } catch (Exception $e) { /* colonne déjà présente */ }
 
     // ── Cache des appels à l'API MangaUpdates (clé = series_id numérique) ─────
@@ -282,6 +288,7 @@ function load_data(): array {
                 'collector' => (bool)$v['collector'],
                 'last'      => (bool)$v['last'],
                 'added_at'  => $v['added_at'],
+                'read_at'   => $v['read_at'] ?? '',
             ];
         }
         $result[] = [
@@ -336,8 +343,8 @@ function save_data(array $data): void {
 
         $deleteVols  = $db->prepare("DELETE FROM volumes WHERE series_id = ?");
         $insertVol   = $db->prepare("
-            INSERT OR IGNORE INTO volumes (series_id, number, status, collector, last, added_at)
-            VALUES (?,?,?,?,?,?)
+            INSERT OR IGNORE INTO volumes (series_id, number, status, collector, last, added_at, read_at)
+            VALUES (?,?,?,?,?,?,?)
         ");
 
         foreach ($data as $s) {
@@ -368,6 +375,7 @@ function save_data(array $data): void {
                     (int)($v['collector'] ?? false),
                     (int)($v['last'] ?? false),
                     $v['added_at'] ?? date('Y-m-d'),
+                    $v['read_at'] ?? '',
                 ]);
             }
         }
