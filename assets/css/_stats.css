@@ -344,6 +344,46 @@
     margin-top: 2px;
 }
 
+/* Cartes regroupant deux mesures (par tomes / par séries) */
+.funfact-split {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.funfact-line {
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 1.02em;
+    font-weight: 600;
+    color: var(--text-white);
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.funfact-line em {
+    font-style: normal;
+    color: var(--primary-color);
+    font-size: 0.82em;
+    font-weight: 500;
+}
+
+.funfact-tag {
+    display: inline-block;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.62em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--primary-color);
+    background: var(--primary-subtle);
+    border-radius: 4px;
+    padding: 2px 6px;
+    line-height: 1.4;
+    flex-shrink: 0;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    Recherche (réintégrée)
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -456,7 +496,8 @@
     transition: var(--transition-fast);
 }
 
-.stats-page #search-suggestions.autocomplete-suggestions div:hover {
+.stats-page #search-suggestions.autocomplete-suggestions div:hover,
+.stats-page #search-suggestions.autocomplete-suggestions div.autocomplete-active {
     background: var(--primary-subtle);
     color: var(--primary-color);
 }
@@ -535,6 +576,7 @@
     /* Les libellés longs (noms d'auteurs/séries) doivent pouvoir casser
        plutôt que pousser le conteneur en largeur. */
     .funfact-value,
+    .funfact-line,
     .mini-stat span,
     .mini-stat b,
     .kpi-label {

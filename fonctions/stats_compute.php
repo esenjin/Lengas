@@ -185,6 +185,14 @@ if (!function_exists('compute_stats')) {
         // Séries
         $longest_series = ['name' => null, 'volumes' => 0];
 
+        // Statut de publication (basé sur le champ status de la série)
+        $status_series_counts = ['terminée' => 0, 'en cours' => 0, 'en pause' => 0, 'abandonnée' => 0];
+
+        // Fun facts temporels
+        $longest_publication = ['name' => null, 'days' => -1, 'first' => null, 'last' => null];
+        $most_recently_read  = ['name' => null, 'date' => null];
+        $longest_to_read     = ['name' => null, 'days' => -1, 'first' => null, 'last' => null];
+
         // Time series (par mois) : achats & croissance cumulée
         $purchases_by_month = []; // 'YYYY-MM' => n tomes achetés
 
@@ -197,10 +205,16 @@ if (!function_exists('compute_stats')) {
                 $longest_series = ['name' => $series['name'], 'volumes' => $vcount];
             }
 
-            // Statut éditeur
+            // Statut éditeur (publication)
             $st = $series['status'] ?? '';
             if ($st === 'en pause')    $paused_series++;
             if ($st === 'abandonnée')  $abandoned_series++;
+            if (isset($status_series_counts[$st])) {
+                $status_series_counts[$st]++;
+            } else {
+                // statut non renseigné ou inconnu → considéré "en cours"
+                $status_series_counts['en cours']++;
+            }
 
             if (!empty($series['mature'])) $mature_series++;
 
@@ -254,6 +268,13 @@ if (!function_exists('compute_stats')) {
             $has_read         = false;
             $has_unread       = false;
 
+            // Suivi des dates pour les fun facts temporels
+            $first_vol_added  = null;  // added_at du tome n°1
+            $last_vol_added   = null;  // added_at du tome tagué "dernier"
+            $first_vol_read   = null;  // read_at du tome n°1
+            $last_vol_read    = null;  // read_at du tome tagué "dernier"
+            $series_max_read  = null;  // read_at le plus récent de la série
+
             foreach ($vols as $v) {
                 $vstatus = $v['status'] ?? 'à lire';
                 if (!isset($status_counts[$vstatus])) $status_counts[$vstatus] = 0;
@@ -276,13 +297,32 @@ if (!function_exists('compute_stats')) {
                 if ($vstatus === 'terminé') $has_read = true;
                 else                         $has_unread = true;
 
+                $vnum     = (int) ($v['number'] ?? 0);
+                $added    = $v['added_at'] ?? '';
+                $read_at  = $v['read_at']  ?? '';
+                $is_date  = fn($d) => is_string($d) && strlen($d) >= 10 && $d[4] === '-' && $d[7] === '-';
+
+                // Dates du 1er tome
+                if ($vnum === 1) {
+                    if ($is_date($added))   $first_vol_added = $added;
+                    if ($is_date($read_at)) $first_vol_read  = $read_at;
+                }
+
                 if (!empty($v['last'])) {
                     $has_last = true;
                     if ($vstatus === 'terminé') $last_completed = true;
+                    if ($is_date($added))   $last_vol_added = $added;
+                    if ($is_date($read_at)) $last_vol_read  = $read_at;
+                }
+
+                // read_at le plus récent de la série (et global)
+                if ($vstatus === 'terminé' && $is_date($read_at)) {
+                    if ($series_max_read === null || $read_at > $series_max_read) {
+                        $series_max_read = $read_at;
+                    }
                 }
 
                 // Achats par mois (added_at = 'YYYY-MM-DD')
-                $added = $v['added_at'] ?? '';
                 if (is_string($added) && strlen($added) >= 7 && $added[4] === '-') {
                     $month = substr($added, 0, 7);
                     if (!isset($purchases_by_month[$month])) $purchases_by_month[$month] = 0;
@@ -293,6 +333,41 @@ if (!function_exists('compute_stats')) {
             if ($has_last)                    $complete_series++;
             if ($has_last && $last_completed) $completed_series++;
             if ($has_read && $has_unread)     $started_not_done++;
+
+            // ── Fun fact : plus long temps de publication ────────────────────
+            // Écart entre l'ajout du 1er tome et du dernier tome (tagué "dernier").
+            if ($has_last && $first_vol_added !== null && $last_vol_added !== null) {
+                $days = (strtotime($last_vol_added) - strtotime($first_vol_added)) / 86400;
+                if ($days >= 0 && $days > $longest_publication['days']) {
+                    $longest_publication = [
+                        'name'  => $series['name'],
+                        'days'  => $days,
+                        'first' => $first_vol_added,
+                        'last'  => $last_vol_added,
+                    ];
+                }
+            }
+
+            // ── Fun fact : série la plus récemment lue ───────────────────────
+            if ($series_max_read !== null) {
+                if ($most_recently_read['date'] === null || $series_max_read > $most_recently_read['date']) {
+                    $most_recently_read = ['name' => $series['name'], 'date' => $series_max_read];
+                }
+            }
+
+            // ── Fun fact : série la plus longue à lire ───────────────────────
+            // Écart entre la lecture du 1er tome et du dernier tome (tagué "dernier").
+            if ($has_last && $first_vol_read !== null && $last_vol_read !== null) {
+                $days = (strtotime($last_vol_read) - strtotime($first_vol_read)) / 86400;
+                if ($days >= 0 && $days > $longest_to_read['days']) {
+                    $longest_to_read = [
+                        'name'  => $series['name'],
+                        'days'  => $days,
+                        'first' => $first_vol_read,
+                        'last'  => $last_vol_read,
+                    ];
+                }
+            }
         }
 
         // ── Pourcentages ────────────────────────────────────────────────────
@@ -339,6 +414,11 @@ if (!function_exists('compute_stats')) {
         $categories_sorted   = $to_sorted($categories, 'volumes');
         $contributors_sorted = $to_sorted($contributors, 'volumes');
 
+        // Tris alternatifs (par nombre de séries) pour auteurs/éditeurs/contributeurs
+        $authors_by_series      = $to_sorted($authors, 'series');
+        $publishers_by_series   = $to_sorted($publishers, 'series');
+        $contributors_by_series = $to_sorted($contributors, 'series');
+
         // ── Croissance cumulée ──────────────────────────────────────────────
         ksort($purchases_by_month);
         $growth = [];
@@ -353,18 +433,35 @@ if (!function_exists('compute_stats')) {
         }
 
         // ── Fun facts ───────────────────────────────────────────────────────
+        // Auteur le plus représenté — en tomes
         $top_author          = $authors_sorted[0]['name']       ?? null;
         $top_author_volumes  = $authors_sorted[0]['volumes']    ?? 0;
         $top_author_series   = $authors_sorted[0]['series']     ?? 0;
+        // Auteur le plus représenté — en séries
+        $top_author_s_name   = $authors_by_series[0]['name']    ?? null;
+        $top_author_s_series = $authors_by_series[0]['series']  ?? 0;
+        $top_author_s_vol    = $authors_by_series[0]['volumes'] ?? 0;
+
+        // Éditeur dominant — en tomes
         $top_publisher          = $publishers_sorted[0]['name']    ?? null;
         $top_publisher_volumes  = $publishers_sorted[0]['volumes'] ?? 0;
         $top_publisher_series   = $publishers_sorted[0]['series']  ?? 0;
+        // Éditeur dominant — en séries
+        $top_publisher_s_name   = $publishers_by_series[0]['name']    ?? null;
+        $top_publisher_s_series = $publishers_by_series[0]['series']  ?? 0;
+        $top_publisher_s_vol    = $publishers_by_series[0]['volumes'] ?? 0;
 
         // Part du top 10 auteurs (en tomes)
         $top10_slice       = array_slice($authors_sorted, 0, 10);
         $top10_authors_n   = count($top10_slice);
         $top10_authors_vol = array_sum(array_map(fn($a) => $a['volumes'], $top10_slice));
         $top10_authors_pct = $total_volumes > 0 ? round(($top10_authors_vol / $total_volumes) * 100, 1) : 0;
+
+        // Part du top 10 auteurs (en séries)
+        $top10_slice_s        = array_slice($authors_by_series, 0, 10);
+        $top10_authors_s_n    = count($top10_slice_s);
+        $top10_authors_s_ser  = array_sum(array_map(fn($a) => $a['series'], $top10_slice_s));
+        $top10_authors_s_pct  = $total_series > 0 ? round(($top10_authors_s_ser / $total_series) * 100, 1) : 0;
 
         // Indice de diversité de Shannon (sur les auteurs, en tomes)
         $shannon = 0.0;
@@ -378,6 +475,10 @@ if (!function_exists('compute_stats')) {
         // Évenness (équirépartition) : Shannon normalisé sur [0,1] par log(nb auteurs)
         $n_authors = count($authors_sorted);
         $shannon_even = $n_authors > 1 ? round($shannon / log($n_authors), 2) : ($n_authors === 1 ? 0.0 : null);
+
+        // Normalisation des fun facts temporels (sentinelle -1 → null)
+        if ($longest_publication['days'] < 0) $longest_publication = ['name' => null, 'days' => null, 'first' => null, 'last' => null];
+        if ($longest_to_read['days']     < 0) $longest_to_read     = ['name' => null, 'days' => null, 'first' => null, 'last' => null];
 
         return [
             // KPI collection
@@ -403,6 +504,9 @@ if (!function_exists('compute_stats')) {
             'paused_series'     => $paused_series,
             'abandoned_series'  => $abandoned_series,
             'mature_series'     => $mature_series,
+
+            // Statuts de publication (séries possédées)
+            'status_series_counts' => $status_series_counts,
 
             // Lues ailleurs
             'elsewhere_series'  => $elsewhere_series,
@@ -437,12 +541,24 @@ if (!function_exists('compute_stats')) {
             'top_author'             => $top_author,
             'top_author_volumes'     => $top_author_volumes,
             'top_author_series'      => $top_author_series,
+            'top_author_s_name'      => $top_author_s_name,
+            'top_author_s_series'    => $top_author_s_series,
+            'top_author_s_vol'       => $top_author_s_vol,
             'top_publisher'          => $top_publisher,
             'top_publisher_volumes'  => $top_publisher_volumes,
             'top_publisher_series'   => $top_publisher_series,
+            'top_publisher_s_name'   => $top_publisher_s_name,
+            'top_publisher_s_series' => $top_publisher_s_series,
+            'top_publisher_s_vol'    => $top_publisher_s_vol,
             'top10_authors_pct'      => $top10_authors_pct,
             'top10_authors_n'        => $top10_authors_n,
             'top10_authors_vol'      => $top10_authors_vol,
+            'top10_authors_s_pct'    => $top10_authors_s_pct,
+            'top10_authors_s_n'      => $top10_authors_s_n,
+            'top10_authors_s_ser'    => $top10_authors_s_ser,
+            'longest_publication'    => $longest_publication,
+            'most_recently_read'     => $most_recently_read,
+            'longest_to_read'        => $longest_to_read,
             'shannon'                => $shannon,
             'shannon_even'           => $shannon_even,
 
@@ -450,6 +566,9 @@ if (!function_exists('compute_stats')) {
             'avg_series_per_author'    => count($authors) > 0 ? round($total_series / count($authors), 2) : 0,
             'avg_volumes_per_author'   => count($authors) > 0 ? round($total_volumes / count($authors), 2) : 0,
             'avg_series_per_publisher' => count($publishers) > 0 ? round($total_series / count($publishers), 2) : 0,
+            'avg_volumes_per_publisher'=> count($publishers) > 0 ? round($total_volumes / count($publishers), 2) : 0,
+            'avg_series_per_contributor'  => count($contributors) > 0 ? round(array_sum(array_map(fn($c) => $c['series'], $contributors)) / count($contributors), 2) : 0,
+            'avg_volumes_per_contributor' => count($contributors) > 0 ? round($total_volumes / count($contributors), 2) : 0,
         ];
     }
 }

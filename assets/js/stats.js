@@ -345,23 +345,29 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // ── 7. Contributeurs (toggle top10 / tous) ────────────────────────────────
+    // ── 7. Contributeurs (toggle par tomes / par séries) ──────────────────────
     if (S.contributors && S.contributors.length && document.getElementById('bar-contributors')) {
-        function contribOpts(showAll) {
-            const list = showAll ? S.contributors : S.contributors.slice(0, 10);
+        function contribOpts(metric) {
+            const valOf = c => metric === 'series' ? c.series : c.volumes;
+            // Tri selon la métrique puis top 10
+            const list = S.contributors.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 10);
             return {
                 ...apexBase,
                 chart: { ...apexBase.chart, type: 'bar', height: Math.max(220, list.length * 34) },
-                series: [{ name: 'Tomes', data: list.map(c => c.volumes) }],
+                series: [{ name: metric === 'series' ? 'Séries' : 'Tomes', data: list.map(valOf) }],
                 xaxis: { categories: list.map(c => c.name), labels: { style: { colors: C.textGray } } },
                 yaxis: { labels: { style: { colors: C.text }, maxWidth: yAxisMaxWidth(220) } },
                 colors: [C.pink],
                 plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '68%' } },
                 dataLabels: { enabled: true, textAnchor: 'start', offsetX: 4, style: { colors: ['#fff'] } },
-                legend: { show: false }
+                legend: { show: false },
+                tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
+                    const c = list[dataPointIndex];
+                    return `<div class="apex-tip"><b>${c.name}</b><br>${fmtInt(c.volumes)} tome(s) · ${fmtInt(c.series)} série(s)</div>`;
+                } }
             };
         }
-        charts.contrib = new ApexCharts(document.getElementById('bar-contributors'), contribOpts(false));
+        charts.contrib = new ApexCharts(document.getElementById('bar-contributors'), contribOpts('volumes'));
         charts.contrib.render();
         charts._contribOpts = contribOpts;
     }
@@ -387,7 +393,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // ── 9. Courbes temporelles ────────────────────────────────────────────────
     function lineChart(el, series, name, color) {
         if (!document.getElementById(el) || !series.length) return;
-        new ApexCharts(document.getElementById(el), {
+        const firstMonth = series[0].month;
+        const opts = {
             ...apexBase,
             chart: { ...apexBase.chart, type: 'area', height: 280, zoom: { enabled: false } },
             series: [{ name, data: series.map(p => p.value) }],
@@ -397,7 +404,24 @@ document.addEventListener('DOMContentLoaded', function () {
             colors: [color],
             dataLabels: { enabled: false },
             markers: { size: 0, hover: { size: 4 } }
-        }).render();
+        };
+        // Annotation "Création de la bibliothèque" sur la première date
+        if (firstMonth) {
+            opts.annotations = {
+                xaxis: [{
+                    x: firstMonth,
+                    borderColor: C.amber,
+                    strokeDashArray: 4,
+                    label: {
+                        text: '📚 Création de la bibliothèque',
+                        orientation: 'horizontal',
+                        position: 'top',
+                        style: { color: '#1a1a28', background: C.amber, fontSize: '11px', fontWeight: 600 }
+                    }
+                }]
+            };
+        }
+        new ApexCharts(document.getElementById(el), opts).render();
     }
     lineChart('line-purchases', S.purchases || [], 'Tomes ajoutés', C.primary);
     lineChart('line-growth', S.growth || [], 'Total cumulé', C.teal);
@@ -459,18 +483,19 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Contributeurs : top10 / tous
+    // Contributeurs : par tomes / par séries (top 10 dans chaque cas)
     document.querySelectorAll('.toggle-group[data-target="contributors-view"] .toggle-btn').forEach(btn => {
         btn.addEventListener('click', function () {
             document.querySelectorAll('.toggle-group[data-target="contributors-view"] .toggle-btn').forEach(b => b.classList.remove('is-active'));
             this.classList.add('is-active');
-            const showAll = this.dataset.view === 'all';
+            const metric = this.dataset.metric;
             if (charts.contrib && charts._contribOpts) {
-                const list = showAll ? S.contributors : S.contributors.slice(0, 10);
+                const valOf = c => metric === 'series' ? c.series : c.volumes;
+                const list = S.contributors.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 10);
                 charts.contrib.updateOptions({
                     chart: { height: Math.max(220, list.length * 34) },
                     xaxis: { categories: list.map(c => c.name) },
-                    series: [{ name: 'Tomes', data: list.map(c => c.volumes) }]
+                    series: [{ name: metric === 'series' ? 'Séries' : 'Tomes', data: list.map(valOf) }]
                 });
             }
         });
@@ -488,9 +513,42 @@ document.addEventListener('DOMContentLoaded', function () {
     const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
     if (input) {
-        input.addEventListener('input', function () {
-            const term = this.value.trim();
-            if (term.length < 2) { sugg.classList.remove('show'); return; }
+        let suggItems = [];   // valeurs courantes des suggestions
+        let activeIdx = -1;    // index surligné au clavier
+
+        function renderSuggestions(values) {
+            sugg.innerHTML = '';
+            suggItems = values;
+            activeIdx = -1;
+            if (!values.length) { sugg.classList.remove('show'); return; }
+            values.forEach((v, i) => {
+                const d = document.createElement('div');
+                d.textContent = v;
+                d.dataset.idx = i;
+                d.addEventListener('mouseenter', () => setActive(i));
+                d.addEventListener('mousedown', e => {
+                    // mousedown plutôt que click pour devancer le blur
+                    e.preventDefault();
+                    input.value = v;
+                    sugg.classList.remove('show');
+                    run();
+                });
+                sugg.appendChild(d);
+            });
+            sugg.classList.add('show');
+        }
+
+        function setActive(i) {
+            const items = sugg.querySelectorAll('div');
+            items.forEach(el => el.classList.remove('autocomplete-active'));
+            activeIdx = i;
+            if (i >= 0 && items[i]) {
+                items[i].classList.add('autocomplete-active');
+                items[i].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function buildSuggestions(term) {
             const n = norm(term);
             const set = new Set();
             searchData.forEach(s => {
@@ -499,16 +557,45 @@ document.addEventListener('DOMContentLoaded', function () {
                 (s.genres || []).forEach(v => { if (norm(v).includes(n)) set.add(v); });
                 (s.other_contributors || []).forEach(v => { if (norm(v).includes(n)) set.add(v); });
             });
-            sugg.innerHTML = '';
-            if (set.size) {
-                [...set].slice(0, 30).forEach(v => {
-                    const d = document.createElement('div');
-                    d.textContent = v;
-                    d.addEventListener('click', () => { input.value = v; sugg.classList.remove('show'); });
-                    sugg.appendChild(d);
-                });
-                sugg.classList.add('show');
-            } else sugg.classList.remove('show');
+            return [...set].slice(0, 30);
+        }
+
+        input.addEventListener('input', function () {
+            const term = this.value.trim();
+            if (term.length < 2) { sugg.classList.remove('show'); return; }
+            renderSuggestions(buildSuggestions(term));
+        });
+
+        // Navigation clavier dans les suggestions + lancement de la recherche
+        input.addEventListener('keydown', function (e) {
+            const open = sugg.classList.contains('show') && suggItems.length > 0;
+            switch (e.key) {
+                case 'ArrowDown':
+                    if (open) { e.preventDefault(); setActive((activeIdx + 1) % suggItems.length); }
+                    break;
+                case 'ArrowUp':
+                    if (open) { e.preventDefault(); setActive((activeIdx - 1 + suggItems.length) % suggItems.length); }
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (open && activeIdx >= 0) {
+                        input.value = suggItems[activeIdx];
+                        sugg.classList.remove('show');
+                    }
+                    run();
+                    break;
+                case 'Escape':
+                    sugg.classList.remove('show');
+                    break;
+                case 'Tab':
+                    if (open && activeIdx >= 0) { input.value = suggItems[activeIdx]; sugg.classList.remove('show'); }
+                    break;
+            }
+        });
+
+        input.addEventListener('focus', function () {
+            const term = this.value.trim();
+            if (term.length >= 2) renderSuggestions(buildSuggestions(term));
         });
 
         document.addEventListener('click', e => { if (e.target !== input) sugg.classList.remove('show'); });
@@ -531,41 +618,65 @@ document.addEventListener('DOMContentLoaded', function () {
             const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
             const link = q => `index.php?search=${encodeURIComponent(q)}`;
 
+            // Libellé du statut de publication d'une série
+            const statusLabel = st => ({
+                'terminée': '✅ Terminée',
+                'en cours': '⏳ En cours',
+                'en pause': '⏸️ En pause',
+                'abandonnée': '⛔ Abandonnée'
+            }[st] || '⏳ En cours');
+
             if (r.series.length) {
                 html += `<h4>Séries (${r.series.length})</h4>`;
                 r.series.forEach(s => {
+                    // Avancement de lecture
+                    const pct = s.volumes_count > 0 ? Math.round((s.read_count / s.volumes_count) * 100) : 0;
+                    const tags = [];
+                    tags.push(`${s.read_count}/${s.volumes_count} lus (${pct}%)`);
+                    if (s.collector_count > 0) tags.push(`${s.collector_count} collector${s.collector_count > 1 ? 's' : ''}`);
+                    tags.push(statusLabel(s.status));
+                    if (s.complete) tags.push('série complète');
+                    if (s.read_elsewhere) tags.push('lue ailleurs');
+                    if (s.mature) tags.push('mature');
                     html += `<div class="result-item"><strong>${esc(s.name)}</strong>
-                        <span class="result-meta">${esc(s.author)} · ${esc(s.publisher)} · ${s.volumes_count} tomes</span>
+                        <span class="result-meta">${esc(s.author)} · ${esc(s.publisher)} · ${s.volumes_count} tome${s.volumes_count > 1 ? 's' : ''}</span>
+                        <span class="result-sub">${tags.map(esc).join(' · ')}</span>
                         <a class="result-link" href="${link(s.name)}">Voir →</a></div>`;
                 });
             }
-            const dim = (title, set) => {
+            const dim = (title, set, role) => {
                 const arr = [...set];
                 if (!arr.length) return;
                 html += `<h4>${title} (${arr.length})</h4>`;
                 arr.forEach(name => {
                     const inSeries = searchData.filter(s =>
-                        norm(s.author) === norm(name) || norm(s.publisher) === norm(name) ||
-                        (s.categories || []).some(c => norm(c) === norm(name)) ||
-                        (s.genres || []).some(g => norm(g) === norm(name)) ||
-                        (s.other_contributors || []).some(c => norm(c) === norm(name)));
+                        (role === 'author'      && norm(s.author) === norm(name)) ||
+                        (role === 'publisher'   && norm(s.publisher) === norm(name)) ||
+                        (role === 'category'    && (s.categories || []).some(c => norm(c) === norm(name))) ||
+                        (role === 'genre'       && (s.genres || []).some(g => norm(g) === norm(name))) ||
+                        (role === 'contributor' && (s.other_contributors || []).some(c => norm(c) === norm(name))));
                     const vols = inSeries.reduce((a, s) => a + s.volumes_count, 0);
+                    const read = inSeries.reduce((a, s) => a + s.read_count, 0);
+                    const pct = vols > 0 ? Math.round((read / vols) * 100) : 0;
+                    // Aperçu des séries concernées (max 3)
+                    const names = inSeries.map(s => s.name).slice(0, 3).join(', ');
+                    const more = inSeries.length > 3 ? `, +${inSeries.length - 3}` : '';
                     html += `<div class="result-item"><strong>${esc(name)}</strong>
-                        <span class="result-meta">${inSeries.length} série(s) · ${vols} tomes</span>
+                        <span class="result-meta">${inSeries.length} série${inSeries.length > 1 ? 's' : ''} · ${vols} tome${vols > 1 ? 's' : ''} · ${read}/${vols} lus (${pct}%)</span>
+                        <span class="result-sub">${esc(names)}${more}</span>
                         <a class="result-link" href="${link(name)}">Voir →</a></div>`;
                 });
             };
-            dim('Auteurs', r.authors);
-            dim('Éditeurs', r.publishers);
-            dim('Catégories', r.categories);
-            dim('Genres', r.genres);
-            dim('Contributeurs', r.contributors);
+            dim('Auteurs', r.authors, 'author');
+            dim('Éditeurs', r.publishers, 'publisher');
+            dim('Catégories', r.categories, 'category');
+            dim('Genres', r.genres, 'genre');
+            dim('Contributeurs', r.contributors, 'contributor');
 
             results.innerHTML = html || '<p style="padding:12px;">Aucun résultat trouvé.</p>';
             results.classList.add('show');
         }
 
         btn.addEventListener('click', e => { e.preventDefault(); run(); });
-        input.addEventListener('keypress', e => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
     }
 });
