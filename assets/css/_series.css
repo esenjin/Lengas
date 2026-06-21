@@ -109,9 +109,16 @@
 }
 
 .mature-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 20px;
     color: var(--status-mature);
-    font-size: 0.8em;
-    font-weight: 500;
+    background: rgba(232, 121, 198, 0.1);
+    border: 1px solid rgba(232, 121, 198, 0.2);
+    font-size: 0.72em;
+    font-weight: 600;
+    letter-spacing: 0.03em;
 }
 
 .read-elsewhere-badge {
