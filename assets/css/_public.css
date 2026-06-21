@@ -12,6 +12,10 @@
     min-width: 0;
 }
 
+#modal-series-title {
+    color: var(--series-title-color);
+}
+
 #modal-volumes-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));

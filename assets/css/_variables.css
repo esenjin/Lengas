@@ -8,6 +8,10 @@
     --primary-subtle: rgba(192, 132, 252, 0.1);
     --primary-glow: rgba(192, 132, 252, 0.2);
 
+    /* Titre des séries — rose, distinct du violet principal */
+    --series-title-color: #c94e93;
+    --series-title-hover: #e05fa8;
+
     --error-color: #f87171;
     --error-hover: #ef4444;
     --error-dark: #dc2626;
