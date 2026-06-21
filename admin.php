@@ -1018,13 +1018,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
     $volumes_html = '<ul class="volumes-list">';
     foreach ($series['volumes'] as $volume_index => $volume) {
         $is_loaned = isset($loaned_volumes[$volume['number']]);
-        $loan_attr = $is_loaned ? ' volume-loaned" title="Prêté à ' . htmlspecialchars($loaned_volumes[$volume['number']]) . '"' : '"';
+
+        // Construire l'infobulle (survol)
+        $tooltip_lines = [];
+
+        $format_date = function ($d) {
+            if (empty($d)) return '';
+            $ts = strtotime($d);
+            return $ts ? date('d/m/Y', $ts) : '';
+        };
+
+        $added_at = $format_date($volume['added_at'] ?? '');
+        if ($added_at !== '') {
+            $tooltip_lines[] = "Date d'ajout à la collection : $added_at";
+        }
+
+        if (($volume['status'] ?? '') === 'terminé') {
+            $read_at = $format_date($volume['read_at'] ?? '');
+            if ($read_at !== '') {
+                $tooltip_lines[] = "Date de lecture : $read_at";
+            }
+        }
+
+        if (!empty($volume['collector'])) {
+            $tooltip_lines[] = 'Tome collector !';
+        }
+
+        if (!empty($volume['last'])) {
+            $tooltip_lines[] = 'Dernier tome de la série !';
+        }
+
+        if ($is_loaned) {
+            $tooltip_lines[] = 'Prêté à ' . $loaned_volumes[$volume['number']];
+        }
+
+        $title_attr = !empty($tooltip_lines)
+            ? ' title="' . htmlspecialchars(implode("\n", $tooltip_lines), ENT_QUOTES) . '"'
+            : '';
+
         $volumes_html .= sprintf(
-            '<li class="status-%s%s%s%s data-series-id="%s" data-volume-index="%d">%d%s</li>',
+            '<li class="status-%s%s%s%s"%s data-series-id="%s" data-volume-index="%d">%d%s</li>',
             str_replace(' ', '-', strtolower($volume['status'])),
             !empty($volume['collector']) ? ' volume-collector' : '',
             !empty($volume['last']) ? ' volume-last' : '',
-            $loan_attr,
+            $is_loaned ? ' volume-loaned' : '',
+            $title_attr,
             $series_id,
             $volume_index,
             $volume['number'],
