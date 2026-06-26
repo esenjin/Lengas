@@ -608,7 +608,10 @@ function check_collection_coherence(array $data): array {
 
                     // mu_still_ongoing et mu_complete_unmarked nécessitent le statut textuel
                     if ($mu_status_text !== null && $mu_status_text !== '') {
-                        if ($is_finished_here && !$mu_completed) {
+                        // Une série « Cancelled » (arrêtée) est, dans les faits, terminée :
+                        // on ne déclenche l'alerte que si la publication est réellement en cours.
+                        $mu_cancelled = (stripos($mu_status_text, 'cancel') !== false);
+                        if ($is_finished_here && !$mu_completed && !$mu_cancelled) {
                             $series_issues[] = ['type' => 'mu_still_ongoing', 'message' => 'Vous avez marqué la série comme terminée (ou tagué un tome comme dernier), mais MangaUpdates indique une publication toujours en cours (« ' . $mu_status_text . ' »).'];
                         }
 
