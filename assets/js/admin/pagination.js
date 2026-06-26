@@ -199,6 +199,8 @@ document.getElementById('series-list').addEventListener('click', (e) => {
             document.querySelector('#edit-volume-modal [name="status"]').value = volume.status;
             document.querySelector('#edit-volume-modal [name="is_collector"]').checked = !!volume.collector;
             document.querySelector('#edit-volume-modal [name="is_last"]').checked = !!volume.last;
+            document.getElementById('edit-volume-read-at').value = volume.read_at || '';
+            if (typeof updateReadAtVisibility === 'function') updateReadAtVisibility();
             document.getElementById('edit-volume-modal').classList.add('modal-active');
         }
     }
@@ -301,6 +303,8 @@ document.getElementById('series-list').addEventListener('click', (e) => {
             document.querySelector('#edit-volume-modal [name="status"]').value = volume.status;
             document.querySelector('#edit-volume-modal [name="is_collector"]').checked = !!volume.collector;
             document.querySelector('#edit-volume-modal [name="is_last"]').checked = !!volume.last;
+            document.getElementById('edit-volume-read-at').value = volume.read_at || '';
+            if (typeof updateReadAtVisibility === 'function') updateReadAtVisibility();
             document.getElementById('edit-volume-modal').classList.add('modal-active');
         }
         return;
