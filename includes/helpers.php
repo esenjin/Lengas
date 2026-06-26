@@ -39,12 +39,26 @@ function get_unique_values($data, $field) {
     return $values;
 }
 
+// Récupère la date la plus récente (added_at ou read_at) parmi les tomes d'une série
+function series_latest_date($series, $field) {
+    $dates = [];
+    foreach ($series['volumes'] ?? [] as $v) {
+        if (!empty($v[$field])) {
+            $dates[] = $v[$field];
+        }
+    }
+    if (empty($dates)) {
+        return '0000-00-00';
+    }
+    return max($dates);
+}
+
 // Fonction pour trier les séries
 function sort_series(&$data, $sort_by, $sort_order) {
     usort($data, function($a, $b) use ($sort_by, $sort_order) {
-        if ($sort_by === 'added_at') {
-            $a_val = end($a['volumes'])['added_at'] ?? '0000-00-00';
-            $b_val = end($b['volumes'])['added_at'] ?? '0000-00-00';
+        if ($sort_by === 'added_at' || $sort_by === 'read_at') {
+            $a_val = series_latest_date($a, $sort_by);
+            $b_val = series_latest_date($b, $sort_by);
             return $sort_order === 'asc' ? strcmp($a_val, $b_val) : strcmp($b_val, $a_val);
         }
         if ($sort_by === 'volumes') {

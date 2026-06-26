@@ -3,6 +3,17 @@ require 'config.php';
 $data = load_data();
 $options = load_options();
 
+// Récupère la date la plus récente (added_at ou read_at) parmi les tomes d'une série
+function series_latest_date($series, $field) {
+    $dates = [];
+    foreach ($series['volumes'] ?? [] as $v) {
+        if (!empty($v[$field])) {
+            $dates[] = $v[$field];
+        }
+    }
+    return empty($dates) ? '0000-00-00' : max($dates);
+}
+
 // Vérifier si le mode privé est activé
 if ($options['private_mode']) {
     // Afficher un message informatif avec la structure HTML complète
@@ -215,6 +226,10 @@ function sort_series(&$data, $sort_by, $sort_order) {
             $a_volumes = count($a['volumes'] ?? []);
             $b_volumes = count($b['volumes'] ?? []);
             return $sort_order === 'asc' ? $a_volumes - $b_volumes : $b_volumes - $a_volumes;
+        } elseif ($sort_by === 'added_at' || $sort_by === 'read_at') {
+            $a_val = series_latest_date($a, $sort_by);
+            $b_val = series_latest_date($b, $sort_by);
+            return $sort_order === 'asc' ? strcmp($a_val, $b_val) : strcmp($b_val, $a_val);
         } elseif ($sort_by === 'categories') {
             $a_categories = implode(', ', $a['categories'] ?? []);
             $b_categories = implode(', ', $b['categories'] ?? []);
@@ -333,6 +348,8 @@ function get_latest_version_from_gitea() {
                         <option value="publisher" <?= $sort_by === 'publisher' ? 'selected' : '' ?>>Trier par éditeur</option>
                         <option value="categories" <?= $sort_by === 'categories' ? 'selected' : '' ?>>Trier par catégories</option>
                         <option value="volumes" <?= $sort_by === 'volumes' ? 'selected' : '' ?>>Trier par nombre de tomes</option>
+                        <option value="added_at" <?= $sort_by === 'added_at' ? 'selected' : '' ?>>Trier par date d'ajout</option>
+                        <option value="read_at" <?= $sort_by === 'read_at' ? 'selected' : '' ?>>Trier par date de lecture</option>
                     </select>
                     <select name="sort_order">
                         <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Ascendant</option>
