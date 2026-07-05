@@ -97,3 +97,27 @@ form {
     width: auto;
     margin-bottom: 0;
 }
+
+/* ── Champ de choix d'icône (liens personnalisés) ─────────────────────────── */
+.custom-icon-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.custom-icon-field .custom-icon-select {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.custom-icon-preview {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    padding: 5px;
+    box-sizing: content-box;
+    background: var(--background-darker, rgba(0, 0, 0, 0.25));
+    border-radius: var(--border-radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}

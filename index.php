@@ -298,43 +298,12 @@ function get_latest_version_from_gitea() {
             transform: translateY(-3px);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
         }
-
-        /* Style pour le pied de page */
-        .footer {
-            justify-content: center;
-            display: flex;
-            padding-top: 20px;
-            }
     </style>
 </head>
-<body>
+<body class="with-sidebar">
+    <?php include 'includes/public-sidebar.php'; ?>
     <div class="container">
-        <div class="logout-container">
-            <a href="admin.php" class="logout-button" title="Administration">
-                <img src="https://api.iconify.design/mdi/lock.svg?color=white" alt="Administration" width="18" height="18">
-            </a>
-            <button class="logout-button" id="open-legend-modal" title="Légende" style="background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;padding:4px 6px;">
-                <img src="https://api.iconify.design/mdi/information-outline.svg?color=white" alt="Légende" width="18" height="18">
-            </button>
-        </div>
         <h1><?= htmlspecialchars($options['index_page_title']) ?></h1>
-
-        <!-- Bouton Menu Mobile -->
-        <button class="mobile-menu-button" id="mobile-menu-button">☰ Menu</button>
-
-        <!-- Menu d'actions -->
-        <div class="public-menu" id="public-menu">
-            <?php if (!empty($options['custom_button_name']) && !empty($options['custom_button_url'])): ?>
-                <a href="<?= htmlspecialchars($options['custom_button_url']) ?>" class="button button-otl" target="_blank"><?= htmlspecialchars($options['custom_button_name']) ?> ↗</a>
-            <?php endif; ?>
-            <?php if (!empty($options['custom_button_name2']) && !empty($options['custom_button_url2'])): ?>
-                <a href="<?= htmlspecialchars($options['custom_button_url2']) ?>" class="button button-otl" target="_blank"><?= htmlspecialchars($options['custom_button_name2']) ?> ↗</a>
-            <?php endif; ?>
-            <?php if (!empty($options['custom_button_name3']) && !empty($options['custom_button_url3'])): ?>
-                <a href="<?= htmlspecialchars($options['custom_button_url3']) ?>" class="button button-otl" target="_blank"><?= htmlspecialchars($options['custom_button_name3']) ?> ↗</a>
-            <?php endif; ?>
-            <a href="stats.php" class="button" target="_blank">Statistiques Lengas ↗</a>
-        </div>
 
         <!-- Barre de filtres et recherche -->
         <div class="filters">
@@ -476,22 +445,6 @@ function get_latest_version_from_gitea() {
             </div>
         </div>
     </div>
-
-    <!-- Pied de page -->
-    <footer class="footer">
-        <?php
-            $latest_version = get_latest_version_from_gitea();
-            $current_version = SITE_VERSION;
-            $version_class = '';
-            $version_tooltip = '';
-        ?>
-        <container>
-        <p class="hint <?= $version_class ?>" data-tooltip="<?= htmlspecialchars($version_tooltip) ?>">
-            <?= htmlspecialchars($options['site_name']) ?> - Site en version <?= $current_version ?>.
-            <a href="<?= URL_GITEA ?>" target="_blank">Accéder au dépôt Gitéa</a>.
-        </p>
-        </container>
-    </footer>
 
     <button id="back-to-top" title="Retour en haut">↑</button>
 

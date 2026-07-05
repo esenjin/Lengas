@@ -555,3 +555,55 @@ a.sidebar-link.is-active:hover::after {
         to   { opacity: 1; }
     }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Version en bas de sidebar (menu public)
+   ══════════════════════════════════════════════════════════════════════ */
+.sidebar-version {
+    flex-direction: column;
+    height: auto;
+    padding: 6px 0;
+    color: var(--text-gray);
+}
+
+.sidebar-version-text {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    opacity: 0.55;
+    transition: opacity 0.15s ease;
+    line-height: 1;
+    text-align: center;
+    pointer-events: none;
+}
+
+.sidebar-version:hover .sidebar-version-text {
+    opacity: 0.9;
+}
+
+/* Dans le drawer mobile : label complet plutôt que le simple numéro */
+@media (max-width: 768px) {
+    .sidebar-version {
+        flex-direction: row;
+        height: 52px;
+        padding: 0 20px;
+        gap: 14px;
+        justify-content: flex-start;
+    }
+
+    /* Le numéro seul est masqué : le label data-tooltip prend le relais */
+    .sidebar-version .sidebar-version-text {
+        display: none;
+    }
+
+    /* Petite icône de version dans le drawer via ::before */
+    .sidebar-version::before {
+        content: '';
+        display: inline-block;
+        width: 22px;
+        height: 22px;
+        flex-shrink: 0;
+        background: url("https://api.iconify.design/mdi/tag.svg?color=%23808090") no-repeat center / contain;
+        opacity: 0.8;
+    }
+}

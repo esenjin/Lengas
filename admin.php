@@ -11,6 +11,7 @@ require 'fonctions/wishlist.php';
 require 'fonctions/loans.php';
 require 'fonctions/options.php';
 require 'fonctions/tools.php';
+require 'includes/custom_icons.php';
 
 $data = load_data();
 $options = load_options();
@@ -538,6 +539,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $options['custom_button_url2'] = trim($_POST['custom_button_url2'] ?? '');
     $options['custom_button_name3']   = trim($_POST['custom_button_name3'] ?? '');
     $options['custom_button_url3']    = trim($_POST['custom_button_url3'] ?? '');
+
+    // ── Icônes des liens personnalisés (validées contre le jeu autorisé) ──
+    require_once 'includes/custom_icons.php';
+    $allowed_icon_keys = array_keys(custom_link_icons());
+    foreach (['', '2', '3'] as $suffix) {
+        $key = $_POST["custom_button_icon$suffix"] ?? 'link';
+        $options["custom_button_icon$suffix"] = in_array($key, $allowed_icon_keys, true) ? $key : 'link';
+    }
 
     // ── Section "Statistiques" : valeurs de repli globales + par catégorie ──
     $norm_num = function ($v) {
@@ -1620,27 +1629,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <input type="text" name="stats_page_title" id="stats-page-title" placeholder="Titre de la page de statistiques" value="<?= htmlspecialchars($options['stats_page_title']) ?>" required>
 
                     <h3 class="options-section-title">Liens personnalisés</h3>
+                    <p class="hint">Ces liens apparaissent dans le menu latéral des pages publiques (accueil et statistiques). Choisissez une icône pour chacun.</p>
 
-                    <label for="custom-button-name">Nom du bouton personnalisé (1)</label>
-                    <input type="text" name="custom_button_name" id="custom-button-name" placeholder="Nom du bouton" value="<?= htmlspecialchars($options['custom_button_name'] ?? '') ?>">
+                    <?php
+                    $icon_labels = custom_link_icon_labels();
+                    $icon_map    = custom_link_icons();
+                    for ($__i = 1; $__i <= 3; $__i++):
+                        $__s        = $__i === 1 ? '' : $__i;
+                        $__name_val = htmlspecialchars($options["custom_button_name$__s"] ?? '');
+                        $__url_val  = htmlspecialchars($options["custom_button_url$__s"]  ?? '');
+                        $__icon_val = $options["custom_button_icon$__s"] ?? 'link';
+                    ?>
+                        <label for="custom-button-name<?= $__s ?>">Nom du bouton personnalisé (<?= $__i ?>)</label>
+                        <input type="text" name="custom_button_name<?= $__s ?>" id="custom-button-name<?= $__s ?>" placeholder="Nom du bouton" value="<?= $__name_val ?>">
 
-                    <label for="custom-button-url">URL du bouton personnalisé (1)</label>
-                    <input type="text" name="custom_button_url" id="custom-button-url" placeholder="URL du bouton" value="<?= htmlspecialchars($options['custom_button_url'] ?? '') ?>">
-                    <p class="hint">Laisser vide pour masquer le bouton.</p>
+                        <label for="custom-button-url<?= $__s ?>">URL du bouton personnalisé (<?= $__i ?>)</label>
+                        <input type="text" name="custom_button_url<?= $__s ?>" id="custom-button-url<?= $__s ?>" placeholder="URL du bouton" value="<?= $__url_val ?>">
 
-                    <label for="custom-button-name2">Nom du bouton personnalisé (2)</label>
-                    <input type="text" name="custom_button_name2" id="custom-button-name2" placeholder="Nom du bouton" value="<?= htmlspecialchars($options['custom_button_name2'] ?? '') ?>">
-
-                    <label for="custom-button-url2">URL du bouton personnalisé (2)</label>
-                    <input type="text" name="custom_button_url2" id="custom-button-url2" placeholder="URL du bouton" value="<?= htmlspecialchars($options['custom_button_url2'] ?? '') ?>">
-                    <p class="hint">Laisser vide pour masquer le bouton.</p>
-
-                    <label for="custom-button-name3">Nom du bouton personnalisé (3)</label>
-                    <input type="text" name="custom_button_name3" id="custom-button-name3" placeholder="Nom du bouton" value="<?= htmlspecialchars($options['custom_button_name3'] ?? '') ?>">
-
-                    <label for="custom-button-url3">URL du bouton personnalisé (3)</label>
-                    <input type="text" name="custom_button_url3" id="custom-button-url3" placeholder="URL du bouton" value="<?= htmlspecialchars($options['custom_button_url3'] ?? '') ?>">
-                    <p class="hint">Laisser vide pour masquer le bouton.</p>
+                        <label for="custom-button-icon<?= $__s ?>">Icône du bouton (<?= $__i ?>)</label>
+                        <div class="custom-icon-field">
+                            <img class="custom-icon-preview" id="custom-icon-preview<?= $__s ?>"
+                                 src="https://api.iconify.design/<?= str_replace(':', '/', custom_link_icon_name($__icon_val)) ?>.svg?color=%234ade80"
+                                 width="22" height="22" alt="">
+                            <select name="custom_button_icon<?= $__s ?>" id="custom-button-icon<?= $__s ?>"
+                                    class="custom-icon-select"
+                                    data-icon-map='<?= htmlspecialchars(json_encode($icon_map), ENT_QUOTES) ?>'
+                                    data-preview="custom-icon-preview<?= $__s ?>">
+                                <?php foreach ($icon_labels as $__key => $__lbl): ?>
+                                    <option value="<?= $__key ?>" <?= $__icon_val === $__key ? 'selected' : '' ?>><?= htmlspecialchars($__lbl) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <p class="hint">Laisser le nom ou l'URL vide pour masquer le bouton.</p>
+                    <?php endfor; ?>
+                    <script>
+                    (function() {
+                        document.querySelectorAll('.custom-icon-select').forEach(function(sel) {
+                            var map = {};
+                            try { map = JSON.parse(sel.dataset.iconMap || '{}'); } catch (e) {}
+                            var preview = document.getElementById(sel.dataset.preview);
+                            sel.addEventListener('change', function() {
+                                if (!preview) return;
+                                var iconName = (map[sel.value] || 'mdi:link-variant').replace(':', '/');
+                                preview.src = 'https://api.iconify.design/' + iconName + '.svg?color=%234ade80';
+                            });
+                        });
+                    })();
+                    </script>
 
                     <!-- ══ STATISTIQUES ══════════════════════════════════════ -->
                     <h3 class="options-section-title">Statistiques</h3>

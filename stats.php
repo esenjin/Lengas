@@ -174,22 +174,11 @@ $chart_payload = [
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
 </head>
-<body class="stats-page">
+<body class="stats-page with-sidebar">
+    <?php include 'includes/public-sidebar.php'; ?>
     <div class="container">
         <header class="stats-header">
             <h1><?= htmlspecialchars($page_title) ?></h1>
-            <button class="mobile-menu-button" id="mobile-menu-button">☰ Menu</button>
-            <div class="public-menu" id="public-menu">
-                <?php for ($i = 1; $i <= 3; $i++):
-                    $suffix = $i === 1 ? '' : $i;
-                    $name = $options["custom_button_name$suffix"] ?? '';
-                    $url  = $options["custom_button_url$suffix"]  ?? '';
-                    if (!empty($name) && !empty($url)): ?>
-                        <a href="<?= htmlspecialchars($url) ?>" class="button button-otl" target="_blank"><?= htmlspecialchars($name) ?> ↗</a>
-                    <?php endif;
-                endfor; ?>
-                <a href="index.php" class="button">Accueil ↗</a>
-            </div>
         </header>
 
         <!-- ══ 1. VUE D'ENSEMBLE ══════════════════════════════════════════ -->
@@ -560,13 +549,6 @@ $chart_payload = [
             </div>
         </section>
 
-        <footer class="footer">
-            <?php $current_version = SITE_VERSION; ?>
-            <p class="hint">
-                <?= htmlspecialchars($options['site_name'] ?? 'Lengas') ?> — version <?= $current_version ?>.
-                <a href="<?= URL_GITEA ?>" target="_blank">Dépôt Gitéa</a>.
-            </p>
-        </footer>
     </div>
 
     <button id="back-to-top" title="Retour en haut">↑</button>

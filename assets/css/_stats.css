@@ -3,7 +3,9 @@
    Design dark cohérent avec le reste du site (cf. _variables.css)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Conteneur ── */
+/* ── Conteneur ──
+   Les paddings sont fournis par body.with-sidebar .container (cf. _sidebar.css /
+   _pages.css) ; on conserve ici la largeur maximale et le centrage. */
 .stats-page .container {
     width: 100%;
     max-width: 1180px;
