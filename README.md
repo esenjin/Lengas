@@ -36,13 +36,12 @@ Mobile
 ## Fonctionnalités
 ### Gestion des séries
 - Ajout, modification et suppression de séries
-- Statuts de publication : en cours, terminée, en pause, abandonnée
 - Association à une fiche MangaUpdates (URL) pour le suivi du nombre de tomes et du statut de publication
 - Remplissage automatique des URL MangaUpdates en masse via l'outil « Associer MangaUpdates » (recherche par titre + auteur)
 
 ### Suivi des tomes
 - Ajout, modification et suppression de tomes
-- Statut de lecture personnalisable (à lire, en cours, terminé)
+- Statut de lecture personnalisable
 - Gestion des tomes collectors et des derniers tomes
 
 ### Statuts de lecture
@@ -51,35 +50,34 @@ Mobile
 - Marquage « Lecture abandonnée » pour les séries dont on a arrêté la lecture
 
 ### Liste d'envies
-- Page dédiée (`page-wishlist.php`) avec recherche et tri
-- Ajout, modification et suppression de séries dans la liste
-- Ajout rapide vers la collection avec pré-remplissage automatique du formulaire
+- Ajout et suppression de séries dans une liste d'envies
+- Possibilité d'ajouter une série de la liste d'envies à votre collection
 
 ### Gestion des prêts
-- Page dédiée (`page-prets.php`) pour suivre les tomes prêtés et à qui
 - Prêt d'un tome unique ou d'une plage de tomes d'une même série
 - Retour de prêt unitaire ou en masse par série
 
+### Séries à lire
+- Affiche les séries qui ne sont pas entièrement lues.
+
 ### Gestion des lues ailleurs
-- Suivi des séries lues sans les posséder physiquement
+- Suivi des séries lues non-présentes dans la bibliothèque
+
+### Gestion des prêts
+- Suivi des tomes prêtés et à qui
 
 ### Statistiques
-- Nombre de séries, tomes, répartition par statut
-- Statistiques détaillées : auteurs, éditeurs, formats, progression de lecture
+- Nombre de séries, tomes, répartition par statut, etc.
+- Recherche des séries incomplètes (via MangaUpdates)
 
 ### Vérifications de la collection
-- **Séries incomplètes** : détecte les tomes manquants en comparant votre collection au nombre de tomes indiqué par MangaUpdates (le décompte VF est privilégié lorsqu'il est disponible) ; filtrage et tri des résultats, option de forçage pour ignorer le cache
-- **Incohérences** : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome », statut différent de MangaUpdates, etc.) avec possibilité d'édition rapide directement depuis la modale
-
-### Navigation
-- Sidebar verticale à icônes, accessible sur toutes les pages d'administration
-- Drawer mobile avec bouton hamburger et fermeture par overlay ou touche Échap
-- Ouverture directe des modales via les liens de la sidebar (ou redirection depuis les pages secondaires)
+- **Séries incomplètes** : détecte les tomes manquants en comparant votre collection au nombre de tomes indiqué par MangaUpdates (le décompte VF est privilégié lorsqu'il est disponible)
+- **Incohérences** : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome », statut différent de MangaUpdates, etc.)
 
 ### Outils (modale « Outils », organisée en onglets)
-- **Sauvegardes** : création et téléchargement d'archives de vos données, liste des sauvegardes existantes
+- **Sauvegardes** : création, téléchargement et liste d'archives de vos données
 - **Association MangaUpdates** : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement
-- **Vérification d'intégrité** : contrôle des fichiers, des permissions, de la structure de la base de données, de la connectivité à l'API MangaUpdates, de l'accessibilité externe des dossiers sensibles et de la version installée
+- **Vérification d'intégrité** : contrôle des fichiers, des permissions, de la structure de la base de données et de la connectivité à l'API MangaUpdates
 
 ### Options
 - Nom, description et titres de pages personnalisables
@@ -88,18 +86,15 @@ Mobile
 - Remplacement de la vignette par défaut
 - Modification du mot de passe administrateur
 
-### Interface
+### Interface intuitive
 - Design sombre et responsive
-- Modales pour toutes les actions de gestion
-- Tri et filtrage des séries (nom, auteur, éditeur, catégories, nombre de tomes)
-- Filtres par statut de publication, statut de lecture, contenu mature, favoris, lues ailleurs
-- Indicateur de mise à jour disponible (vérification automatique sur Gitea)
+- Navigation latérale à icônes commune à l'administration et aux pages publiques (accueil et statistiques), avec liens personnalisés à icône choisie, bouton d'infos/légende, accès administration et numéro de version cliquable vers le dépôt
+- Modales pour les actions
+- Tri et filtrage des séries
 
 ### Sécurité
 - Mode privé pour cacher votre bibliothèque
-- Sessions stockées en base SQLite (7 jours, cookie sécurisé HttpOnly/SameSite)
 - Gestion des mots de passe et des sessions
-- Blocage de l'accès direct aux dossiers `bdd/` et `saves/` via `.htaccess`
 
 ## Prérequis
 - Serveur web (Apache, Nginx)
@@ -118,7 +113,7 @@ Mobile
 2. Extraire l'archive téléchargée
 3. Y SUPPRIMER LE FICHIER `generate_password.php`
 4. Sur votre serveur, tout supprimer SAUF les dossiers `bdd/`, `saves/` et `uploads/` (ni ce qu'ils contiennent)
-5. Téléverser les fichiers/dossiers extraits sur votre serveur
+5. Téléverser les fichiers/dossiers extrait sur votre serveur
 6. Bien joué, c'est à jour !
 
 ## Mise à jour depuis d'anciennes versions majeures
@@ -143,7 +138,7 @@ lengas/
 ├── stats.php            # Page des statistiques
 ├── page-prets.php       # Page de gestion des prêts
 ├── page-wishlist.php    # Page de la liste d'envies
-├── config.php           # Configuration et initialisation de la base SQLite
+├── config.php           # Configuration du site
 ├── login.php            # Connexion
 ├── logout.php           # Déconnexion
 ├── .htaccess
@@ -155,12 +150,12 @@ lengas/
 │   │   ├── _forms.css
 │   │   ├── _layout.css
 │   │   ├── _modals.css
-│   │   ├── _pages.css       # Mise en page des pages dédiées (prêts, wishlist)
+│   │   ├── _pages.css
 │   │   ├── _public.css
 │   │   ├── _responsive.css
 │   │   ├── _series.css
-│   │   ├── _sidebar.css     # Sidebar de navigation
-│   │   ├── _stats.css       # Page des statistiques
+│   │   ├── _sidebar.css
+│   │   ├── _stats.css
 │   │   ├── _utils.css
 │   │   ├── _variables.css
 │   │   └── main.css
@@ -177,15 +172,19 @@ lengas/
 │       │   ├── wishlist.js
 │       │   ├── loans.js
 │       │   ├── tools.js
+│       │   ├── unread.js
 │       │   ├── pagination.js
+│       │   ├── read.js
 │       │   └── main.js
 │       ├── stats.js
 │       └── public.js
 ├── includes/
-│   ├── auth.php          # Gestion de l'authentification et des sessions
-│   ├── helpers.php       # Fonctions utilitaires générales
-│   ├── mangaupdates.php  # API MangaUpdates (suivi des tomes et du statut)
-│   └── sidebar.php       # Composant de navigation latérale
+│   ├── auth.php            # Gestion de l'authentification et des sessions
+│   ├── helpers.php         # Fonctions utilitaires générales
+│   ├── mangaupdates.php    # API MangaUpdates (suivi des tomes et du statut)
+│   ├── sidebar.php         # Menu latéral à icônes de l'administration
+│   ├── public-sidebar.php  # Menu latéral à icônes des pages publiques (accueil et statistiques)
+│   └── custom_icons.php    # Jeu d'icônes des liens personnalisés (partagé options/sidebar)
 ├── fonctions/
 │   ├── series.php        # Fonctions de gestion des séries
 │   ├── volumes.php       # Fonctions de gestion des tomes
