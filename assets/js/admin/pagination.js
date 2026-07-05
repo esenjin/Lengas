@@ -324,6 +324,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusFilter = document.getElementById('status-filter');
     if (statusFilter) {
         statusFilter.addEventListener('change', () => {
+            const url = new URL(window.location.href);
+            if (statusFilter.value) {
+                url.searchParams.set('status_filter', statusFilter.value);
+            } else {
+                url.searchParams.delete('status_filter');
+            }
+            window.history.replaceState({}, '', url);
+
             seriesList.innerHTML = '';
             currentPage = 0;
             hasMoreSeries = true;

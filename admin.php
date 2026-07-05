@@ -1229,6 +1229,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
 $sort_by = $_GET['sort_by'] ?? 'name';
 $sort_order = $_GET['sort_order'] ?? 'asc';
 $search_term = $_GET['search'] ?? '';
+$status_filter = $_GET['status_filter'] ?? '';
 
 $filtered_data = $data;
 
@@ -1322,19 +1323,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <option value="desc" <?= $sort_order === 'desc' ? 'selected' : '' ?>>Descendant</option>
                     </select>
                     <select name="status_filter" id="status-filter">
-                        <option value="">Tous les statuts</option>
-                        <option value="en cours">Publication en cours ▶️</option>
-                        <option value="terminée">Publication terminée ✅</option>
-                        <option value="en pause">Publication en pause ⏳</option>
-                        <option value="abandonnée">Publication abandonnée ⛔</option>
-                        <option value="mature">Contenu mature 🔞</option>
-                        <option value="non_mature">Contenu non mature 👐</option>
-                        <option value="favorite">Mes favoris ❤️</option>
-                        <option value="reading_not_started">Lecture à débuter 📖</option>
-                        <option value="reading_in_progress">Lecture en cours 📘</option>
-                        <option value="reading_completed">Lecture terminée 📗</option>
-                        <option value="reading_abandoned">Lecture abandonnée 📕</option>
-                        <option value="read_elsewhere">Lues ailleurs 📚</option>
+                        <option value="" <?= $status_filter === '' ? 'selected' : '' ?>>Tous les statuts</option>
+                        <option value="en cours" <?= $status_filter === 'en cours' ? 'selected' : '' ?>>Publication en cours ▶️</option>
+                        <option value="terminée" <?= $status_filter === 'terminée' ? 'selected' : '' ?>>Publication terminée ✅</option>
+                        <option value="en pause" <?= $status_filter === 'en pause' ? 'selected' : '' ?>>Publication en pause ⏳</option>
+                        <option value="abandonnée" <?= $status_filter === 'abandonnée' ? 'selected' : '' ?>>Publication abandonnée ⛔</option>
+                        <option value="mature" <?= $status_filter === 'mature' ? 'selected' : '' ?>>Contenu mature 🔞</option>
+                        <option value="non_mature" <?= $status_filter === 'non_mature' ? 'selected' : '' ?>>Contenu non mature 👐</option>
+                        <option value="favorite" <?= $status_filter === 'favorite' ? 'selected' : '' ?>>Mes favoris ❤️</option>
+                        <option value="reading_not_started" <?= $status_filter === 'reading_not_started' ? 'selected' : '' ?>>Lecture à débuter 📖</option>
+                        <option value="reading_in_progress" <?= $status_filter === 'reading_in_progress' ? 'selected' : '' ?>>Lecture en cours 📘</option>
+                        <option value="reading_completed" <?= $status_filter === 'reading_completed' ? 'selected' : '' ?>>Lecture terminée 📗</option>
+                        <option value="reading_abandoned" <?= $status_filter === 'reading_abandoned' ? 'selected' : '' ?>>Lecture abandonnée 📕</option>
+                        <option value="read_elsewhere" <?= $status_filter === 'read_elsewhere' ? 'selected' : '' ?>>Lues ailleurs 📚</option>
                     </select>
                 </div>
                 <button type="submit">Appliquer</button>
