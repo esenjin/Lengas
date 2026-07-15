@@ -21,6 +21,13 @@ body.modal-open {
     overflow: hidden;
 }
 
+/* Le scroll de la page est porté par <html> sur la plupart des configs :
+   il faut donc le verrouiller lui aussi, sinon l'arrière-plan continue
+   de défiler sous la modale. */
+html:has(body.modal-open) {
+    overflow: hidden;
+}
+
 .modal {
     display: none;
     position: fixed;
