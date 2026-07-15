@@ -150,6 +150,7 @@
             card.dataset.seriesId = r.series_id;
             const img = (r.image && r.image !== '') ? htmlEscape(r.image) : 'assets/img/logo.png';
             card.innerHTML = `
+                <button type="button" class="review-card-delete" title="Supprimer la critique" aria-label="Supprimer la critique">&times;</button>
                 <img class="review-card-thumb" src="${img}" alt="" loading="lazy">
                 <div class="review-card-body">
                     <h3 class="review-card-title">${htmlEscape(r.name)}</h3>
@@ -159,6 +160,23 @@
                 </div>
             `;
             card.addEventListener('click', () => openEditor(r.series_id));
+            card.querySelector('.review-card-delete').addEventListener('click', async (e) => {
+                e.stopPropagation(); // ne pas ouvrir l'éditeur
+                const ok = await showCustomConfirm(
+                    'Confirmation',
+                    `Êtes-vous sûr de vouloir supprimer la critique de « ${r.name} » ?`
+                );
+                if (!ok) return;
+                const res = await api('delete', { series_id: r.series_id });
+                if (res.success) {
+                    card.remove();
+                    if (!listContainer.querySelector('.review-card')) {
+                        listContainer.innerHTML = '<p class="reviews-empty">Aucune critique pour le moment. ✏️</p>';
+                    }
+                } else {
+                    showCustomAlert('Erreur', res.message || 'Suppression impossible.');
+                }
+            });
             listContainer.appendChild(card);
         });
     }
