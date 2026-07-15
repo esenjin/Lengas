@@ -113,6 +113,8 @@ document.querySelectorAll('.series-card').forEach(card => {
             volumesList.appendChild(li);
         });
 
+        document.querySelector('#series-detail-modal .modal-content').classList.toggle('favorite', !!series.favorite);
+
         openModal('series-detail-modal');
     });
 });
@@ -209,6 +211,8 @@ function loadMoreSeries() {
                             li.textContent = volume.number;
                             volumesList.appendChild(li);
                         });
+
+                        document.querySelector('#series-detail-modal .modal-content').classList.toggle('favorite', !!series.favorite);
 
                         openModal('series-detail-modal');
                     });
@@ -322,6 +326,8 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
                             li.textContent = volume.number;
                             volumesList.appendChild(li);
                         });
+
+                        document.querySelector('#series-detail-modal .modal-content').classList.toggle('favorite', !!series.favorite);
 
                         openModal('series-detail-modal');
                     });
@@ -449,6 +455,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 li.textContent = volume.number;
                                 volumesList.appendChild(li);
                             });
+                            document.querySelector('#series-detail-modal .modal-content').classList.toggle('favorite', !!series.favorite);
                             openModal('series-detail-modal');
                         });
                         seriesList.appendChild(seriesCard);

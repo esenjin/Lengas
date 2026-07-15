@@ -17,6 +17,10 @@
 }
 
 /* Styles pour les modales */
+body.modal-open {
+    overflow: hidden;
+}
+
 .modal {
     display: none;
     position: fixed;
@@ -53,6 +57,11 @@
     overflow-y: auto;
     box-shadow: var(--box-shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.06);
     animation: modalSlideIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal-content.favorite {
+    border: 2px solid var(--favorite-border);
+    box-shadow: var(--favorite-shadow);
 }
 
 .modal-content--wide {
