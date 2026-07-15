@@ -999,6 +999,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
             if ($status_filter === 'reading_abandoned') {
                 return !empty($series['reading_abandoned']);
             }
+            $status = 'en cours';
+            if (!empty($series['volumes'])) {
+                foreach ($series['volumes'] as $volume) {
+                    if (!empty($volume['last'])) {
+                        $status = 'terminée';
+                        break;
+                    }
+                }
+            }
+            if ($status === 'en cours' && !empty($series['status'])) {
+                $status = $series['status'];
+            }
+            return $status === $status_filter;
         });
     }
     sort_series($filtered_data, $sort_by, $sort_order);
