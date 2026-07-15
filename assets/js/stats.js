@@ -746,3 +746,27 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('click', e => { e.preventDefault(); run(); });
     }
 });
+
+// ─────────────────────────────────────────────────────────────
+// Blocage du défilement de l'arrière-plan quand une modale est ouverte
+// (universel : couvre les modales via .modal-active et via display:flex inline)
+(function () {
+    function anyModalVisible() {
+        return Array.from(document.querySelectorAll('.modal')).some(function (modal) {
+            return getComputedStyle(modal).display !== 'none';
+        });
+    }
+    function syncScrollLock() {
+        document.body.classList.toggle('modal-open', anyModalVisible());
+    }
+    var observer = new MutationObserver(syncScrollLock);
+    document.addEventListener('DOMContentLoaded', function () {
+        observer.observe(document.body, {
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style'],
+            childList: true
+        });
+        syncScrollLock();
+    });
+})();
