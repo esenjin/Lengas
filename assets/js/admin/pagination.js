@@ -112,6 +112,7 @@ function createLightSeriesCard(series) {
         <div class="series-actions">
             <button class="edit-series-btn" data-series-id="${series.id}">Modifier</button>
             <button class="delete-series-btn" data-series-id="${series.id}">Supprimer</button>
+            <button class="review-series-btn button" data-series-id="${series.id}">${series.has_review ? 'Éditer la critique' : 'Ajouter une critique'}</button>
         </div>
         <div class="series-info">
             <h2>${series.name}</h2>
@@ -124,6 +125,7 @@ function createLightSeriesCard(series) {
                 ${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}
                 ${series.read_elsewhere ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}
                 <span class="series-status-badge ${statusClass}">${statusIcon}</span>
+                ${series.has_review ? '<span class="review-badge">✏️ Critique</span>' : ''}
                 ${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}
             </div>
             <button class="load-volumes-btn" data-series-id="${series.id}" data-volumes-count="${series.volumes_count}">Voir les tomes (${series.volumes_count})</button>

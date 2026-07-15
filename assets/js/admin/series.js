@@ -46,6 +46,16 @@ document.addEventListener('click', function(e) {
         }
     });
 
+// Bouton "Critique" d'une carte série → page de gestion des critiques
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.review-series-btn');
+    if (!btn) return;
+    const seriesId = btn.dataset.seriesId;
+    if (seriesId) {
+        window.location.href = 'page-critiques.php?series_id=' + encodeURIComponent(seriesId);
+    }
+});
+
 // Validation de la taille du fichier image à l'ajout ou la modification d'une série
 document.querySelector('form[enctype="multipart/form-data"]').addEventListener('submit', function(e) {
     const fileInput = this.querySelector('input[type="file"]');

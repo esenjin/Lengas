@@ -1,6 +1,7 @@
 <?php
 require 'config.php';
 require 'fonctions/stats_compute.php';
+require 'fonctions/reviews.php';
 
 $data    = load_data();
 $options = load_options();
@@ -55,6 +56,9 @@ if (!empty($options['private_mode'])) {
 // ── Calcul de toutes les statistiques ────────────────────────────────────────
 $stats        = compute_stats($data, $options);
 $hide_mature  = !empty($options['hide_mature']);
+
+// Nombre de critiques (séries encore présentes uniquement)
+$stats['review_count'] = count(list_reviews($data));
 
 // Réglages temps/prix par défaut (pour préciser les explications)
 $stats_settings = stats_get_settings($options);
@@ -195,6 +199,7 @@ $chart_payload = [
                     ['Catégories',    $stats['total_categories'],  'mdi:shape'],
                     ['Contributeurs', $stats['total_contributors'],'mdi:account-group'],
                     ['Collectors',    $stats['collector_count'],   'mdi:star-circle'],
+                    ['Critiques',     $stats['review_count'],      'mdi:pencil'],
                 ];
                 foreach ($kpis as [$label, $val, $icon]): ?>
                     <div class="kpi-card">

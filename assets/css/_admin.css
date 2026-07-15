@@ -101,6 +101,7 @@
 /* ── Boutons dans la colonne gauche de la carte (admin) ── */
 .series-card > .series-actions .edit-series-btn,
 .series-card > .series-actions .delete-series-btn,
+.series-card > .series-actions .review-series-btn,
 .series-card > .series-actions .move-to-read-btn {
     width: 100%;
     text-align: center;

@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '3.6.3');
+define('SITE_VERSION', '3.7.0');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Chemin vers la base de données SQLite
@@ -400,6 +400,7 @@ function load_options(): array {
     // Convertir les booléens
     $opts['private_mode']        = (bool)($opts['private_mode']        ?? false);
     $opts['hide_mature']         = (bool)($opts['hide_mature']         ?? false);
+    $opts['hide_reviews']        = (bool)($opts['hide_reviews']        ?? false);
     return $opts;
 }
 

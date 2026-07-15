@@ -44,6 +44,15 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </button>
         </li>
 
+        <!-- Critiques -->
+        <li>
+            <a href="page-critiques.php"
+               class="sidebar-link <?= $current_page === 'page-critiques.php' ? 'is-active' : '' ?>"
+               data-tooltip="Critiques">
+                <img src="https://api.iconify.design/mdi/pencil.svg?color=%234ade80" width="22" height="22" alt="">
+            </a>
+        </li>
+
         <li class="sidebar-separator"></li>
 
         <!-- Séries incomplètes -->

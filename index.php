@@ -1,7 +1,13 @@
 <?php
 require 'config.php';
+require_once 'fonctions/reviews.php';
 $data = load_data();
 $options = load_options();
+
+// Critiques visibles publiquement ? (option "cacher les critiques")
+$reviews_public = empty($options['hide_reviews']);
+$public_review_ids = $reviews_public ? array_flip(get_review_series_ids()) : [];
+$admin_pseudo = trim($options['admin_pseudo'] ?? '');
 
 // Récupère la date la plus récente (added_at ou read_at) parmi les tomes d'une série
 function series_latest_date($series, $field) {
@@ -77,7 +83,10 @@ if (isset($_GET['get_paginated_series'])) {
         });
     }
     if ($status_filter !== '') {
-        $filtered_data = array_filter($filtered_data, function($series) use ($status_filter) {
+        $filtered_data = array_filter($filtered_data, function($series) use ($status_filter, $public_review_ids, $reviews_public) {
+            if ($status_filter === 'has_review') {
+                return $reviews_public && isset($public_review_ids[$series['id']]);
+            }
             if ($status_filter === 'mature') {
                 return !empty($series['mature']);
             }
@@ -144,10 +153,16 @@ if (isset($_GET['get_paginated_series'])) {
     $offset = ($page - 1) * $per_page;
     $paginated_data = array_slice($filtered_data, $offset, $per_page);
 
+    // Marque les séries possédant une critique visible.
+    $paginated_data = array_map(function ($s) use ($public_review_ids) {
+        $s['has_review'] = isset($public_review_ids[$s['id']]);
+        return $s;
+    }, array_values($paginated_data));
+
     header('Content-Type: application/json');
     echo json_encode([
         'success' => true,
-        'series' => array_values($paginated_data),
+        'series' => $paginated_data,
         'has_more' => ($offset + $per_page) < count($filtered_data)
     ]);
     exit;
@@ -177,6 +192,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
 
     header('Content-Type: application/json');
     echo json_encode(array_values(array_unique($suggestions)));
+    exit;
+}
+
+// ── Endpoint : rendu HTML d'une critique (sanitizé côté serveur) ────────────
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_review'])) {
+    header('Content-Type: application/json');
+
+    // Respecte le mode privé et l'option "cacher les critiques".
+    if ($options['private_mode'] || !$reviews_public) {
+        echo json_encode(['success' => false, 'message' => 'Indisponible.']);
+        exit;
+    }
+
+    $series_id = $_GET['series_id'] ?? '';
+
+    // La série doit exister publiquement (et ne pas être masquée si mature).
+    $series = null;
+    foreach ($data as $s) {
+        if ($s['id'] === $series_id) { $series = $s; break; }
+    }
+    if ($series === null || ($options['hide_mature'] && !empty($series['mature']))) {
+        echo json_encode(['success' => false, 'message' => 'Introuvable.']);
+        exit;
+    }
+
+    $review = get_review($series_id);
+    if ($review === null || trim($review['content']) === '') {
+        echo json_encode(['success' => false, 'message' => 'Aucune critique.']);
+        exit;
+    }
+
+    echo json_encode([
+        'success' => true,
+        'html'    => review_render_markdown($review['content']),
+        'author'  => $admin_pseudo,
+    ]);
     exit;
 }
 
@@ -338,6 +389,9 @@ function get_latest_version_from_gitea() {
                         <option value="reading_completed" <?= $status_filter === 'reading_completed' ? 'selected' : '' ?>>Lecture terminée 📗</option>
                         <option value="reading_abandoned" <?= $status_filter === 'reading_abandoned' ? 'selected' : '' ?>>Lecture abandonnée 📕</option>
                         <option value="read_elsewhere" <?= $status_filter === 'read_elsewhere' ? 'selected' : '' ?>>Lues ailleurs 📚</option>
+                        <?php if ($reviews_public): ?>
+                        <option value="has_review" <?= $status_filter === 'has_review' ? 'selected' : '' ?>>Avec critique ✏️</option>
+                        <?php endif; ?>
                     </select>
                 </div>
                 <button type="submit">Appliquer</button>
@@ -406,6 +460,27 @@ function get_latest_version_from_gitea() {
                 </div>
             </div>
         </div>
+
+        <!-- Modale critique -->
+        <div class="modal" id="review-detail-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-review-detail-modal">&times;</span>
+                <div class="review-modal-header">
+                    <img id="review-modal-thumb" class="review-modal-thumb" src="" alt="">
+                    <div class="review-modal-heading">
+                        <h2 id="review-modal-title"></h2>
+                        <p id="review-modal-author"></p>
+                        <p id="review-modal-publisher"></p>
+                        <p id="review-modal-categories"></p>
+                    </div>
+                </div>
+                <div class="review-modal-actions">
+                    <button type="button" id="review-modal-back" class="button button-ext">← Retour à la série</button>
+                </div>
+                <div id="review-modal-body" class="review-modal-body review-rendered"></div>
+                <p id="review-modal-credit" class="review-modal-credit"></p>
+            </div>
+        </div>
     </div>
 
     <!-- Modale pour la légende -->
@@ -450,7 +525,11 @@ function get_latest_version_from_gitea() {
 
     <script>
         // Données des séries pour JavaScript
-        let seriesData = <?= json_encode(array_values($data)) ?>;
+        let seriesData = <?= json_encode(array_values(array_map(function ($s) use ($public_review_ids) {
+            $s['has_review'] = isset($public_review_ids[$s['id']]);
+            return $s;
+        }, $data))) ?>;
+        window.reviewsPublic = <?= json_encode($reviews_public) ?>;
     </script>
     <script src="assets/js/admin/main.js"></script>
     <script src="assets/js/public.js"></script>

@@ -11,10 +11,14 @@ require 'fonctions/wishlist.php';
 require 'fonctions/loans.php';
 require 'fonctions/options.php';
 require 'fonctions/tools.php';
+require 'fonctions/reviews.php';
 require 'includes/custom_icons.php';
 
 $data = load_data();
 $options = load_options();
+
+// Ensemble des IDs de séries possédant une critique (pour badges / filtre)
+$review_series_ids = array_flip(get_review_series_ids());
 
 // Pagination
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -533,6 +537,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $options['stats_page_title'] = trim($_POST['stats_page_title'] ?? '');
     $options['private_mode'] = !empty($_POST['private_mode']);
     $options['hide_mature'] = !empty($_POST['hide_mature']);
+    $options['hide_reviews'] = !empty($_POST['hide_reviews']);
+    $options['admin_pseudo'] = trim($_POST['admin_pseudo'] ?? '');
     $options['custom_button_name'] = trim($_POST['custom_button_name'] ?? '');
     $options['custom_button_url'] = trim($_POST['custom_button_url'] ?? '');
     $options['custom_button_name2'] = trim($_POST['custom_button_name2'] ?? '');
@@ -952,7 +958,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
         });
     }
     if ($status_filter !== '') {
-        $filtered_data = array_filter($filtered_data, function($series) use ($status_filter) {
+        $filtered_data = array_filter($filtered_data, function($series) use ($status_filter, $review_series_ids) {
+            if ($status_filter === 'has_review') {
+                return isset($review_series_ids[$series['id']]);
+            }
             if ($status_filter === 'mature') {
                 return !empty($series['mature']);
             }
@@ -1021,7 +1030,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
 
     // En mode "light", on ne renvoie que les métadonnées
     if ($light_mode) {
-        $light_series = array_map(function($series) {
+        $light_series = array_map(function($series) use ($review_series_ids) {
             // Détermine le statut de publication
             $status = 'en cours';
             $has_last = false;
@@ -1076,6 +1085,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 'mangaupdates_url'           => $series['mangaupdates_url'] ?? '',
                 'read_elsewhere'             => (bool)($series['read_elsewhere'] ?? false),
                 'reading_abandoned'          => (bool)($series['reading_abandoned'] ?? false),
+                'has_review'                 => isset($review_series_ids[$series['id']]),
             ];
         }, $paginated_data);
 
@@ -1349,6 +1359,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <option value="reading_completed" <?= $status_filter === 'reading_completed' ? 'selected' : '' ?>>Lecture terminée 📗</option>
                         <option value="reading_abandoned" <?= $status_filter === 'reading_abandoned' ? 'selected' : '' ?>>Lecture abandonnée 📕</option>
                         <option value="read_elsewhere" <?= $status_filter === 'read_elsewhere' ? 'selected' : '' ?>>Lues ailleurs 📚</option>
+                        <option value="has_review" <?= $status_filter === 'has_review' ? 'selected' : '' ?>>Avec critique ✏️</option>
                     </select>
                 </div>
                 <button type="submit">Appliquer</button>
@@ -1642,6 +1653,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <label for="stats-page-title">Titre de la page de statistiques</label>
                     <input type="text" name="stats_page_title" id="stats-page-title" placeholder="Titre de la page de statistiques" value="<?= htmlspecialchars($options['stats_page_title']) ?>" required>
 
+                    <label for="admin-pseudo">Pseudo de l'admin</label>
+                    <input type="text" name="admin_pseudo" id="admin-pseudo" placeholder="Ex : Esenjin" value="<?= htmlspecialchars($options['admin_pseudo'] ?? '') ?>">
+                    <p class="hint">Utilisé pour créditer les critiques auprès des visiteurs.</p>
+
                     <h3 class="options-section-title">Liens personnalisés</h3>
                     <p class="hint">Ces liens apparaissent dans le menu latéral des pages publiques (accueil et statistiques). Choisissez une icône pour chacun.</p>
 
@@ -1781,6 +1796,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <input type="checkbox" name="hide_mature" <?= $options['hide_mature'] ? 'checked' : '' ?>> Masquer les séries matures
                     </label>
                     <p class="hint">Vos séries matures ne seront pas visibles au public.</p>
+
+                    <label>
+                        <input type="checkbox" name="hide_reviews" <?= !empty($options['hide_reviews']) ? 'checked' : '' ?>> Cacher les critiques
+                    </label>
+                    <p class="hint">Vos critiques ne seront pas visibles au public.</p>
 
                     <!-- ══ MOT DE PASSE ══════════════════════════════════════ -->
                     <h3 class="options-section-title">Mot de passe</h3>
@@ -2005,7 +2025,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
     <button id="back-to-top" title="Retour en haut">↑</button>
 
     <?php
-        $series_with_status = array_map(function($series) {
+        $series_with_status = array_map(function($series) use ($review_series_ids) {
             $status = $series['status'] ?? 'en cours';
             if (empty($series['status'])) {
                 foreach ($series['volumes'] as $volume) {
@@ -2016,6 +2036,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                 }
             }
             $series['status'] = $status;
+            $series['has_review'] = isset($review_series_ids[$series['id']]);
             return $series;
         }, array_values($filtered_data));
     ?>
