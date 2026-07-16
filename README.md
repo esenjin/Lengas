@@ -11,6 +11,7 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 - Recevoir des notifications pour les tomes manquants ou incorrectement étiquetés
 - Marquer les tomes collectors et les derniers tomes
 - Gérer les prêts de tomes à vos amis
+- Rédiger des critiques (avis) sur vos séries, mises en forme en Markdown et visibles par vos visiteurs
 - Activer un mode privé pour cacher votre bibliothèque
 
 ## Aperçu visuel
@@ -48,6 +49,14 @@ Mobile
 - Suivi du statut de lecture par série : à débuter, en cours, terminée, abandonnée
 - Marquage « Lue ailleurs » pour les séries lues sans les posséder (bibliothèque, ami, revendue…)
 - Marquage « Lecture abandonnée » pour les séries dont on a arrêté la lecture
+
+### Critiques
+- Rédaction d'un avis par série via un éditeur Markdown dédié (page « Critiques »)
+- Éditeur avec aperçu en direct, barre de mise en forme flottante (gras, italique, souligné, barré, titres, listes, citations, code, liens, images et médias) et raccourcis annuler/rétablir
+- Mise en forme réversible : re-cliquer sur un style déjà appliqué à la sélection le retire
+- Insertion de médias externes (YouTube, Vimeo, SoundCloud, ou fichiers audio/vidéo directs)
+- Alerte lorsque la série n'est pas (ou pas entièrement) marquée comme lue
+- Filtre « Avec critique » et badge ✏️ sur la page publique ; les visiteurs consultent la critique dans une modale dédiée
 
 ### Liste d'envies
 - Ajout et suppression de séries dans une liste d'envies
@@ -138,6 +147,7 @@ lengas/
 ├── stats.php            # Page des statistiques
 ├── page-prets.php       # Page de gestion des prêts
 ├── page-wishlist.php    # Page de la liste d'envies
+├── page-critiques.php   # Page de rédaction des critiques + rendu Markdown
 ├── config.php           # Configuration du site
 ├── login.php            # Connexion
 ├── logout.php           # Déconnexion
@@ -153,6 +163,7 @@ lengas/
 │   │   ├── _pages.css
 │   │   ├── _public.css
 │   │   ├── _responsive.css
+│   │   ├── _reviews.css
 │   │   ├── _series.css
 │   │   ├── _sidebar.css
 │   │   ├── _stats.css
@@ -175,6 +186,7 @@ lengas/
 │       │   ├── unread.js
 │       │   ├── pagination.js
 │       │   ├── read.js
+│       │   ├── reviews.js
 │       │   └── main.js
 │       ├── stats.js
 │       └── public.js
@@ -192,6 +204,7 @@ lengas/
 │   ├── loans.php         # Fonctions de gestion des prêts
 │   ├── read.php          # Fonctions de gestion des lues ailleurs
 │   ├── options.php       # Fonctions de gestion des options du site
+│   ├── reviews.php       # Fonctions de gestion des critiques (stockage + rendu Markdown)
 │   └── tools.php         # Fonctions de gestion des outils (sauvegardes, intégrité, etc.)
 ├── uploads/             # Images des séries (chmod 0774)
 ├── saves/               # Sauvegardes de la base de données (chmod 0774)
