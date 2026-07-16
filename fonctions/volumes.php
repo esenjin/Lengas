@@ -139,6 +139,44 @@ function update_volume($data, $series_id, $volume_index, $status, $is_collector,
     return ['success' => true, 'data' => $data];
 }
 
+// Applique un statut de lecture (et sa date le cas échéant) à TOUS les tomes d'une série.
+// Ne touche pas aux tags collector / dernier tome ni aux numéros.
+function apply_status_to_all_volumes($data, $series_id, $status, $read_at = null) {
+    $series = find_series_by_id($data, $series_id);
+    if (!$series) {
+        return ['success' => false, 'message' => "Série introuvable."];
+    }
+    $idx = $series['index'];
+    if (empty($data[$idx]['volumes'])) {
+        return ['success' => true, 'data' => $data];
+    }
+
+    foreach ($data[$idx]['volumes'] as $vi => $volume) {
+        $previous_read_at = $volume['read_at'] ?? '';
+        if ($status === 'terminé') {
+            if ($read_at !== null && $read_at !== '') {
+                // Une date explicite a été fournie : on l'applique à tous les tomes.
+                $new_read_at = $read_at;
+            } elseif ($previous_read_at !== '') {
+                // On conserve la date déjà connue du tome.
+                $new_read_at = $previous_read_at;
+            } else {
+                $new_read_at = date('Y-m-d');
+            }
+        } else {
+            $new_read_at = '';
+        }
+
+        $data[$idx]['volumes'][$vi]['status']  = $status;
+        $data[$idx]['volumes'][$vi]['read_at'] = $new_read_at;
+        if (!isset($data[$idx]['volumes'][$vi]['added_at'])) {
+            $data[$idx]['volumes'][$vi]['added_at'] = date('Y-m-d');
+        }
+    }
+
+    return ['success' => true, 'data' => $data];
+}
+
 // Supprimer un tome
 function delete_volume($data, $series_id, $volume_index) {
     $series = find_series_by_id($data, $series_id);

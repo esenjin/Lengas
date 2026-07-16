@@ -442,6 +442,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
 
     $result = update_volume($data, $series_id, $volume_index, $status, $is_collector, $is_last, $read_at);
     if ($result['success']) {
+        // Option : propager le statut de lecture à tous les tomes de la série.
+        if (!empty($_POST['apply_status_all'])) {
+            $batch = apply_status_to_all_volumes($result['data'], $series_id, $status, $read_at);
+            if ($batch['success']) {
+                $result['data'] = $batch['data'];
+            }
+        }
         save_data($result['data']);
     }
 
@@ -1194,6 +1201,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
             $is_loaned ? '<span class="volume-loan-badge" aria-label="En prêt">🤝</span>' : ''
         );
     }
+    // Bouton d'ajout rapide : ouvre la modale « Ajouter des tomes » avec la série
+    // pré-sélectionnée. On le masque si le dernier tome de la liste est marqué comme
+    // « dernier tome de la série » (collection réputée complète).
+    $volumes = $series['volumes'];
+    $last_volume = !empty($volumes) ? end($volumes) : null;
+    $series_is_complete = $last_volume !== null && !empty($last_volume['last']);
+    if (!$series_is_complete) {
+        $volumes_html .= sprintf(
+            '<li class="volume-add-btn" data-series-id="%s" title="Ajouter des tomes à cette série" aria-label="Ajouter des tomes">+</li>',
+            htmlspecialchars($series_id, ENT_QUOTES)
+        );
+    }
     $volumes_html .= '</ul>';
 
     // Ajouter les notifications si nécessaire
@@ -1535,6 +1554,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         Date de lecture
                         <input type="date" name="read_at" id="edit-volume-read-at">
                     </label>
+                    <label>
+                        <input type="checkbox" name="apply_status_all" id="edit-volume-apply-status-all"> Appliquer ce statut de lecture à tous les tomes de la série 📚
+                    </label>
+                    <p class="hint">Le statut (et, le cas échéant, la date de lecture) sera copié sur tous les tomes de la série. Les tags collector / dernier tome ne sont pas affectés.</p>
                     <label>
                         <input type="checkbox" name="is_collector"> Collector ⭐
                     </label>

@@ -16,6 +16,8 @@ document.querySelectorAll('.volumes-list li').forEach(li => {
             document.querySelector('#edit-volume-modal [name="is_collector"]').checked = !!volume.collector;
             document.querySelector('#edit-volume-modal [name="is_last"]').checked = !!volume.last;
             document.getElementById('edit-volume-read-at').value = volume.read_at || '';
+            const applyAll = document.getElementById('edit-volume-apply-status-all');
+            if (applyAll) applyAll.checked = false;
             updateReadAtVisibility();
 
             modals['edit-volume'].modal.classList.add('modal-active');

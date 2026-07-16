@@ -179,9 +179,37 @@ function loadSeriesVolumes(seriesId) {
         });
 }
 
+// Ouvre la modale « Ajouter des tomes » avec une série déjà sélectionnée.
+function openAddVolumesForSeries(seriesId) {
+    let series = null;
+    for (const key in window.seriesData) {
+        if (window.seriesData[key].id === seriesId) { series = window.seriesData[key]; break; }
+    }
+    const hidden = document.getElementById('multiple-selected-series-id');
+    const search = document.getElementById('multiple-series-search');
+    if (hidden) hidden.value = seriesId;
+    if (search) search.value = series ? series.name : '';
+    // Réinitialise la liste de résultats (tout visible, masquée)
+    const results = document.getElementById('multiple-series-results');
+    if (results) {
+        results.querySelectorAll('div').forEach(d => { d.style.display = 'block'; d.classList.remove('autocomplete-active'); });
+        results.style.display = 'none';
+    }
+    const modal = document.getElementById('add-multiple-volumes-modal');
+    if (modal) modal.classList.add('modal-active');
+}
+
 // Écouteur unique pour TOUS les clics sur les tomes (délégation)
 document.getElementById('series-list').addEventListener('click', (e) => {
-    const volumeLi = e.target.closest('.volumes-list li');
+    // Bouton « + » d'ajout rapide de tomes (prioritaire sur l'édition d'un tome)
+    const addBtn = e.target.closest('.volume-add-btn');
+    if (addBtn) {
+        e.preventDefault();
+        openAddVolumesForSeries(addBtn.dataset.seriesId);
+        return;
+    }
+
+    const volumeLi = e.target.closest('.volumes-list li:not(.volume-add-btn)');
     if (volumeLi) {
         e.preventDefault();
         const seriesId = volumeLi.dataset.seriesId;
@@ -202,6 +230,8 @@ document.getElementById('series-list').addEventListener('click', (e) => {
             document.querySelector('#edit-volume-modal [name="is_collector"]').checked = !!volume.collector;
             document.querySelector('#edit-volume-modal [name="is_last"]').checked = !!volume.last;
             document.getElementById('edit-volume-read-at').value = volume.read_at || '';
+            const applyAll = document.getElementById('edit-volume-apply-status-all');
+            if (applyAll) applyAll.checked = false;
             if (typeof updateReadAtVisibility === 'function') updateReadAtVisibility();
             document.getElementById('edit-volume-modal').classList.add('modal-active');
         }
@@ -284,8 +314,16 @@ document.getElementById('series-list').addEventListener('click', (e) => {
         return;
     }
 
+    // Bouton « + » d'ajout rapide de tomes (prioritaire sur l'édition d'un tome)
+    const addVolBtn = e.target.closest('.volume-add-btn');
+    if (addVolBtn) {
+        e.preventDefault();
+        openAddVolumesForSeries(addVolBtn.dataset.seriesId);
+        return;
+    }
+
     // Tome (pour modification)
-    const volumeLi = e.target.closest('.volumes-list li');
+    const volumeLi = e.target.closest('.volumes-list li:not(.volume-add-btn)');
     if (volumeLi) {
         e.preventDefault();
         const seriesId = volumeLi.dataset.seriesId;
@@ -306,6 +344,8 @@ document.getElementById('series-list').addEventListener('click', (e) => {
             document.querySelector('#edit-volume-modal [name="is_collector"]').checked = !!volume.collector;
             document.querySelector('#edit-volume-modal [name="is_last"]').checked = !!volume.last;
             document.getElementById('edit-volume-read-at').value = volume.read_at || '';
+            const applyAll = document.getElementById('edit-volume-apply-status-all');
+            if (applyAll) applyAll.checked = false;
             if (typeof updateReadAtVisibility === 'function') updateReadAtVisibility();
             document.getElementById('edit-volume-modal').classList.add('modal-active');
         }

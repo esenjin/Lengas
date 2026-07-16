@@ -393,3 +393,19 @@
     filter: blur(10px);
     margin-right: 10px;
 }
+
+/* Bouton « + » d'ajout rapide de tomes, en fin de liste des tomes */
+.volumes-list li.volume-add-btn {
+    background-color: transparent;
+    border: 1px dashed rgba(192, 132, 252, 0.4);
+    border-left: 1px dashed rgba(192, 132, 252, 0.4);
+    color: var(--primary-color, #c084fc);
+    font-size: 1.2em;
+    font-weight: 600;
+    line-height: 1;
+}
+.volumes-list li.volume-add-btn:hover {
+    background-color: var(--primary-subtle, rgba(192, 132, 252, 0.12));
+    border-color: var(--primary-color, #c084fc);
+    color: var(--text-white, #fff);
+}
