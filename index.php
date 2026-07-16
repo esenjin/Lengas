@@ -1,6 +1,7 @@
 <?php
 require 'config.php';
 require_once 'fonctions/reviews.php';
+require_once 'includes/themes.php';
 $data = load_data();
 $options = load_options();
 
@@ -34,6 +35,7 @@ if ($options['private_mode']) {
         <meta property="og:image" content="logo.png">
         <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
         <link rel="stylesheet" href="assets/css/main.css">
+        <?= theme_link_tag($options) ?>
     </head>
     <body>
         <div class="container">
@@ -252,6 +254,7 @@ if ($options['private_mode']) {
         <meta property="og:image" content="logo.png">
         <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
         <link rel="stylesheet" href="assets/css/main.css">
+        <?= theme_link_tag($options) ?>
     </head>
     <body>
         <div class="container">
@@ -338,6 +341,7 @@ function get_latest_version_from_gitea() {
     <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
+        <?= theme_link_tag($options) ?>
     <style>
         /* Style pour les cartes cliquables */
         .series-card {

@@ -9,10 +9,12 @@ require 'fonctions/series.php';
 require 'fonctions/volumes.php';
 require 'fonctions/wishlist.php';
 require 'fonctions/loans.php';
+require 'fonctions/read.php';
 require 'fonctions/options.php';
 require 'fonctions/tools.php';
 require 'fonctions/reviews.php';
 require 'includes/custom_icons.php';
+require 'includes/themes.php';
 
 $data = load_data();
 $options = load_options();
@@ -545,6 +547,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $options['private_mode'] = !empty($_POST['private_mode']);
     $options['hide_mature'] = !empty($_POST['hide_mature']);
     $options['hide_reviews'] = !empty($_POST['hide_reviews']);
+
+    // ── Thème du site (validé contre les fichiers _variables-*.css présents) ──
+    $theme_key = strtolower(trim($_POST['theme'] ?? 'dark'));
+    $options['theme'] = theme_exists($theme_key) ? $theme_key : 'dark';
     $options['admin_pseudo'] = trim($_POST['admin_pseudo'] ?? '');
     $options['custom_button_name'] = trim($_POST['custom_button_name'] ?? '');
     $options['custom_button_url'] = trim($_POST['custom_button_url'] ?? '');
@@ -745,6 +751,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_action'])) {
 // Gestion des actions de sauvegarde
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_action'])) {
     $action = $_POST['backup_action'];
+
+    // ── Export JSON : téléchargement direct d'un fichier .json ────────────────
+    if ($action === 'export_json') {
+        $export   = build_json_export();
+        $json     = json_encode($export, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $filename = 'lengas_export_' . date('Y-m-d_His') . '.json';
+
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . strlen($json));
+        echo $json;
+        exit;
+    }
+
     $response = ['success' => false, 'message' => ''];
 
     switch ($action) {
@@ -1320,6 +1340,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
     <meta property="og:image" content="assets/img/logo.png">
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
+    <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">
     <?php include 'includes/sidebar.php'; ?>
@@ -1425,7 +1446,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <label>
                         <input type="checkbox" name="all_collector"> Tous en collector ⭐
                     </label>
-                    <p>Statut de la série :</p>
+                    <p>Statut de lecture de la série :</p>
                     <select name="series_status" id="add-series-status" required>
                         <option value="en cours">En cours ▶️</option>
                         <option value="terminée">Terminée ✅</option>
@@ -1604,7 +1625,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <label>
                         <input type="checkbox" name="new_volumes_collector"> Tous en collector ⭐
                     </label>
-                    <p>Statut de la série :</p>
+                    <p>Statut de lecture de la série :</p>
                     <select name="series_status" id="edit-series-status" required>
                         <option value="en cours">En cours ▶️</option>
                         <option value="terminée">Terminée ✅</option>
@@ -1807,6 +1828,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <?php endif; ?>
                     </div>
 
+                    <!-- ══ THÈMES ════════════════════════════════════════════ -->
+                    <h3 class="options-section-title">Thèmes</h3>
+                    <p class="hint">Choisissez l'apparence du site. Le thème « Sombre » est appliqué par défaut. Pour ajouter un thème personnalisé, déposez un fichier <code>assets/css/_variables-&lt;nom&gt;.css</code> : il apparaîtra automatiquement dans cette liste.</p>
+
+                    <?php
+                    $themes_list  = list_themes();
+                    $current_theme = current_theme_key($options);
+                    ?>
+                    <label for="theme-select">Thème du site</label>
+                    <select name="theme" id="theme-select" class="theme-select">
+                        <?php foreach ($themes_list as $__t): ?>
+                            <option value="<?= htmlspecialchars($__t['key']) ?>" <?= $current_theme === $__t['key'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($__t['label']) ?><?= $__t['custom'] ? ' — personnalisé' : ' — de base' ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <p class="hint">
+                        Les thèmes marqués « de base » sont fournis avec Lengas
+                        (<code>_variables.css</code> et <code>_variables-light.css</code>) ;
+                        ceux marqués « personnalisé » proviennent de vos propres fichiers.
+                    </p>
+
                     <!-- ══ VISIBILITÉ ════════════════════════════════════════ -->
                     <h3 class="options-section-title">Visibilité</h3>
 
@@ -1943,6 +1986,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <button id="create-backup-btn" class="button button-opt">
                             <span id="create-backup-text">Créer une sauvegarde</span>
                             <span id="create-backup-spinner" class="spinner" style="display: none;"></span>
+                        </button>
+                    </div>
+
+                    <div class="tools-section">
+                        <h3>Exporter en JSON</h3>
+                        <p>Télécharge l'ensemble de vos données (collection, envies, prêts, lues ailleurs et options) sous la forme d'un unique fichier JSON lisible. Idéal pour la portabilité ou une lecture externe — cela ne remplace pas la sauvegarde ZIP, qui inclut aussi la base SQLite et les images.</p>
+                        <button id="export-json-btn" class="button button-oas">
+                            <span id="export-json-text">Exporter en JSON</span>
+                            <span id="export-json-spinner" class="spinner" style="display: none;"></span>
                         </button>
                     </div>
 

@@ -39,6 +39,55 @@ document.getElementById('create-backup-btn').addEventListener('click', () => {
     });
 });
 
+// Export JSON de la base — télécharge un fichier .json
+const exportJsonBtn = document.getElementById('export-json-btn');
+if (exportJsonBtn) {
+    exportJsonBtn.addEventListener('click', () => {
+        const button   = exportJsonBtn;
+        const textSpan = document.getElementById('export-json-text');
+        const spinner  = document.getElementById('export-json-spinner');
+
+        button.disabled = true;
+        if (textSpan) textSpan.textContent = 'Export en cours...';
+        if (spinner) spinner.style.display = 'inline-block';
+
+        fetch('admin.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'backup_action=export_json'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Réponse invalide du serveur.');
+            // Récupère le nom de fichier proposé par le serveur
+            const disposition = response.headers.get('Content-Disposition') || '';
+            let filename = 'lengas_export.json';
+            const match = /filename="?([^"]+)"?/.exec(disposition);
+            if (match) filename = match[1];
+            return response.blob().then(blob => ({ blob, filename }));
+        })
+        .then(({ blob, filename }) => {
+            const url = URL.createObjectURL(blob);
+            const a   = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            showSuccessModal('Export JSON téléchargé avec succès.');
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showErrorModal("Une erreur est survenue lors de l'export JSON.");
+        })
+        .finally(() => {
+            button.disabled = false;
+            if (textSpan) textSpan.textContent = 'Exporter en JSON';
+            if (spinner) spinner.style.display = 'none';
+        });
+    });
+}
+
 // Charger la liste des sauvegardes
 function loadBackupsList() {
     fetch('admin.php', {

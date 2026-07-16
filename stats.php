@@ -2,6 +2,7 @@
 require 'config.php';
 require 'fonctions/stats_compute.php';
 require 'fonctions/reviews.php';
+require 'includes/themes.php';
 
 $data    = load_data();
 $options = load_options();
@@ -41,6 +42,7 @@ if (!empty($options['private_mode'])) {
         <meta name="description" content="<?= htmlspecialchars($options['site_description'] ?? '') ?>">
         <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
         <link rel="stylesheet" href="assets/css/main.css">
+        <?= theme_link_tag($options) ?>
     </head>
     <body>
         <div class="container">
@@ -156,6 +158,8 @@ $chart_payload = [
     })(),
     'purchases' => $stats['purchases_by_month'],
     'growth'    => $stats['growth'],
+    'reads'          => $stats['reads_by_month']  ?? [],
+    'reading_growth' => $stats['reading_growth']  ?? [],
     'completion' => [
         'labels' => ['Publication terminée', 'Publication en cours', 'Publication mise en pause', 'Publication abandonnée'],
         'values' => [
@@ -177,6 +181,7 @@ $chart_payload = [
     <meta property="og:image" content="assets/img/logo.png">
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
+        <?= theme_link_tag($options) ?>
 </head>
 <body class="stats-page with-sidebar">
     <?php include 'includes/public-sidebar.php'; ?>
@@ -433,6 +438,16 @@ $chart_payload = [
                 <div class="panel-head"><h3>Croissance de la collection</h3></div>
                 <div id="line-growth" class="apex-chart"></div>
             </div>
+            <?php if (!empty($stats['reads_by_month']) && count($stats['reads_by_month']) > 1): ?>
+            <div class="panel">
+                <div class="panel-head"><h3>Tomes lus par mois</h3></div>
+                <div id="line-reads" class="apex-chart"></div>
+            </div>
+            <div class="panel">
+                <div class="panel-head"><h3>Progression des lectures (cumulé)</h3></div>
+                <div id="line-reading-growth" class="apex-chart"></div>
+            </div>
+            <?php endif; ?>
         </section>
         <?php endif; ?>
 

@@ -1,0 +1,97 @@
+/* Thème CLAIR — variables globales (couleurs, tailles, polices, etc.)          */
+/* Nom d'affichage : Clair                                                       */
+/* Ce fichier reprend exactement les mêmes noms de variables que _variables.css  */
+/* mais avec des valeurs adaptées à un fond clair.                               */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap');
+
+:root {
+    /* Couleurs principales */
+    --primary-color: #9333ea;
+    --primary-hover: #7e22ce;
+    --primary-subtle: rgba(147, 51, 234, 0.08);
+    --primary-glow: rgba(147, 51, 234, 0.18);
+
+    /* Titre des séries — rose, distinct du violet principal */
+    --series-title-color: #be3d84;
+    --series-title-hover: #9d2f6b;
+
+    --error-color: #dc2626;
+    --error-hover: #b91c1c;
+    --error-dark: #991b1b;
+    --error-subtle: rgba(220, 38, 38, 0.10);
+
+    --success-color: #16a34a;
+    --success-light: #22c55e;
+    --success-hover: #15803d;
+    --success-dark: #166534;
+    --success-subtle: rgba(22, 163, 74, 0.10);
+
+    --warning-color: #d97706;
+    --warning-subtle: rgba(217, 119, 6, 0.12);
+
+    /* Arrière-plans — clairs et nuancés */
+    --background-dark: #eef0f5;
+    --background-light: #f6f7fb;
+    --background-medium: #ffffff;
+    --background-darker: #e6e8f0;
+    --background-lighter: #dcdfea;
+    --background-card: #ffffff;
+
+    /* Texte */
+    --text-color: #2b2b3a;
+    --text-white: #16161f;
+    --text-gray: #5c5c72;
+    --text-muted: #8a8aa0;
+
+    /* Couleurs spécifiques aux boutons */
+    --button-ats: #16a34a;
+    --button-ats-hover: #15803d;
+    --button-ext: #64748b;
+    --button-ext-hover: #475569;
+    --button-otl: #0284c7;
+    --button-otl-hover: #0369a1;
+    --button-aos: #7c3aed;
+    --button-aos-hover: #6d28d9;
+    --button-opt: #ea580c;
+    --button-opt-hover: #c2410c;
+
+    /* Statuts des tomes */
+    --status-a-lire-bg: rgba(220, 38, 38, 0.06);
+    --status-a-lire-border: #dc2626;
+    --status-en-cours-bg: rgba(147, 51, 234, 0.06);
+    --status-en-cours-border: var(--primary-color);
+    --status-termine-bg: rgba(2, 132, 199, 0.06);
+    --status-termine-border: #0284c7;
+    --status-mature: #c026a3;
+
+    /* Badges */
+    --badge-collector: #d97706;
+    --badge-last-volume: #16a34a;
+
+    /* Inputs */
+    --input-border: #d0d3e0;
+    --input-border-focus: var(--primary-color);
+    --input-bg: #ffffff;
+    --tooltip-bg: #16161f;
+    --tooltip-text: #e0d4ff;
+    --tooltip-warning: var(--warning-color);
+
+    /* Design tokens */
+    --border-radius: 10px;
+    --border-radius-sm: 6px;
+    --border-radius-lg: 16px;
+    --border-radius-xl: 24px;
+
+    --box-shadow: 0 4px 24px rgba(30, 30, 55, 0.10);
+    --box-shadow-sm: 0 2px 8px rgba(30, 30, 55, 0.08);
+    --box-shadow-lg: 0 8px 40px rgba(30, 30, 55, 0.16);
+
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --favorite-shadow: 0 0 24px rgba(217, 119, 6, 0.22), 0 4px 12px rgba(30, 30, 55, 0.12);
+    --favorite-border: rgba(217, 119, 6, 0.55);
+
+    /* Bordure subtile globale */
+    --border-subtle: 1px solid rgba(0, 0, 0, 0.08);
+}

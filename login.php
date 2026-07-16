@@ -1,5 +1,6 @@
 <?php
 require 'config.php';
+require 'includes/themes.php';
 $options = load_options();
 
 $error = '';
@@ -26,6 +27,7 @@ $expired = isset($_GET['expired']);
     <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
+    <?= theme_link_tag($options) ?>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {

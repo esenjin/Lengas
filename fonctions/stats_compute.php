@@ -199,6 +199,7 @@ if (!function_exists('compute_stats')) {
 
         // Time series (par mois) : achats & croissance cumulée
         $purchases_by_month = []; // 'YYYY-MM' => n tomes achetés
+        $reads_by_month     = []; // 'YYYY-MM' => n tomes lus (passés à "terminé")
 
         foreach ($owned as $series) {
             $vols      = $series['volumes'] ?? [];
@@ -350,6 +351,13 @@ if (!function_exists('compute_stats')) {
                     if (!isset($purchases_by_month[$month])) $purchases_by_month[$month] = 0;
                     $purchases_by_month[$month] += 1;
                 }
+
+                // Lectures par mois (read_at = 'YYYY-MM-DD' des tomes "terminé")
+                if ($vstatus === 'terminé' && is_string($read_at) && strlen($read_at) >= 7 && $read_at[4] === '-') {
+                    $rmonth = substr($read_at, 0, 7);
+                    if (!isset($reads_by_month[$rmonth])) $reads_by_month[$rmonth] = 0;
+                    $reads_by_month[$rmonth] += 1;
+                }
             }
 
             if ($has_last)                    $complete_series++;
@@ -471,6 +479,19 @@ if (!function_exists('compute_stats')) {
             $purchases_series[] = ['month' => $month, 'value' => $n];
         }
 
+        // ── Lectures par mois & progression cumulée des lectures ────────────────
+        ksort($reads_by_month);
+        $reads_series = [];
+        foreach ($reads_by_month as $month => $n) {
+            $reads_series[] = ['month' => $month, 'value' => $n];
+        }
+        $reading_growth = [];
+        $running_reads  = 0;
+        foreach ($reads_by_month as $month => $n) {
+            $running_reads += $n;
+            $reading_growth[] = ['month' => $month, 'value' => $running_reads];
+        }
+
         // ── Fun facts ───────────────────────────────────────────────────────
         // Auteur le plus représenté — en tomes
         $top_author          = $authors_sorted[0]['name']       ?? null;
@@ -574,6 +595,8 @@ if (!function_exists('compute_stats')) {
             // Temporel
             'purchases_by_month'=> $purchases_series,
             'growth'            => $growth,
+            'reads_by_month'    => $reads_series,
+            'reading_growth'    => $reading_growth,
 
             // Séries
             'longest_series'    => $longest_series,

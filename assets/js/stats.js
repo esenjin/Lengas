@@ -8,19 +8,26 @@
 document.addEventListener('DOMContentLoaded', function () {
     const S = window.STATS || {};
 
-    // ── Palette (alignée sur _variables.css) ──────────────────────────────────
+    // ── Palette (lue depuis le thème actif via les variables CSS :root) ───────
+    // On récupère les couleurs réelles du thème appliqué (sombre, clair ou
+    // personnalisé) pour que les graphiques s'y adaptent automatiquement.
+    // Chaque valeur possède un repli identique à l'ancienne palette sombre.
+    const cssVar = (name, fallback) => {
+        const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return v || fallback;
+    };
     const C = {
-        primary:  '#c084fc',
-        primary2: '#a855f7',
-        teal:     '#34d399',
-        sky:      '#38bdf8',
-        amber:    '#fbbf24',
-        red:      '#f87171',
-        pink:     '#e879c6',
-        grid:     'rgba(255,255,255,0.06)',
-        text:     '#d4d4e8',
-        textGray: '#8888a8',
-        card:     '#181825',
+        primary:  cssVar('--primary-color',       '#c084fc'),
+        primary2: cssVar('--primary-hover',       '#a855f7'),
+        teal:     cssVar('--success-color',       '#34d399'),
+        sky:      cssVar('--button-otl',          '#38bdf8'),
+        amber:    cssVar('--warning-color',       '#fbbf24'),
+        red:      cssVar('--error-color',         '#f87171'),
+        pink:     cssVar('--series-title-color',  '#e879c6'),
+        grid:     cssVar('--input-border',        'rgba(255,255,255,0.06)'),
+        text:     cssVar('--text-color',          '#d4d4e8'),
+        textGray: cssVar('--text-gray',           '#8888a8'),
+        card:     cssVar('--background-card',      '#181825'),
     };
 
     const fmtInt = n => new Intl.NumberFormat('fr-FR').format(n);
@@ -423,7 +430,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ── 9. Courbes temporelles ────────────────────────────────────────────────
-    function lineChart(el, series, name, color) {
+    function lineChart(el, series, name, color, annotation) {
         if (!document.getElementById(el) || !series.length) return;
         const firstMonth = series[0].month;
         const opts = {
@@ -438,7 +445,8 @@ document.addEventListener('DOMContentLoaded', function () {
             markers: { size: 0, hover: { size: 4 } }
         };
         // Annotation "Création de la bibliothèque" sur la première date
-        if (firstMonth) {
+        // (uniquement pour les courbes liées à la collection : achats/croissance)
+        if (firstMonth && annotation !== false) {
             opts.annotations = {
                 xaxis: [{
                     x: firstMonth,
@@ -457,6 +465,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     lineChart('line-purchases', S.purchases || [], 'Tomes ajoutés', C.primary);
     lineChart('line-growth', S.growth || [], 'Total cumulé', C.teal);
+    lineChart('line-reads', S.reads || [], 'Tomes lus', C.pink, false);
+    lineChart('line-reading-growth', S.reading_growth || [], 'Total lu cumulé', C.sky, false);
 
     // ══════════════════════════════════════════════════════════════════════════
     //  TOGGLES

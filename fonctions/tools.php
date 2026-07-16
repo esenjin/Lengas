@@ -451,6 +451,39 @@ function delete_backup(string $backup_file): array {
     return ['success' => false, 'message' => 'Fichier de sauvegarde introuvable.'];
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Export JSON de la base (collection + envies + prêts + lues ailleurs + options)
+//
+// Retourne un tableau structuré prêt à être encodé en JSON. Cet export est
+// destiné à la portabilité / lecture externe (il ne remplace pas la sauvegarde
+// ZIP qui, elle, contient aussi le fichier SQLite et les images).
+// ──────────────────────────────────────────────────────────────────────────────
+function build_json_export(): array {
+    $collection = function_exists('load_data')     ? load_data()     : [];
+    $wishlist   = function_exists('load_wishlist') ? load_wishlist() : [];
+    $loans      = function_exists('load_loans')    ? load_loans()    : [];
+    $read       = function_exists('load_read')     ? load_read()     : [];
+
+    // Options (on retire le hash de mot de passe par prudence — il n'y est pas
+    // stocké ici, mais on nettoie tout de même les clés sensibles éventuelles).
+    $options = function_exists('load_options') ? load_options() : [];
+    unset($options['password'], $options['password_hash'], $options['hash']);
+
+    return [
+        'meta' => [
+            'application' => 'Lengas',
+            'version'     => defined('SITE_VERSION') ? SITE_VERSION : null,
+            'exported_at' => date('c'),
+            'format'      => 'lengas-json-export/1',
+        ],
+        'collection'     => $collection,
+        'wishlist'       => $wishlist,
+        'loans'          => $loans,
+        'read_elsewhere' => $read,
+        'options'        => $options,
+    ];
+}
+
 // Générer les notifications pour une série
 function generate_notifications(array $volumes, ?int $ref_volumes = null): array {
     $notifications = [];
