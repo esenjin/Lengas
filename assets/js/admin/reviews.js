@@ -322,13 +322,57 @@
     }
 
     // ── Barre d'outils Markdown ──────────────────────────────────────────────
+    // Enveloppe la sélection avec les marqueurs `before`/`after`.
+    // Si la sélection (ou le texte qui l'entoure immédiatement) porte déjà ce
+    // marquage, un nouvel appel le RETIRE — la mise en forme devient donc une
+    // bascule (ex. sélectionner « test » dans « *test* » puis re-cliquer sur
+    // Italique enlève les astérisques).
     function wrapSelection(before, after, placeholder) {
         historyPush(true);
         after = after === undefined ? before : after;
         const start = textarea.selectionStart;
         const end   = textarea.selectionEnd;
         const val   = textarea.value;
-        const sel   = val.slice(start, end) || (placeholder || '');
+        let sel     = val.slice(start, end);
+
+        // Cas 1 : la sélection englobe déjà les marqueurs (« *test* » sélectionné).
+        // Même garde-fou que le cas 2 : ne pas confondre `*` (italique) avec `**`.
+        const innerNotLonger =
+            !(before === after && before.length === 1 &&
+              sel.length >= 2 && sel[before.length] === before);
+        if (sel.length >= before.length + after.length && innerNotLonger &&
+            sel.startsWith(before) && sel.endsWith(after)) {
+            const inner = sel.slice(before.length, sel.length - after.length);
+            textarea.value = val.slice(0, start) + inner + val.slice(end);
+            textarea.focus();
+            textarea.setSelectionRange(start, start + inner.length);
+            historyPush(true);
+            schedulePreview();
+            return;
+        }
+
+        // Cas 2 : les marqueurs entourent la sélection (« test » sélectionné dans « *test* »).
+        const beforeStart = start - before.length;
+        const afterEnd    = end + after.length;
+        // Garde-fou : `*` (italique) est un préfixe de `**` (gras). On refuse de
+        // retirer un `*` isolé si le caractère adjacent prolonge en fait un `**`,
+        // pour ne pas « casser » un gras en cliquant sur italique.
+        const notPartOfLonger =
+            !(before === after && before.length === 1 &&
+              (val[beforeStart - 1] === before || val[afterEnd] === after));
+        if (beforeStart >= 0 && afterEnd <= val.length && notPartOfLonger &&
+            val.slice(beforeStart, start) === before &&
+            val.slice(end, afterEnd) === after) {
+            textarea.value = val.slice(0, beforeStart) + sel + val.slice(afterEnd);
+            textarea.focus();
+            textarea.setSelectionRange(beforeStart, beforeStart + sel.length);
+            historyPush(true);
+            schedulePreview();
+            return;
+        }
+
+        // Cas 3 : application normale du marquage.
+        sel = sel || (placeholder || '');
         const insert = before + sel + after;
         textarea.value = val.slice(0, start) + insert + val.slice(end);
         const cursor = start + before.length;

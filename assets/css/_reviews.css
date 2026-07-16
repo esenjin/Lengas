@@ -157,6 +157,20 @@
     border: 1px solid rgba(248, 113, 113, 0.35);
 }
 
+/* ── Zone éditeur (barre + split) : défilement propre, barre collante ────── */
+/* On isole l'éditeur dans son propre conteneur de défilement. Ainsi la barre
+   d'outils en `sticky` colle en haut de CETTE zone, indépendamment du
+   `overflow-x: hidden` posé sur <html>/<body> (qui, sinon, neutralise le
+   sticky calculé par rapport au viewport). */
+.review-editor-area {
+    max-height: calc(100vh - 220px);
+    min-height: 320px;
+    overflow-y: auto;
+    border-radius: var(--border-radius-sm);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(192, 132, 252, 0.3) transparent;
+}
+
 /* ── Barre d'outils Markdown ────────────────────────────────────────────── */
 .review-toolbar {
     display: flex;
@@ -167,6 +181,10 @@
     border: var(--border-subtle);
     border-radius: var(--border-radius-sm) var(--border-radius-sm) 0 0;
     padding: 8px;
+    /* Reste visible en haut de la zone éditeur même lorsqu'on défile. */
+    position: sticky;
+    top: 0;
+    z-index: 20;
 }
 .rt-btn {
     background: var(--background-lighter);
@@ -200,15 +218,16 @@
     border-top: none;
     border-radius: 0 0 var(--border-radius-sm) var(--border-radius-sm);
     overflow: hidden;
-    min-height: 420px;
+    /* Remplit la zone éditeur ; le défilement est géré par .review-editor-area. */
+    min-height: calc(100vh - 220px - 46px);
 }
 .review-pane { min-width: 0; }
 .review-pane--editor { border-right: var(--border-subtle); }
 .review-textarea {
     width: 100%;
     height: 100%;
-    min-height: 420px;
-    resize: vertical;
+    min-height: 380px;
+    resize: none;
     border: none;
     background: var(--input-bg);
     color: var(--text-color);
@@ -220,8 +239,7 @@
 .review-textarea:focus { outline: none; }
 .review-preview-body {
     height: 100%;
-    min-height: 420px;
-    overflow-y: auto;
+    min-height: 380px;
     padding: 16px 20px;
     background: var(--background-light);
 }
@@ -473,10 +491,14 @@ button.review-badge:hover {
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
+    .review-editor-area {
+        max-height: calc(100vh - 160px);
+    }
     .review-split {
         grid-template-columns: 1fr;
         min-height: auto;
     }
+    .review-textarea, .review-preview-body { min-height: 300px; }
     .review-pane--editor { border-right: none; border-bottom: var(--border-subtle); }
     /* En mode mobile, on montre soit l'éditeur soit l'aperçu */
     .review-split .review-pane--preview { display: none; }

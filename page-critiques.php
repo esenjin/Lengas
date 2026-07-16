@@ -148,6 +148,8 @@ $eligible = array_map(function ($s) {
             <!-- Bandeau d'alerte lecture -->
             <div id="review-reading-alert" class="review-reading-alert" style="display:none;"></div>
 
+            <!-- Zone éditeur : barre d'outils (collante) + split, avec défilement propre -->
+            <div class="review-editor-area" id="review-editor-area">
             <!-- Barre d'outils Markdown -->
             <div class="review-toolbar" id="review-toolbar">
                 <button type="button" class="rt-btn" data-md="undo" title="Annuler (Ctrl+Z)">↶</button>
@@ -184,6 +186,7 @@ $eligible = array_map(function ($s) {
                         <p class="review-preview-placeholder">L'aperçu s'affichera ici.</p>
                     </div>
                 </div>
+            </div>
             </div>
         </section>
     </main>
