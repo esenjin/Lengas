@@ -2,6 +2,7 @@
 require 'config.php';
 require 'includes/auth.php';
 require 'includes/helpers.php';
+require 'includes/themes.php';
 require 'fonctions/series.php';
 require 'fonctions/volumes.php';
 require 'fonctions/wishlist.php';
@@ -77,6 +78,7 @@ $wishlist = load_wishlist();
     <meta name="description" content="Gestion de la liste d'envies.">
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
+    <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">
 

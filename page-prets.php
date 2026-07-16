@@ -2,6 +2,7 @@
 require 'config.php';
 require 'includes/auth.php';
 require 'includes/helpers.php';
+require 'includes/themes.php';
 require 'fonctions/series.php';
 require 'fonctions/volumes.php';
 require 'fonctions/loans.php';
@@ -87,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_action'])) {
     <meta name="description" content="Gestion des livres prêtés.">
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
+    <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">
 
