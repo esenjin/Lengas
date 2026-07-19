@@ -1,6 +1,7 @@
 <?php
 require 'config.php';
 require 'includes/themes.php';
+require 'includes/vestikan.php';
 $options = load_options();
 
 $error = '';
@@ -16,7 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Mot de passe incorrect.';
     }
 }
-$expired = isset($_GET['expired']);
+$expired   = isset($_GET['expired']);
+$sso_error = isset($_GET['sso_error']);
 ?>
 
 <!DOCTYPE html>
@@ -87,6 +89,39 @@ $expired = isset($_GET['expired']);
             margin-bottom: 1em;
         }
 
+        .sso-separator {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #888;
+            margin: 1.25em 0;
+            font-size: 0.85em;
+        }
+
+        .sso-separator::before,
+        .sso-separator::after {
+            content: "";
+            flex: 1;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .sso-separator span {
+            padding: 0 0.75em;
+        }
+
+        .sso-button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #888;
+            border-radius: 4px;
+            font-size: 1em;
+            text-decoration: none;
+            box-sizing: border-box;
+            cursor: pointer;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             form {
@@ -108,10 +143,17 @@ $expired = isset($_GET['expired']);
     <?php if ($error): ?>
         <p style="color: red; text-align: center;"><?= $error ?></p>
     <?php endif; ?>
+    <?php if ($sso_error): ?>
+        <p style="color: red; text-align: center;">Échec de la connexion avec Vestikan. Réessayez ou utilisez le mot de passe.</p>
+    <?php endif; ?>
     <form method="post">
         <label for="password">Mot de passe :</label>
         <input type="password" id="password" name="password" required>
         <button type="submit">Se connecter</button>
+        <?php if (vestikan_enabled()): ?>
+            <div class="sso-separator"><span>ou</span></div>
+            <a href="vestikan-login.php" class="sso-button">Se connecter avec Vestikan</a>
+        <?php endif; ?>
     </form>
 </body>
 </html>
