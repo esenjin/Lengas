@@ -69,6 +69,32 @@
         margin-bottom: 0;
     }
 
+    .search-row {
+        flex-direction: column;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .search-row input[type="text"] {
+        width: 100%;
+    }
+
+    .search-row button[type="submit"] {
+        width: 100%;
+        padding: 11px;
+    }
+
+    .status-filter,
+    .status-filter-toggle {
+        width: 100%;
+    }
+
+    .status-filter-panel {
+        min-width: 0;
+        max-width: none;
+        width: 100%;
+    }
+
     .filters button[type="submit"] {
         width: 100%;
         padding: 11px;

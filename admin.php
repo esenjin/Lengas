@@ -4,6 +4,7 @@
 require 'config.php';
 require 'includes/auth.php';
 require 'includes/helpers.php';
+require_once 'includes/status_filter.php';
 require 'includes/mangaupdates.php';
 require 'fonctions/series.php';
 require 'fonctions/volumes.php';
@@ -971,6 +972,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
     $sort_order = $_GET['sort_order'] ?? 'asc';
     $light_mode = isset($_GET['light']) && $_GET['light'] === 'true';
     $status_filter = $_GET['status_filter'] ?? '';
+    $status_mode   = $_GET['status_mode'] ?? 'or';
 
     $filtered_data = $data;
     if ($search_term) {
@@ -984,72 +986,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
         });
     }
-    if ($status_filter !== '') {
-        $filtered_data = array_filter($filtered_data, function($series) use ($status_filter, $review_series_ids) {
-            if ($status_filter === 'has_review') {
-                return isset($review_series_ids[$series['id']]);
-            }
-            if ($status_filter === 'mature') {
-                return !empty($series['mature']);
-            }
-            if ($status_filter === 'non_mature') {
-                return empty($series['mature']);
-            }
-            if ($status_filter === 'favorite') {
-                return !empty($series['favorite']);
-            }
-            if ($status_filter === 'read_elsewhere') {
-                return !empty($series['read_elsewhere']);
-            }
-            if ($status_filter === 'reading_not_started') {
-                // Aucun tome lu
-                if (!empty($series['reading_abandoned'])) return false;
-                foreach ($series['volumes'] ?? [] as $volume) {
-                    if ($volume['status'] === 'terminé') return false;
-                }
-                return true;
-            }
-            if ($status_filter === 'reading_in_progress') {
-                // Au moins 1 tome lu ET publication pas terminée (pas de "last")
-                if (!empty($series['reading_abandoned'])) return false;
-                $has_read = false;
-                $is_pub_finished = false;
-                foreach ($series['volumes'] ?? [] as $volume) {
-                    if ($volume['status'] === 'terminé') $has_read = true;
-                    if (!empty($volume['last'])) $is_pub_finished = true;
-                }
-                return $has_read && !$is_pub_finished;
-            }
-            if ($status_filter === 'reading_completed') {
-                // Tous les tomes lus ET publication terminée (a un "last")
-                if (!empty($series['reading_abandoned'])) return false;
-                $volumes = $series['volumes'] ?? [];
-                if (empty($volumes)) return false;
-                $has_last = false;
-                foreach ($volumes as $volume) {
-                    if ($volume['status'] !== 'terminé') return false;
-                    if (!empty($volume['last'])) $has_last = true;
-                }
-                return $has_last;
-            }
-            if ($status_filter === 'reading_abandoned') {
-                return !empty($series['reading_abandoned']);
-            }
-            $status = 'en cours';
-            if (!empty($series['volumes'])) {
-                foreach ($series['volumes'] as $volume) {
-                    if (!empty($volume['last'])) {
-                        $status = 'terminée';
-                        break;
-                    }
-                }
-            }
-            if ($status === 'en cours' && !empty($series['status'])) {
-                $status = $series['status'];
-            }
-            return $status === $status_filter;
-        });
-    }
+    $filtered_data = apply_status_filter(
+        $filtered_data,
+        $status_filter,
+        $status_mode,
+        function($series) use ($review_series_ids) {
+            return isset($review_series_ids[$series['id']]);
+        }
+    );
     sort_series($filtered_data, $sort_by, $sort_order);
 
     $offset = ($page - 1) * $per_page;
@@ -1292,6 +1236,7 @@ $sort_by = $_GET['sort_by'] ?? 'name';
 $sort_order = $_GET['sort_order'] ?? 'asc';
 $search_term = $_GET['search'] ?? '';
 $status_filter = $_GET['status_filter'] ?? '';
+$status_mode = $_GET['status_mode'] ?? 'or';
 
 $filtered_data = $data;
 
@@ -1369,10 +1314,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
         <!-- Barre de filtres et recherche -->
         <div class="filters">
             <form method="get">
-                <input type="text" name="search" autocomplete="off" id="search-all" placeholder="Rechercher une série, un auteur, un éditeur, etc.."
-                       value="<?= htmlspecialchars($search_term) ?>">
+                <div class="search-row">
+                    <input type="text" name="search" autocomplete="off" id="search-all" placeholder="Rechercher une série, un auteur, un éditeur, etc.."
+                           value="<?= htmlspecialchars($search_term) ?>">
+                    <button type="submit">Appliquer</button>
+                </div>
                 <div class="sort-options">
-                    <select name="sort_by">
+                    <select name="sort_by" id="sort-by">
                         <option value="name" <?= $sort_by === 'name' ? 'selected' : '' ?>>Trier par nom</option>
                         <option value="author" <?= $sort_by === 'author' ? 'selected' : '' ?>>Trier par auteur</option>
                         <option value="publisher" <?= $sort_by === 'publisher' ? 'selected' : '' ?>>Trier par éditeur</option>
@@ -1381,28 +1329,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <option value="added_at" <?= $sort_by === 'added_at' ? 'selected' : '' ?>>Trier par date d'ajout</option>
                         <option value="read_at" <?= $sort_by === 'read_at' ? 'selected' : '' ?>>Trier par date de lecture</option>
                     </select>
-                    <select name="sort_order">
+                    <select name="sort_order" id="sort-order">
                         <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Ascendant</option>
                         <option value="desc" <?= $sort_order === 'desc' ? 'selected' : '' ?>>Descendant</option>
                     </select>
-                    <select name="status_filter" id="status-filter">
-                        <option value="" <?= $status_filter === '' ? 'selected' : '' ?>>Tous les statuts</option>
-                        <option value="en cours" <?= $status_filter === 'en cours' ? 'selected' : '' ?>>Publication en cours ▶️</option>
-                        <option value="terminée" <?= $status_filter === 'terminée' ? 'selected' : '' ?>>Publication terminée ✅</option>
-                        <option value="en pause" <?= $status_filter === 'en pause' ? 'selected' : '' ?>>Publication en pause ⏳</option>
-                        <option value="abandonnée" <?= $status_filter === 'abandonnée' ? 'selected' : '' ?>>Publication abandonnée ⛔</option>
-                        <option value="mature" <?= $status_filter === 'mature' ? 'selected' : '' ?>>Contenu mature 🔞</option>
-                        <option value="non_mature" <?= $status_filter === 'non_mature' ? 'selected' : '' ?>>Contenu non mature 👐</option>
-                        <option value="favorite" <?= $status_filter === 'favorite' ? 'selected' : '' ?>>Mes favoris ❤️</option>
-                        <option value="reading_not_started" <?= $status_filter === 'reading_not_started' ? 'selected' : '' ?>>Lecture à débuter 📖</option>
-                        <option value="reading_in_progress" <?= $status_filter === 'reading_in_progress' ? 'selected' : '' ?>>Lecture en cours 📘</option>
-                        <option value="reading_completed" <?= $status_filter === 'reading_completed' ? 'selected' : '' ?>>Lecture terminée 📗</option>
-                        <option value="reading_abandoned" <?= $status_filter === 'reading_abandoned' ? 'selected' : '' ?>>Lecture abandonnée 📕</option>
-                        <option value="read_elsewhere" <?= $status_filter === 'read_elsewhere' ? 'selected' : '' ?>>Lues ailleurs 📚</option>
-                        <option value="has_review" <?= $status_filter === 'has_review' ? 'selected' : '' ?>>Avec critique ✏️</option>
-                    </select>
+                    <?php render_status_filter($status_filter, $status_mode, true); ?>
                 </div>
-                <button type="submit">Appliquer</button>
             </form>
         </div>
 

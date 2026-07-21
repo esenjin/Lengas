@@ -3,6 +3,24 @@ let currentSearchTerm = '';
 let currentSortBy = 'name';
 let currentSortOrder = 'asc';
 let currentStatusFilter = '';
+let currentStatusMode = 'or';
+
+// Lit l'état du widget de filtre de statuts (cases + mode OU/ET).
+function readStatusFilter() {
+    const root = document.getElementById('status-filter');
+    if (root && typeof root.__sfRead === 'function') {
+        return root.__sfRead();
+    }
+    return { filter: currentStatusFilter || '', mode: currentStatusMode || 'or' };
+}
+
+// Construit le fragment d'URL pour le filtre de statuts.
+function statusFilterQuery() {
+    const st = readStatusFilter();
+    currentStatusFilter = st.filter;
+    currentStatusMode = st.mode;
+    return `&status_filter=${encodeURIComponent(st.filter)}&status_mode=${encodeURIComponent(st.mode)}`;
+}
 
 // Fonction pour normaliser une chaîne de caractères
 function normalizeString(str) {
@@ -146,13 +164,13 @@ function loadMoreSeries() {
     isLoading = true;
     document.getElementById('loading-spinner').classList.add('active');
 
-    // Récupérer les paramètres de recherche actuels depuis l'URL
+    // Récupérer les paramètres de recherche actuels
     const urlParams = new URLSearchParams(window.location.search);
-    const searchTerm = urlParams.get('search') || '';
-    const sortBy = urlParams.get('sort_by') || 'name';
-    const sortOrder = urlParams.get('sort_order') || 'asc';
+    const searchTerm = currentSearchTerm || urlParams.get('search') || '';
+    const sortBy = currentSortBy || urlParams.get('sort_by') || 'name';
+    const sortOrder = currentSortOrder || urlParams.get('sort_order') || 'asc';
 
-    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=12&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}` + `&status_filter=${encodeURIComponent(document.getElementById('status-filter')?.value || '')}`)
+    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=12&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}` + statusFilterQuery())
         .then(response => response.json())
         .then(data => {
             if (data.success && data.series && data.series.length > 0) {
@@ -280,18 +298,15 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
     currentSearchTerm = formData.get('search') || '';
     currentSortBy = formData.get('sort_by') || 'name';
     currentSortOrder = formData.get('sort_order') || 'asc';
-    currentStatusFilter = formData.get('status_filter') || '';
 
     document.getElementById('series-list').innerHTML = '<p>Chargement des résultats...</p>';
 
     // Charge les résultats via AJAX
-    fetch(`index.php?get_paginated_series=true&page=1&per_page=12&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}` + `&status_filter=${encodeURIComponent(currentStatusFilter)}`)
+    fetch(`index.php?get_paginated_series=true&page=1&per_page=12&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}` + statusFilterQuery())
         .then(response => response.json())
         .then(data => {
             const seriesList = document.getElementById('series-list');
             seriesList.innerHTML = ''; // Vide la liste
-            const statusFilterEl = document.getElementById('status-filter');
-            if (statusFilterEl) statusFilterEl.value = currentStatusFilter;
 
             if (data.success && data.series && data.series.length > 0) {
                 data.series.forEach((series, index) => {
@@ -413,115 +428,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    document.getElementById('status-filter')?.addEventListener('change', function() {
-        currentStatusFilter = this.value;
-        currentPage = 1;
-        hasMoreSeries = true;
-        seriesData = [];
-
-        document.getElementById('series-list').innerHTML = '<p>Chargement des résultats...</p>';
-
+    // Synchronise l'état JS avec les contrôles / l'URL au chargement.
+    (function initPublicFilterState() {
         const urlParams = new URLSearchParams(window.location.search);
-        const searchTerm = urlParams.get('search') || currentSearchTerm;
-        const sortBy = urlParams.get('sort_by') || currentSortBy;
-        const sortOrder = urlParams.get('sort_order') || currentSortOrder;
+        currentSearchTerm = urlParams.get('search') || document.getElementById('search-index')?.value || '';
+        currentSortBy = document.getElementById('sort-by')?.value || urlParams.get('sort_by') || 'name';
+        currentSortOrder = document.getElementById('sort-order')?.value || urlParams.get('sort_order') || 'asc';
+    })();
 
-        fetch(`index.php?get_paginated_series=true&page=1&per_page=12&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}&status_filter=${encodeURIComponent(currentStatusFilter)}`)
-            .then(response => response.json())
-            .then(data => {
-                const seriesList = document.getElementById('series-list');
-                seriesList.innerHTML = '';
+    // Relance la requête (page 1) via le gestionnaire de soumission du formulaire,
+    // qui gère déjà le rendu des cartes.
+    function triggerPublicReload() {
+        const form = document.querySelector('.filters form');
+        if (form) form.dispatchEvent(new Event('submit', { cancelable: true }));
+    }
 
-                if (data.success && data.series && data.series.length > 0) {
-                    data.series.forEach(series => {
-                        seriesData.push(series);
-                        const seriesIndex = seriesData.length - 1;
-                        const seriesCard = document.createElement('div');
-                        seriesCard.className = `series-card ${series.mature ? 'mature' : ''}`;
-                        seriesCard.dataset.seriesIndex = seriesIndex;
-                        const totalVolumes = series.volumes ? series.volumes.length : 0;
-                        const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
-                        seriesCard.innerHTML = `
-                            <img class="series-image" src="${series.image || 'assets/img/logo.png'}" alt="${series.name}" loading="lazy">
-                            <div class="series-info">
-                                <h2>${series.name}</h2>
-                                <p><strong>Auteur :</strong> ${series.author}</p>
-                                <p><strong>Éditeur :</strong> ${series.publisher}</p>
-                                <div class="series-stats">
-                                    ${series.read_elsewhere
-                                        ? `${readVolumes} tome${readVolumes > 1 ? 's' : ''} lu${readVolumes > 1 ? 's' : ''}`
-                                        : `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} (${readVolumes} lu${readVolumes > 1 ? 's' : ''})`
-                                    }
-                                </div>
-                            </div>
-                        `;
-                        seriesCard.addEventListener('click', function() {
-                            const s = seriesData[this.dataset.seriesIndex];
-                            document.getElementById('modal-series-title').textContent = s.name;
-                            document.getElementById('modal-series-image').src = s.image || 'assets/img/logo.png';
-                            document.getElementById('modal-series-author').textContent = s.author;
-                            document.getElementById('modal-series-publisher').textContent = s.publisher;
-                            document.getElementById('modal-series-other-contributors').textContent = s.other_contributors && s.other_contributors.filter(i => i.trim()).length > 0 ? s.other_contributors.filter(i => i.trim()).join(', ') : 'aucun';
-                            document.getElementById('modal-series-categories').textContent = s.categories ? s.categories.join(', ') : '';
-                            document.getElementById('modal-series-genres').textContent = s.genres && s.genres.filter(i => i.trim()).length > 0 ? s.genres.filter(i => i.trim()).join(', ') : 'aucun';
-                            const tv = s.volumes ? s.volumes.length : 0;
-                            const rv = s.volumes ? s.volumes.filter(v => v.status === 'terminé').length : 0;
-                            if (s.read_elsewhere) {
-                                document.getElementById('modal-series-stats').innerHTML =
-                                    `${rv} tome${rv > 1 ? 's' : ''} lu${rv > 1 ? 's' : ''}`;
-                            } else {
-                                document.getElementById('modal-series-stats').innerHTML =
-                                    `${tv} tome${tv > 1 ? 's' : ''} possédé${tv > 1 ? 's' : ''} (${rv} lu${rv > 1 ? 's' : ''})`;
-                            }
+    // Tri et ascendance : application en direct (sans bouton Appliquer).
+    document.getElementById('sort-by')?.addEventListener('change', triggerPublicReload);
+    document.getElementById('sort-order')?.addEventListener('change', triggerPublicReload);
 
-                            let seriesStatus = 'en cours';
-                            if (s.volumes && s.volumes.some(v => v.last)) {
-                                seriesStatus = 'terminée';
-                            } else if (s.status) {
-                                seriesStatus = s.status;
-                            }
-                            let statusIcon, statusClass;
-                            switch (seriesStatus) {
-                                case 'terminée':   statusIcon = '✅ publication terminée';   statusClass = 'status-completed';  break;
-                                case 'en pause':   statusIcon = '⏳ publication en pause';   statusClass = 'status-paused';     break;
-                                case 'abandonnée': statusIcon = '⛔ publication abandonnée'; statusClass = 'status-abandoned';  break;
-                                default:           statusIcon = '▶️ publication en cours';   statusClass = 'status-in-progress';
-                            }
-                            document.getElementById('modal-series-badges').innerHTML =
-                                `${s.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
-                                `${s.read_elsewhere ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}` +
-                                `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
-                                reviewBadgeHtml(s) +
-                                `${s.mangaupdates_url ? `<a class="mu-badge" href="${s.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}`;
-
-                            const volumesList = document.getElementById('modal-volumes-list');
-                            volumesList.innerHTML = '';
-                            const sortedVolumes = s.volumes ? [...s.volumes].sort((a, b) => a.number - b.number) : [];
-                            sortedVolumes.forEach(volume => {
-                                const li = document.createElement('li');
-                                li.className = `status-${volume.status.replace(' ', '-')} ${volume.collector ? 'volume-collector' : ''} ${volume.last ? 'volume-last' : ''}`;
-                                li.textContent = volume.number;
-                                volumesList.appendChild(li);
-                            });
-                            document.querySelector('#series-detail-modal .modal-content').classList.toggle('favorite', !!series.favorite);
-                            window.__currentReviewSeries = s;
-                            setModalReviewBtn(s);
-                            openModal('series-detail-modal');
-                        });
-                        seriesList.appendChild(seriesCard);
-                    });
-                    currentPage = 1;
-                    hasMoreSeries = data.has_more;
-                } else {
-                    seriesList.innerHTML = '<p>Aucune série trouvée.</p>';
-                    hasMoreSeries = false;
-                }
-            })
-            .catch(error => {
-                console.error('Erreur:', error);
-                document.getElementById('series-list').innerHTML = '<p>Erreur lors du chargement des séries.</p>';
-            });
-    });
+    // Filtre de statuts : application en direct à chaque changement de sélection.
+    document.getElementById('status-filter')?.addEventListener('statusfilter:change', triggerPublicReload);
 });
 
 // ── Autocomplétion de la barre de recherche publique ──────────────────────
@@ -733,3 +660,130 @@ function setModalReviewBtn(series) {
         if (e.target === reviewModal) closeAllModals();
     });
 })();
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+// ── Widget de filtre de statuts (cases à cocher regroupées + bascule OU/ET) ──
+// Fournit window.StatusFilter.read() => { filter: "a,b,c", mode: "or"|"and" }
+// et déclenche un événement 'statusfilter:change' quand la sélection change.
+(function () {
+    const root = document.getElementById('status-filter');
+    if (!root || root.__sfInit) return;
+    root.__sfInit = true;
+
+    const panel   = root.querySelector('.status-filter-panel');
+    const toggle  = root.querySelector('.status-filter-toggle');
+    const modeSel = root.querySelector('.status-filter-mode');
+    const toggleAllBtn = root.querySelector('.status-filter-toggle-all');
+    const checkboxes = () => Array.from(root.querySelectorAll('.status-filter-cb'));
+    const groups = () => Array.from(root.querySelectorAll('.status-filter-group'));
+
+    function mode() { return modeSel && modeSel.value === 'and' ? 'and' : 'or'; }
+
+    // En mode ET, on interdit plusieurs cases dans une même catégorie multi :
+    // dès qu'une case est cochée dans le groupe, les autres sont grisées.
+    function applyAndConstraints() {
+        const isAnd = mode() === 'and';
+        groups().forEach(group => {
+            const multi = group.dataset.multi === '1';
+            const cbs = Array.from(group.querySelectorAll('.status-filter-cb'));
+            const anyChecked = cbs.some(cb => cb.checked);
+            cbs.forEach(cb => {
+                const disable = isAnd && multi && anyChecked && !cb.checked;
+                cb.disabled = disable;
+                cb.closest('.status-filter-option')?.classList.toggle('disabled', disable);
+            });
+        });
+    }
+
+    // Le libellé du bouton reflète l'état (nombre de cases cochées).
+    function refreshLabel() {
+        const label = root.querySelector('.status-filter-label');
+        if (!label) return;
+        const cbs = checkboxes();
+        const total = cbs.length;
+        const checked = cbs.filter(cb => cb.checked).length;
+        if (checked === 0 || checked === total) {
+            label.textContent = 'Statuts';
+        } else {
+            label.textContent = 'Statuts (' + checked + ')';
+        }
+    }
+
+    // Lecture de l'état -> chaîne pour l'URL.
+    // Tout coché OU rien coché => filtre vide (= tout afficher).
+    root.__sfRead = function () {
+        const cbs = checkboxes();
+        const total = cbs.length;
+        const checkedVals = cbs.filter(cb => cb.checked).map(cb => cb.value);
+        let filter = checkedVals.join(',');
+        if (checkedVals.length === 0 || checkedVals.length === total) {
+            filter = '';
+        }
+        return { filter: filter, mode: mode() };
+    };
+
+    function emitChange() {
+        applyAndConstraints();
+        refreshLabel();
+        root.dispatchEvent(new CustomEvent('statusfilter:change', { bubbles: true }));
+    }
+
+    // Ouverture / fermeture du panneau.
+    toggle?.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const open = panel.hasAttribute('hidden');
+        if (open) { panel.removeAttribute('hidden'); toggle.setAttribute('aria-expanded', 'true'); }
+        else      { panel.setAttribute('hidden', '');  toggle.setAttribute('aria-expanded', 'false'); }
+    });
+    document.addEventListener('click', function (e) {
+        if (!root.contains(e.target)) {
+            panel.setAttribute('hidden', '');
+            toggle?.setAttribute('aria-expanded', 'false');
+        }
+    });
+    panel?.addEventListener('click', e => e.stopPropagation());
+
+    // Cases à cocher.
+    checkboxes().forEach(cb => cb.addEventListener('change', emitChange));
+
+    // Bascule OU/ET : en repassant en ET, on garde au plus une case par
+    // catégorie multi (on décoche les surplus pour éviter un état incohérent).
+    modeSel?.addEventListener('change', function () {
+        root.dataset.statusMode = mode();
+        if (mode() === 'and') {
+            groups().forEach(group => {
+                if (group.dataset.multi !== '1') return;
+                let seen = false;
+                Array.from(group.querySelectorAll('.status-filter-cb')).forEach(cb => {
+                    if (cb.checked) {
+                        if (seen) cb.checked = false;
+                        else seen = true;
+                    }
+                });
+            });
+        }
+        emitChange();
+    });
+
+    // Tout cocher / tout décocher.
+    toggleAllBtn?.addEventListener('click', function () {
+        const cbs = checkboxes();
+        const shouldCheck = cbs.some(cb => !cb.checked); // s'il en reste des décochées -> tout cocher
+        if (shouldCheck && mode() === 'and') {
+            // En mode ET, "tout cocher" n'a pas de sens (une seule par catégorie).
+            // On repasse en OU pour cocher réellement tout.
+            if (modeSel) { modeSel.value = 'or'; root.dataset.statusMode = 'or'; }
+        }
+        cbs.forEach(cb => { cb.checked = shouldCheck; cb.disabled = false; cb.closest('.status-filter-option')?.classList.remove('disabled'); });
+        toggleAllBtn.textContent = shouldCheck ? 'Tout décocher' : 'Tout cocher';
+        toggleAllBtn.dataset.state = shouldCheck ? 'uncheck' : 'check';
+        emitChange();
+    });
+
+    // État initial.
+    applyAndConstraints();
+    refreshLabel();
+})();
+});
