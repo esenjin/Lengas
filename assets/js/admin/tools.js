@@ -215,7 +215,7 @@ function displayIntegrityResults(results) {
                     <h4>Fichiers includes</h4>
                     <ul>
     `;
-    const includeFiles = ['includes/mangaupdates.php', 'includes/auth.php', 'includes/helpers.php', 'includes/sidebar.php'];
+    const includeFiles = ['includes/mangaupdates.php', 'includes/auth.php', 'includes/helpers.php', 'includes/sidebar.php', 'includes/themes.php', 'includes/status_filter.php'];
     includeFiles.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
     });
@@ -242,7 +242,7 @@ function displayIntegrityResults(results) {
         'assets/css/_forms.css', 'assets/css/_layout.css', 'assets/css/_modals.css',
         'assets/css/_public.css', 'assets/css/_responsive.css', 'assets/css/_series.css',
         'assets/css/_stats.css', 'assets/css/_utils.css', 'assets/css/_variables.css',
-        'assets/css/_sidebar.css', 'assets/css/_pages.css'
+        'assets/css/_sidebar.css', 'assets/css/_pages.css', 'assets/css/_variables-light.css'
     ];
     cssFiles.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
@@ -408,6 +408,37 @@ function displayIntegrityResults(results) {
         `;
     }
     html += `</div>`;
+
+    // 5a-bis. Thèmes personnalisés
+    html += `
+        <div class="integrity-section">
+            <h3>Thèmes personnalisés</h3>
+            <ul>
+    `;
+    if (results.custom_themes && results.custom_themes.length > 0) {
+        results.custom_themes.forEach(theme => {
+            html += `<li>${theme.label} <span class="ok">(${theme.file})</span></li>`;
+        });
+    } else {
+        html += `<li>Aucun thème personnalisé détecté</li>`;
+    }
+    html += `</ul></div>`;
+
+    // 5a-ter. Fichiers Vestikan (facultatifs — absence non bloquante)
+    if (results.vestikan_files) {
+        html += `
+            <div class="integrity-section">
+                <h3>Fichiers Vestikan</h3>
+                <p class="hint">Ces fichiers sont facultatifs : s'ils sont absents, la connexion via Vestikan est simplement désactivée. Le site reste 100% fonctionnel.</p>
+                <ul>
+        `;
+        for (const [file, present] of Object.entries(results.vestikan_files)) {
+            const statusClass = present ? 'ok' : 'warn';
+            const statusText  = present ? 'OK' : 'Absent';
+            html += `<li>${file}: <span class="${statusClass}">${statusText}</span></li>`;
+        }
+        html += `</ul></div>`;
+    }
 
     // 5b. Structure de la base de données (MangaUpdates)
     if (results.db_structure) {

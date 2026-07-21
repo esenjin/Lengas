@@ -27,6 +27,8 @@ function check_site_integrity(array $data): array {
         'permissions'     => [],
         'duplicates'      => [],
         'orphaned_images' => [],
+        'custom_themes'   => [],
+        'vestikan_files'  => [],
         'version'         => null,
         'site_info'       => [],
     ];
@@ -41,6 +43,7 @@ function check_site_integrity(array $data): array {
         'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php',
         'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php', 'fonctions/stats_compute.php',
         'includes/mangaupdates.php', 'includes/auth.php', 'includes/helpers.php', 'includes/sidebar.php',
+        'includes/themes.php', 'includes/status_filter.php',
         'includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/',
     ];
     foreach ($required_files as $file) {
@@ -53,6 +56,7 @@ function check_site_integrity(array $data): array {
         'assets/css/_public.css', 'assets/css/_responsive.css', 'assets/css/_series.css',
         'assets/css/_stats.css', 'assets/css/_utils.css', 'assets/css/_variables.css',
         'assets/css/_sidebar.css', 'assets/css/_pages.css',
+        'assets/css/_variables-light.css',
     ];
     foreach ($required_css_files as $file) {
         $results['file_existence'][$file] = file_exists($file);
@@ -133,6 +137,31 @@ function check_site_integrity(array $data): array {
         if (!empty($series['image'])) $used_images[] = $series['image'];
     }
     $results['orphaned_images'] = array_values(array_diff($uploaded_images, $used_images));
+
+    // 5bis. Thèmes personnalisés présents
+    $results['custom_themes'] = [];
+    if (function_exists('list_themes')) {
+        foreach (list_themes() as $__t) {
+            if (!empty($__t['custom'])) {
+                $results['custom_themes'][] = [
+                    'label' => $__t['label'],
+                    'file'  => 'assets/css/' . $__t['file'],
+                ];
+            }
+        }
+    }
+
+    // 5ter. Fichiers Vestikan (facultatifs — absence non bloquante)
+    $vestikan_files = [
+        'includes/vestikan-config.php',
+        'includes/vestikan-sdk.php',
+        'includes/vestikan.php',
+        'vestikan-callback.php',
+        'vestikan-login.php',
+    ];
+    foreach ($vestikan_files as $file) {
+        $results['vestikan_files'][$file] = file_exists($file);
+    }
 
     // 6. Accès externe aux dossiers sensibles
     $results['external_access'] = check_external_access();
