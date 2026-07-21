@@ -448,7 +448,10 @@ function get_latest_version_from_gitea() {
                 <h2 id="modal-series-title"></h2>
                 <div id="modal-series-content" class="modal-scrollable-content">
                     <div class="modal-series-header">
-                        <img id="modal-series-image" src="" alt="Image de la série" class="series-image">
+                        <div class="modal-series-image-col">
+                            <img id="modal-series-image" src="" alt="Image de la série" class="series-image">
+                            <div id="modal-series-review-btn"></div>
+                        </div>
                         <div class="modal-series-info">
                             <p><strong>Auteur :</strong> <span id="modal-series-author"></span></p>
                             <p><strong>Éditeur :</strong> <span id="modal-series-publisher"></span></p>

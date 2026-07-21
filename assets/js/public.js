@@ -117,6 +117,7 @@ document.querySelectorAll('.series-card').forEach(card => {
         document.querySelector('#series-detail-modal .modal-content').classList.toggle('favorite', !!series.favorite);
 
         window.__currentReviewSeries = series;
+        setModalReviewBtn(series);
         openModal('series-detail-modal');
     });
 });
@@ -237,6 +238,7 @@ function loadMoreSeries() {
                         document.querySelector('#series-detail-modal .modal-content').classList.toggle('favorite', !!series.favorite);
 
                         window.__currentReviewSeries = series;
+                        setModalReviewBtn(series);
                         openModal('series-detail-modal');
                     });
 
@@ -373,6 +375,7 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
                         document.querySelector('#series-detail-modal .modal-content').classList.toggle('favorite', !!series.favorite);
 
                         window.__currentReviewSeries = series;
+                        setModalReviewBtn(series);
                         openModal('series-detail-modal');
                     });
 
@@ -502,6 +505,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             });
                             document.querySelector('#series-detail-modal .modal-content').classList.toggle('favorite', !!series.favorite);
                             window.__currentReviewSeries = s;
+                            setModalReviewBtn(s);
                             openModal('series-detail-modal');
                         });
                         seriesList.appendChild(seriesCard);
@@ -634,6 +638,17 @@ function reviewBadgeHtml(series) {
     return '<button type="button" class="review-badge" id="open-review-badge">✏️ Critique</button>';
 }
 
+// Bouton "Lire la critique" affiché sous la vignette dans la modale de détail.
+function setModalReviewBtn(series) {
+    const container = document.getElementById('modal-series-review-btn');
+    if (!container) return;
+    if (window.reviewsPublic && series && series.has_review) {
+        container.innerHTML = '<button type="button" class="review-card-btn">✏️ Lire la critique</button>';
+    } else {
+        container.innerHTML = '';
+    }
+}
+
 (function () {
     'use strict';
 
@@ -685,9 +700,19 @@ function reviewBadgeHtml(series) {
         }
     }
 
+    // Exposé pour les boutons "Lire la critique" placés sur les cartes.
+    window.openSeriesReview = openReviewModal;
+
     // Clic sur le badge "Critique" (délégué : le badge est recréé à chaque ouverture).
     document.addEventListener('click', function (e) {
         if (e.target.closest('#open-review-badge')) {
+            openReviewModal(window.__currentReviewSeries);
+        }
+    });
+
+    // Clic sur le bouton "Lire la critique" sous la vignette de la modale de détail.
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('#modal-series-review-btn .review-card-btn')) {
             openReviewModal(window.__currentReviewSeries);
         }
     });
