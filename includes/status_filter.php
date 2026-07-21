@@ -30,9 +30,10 @@ function status_filter_categories() {
         ],
         'favorite' => [
             'label' => 'Favoris',
-            'multi' => false,
+            'multi' => true,
             'items' => [
-                'favorite' => 'Mes favoris ❤️',
+                'favorite'     => 'Mes favoris ❤️',
+                'not_favorite' => 'Non favoris 🤍',
             ],
         ],
         'reading' => [
@@ -47,17 +48,19 @@ function status_filter_categories() {
         ],
         'read_elsewhere' => [
             'label' => 'Lues ailleurs',
-            'multi' => false,
+            'multi' => true,
             'items' => [
                 'read_elsewhere' => 'Lues ailleurs 📚',
+                'in_library'     => 'Dans la bibliothèque 🏠',
             ],
         ],
         'review' => [
             'label' => 'Critique',
-            'multi' => false,
+            'multi' => true,
             'requires_reviews' => true,
             'items' => [
                 'has_review' => 'Avec critique ✏️',
+                'no_review'  => 'Sans critique 📝',
             ],
         ],
     ];
@@ -68,14 +71,20 @@ function series_matches_status_token($series, $token, $has_review) {
     switch ($token) {
         case 'has_review':
             return $has_review;
+        case 'no_review':
+            return !$has_review;
         case 'mature':
             return !empty($series['mature']);
         case 'non_mature':
             return empty($series['mature']);
         case 'favorite':
             return !empty($series['favorite']);
+        case 'not_favorite':
+            return empty($series['favorite']);
         case 'read_elsewhere':
             return !empty($series['read_elsewhere']);
+        case 'in_library':
+            return empty($series['read_elsewhere']);
         case 'reading_not_started':
             if (!empty($series['reading_abandoned'])) return false;
             foreach ($series['volumes'] ?? [] as $volume) {
