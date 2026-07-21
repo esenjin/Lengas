@@ -1,6 +1,4 @@
 <?php
-
-
 require 'config.php';
 require 'includes/auth.php';
 require 'includes/helpers.php';
@@ -16,6 +14,7 @@ require 'fonctions/tools.php';
 require 'fonctions/reviews.php';
 require 'includes/custom_icons.php';
 require 'includes/themes.php';
+require_once 'includes/vestikan.php';
 
 $data = load_data();
 $options = load_options();
@@ -1806,6 +1805,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <label for="admin-password">Mot de passe admin</label>
                     <input type="password" name="admin_password" id="admin-password" placeholder="Mot de passe admin">
                     <p class="hint">Laisser vide pour ne pas modifier.</p>
+
+                    <?php if (function_exists('vestikan_enabled') && vestikan_enabled()): ?>
+                        <p class="hint"><span class="ok">●</span> Connexion via Vestikan : <strong>active</strong>.</p>
+                    <?php else: ?>
+                        <p class="hint"><span class="warn">●</span> Connexion via Vestikan : <strong>inactive</strong>. Déposez les fichiers Vestikan et <code>includes/vestikan-config.php</code> pour l'activer.</p>
+                    <?php endif; ?>
 
                     <button type="submit" name="update_options" class="button button-opt">Mettre à jour</button>
                     <p style="visibility: hidden;">_</p>
