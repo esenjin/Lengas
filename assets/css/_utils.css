@@ -78,7 +78,7 @@
 /* Tooltips */
 .hint {
     font-size: 0.82em;
-    color: var(--primary-color);
+    color: var(--text-muted);
     margin-top: -8px;
     margin-bottom: 14px;
     font-style: italic;
