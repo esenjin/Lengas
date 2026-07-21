@@ -180,7 +180,7 @@ function loadMoreSeries() {
                     const seriesIndex = seriesData.length - 1;
 
                     const seriesCard = document.createElement('div');
-                    seriesCard.className = `series-card ${series.mature ? 'mature' : ''}`;
+                    seriesCard.className = `series-card ${series.mature ? 'mature' : ''} ${series.favorite ? 'favorite' : ''}`;
                     seriesCard.dataset.seriesIndex = seriesIndex;
 
                     const totalVolumes = series.volumes ? series.volumes.length : 0;
@@ -314,7 +314,7 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
                     const seriesIndex = seriesData.length - 1;
 
                     const seriesCard = document.createElement('div');
-                    seriesCard.className = `series-card ${series.mature ? 'mature' : ''}`;
+                    seriesCard.className = `series-card ${series.mature ? 'mature' : ''} ${series.favorite ? 'favorite' : ''}`;
                     seriesCard.dataset.seriesIndex = seriesIndex;
 
                     const totalVolumes = series.volumes ? series.volumes.length : 0;
