@@ -40,6 +40,22 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 session_regenerate_id(true); // rotation de l'ID de session après authentification
+
+// session_regenerate_id() ré-émet le cookie de session en reprenant les
+// paramètres de cookie COURANTS. Après le flow Vestikan (plusieurs session_start
+// successifs dont ceux du SDK, qui n'appliquent pas nos cookie params), le
+// lifetime de 7 jours peut être perdu et le cookie retombe en cookie de session
+// (expire à la fermeture du navigateur) — d'où l'absence de « 7 jours flottants »
+// constatée uniquement en connexion Vestikan. On force donc explicitement le
+// renouvellement du cookie avec le bon lifetime.
+$lifetime = 7 * 24 * 60 * 60; // 7 jours (identique à register_session_handler())
+setcookie(session_name(), session_id(), [
+    'expires'  => time() + $lifetime,
+    'path'     => '/',
+    'secure'   => true,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 $_SESSION['logged_in']   = true;
 $_SESSION['vestikan_id'] = $vestikanId; // informatif (traçabilité), non requis
 
