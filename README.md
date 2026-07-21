@@ -13,6 +13,8 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 - Gérer les prêts de tomes à vos amis
 - Rédiger des critiques (avis) sur vos séries, mises en forme en Markdown et visibles par vos visiteurs
 - Activer un mode privé pour cacher votre bibliothèque
+- Choisir un thème (clair, sombre ou personnalisé)
+- Vous connecter avec Vestikan (SSO facultatif)
 
 ## Aperçu visuel
 Publique
@@ -79,14 +81,18 @@ Mobile
 - Nombre de séries, tomes, répartition par statut, etc.
 - Recherche des séries incomplètes (via MangaUpdates)
 
+### Thèmes
+- Thèmes de base fournis : « Sombre » (par défaut) et « Clair »
+- Thèmes personnalisés : déposez un fichier `assets/css/_variables-<nom>.css` pour l'ajouter automatiquement à la liste
+
 ### Vérifications de la collection
 - **Séries incomplètes** : détecte les tomes manquants en comparant votre collection au nombre de tomes indiqué par MangaUpdates (le décompte VF est privilégié lorsqu'il est disponible)
 - **Incohérences** : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome », statut différent de MangaUpdates, etc.)
 
 ### Outils (modale « Outils », organisée en onglets)
-- **Sauvegardes** : création, téléchargement et liste d'archives de vos données
+- **Sauvegardes** : création et téléchargement d'archives de vos données
 - **Association MangaUpdates** : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement
-- **Vérification d'intégrité** : contrôle des fichiers, des permissions, de la structure de la base de données et de la connectivité à l'API MangaUpdates
+- **Vérification d'intégrité** : contrôle des fichiers (dont les thèmes et les fichiers Vestikan), des permissions, de la structure de la base de données, des thèmes personnalisés présents et de la connectivité à l'API MangaUpdates
 
 ### Options
 - Nom, description et titres de pages personnalisables
@@ -97,13 +103,13 @@ Mobile
 
 ### Interface intuitive
 - Design sombre et responsive
-- Navigation latérale à icônes commune à l'administration et aux pages publiques (accueil et statistiques), avec liens personnalisés à icône choisie, bouton d'infos/légende, accès administration et numéro de version cliquable vers le dépôt
 - Modales pour les actions
 - Tri et filtrage des séries
 
 ### Sécurité
 - Mode privé pour cacher votre bibliothèque
 - Gestion des mots de passe et des sessions
+- Connexion SSO Vestikan facultative
 
 ## Prérequis
 - Serveur web (Apache, Nginx)
@@ -138,22 +144,34 @@ NE JAMAIS SAUTER PLUSIEURS VERSIONS MAJEURES, merci de les faire une par une. D'
 5. (facultatif) Utiliser l'outil de vérification de l'intégrité du site (modale "Outils")
 6. Félicitation, votre base de données est de nouveau là !
 
+## Comment se connecter avec Vestikan
+
+Vestikan est un système de connexion SSO (« Se connecter avec Vestikan »). Son intégration à Lengas est **entièrement facultative** : sans les fichiers Vestikan ni le fichier `includes/vestikan-config.php`, le site reste **100 % fonctionnel** et la connexion se fait par mot de passe comme d'habitude.
+
+Lorsqu'il est configuré, un bouton « Se connecter avec Vestikan » apparaît sur la page de connexion, en complément du mot de passe. L'état de la connexion (active / inactive) est visible dans les options du site, sous le champ de mot de passe, et le détail des fichiers Vestikan apparaît dans l'outil de vérification d'intégrité (une absence y est signalée en orange « Absent », car non bloquante).
+
+Pour l'activer :
+- Guide d'intégration : [INTEGRATION.md](https://git.crystalyx.net/Esenjin_Asakha/Vestikan/src/branch/main/INTEGRATION.md)
+- Installer sa propre instance de Vestikan : [README.md](https://git.crystalyx.net/Esenjin_Asakha/Vestikan/src/branch/main/README.md)
+
 ## Structure des fichiers
 
 ```
 lengas/
-├── index.php            # Page publique
-├── admin.php            # Interface d'administration
-├── stats.php            # Page des statistiques
-├── page-prets.php       # Page de gestion des prêts
-├── page-wishlist.php    # Page de la liste d'envies
-├── page-critiques.php   # Page de rédaction des critiques + rendu Markdown
-├── config.php           # Configuration du site
-├── login.php            # Connexion
-├── logout.php           # Déconnexion
+├── index.php              # Page publique
+├── admin.php              # Interface d'administration
+├── stats.php              # Page des statistiques
+├── page-prets.php         # Page de gestion des prêts
+├── page-wishlist.php      # Page de la liste d'envies
+├── page-critiques.php     # Page de rédaction des critiques + rendu Markdown
+├── config.php             # Configuration du site
+├── login.php              # Connexion
+├── logout.php             # Déconnexion
+├── vestikan-login.php     # Démarrage de la connexion Vestikan (facultatif)
+├── vestikan-callback.php  # Callback OAuth Vestikan (facultatif)
 ├── .htaccess
 ├── assets/
-│   ├── css/             # Fichiers CSS
+│   ├── css/               # Fichiers CSS
 │   │   ├── _admin.css
 │   │   ├── _base.css
 │   │   ├── _buttons.css
@@ -169,12 +187,13 @@ lengas/
 │   │   ├── _stats.css
 │   │   ├── _utils.css
 │   │   ├── _variables.css
+│   │   ├── _variables-light.css
 │   │   └── main.css
-│   ├── img/             # Images (logo, favicon)
+│   ├── img/               # Images (logo, favicon)
 │   │   ├── logo.png
 │   │   ├── favicon.ico
 │   │   └── mulogo.png
-│   └── js/              # Scripts JavaScript
+│   └── js/                # Scripts JavaScript
 │       ├── admin/
 │       │   ├── modals.js
 │       │   ├── autocomplete.js
@@ -183,7 +202,6 @@ lengas/
 │       │   ├── wishlist.js
 │       │   ├── loans.js
 │       │   ├── tools.js
-│       │   ├── unread.js
 │       │   ├── pagination.js
 │       │   ├── read.js
 │       │   ├── reviews.js
@@ -191,12 +209,17 @@ lengas/
 │       ├── stats.js
 │       └── public.js
 ├── includes/
-│   ├── auth.php            # Gestion de l'authentification et des sessions
-│   ├── helpers.php         # Fonctions utilitaires générales
-│   ├── mangaupdates.php    # API MangaUpdates (suivi des tomes et du statut)
-│   ├── sidebar.php         # Menu latéral à icônes de l'administration
-│   ├── public-sidebar.php  # Menu latéral à icônes des pages publiques (accueil et statistiques)
-│   └── custom_icons.php    # Jeu d'icônes des liens personnalisés (partagé options/sidebar)
+│   ├── auth.php              # Gestion de l'authentification et des sessions
+│   ├── helpers.php           # Fonctions utilitaires générales
+│   ├── mangaupdates.php      # API MangaUpdates (suivi des tomes et du statut)
+│   ├── sidebar.php           # Menu latéral à icônes de l'administration
+│   ├── public-sidebar.php    # Menu latéral à icônes des pages publiques (accueil et statistiques)
+│   ├── custom_icons.php      # Jeu d'icônes des liens personnalisés (partagé options/sidebar)
+│   ├── themes.php            # Gestion des thèmes (base + personnalisés)
+│   ├── status_filter.php     # Filtrage des séries par statut
+│   ├── vestikan.php          # Point d'entrée SSO Vestikan (facultatif)
+│   ├── vestikan-sdk.php      # SDK Vestikan (facultatif)
+│   └── vestikan-config.php   # Configuration SSO Vestikan (facultatif, non versionné)
 ├── fonctions/
 │   ├── series.php        # Fonctions de gestion des séries
 │   ├── volumes.php       # Fonctions de gestion des tomes
@@ -206,14 +229,17 @@ lengas/
 │   ├── options.php       # Fonctions de gestion des options du site
 │   ├── reviews.php       # Fonctions de gestion des critiques (stockage + rendu Markdown)
 │   └── tools.php         # Fonctions de gestion des outils (sauvegardes, intégrité, etc.)
-├── uploads/             # Images des séries (chmod 0774)
-├── saves/               # Sauvegardes de la base de données (chmod 0774)
-└── bdd/                 # Fichiers de données (chmod 0774)
-   └── lengas.db         # Base de données SQLite (chmod 0660)
+├── uploads/              # Images des séries (chmod 0774)
+├── saves/                # Sauvegardes de la base de données (chmod 0774)
+└── bdd/                  # Fichiers de données (chmod 0774)
+   └── lengas.db          # Base de données SQLite (chmod 0660)
 ```
+
+> Note : `includes/vestikan-config.php` contient le `client_secret` et ne doit jamais être versionné (il est dans `.gitignore`). Son absence désactive simplement le SSO.
 
 ## Crédits
 - Développé avec l'aide de [Mistral](https://chat.mistral.ai/) et [Claude](https://claude.ai/)
 - Utilise l'API de [MangaUpdates](https://api.mangaupdates.com/)
 - Utilise [JSDelivr](https://www.jsdelivr.com/)
 - Icônes via [Iconify / Material Design Icons](https://iconify.design/)
+- Connexion SSO facultative via [Vestikan](https://git.crystalyx.net/Esenjin_Asakha/Vestikan)
