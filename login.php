@@ -122,6 +122,19 @@ $sso_error = isset($_GET['sso_error']);
             cursor: pointer;
         }
 
+        .home-link {
+            display: block;
+            margin-top: 1.5em;
+            text-align: center;
+            color: #888;
+            font-size: 0.9em;
+            text-decoration: none;
+        }
+
+        .home-link:hover {
+            text-decoration: underline;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             form {
@@ -155,5 +168,6 @@ $sso_error = isset($_GET['sso_error']);
             <a href="vestikan-login.php" class="sso-button">Se connecter avec Vestikan</a>
         <?php endif; ?>
     </form>
+    <a href="index.php" class="home-link">← Retour à l'accueil</a>
 </body>
 </html>
