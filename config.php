@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '3.8.1');
+define('SITE_VERSION', '3.8.2');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Chemin vers la base de données SQLite
@@ -244,6 +244,34 @@ function register_session_handler(): void {
         'secure'   => true,
         'httponly' => true,
         'samesite' => 'Lax',
+    ]);
+}
+
+/**
+ * Ré-émet le cookie de session avec un délai de 7 jours à partir de MAINTENANT.
+ *
+ * PHP n'envoie le cookie de session qu'une seule fois (à la création) ; il ne le
+ * prolonge jamais tout seul. Appelée sur chaque requête authentifiée, cette
+ * fonction fait « glisser » le cookie côté navigateur, en phase avec last_active
+ * (mis à jour côté serveur par SqliteSessionHandler::write()). Sans elle, le
+ * cookie expire 7 jours après la connexion quelle que soit l'activité.
+ *
+ * On reprend les paramètres (path, domaine, secure, httponly, samesite) posés
+ * par register_session_handler() pour ne pas créer de cookie divergent.
+ */
+function refresh_session_cookie(): void {
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        return;
+    }
+    $lifetime = 7 * 24 * 60 * 60; // 7 jours (identique à register_session_handler())
+    $p = session_get_cookie_params();
+    setcookie(session_name(), session_id(), [
+        'expires'  => time() + $lifetime,
+        'path'     => $p['path']   !== '' ? $p['path'] : '/',
+        'domain'   => $p['domain'] ?? '',
+        'secure'   => (bool)($p['secure']   ?? false),
+        'httponly' => (bool)($p['httponly'] ?? true),
+        'samesite' => ($p['samesite'] ?? '') !== '' ? $p['samesite'] : 'Lax',
     ]);
 }
 
