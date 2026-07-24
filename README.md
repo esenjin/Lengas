@@ -40,7 +40,7 @@ Mobile
 ### Gestion des séries
 - Ajout, modification et suppression de séries
 - Association à une fiche MangaUpdates (URL) pour le suivi du nombre de tomes et du statut de publication
-- Remplissage automatique des URL MangaUpdates en masse via l'outil « Associer MangaUpdates » (recherche par titre + auteur)
+- Remplissage automatique des URL MangaUpdates en masse via l'outil « Associer MangaUpdates » de la page « Outils » (recherche par titre + auteur)
 
 ### Suivi des tomes
 - Ajout, modification et suppression de tomes
@@ -79,19 +79,18 @@ Mobile
 
 ### Statistiques
 - Nombre de séries, tomes, répartition par statut, etc.
-- Recherche des séries incomplètes (via MangaUpdates)
 
 ### Thèmes
 - Thèmes de base fournis : « Sombre » (par défaut) et « Clair »
 - Thèmes personnalisés : déposez un fichier `assets/css/_variables-<nom>.css` pour l'ajouter automatiquement à la liste
 
-### Vérifications de la collection
-- **Séries incomplètes** : détecte les tomes manquants en comparant votre collection au nombre de tomes indiqué par MangaUpdates (le décompte VF est privilégié lorsqu'il est disponible)
-- **Incohérences** : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome », statut différent de MangaUpdates, etc.)
+### Outils (page dédiée « Outils », organisée en onglets)
+Tous les outils du site sont regroupés sur la page `page-outils.php`, accessible via l'icône clé à molette du menu latéral. L'onglet actif est mémorisé dans l'URL (ex. `page-outils.php#integrity`), ce qui permet de partager un lien direct.
 
-### Outils (modale « Outils », organisée en onglets)
-- **Sauvegardes** : création et téléchargement d'archives de vos données
-- **Association MangaUpdates** : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement
+- **Séries incomplètes** : détecte les tomes manquants en comparant votre collection au nombre de tomes indiqué par MangaUpdates (le décompte VF est privilégié lorsqu'il est disponible), avec progression en direct, filtres et ajout des tomes manquants
+- **Incohérences** : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome », statut différent de MangaUpdates, prêts orphelins, etc.) et propose une édition rapide de la série concernée
+- **Sauvegardes** : création et téléchargement d'archives de vos données, ainsi que l'export JSON complet
+- **Association MangaUpdates** : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement ; un second outil récupère de la même façon les genres manquants
 - **Vérification d'intégrité** : contrôle des fichiers (dont les thèmes et les fichiers Vestikan), des permissions, de la structure de la base de données, des thèmes personnalisés présents et de la connectivité à l'API MangaUpdates
 
 ### Options
@@ -137,18 +136,18 @@ NE JAMAIS SAUTER PLUSIEURS VERSIONS MAJEURES, merci de les faire une par une. D'
 - 2.x vers 3.0 suivre les instructions de [la publication de la version](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.0.0).
 
 ## Importer une base de données
-1. Créer une sauvegarde avec l'outil dédié (modale "Outils")
+1. Créer une sauvegarde avec l'outil dédié (page "Outils", onglet "Sauvegardes")
 2. Extraire l'archive
 3. (facultatif) Supprimer le dossier `uploads/` et le fichier `bdd/lengas.db` de votre site
 4. Déplacer les dossiers `bdd/` et `uploads/` que vous venez d'extraire à la racine de votre site (écraser les fichiers si nécessaire)
-5. (facultatif) Utiliser l'outil de vérification de l'intégrité du site (modale "Outils")
+5. (facultatif) Utiliser l'outil de vérification de l'intégrité du site (page "Outils", onglet "Vérification d'intégrité")
 6. Félicitation, votre base de données est de nouveau là !
 
 ## Comment se connecter avec Vestikan
 
 Vestikan est un système de connexion SSO (« Se connecter avec Vestikan »). Son intégration à Lengas est **entièrement facultative** : sans les fichiers Vestikan ni le fichier `includes/vestikan-config.php`, le site reste **100 % fonctionnel** et la connexion se fait par mot de passe comme d'habitude.
 
-Lorsqu'il est configuré, un bouton « Se connecter avec Vestikan » apparaît sur la page de connexion, en complément du mot de passe. L'état de la connexion (active / inactive) est visible dans les options du site, sous le champ de mot de passe, et le détail des fichiers Vestikan apparaît dans l'outil de vérification d'intégrité (une absence y est signalée en orange « Absent », car non bloquante).
+Lorsqu'il est configuré, un bouton « Se connecter avec Vestikan » apparaît sur la page de connexion, en complément du mot de passe. L'état de la connexion (active / inactive) est visible dans les options du site, sous le champ de mot de passe, et le détail des fichiers Vestikan apparaît dans l'outil de vérification d'intégrité (page « Outils ») (une absence y est signalée en orange « Absent », car non bloquante).
 
 Pour l'activer :
 - Guide d'intégration : [INTEGRATION.md](https://git.crystalyx.net/Esenjin_Asakha/Vestikan/src/branch/main/INTEGRATION.md)
@@ -164,6 +163,7 @@ lengas/
 ├── page-prets.php         # Page de gestion des prêts
 ├── page-wishlist.php      # Page de la liste d'envies
 ├── page-critiques.php     # Page de rédaction des critiques + rendu Markdown
+├── page-outils.php        # Page des outils (+ endpoints SSE/POST associés)
 ├── config.php             # Configuration du site
 ├── login.php              # Connexion
 ├── logout.php             # Déconnexion
@@ -201,11 +201,16 @@ lengas/
 │       │   ├── volumes.js
 │       │   ├── wishlist.js
 │       │   ├── loans.js
-│       │   ├── tools.js
 │       │   ├── pagination.js
-│       │   ├── read.js
 │       │   ├── reviews.js
-│       │   └── main.js
+│       │   ├── main.js
+│       │   └── tools/                    # Un fichier par outil
+│       │       ├── page.js               # Socle commun (onglets, modales, helpers)
+│       │       ├── incomplete.js         # Séries incomplètes
+│       │       ├── coherence.js          # Incohérences
+│       │       ├── backups.js            # Sauvegardes et export JSON
+│       │       ├── mangaupdates-assoc.js # Association fiches + genres MangaUpdates
+│       │       └── integrity.js          # Vérification d'intégrité
 │       ├── stats.js
 │       └── public.js
 ├── includes/
@@ -228,7 +233,14 @@ lengas/
 │   ├── read.php          # Fonctions de gestion des lues ailleurs
 │   ├── options.php       # Fonctions de gestion des options du site
 │   ├── reviews.php       # Fonctions de gestion des critiques (stockage + rendu Markdown)
-│   └── tools.php         # Fonctions de gestion des outils (sauvegardes, intégrité, etc.)
+│   ├── tools.php         # Chargeur des outils (inclut fonctions/tools/)
+│   └── tools/            # Un fichier de fonctions par outil
+│       ├── backups.php            # Sauvegardes ZIP et export JSON
+│       ├── integrity.php          # Vérification d'intégrité + infos serveur
+│       ├── cleanup.php            # Nettoyages (doublons, images orphelines, fichiers interdits)
+│       ├── mangaupdates_assoc.php # Association des fiches et des genres MangaUpdates
+│       ├── incomplete.php         # Séries incomplètes (tomes manquants)
+│       └── coherence.php          # Incohérences de la collection
 ├── uploads/              # Images des séries (chmod 0774)
 ├── saves/                # Sauvegardes de la base de données (chmod 0774)
 └── bdd/                  # Fichiers de données (chmod 0774)

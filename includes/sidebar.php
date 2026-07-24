@@ -55,32 +55,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         <li class="sidebar-separator"></li>
 
-        <!-- Séries incomplètes -->
-        <li>
-            <button type="button"
-                    class="sidebar-link"
-                    id="sidebar-incomplete-btn"
-                    data-tooltip="Séries incomplètes"
-                    data-modal-trigger="open-incomplete-series-modal"
-                    data-admin-redirect="admin.php#open-incomplete">
-                <img src="https://api.iconify.design/mdi/book-alert.svg?color=%23a78bfa" width="22" height="22" alt="">
-            </button>
-        </li>
-
-        <!-- Incohérences -->
-        <li>
-            <button type="button"
-                    class="sidebar-link"
-                    id="sidebar-coherences-btn"
-                    data-tooltip="Incohérences"
-                    data-modal-trigger="open-coherences-modal"
-                    data-admin-redirect="admin.php#open-coherences">
-                <img src="https://api.iconify.design/mdi/alert-decagram.svg?color=%23a78bfa" width="22" height="22" alt="">
-            </button>
-        </li>
-
-        <li class="sidebar-separator"></li>
-
         <!-- Prêts -->
         <li>
             <a href="page-prets.php"
@@ -137,14 +111,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         <!-- Outils -->
         <li>
-            <button type="button"
-                    class="sidebar-link"
-                    id="sidebar-tools-btn"
-                    data-tooltip="Outils"
-                    data-modal-trigger="open-tools-modal"
-                    data-admin-redirect="admin.php#open-tools">
+            <a href="page-outils.php"
+               class="sidebar-link <?= $current_page === 'page-outils.php' ? 'is-active' : '' ?>"
+               data-tooltip="Outils">
                 <img src="https://api.iconify.design/mdi/wrench.svg?color=%23fb923c" width="22" height="22" alt="">
-            </button>
+            </a>
         </li>
 
     </ul>
@@ -270,10 +241,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 history.replaceState(null, '', window.location.pathname + window.location.search);
             }
 
-            if (hash === '#open-incomplete')  document.getElementById('open-incomplete-series-modal')?.click();
-            if (hash === '#open-coherences')  document.getElementById('open-coherences-modal')?.click();
             if (hash === '#open-options')     document.getElementById('open-options-modal')?.click();
-            if (hash === '#open-tools')       document.getElementById('open-tools-modal')?.click();
 
             /* Pré-remplissage depuis page-wishlist.php → ajouter une série */
             var params = new URLSearchParams(window.location.search);

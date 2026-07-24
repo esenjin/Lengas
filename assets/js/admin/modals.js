@@ -6,12 +6,7 @@ const modals = {
     'edit-series': { modal: document.getElementById('edit-series-modal'), closeBtn: document.getElementById('close-edit-series-modal') },
     'read': { modal: document.getElementById('read-modal'), closeBtn: document.getElementById('close-read-modal') },
     'edit-read': { modal: document.getElementById('edit-read-modal'), closeBtn: document.getElementById('close-edit-read-modal') },
-    'tools': { modal: document.getElementById('tools-modal'), closeBtn: document.getElementById('close-tools-modal') },
-    'options': { modal: document.getElementById('options-modal'), closeBtn: document.getElementById('close-options-modal') },
-    'incomplete-series': { modal: document.getElementById('incomplete-series-modal'), closeBtn: document.getElementById('close-incomplete-series-modal') },
-    'coherences': { modal: document.getElementById('coherences-modal'), closeBtn: document.getElementById('close-coherences-modal') },
-    'coherence-edit': { modal: document.getElementById('coherence-edit-modal'), closeBtn: document.getElementById('close-coherence-edit-modal') },
-    'add-mu-url': { modal: document.getElementById('add-mu-url-modal'), closeBtn: document.getElementById('close-add-mu-url-modal') }
+    'options': { modal: document.getElementById('options-modal'), closeBtn: document.getElementById('close-options-modal') }
 };
 
 // Ouverture des modales
@@ -21,20 +16,12 @@ document.getElementById('open-add-multiple-volumes-modal')?.addEventListener('cl
     document.getElementById('multiple-series-results').style.display = 'block';
 });
 document.getElementById('open-options-modal')?.addEventListener('click', () => modals['options'].modal.classList.add('modal-active'));
-document.getElementById('open-incomplete-series-modal')?.addEventListener('click', () => modals['incomplete-series'].modal.classList.add('modal-active'));
 
-// Fonction pour fermer une modale et recharger la page si c'est la modale d'outils ou d'options
+// Fonction pour fermer une modale et recharger la page si c'est la modale d'options
 function closeModalAndReloadIfTools(modal) {
     modal.classList.remove('modal-active');
-    if (modal.id === 'tools-modal' || modal.id === 'options-modal') {
+    if (modal.id === 'options-modal') {
         window.location.reload();
-    } else if (modal.id === 'incomplete-series-modal' && window.incompleteSearchDone) {
-        // Une recherche / un ajout d'URL a eu lieu : recharger pour rafraîchir badges et listes
-        window.location.reload();
-    } else if (modal.id === 'coherence-edit-modal' && window.coherenceEditDirty) {
-        // Des modifications ont été enregistrées : recharger l'analyse des incohérences
-        window.coherenceEditDirty = false;
-        if (typeof loadCoherences === 'function') loadCoherences();
     }
 }
 
