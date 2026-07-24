@@ -1,5 +1,21 @@
 # Lengas - Gestion de collection de mangas/light-novels
 
+## Sommaire
+- [Description](#description)
+- [Aperçu visuel](#aperçu-visuel)
+- [Fonctionnalités](#fonctionnalités)
+- [Prérequis](#prérequis)
+- [Installation](#installation)
+- [Mise à jour classique](#mise-à-jour-classique)
+- [Mise à jour depuis d'anciennes versions majeures](#mise-à-jour-depuis-danciennes-versions-majeures)
+- [Importer une base de données](#importer-une-base-de-données)
+- [Comment vérifier les sorties françaises avec Babengas](#comment-vérifier-les-sorties-françaises-avec-babengas)
+- [Comment se connecter avec Vestikan](#comment-se-connecter-avec-vestikan)
+- [Structure des fichiers](#structure-des-fichiers)
+- [Crédits](#crédits)
+
+---
+
 ## Description
 Lengas est une application web légère et intuitive pour gérer et suivre votre collection de mangas et light-novels. Elle vous permet de :
 
@@ -16,6 +32,8 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 - Choisir un thème (clair, sombre ou personnalisé)
 - Vérifier le nombre de tomes parus en France avec Babengas (Babelio, facultatif)
 - Vous connecter avec Vestikan (SSO facultatif)
+
+---
 
 ## Aperçu visuel
 Publique
@@ -36,6 +54,8 @@ Mobile
 ![Lengas m1](https://concepts.esenjin.xyz/cyla/fichiers/6a311ca6cb4d1_1781603494.png)
 
 *Captures effectuées en v.3.4.0*
+
+---
 
 ## Fonctionnalités
 ### Gestion des séries
@@ -112,9 +132,13 @@ Tous les outils du site sont regroupés sur la page `page-outils.php`, accessibl
 - Gestion des mots de passe et des sessions
 - Connexion SSO Vestikan facultative
 
+---
+
 ## Prérequis
 - Serveur web (Apache, Nginx)
 - PHP 7.4 ou supérieur
+
+---
 
 ## Installation
 1. Télécharger la dernière publication
@@ -124,6 +148,8 @@ Tous les outils du site sont regroupés sur la page `page-outils.php`, accessibl
 5. SUPPRIMER LE FICHIER `generate_password.php`
 6. C'est tout bon ! Vous pouvez profiter.
 
+---
+
 ## Mise à jour classique
 1. Télécharger la dernière publication
 2. Extraire l'archive téléchargée
@@ -131,6 +157,8 @@ Tous les outils du site sont regroupés sur la page `page-outils.php`, accessibl
 4. Sur votre serveur, tout supprimer SAUF les dossiers `bdd/`, `saves/` et `uploads/` (ni ce qu'ils contiennent)
 5. Téléverser les fichiers/dossiers extrait sur votre serveur
 6. Bien joué, c'est à jour !
+
+---
 
 ## Mise à jour depuis d'anciennes versions majeures
 Lors d'une mise à jour, **NE JAMAIS SAUTER PLUSIEURS VERSIONS MAJEURES**, merci de les faire une par une. Voici l'ordre à respecter :
@@ -147,6 +175,8 @@ Elles ne sont pas obligatoire, mais il est recommandé de passer par les version
 - [3.6.0](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.6.0), pour enregistrer en masse les dates de lecture des séries.
 - [3.9.0](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.9.0), pour ajouter en masse des urls Babelio aux séries.
 
+---
+
 ## Importer une base de données
 1. Créer une sauvegarde avec l'outil dédié (page "Outils", onglet "Sauvegardes")
 2. Extraire l'archive
@@ -154,6 +184,8 @@ Elles ne sont pas obligatoire, mais il est recommandé de passer par les version
 4. Déplacer les dossiers `bdd/` et `uploads/` que vous venez d'extraire à la racine de votre site (écraser les fichiers si nécessaire)
 5. (facultatif) Utiliser l'outil de vérification de l'intégrité du site (page "Outils", onglet "Vérification d'intégrité")
 6. Félicitation, votre base de données est de nouveau là !
+
+---
 
 ## Comment vérifier les sorties françaises avec Babengas
 
@@ -175,6 +207,8 @@ Le traitement est volontairement lent — une série toutes les cinq minutes, pa
 
 > ⚠️ Babengas ne remonte **pas** le statut de publication : la fiche Babelio affiche « En cours » y compris sur des séries terminées depuis des années. Ce statut reste géré par MangaUpdates ou saisi manuellement.
 
+---
+
 ## Comment se connecter avec Vestikan
 
 Vestikan est un système de connexion SSO (« Se connecter avec Vestikan »). Son intégration à Lengas est **entièrement facultative** : sans les fichiers Vestikan ni le fichier `includes/vestikan-config.php`, le site reste **100 % fonctionnel** et la connexion se fait par mot de passe comme d'habitude.
@@ -184,6 +218,8 @@ Lorsqu'il est configuré, un bouton « Se connecter avec Vestikan » apparaît s
 Pour l'activer :
 - Guide d'intégration : [INTEGRATION.md](https://git.crystalyx.net/Esenjin_Asakha/Vestikan/src/branch/main/INTEGRATION.md)
 - Installer sa propre instance de Vestikan : [README.md](https://git.crystalyx.net/Esenjin_Asakha/Vestikan/src/branch/main/README.md)
+
+---
 
 ## Structure des fichiers
 
@@ -280,6 +316,8 @@ lengas/
 ```
 
 > Note : `includes/vestikan-config.php` contient le `client_secret` et ne doit jamais être versionné (il est dans `.gitignore`). Son absence désactive simplement le SSO.
+
+---
 
 ## Crédits
 - Développé avec l'aide de [Mistral](https://chat.mistral.ai/) et [Claude](https://claude.ai/)
