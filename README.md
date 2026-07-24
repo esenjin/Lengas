@@ -14,6 +14,7 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 - Rédiger des critiques (avis) sur vos séries, mises en forme en Markdown et visibles par vos visiteurs
 - Activer un mode privé pour cacher votre bibliothèque
 - Choisir un thème (clair, sombre ou personnalisé)
+- Vérifier le nombre de tomes parus en France avec Babengas (Babelio, facultatif)
 - Vous connecter avec Vestikan (SSO facultatif)
 
 ## Aperçu visuel
@@ -41,6 +42,7 @@ Mobile
 - Ajout, modification et suppression de séries
 - Association à une fiche MangaUpdates (URL) pour le suivi du nombre de tomes et du statut de publication
 - Remplissage automatique des URL MangaUpdates en masse via l'outil « Associer MangaUpdates » de la page « Outils » (recherche par titre + auteur)
+- Association à une fiche Babelio (URL) pour connaître le nombre de tomes réellement parus en France, via le service Babengas
 
 ### Suivi des tomes
 - Ajout, modification et suppression de tomes
@@ -142,6 +144,30 @@ NE JAMAIS SAUTER PLUSIEURS VERSIONS MAJEURES, merci de les faire une par une. D'
 4. Déplacer les dossiers `bdd/` et `uploads/` que vous venez d'extraire à la racine de votre site (écraser les fichiers si nécessaire)
 5. (facultatif) Utiliser l'outil de vérification de l'intégrité du site (page "Outils", onglet "Vérification d'intégrité")
 6. Félicitation, votre base de données est de nouveau là !
+
+## Comment vérifier les sorties françaises avec Babengas
+
+[Babengas](https://git.crystalyx.net/Esenjin_Asakha/Babengas) est un microservice
+Docker qui interroge Babelio pour connaître le nombre de tomes **réellement parus
+en France**. Il complète MangaUpdates, dont le décompte se base surtout sur
+l'édition d'origine (VO) et renseigne rarement l'édition française.
+
+Son intégration à Lengas est **entièrement facultative** : sans les fichiers
+Babengas ni la configuration dans les options, la fonctionnalité reste invisible
+et le site fonctionne normalement.
+
+Babelio filtrant les IP d'hébergeurs, Babengas doit tourner sur une machine à IP
+résidentielle (un homelab), exposée en HTTPS via un reverse proxy. Une fois le
+service en ligne, renseignez son URL et sa clé partagée dans les options du site
+(page « Gestion », section « Babengas ») : un onglet « Vérification Babelio »
+apparaît alors sur la page « Outils ».
+
+Chaque série à vérifier doit disposer d'une **URL de fiche série Babelio**
+(champ dédié à l'ajout et à la modification), au format `/serie/SLUG/ID` :
+
+```
+https://www.babelio.com/serie/Silent-Witch/54358
+```
 
 ## Comment se connecter avec Vestikan
 

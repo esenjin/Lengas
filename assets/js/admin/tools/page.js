@@ -60,6 +60,10 @@ const modals = {
     'add-mu-url': {
         modal:    document.getElementById('add-mu-url-modal'),
         closeBtn: document.getElementById('close-add-mu-url-modal')
+    },
+    'add-babelio-url': {
+        modal:    document.getElementById('add-babelio-url-modal'),
+        closeBtn: document.getElementById('close-add-babelio-url-modal')
     }
 };
 

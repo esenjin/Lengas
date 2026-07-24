@@ -29,6 +29,8 @@ document.addEventListener('click', function(e) {
             document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
             document.getElementById('edit-series-genres').value = series.genres ? series.genres.join(', ') : '';
             document.getElementById('edit-series-mangaupdates-url').value = series.mangaupdates_url || '';
+            const babelioField = document.getElementById('edit-series-babelio-url');
+            if (babelioField) babelioField.value = series.babelio_url || '';
             document.getElementById('edit-series-new-volumes-count').value = 0;
             document.getElementById('edit-series-new-volumes-status').value = 'à lire';
             document.querySelector('#edit-series-form [name="new_volumes_collector"]').checked = false;

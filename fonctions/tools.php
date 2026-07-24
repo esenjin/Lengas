@@ -11,6 +11,7 @@
 //   cleanup.php            → Nettoyages proposés par la vérification
 //   mangaupdates_assoc.php → Association des fiches et des genres MangaUpdates
 //   incomplete.php         → Séries incomplètes (tomes manquants)
+//   babengas-helpers.php   → Vérification du décompte VF via Babelio (Babengas)
 //   coherence.php          → Incohérences de la collection
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -19,4 +20,5 @@ require_once __DIR__ . '/tools/integrity.php';
 require_once __DIR__ . '/tools/cleanup.php';
 require_once __DIR__ . '/tools/mangaupdates_assoc.php';
 require_once __DIR__ . '/tools/incomplete.php';
+require_once __DIR__ . '/tools/babengas-helpers.php';
 require_once __DIR__ . '/tools/coherence.php';

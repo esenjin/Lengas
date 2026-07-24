@@ -1,0 +1,65 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   _babengas.css — Badge Babelio et outil « Vérification via Babengas »
+
+   Le badge reprend exactement le comportement de .mu-badge (défini dans
+   _series.css) : il s'insère dans la même barre .series-badges et adopte la
+   même opacité au survol, afin que les deux sources de référence — Babelio
+   et MangaUpdates — soient visuellement cohérentes.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Badge Babelio ─────────────────────────────────────────────────────── */
+
+.babelio-badge {
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.65;
+    transition: opacity 0.2s;
+}
+
+.babelio-badge:hover {
+    opacity: 1;
+}
+
+.babelio-logo {
+    height: 16px;
+    width: auto;
+    display: block;
+    border-radius: 50%;
+}
+
+/* ── Barre de progression d'une campagne ───────────────────────────────── */
+/* Une campagne dure plusieurs heures : la barre donne un repère visuel que
+   le pourcentage seul ne suffit pas à transmettre. */
+
+.babengas-progress {
+    margin: 12px 0;
+}
+
+.babengas-progress-bar {
+    height: 8px;
+    margin: 10px 0;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--input-border, rgba(128, 128, 128, 0.25));
+}
+
+.babengas-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--primary-color, #c084fc);
+    transition: width 0.6s ease;
+}
+
+/* ── État du service (bloc d'information de l'onglet) ──────────────────── */
+
+.babengas-service-state {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 10px 0;
+}
+
+.babengas-service-state .ok   { color: var(--success-color, #34d399); }
+.babengas-service-state .warn { color: var(--warning-color, #fbbf24); }
+.babengas-service-state .err  { color: var(--error-color, #f87171); }

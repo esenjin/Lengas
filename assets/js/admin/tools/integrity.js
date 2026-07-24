@@ -69,6 +69,7 @@ function displayIntegrityResults(results) {
     const toolFunctionFiles = [
         'fonctions/tools/backups.php', 'fonctions/tools/integrity.php', 'fonctions/tools/cleanup.php',
         'fonctions/tools/mangaupdates_assoc.php', 'fonctions/tools/incomplete.php',
+        'fonctions/tools/babengas-helpers.php',
         'fonctions/tools/coherence.php'
     ];
     toolFunctionFiles.forEach(file => {
@@ -82,7 +83,7 @@ function displayIntegrityResults(results) {
                     <ul>
     `;
     const includeFiles = [
-        'includes/mangaupdates.php', 'includes/auth.php', 'includes/helpers.php',
+        'includes/mangaupdates.php', 'includes/babengas.php', 'includes/auth.php', 'includes/helpers.php',
         'includes/sidebar.php', 'includes/public-sidebar.php', 'includes/custom_icons.php',
         'includes/themes.php', 'includes/status_filter.php'
     ];
@@ -144,6 +145,7 @@ function displayIntegrityResults(results) {
     const jsToolFiles = [
         'assets/js/admin/tools/backups.js', 'assets/js/admin/tools/integrity.js',
         'assets/js/admin/tools/mangaupdates-assoc.js', 'assets/js/admin/tools/incomplete.js',
+        'assets/js/admin/tools/babengas.js',
         'assets/js/admin/tools/coherence.js'
     ];
     jsToolFiles.forEach(file => {
@@ -320,6 +322,22 @@ function displayIntegrityResults(results) {
                 <ul>
         `;
         for (const [file, present] of Object.entries(results.vestikan_files)) {
+            const statusClass = present ? 'ok' : 'warn';
+            const statusText  = present ? 'OK' : 'Absent';
+            html += `<li>${file}: <span class="${statusClass}">${statusText}</span></li>`;
+        }
+        html += `</ul></div>`;
+    }
+
+    // 5a-quater. Fichiers Babengas (facultatifs — absence non bloquante)
+    if (results.babengas_files) {
+        html += `
+            <div class="integrity-section">
+                <h3>Fichiers Babengas</h3>
+                <p class="hint">Ces fichiers sont facultatifs : s'ils sont absents, la vérification du décompte VF via Babelio est simplement désactivée. Le site reste 100% fonctionnel.</p>
+                <ul>
+        `;
+        for (const [file, present] of Object.entries(results.babengas_files)) {
             const statusClass = present ? 'ok' : 'warn';
             const statusText  = present ? 'OK' : 'Absent';
             html += `<li>${file}: <span class="${statusClass}">${statusText}</span></li>`;

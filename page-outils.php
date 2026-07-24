@@ -14,6 +14,7 @@ require 'config.php';
 require 'includes/auth.php';
 require 'includes/helpers.php';
 require 'includes/mangaupdates.php';
+require_once 'includes/babengas.php';
 require 'fonctions/series.php';
 require 'fonctions/volumes.php';
 require 'fonctions/wishlist.php';
@@ -439,6 +440,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
             $response = ['success' => true, 'issues' => check_collection_coherence($data)];
             break;
 
+        case 'babengas_launch':
+            $response = babengas_launch_campaign($data, ($_POST['all'] ?? '0') === '1');
+            break;
+
+        case 'babengas_status':
+            $response = babengas_campaign_status($data);
+            break;
+
+        case 'babengas_cancel':
+            $response = babengas_cancel_current();
+            break;
+
+        case 'babelio_associate_save':
+            // Format attendu : associations[series_id] = url
+            $assoc = $_POST['associations'] ?? [];
+            if (!is_array($assoc)) $assoc = [];
+            $response = babelio_save_associations($data, $assoc);
+            break;
+
         case 'coherence_quick_edit':
             $response = coherence_quick_edit($data, $_POST);
             break;
@@ -473,6 +493,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
         <!-- Onglets -->
         <div class="tools-tabs" role="tablist">
             <button type="button" class="tools-tab tools-tab--active" data-tab="incomplete">Séries incomplètes</button>
+<?php if (function_exists('babengas_enabled') && babengas_enabled()): ?>
+            <button type="button" class="tools-tab" data-tab="babengas">Vérification Babelio</button>
+<?php endif; ?>
             <button type="button" class="tools-tab" data-tab="coherences">Incohérences</button>
             <button type="button" class="tools-tab" data-tab="backups">Sauvegardes</button>
             <button type="button" class="tools-tab" data-tab="associate">Association MangaUpdates</button>
@@ -522,6 +545,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
                 </div>
             </div>
         </div>
+
+        <!-- ── Onglet : Vérification Babelio (Babengas) ─────────────────────── -->
+        <?php if (function_exists('babengas_enabled') && babengas_enabled()): ?>
+        <div class="tools-tab-panel" data-tab-panel="babengas">
+            <div class="tools-section">
+                <h2>Vérification via Babengas</h2>
+                <p>Cet outil interroge <strong>Babelio</strong> — via votre service Babengas — pour connaître le nombre de tomes <strong>réellement parus en France</strong>. Là où MangaUpdates se base surtout sur l'édition d'origine, Babelio couvre bien mieux les sorties VF : en cas de divergence, c'est ce décompte qui fait foi.</p>
+
+                <p class="hint">⏱️ Le traitement est <strong>asynchrone et lent, volontairement</strong> : Babengas n'interroge Babelio qu'une fois toutes les cinq minutes, par courtoisie envers leurs serveurs. Comptez environ dix minutes par série. Vous pouvez fermer cette page sans interrompre la campagne : le suivi reprendra à votre retour.</p>
+
+                <p class="hint">Sont exclues du ciblage les séries dont la publication est terminée et celles possédant un tome tagué « dernier tome » : elles n'ont plus rien à apprendre de Babelio. Les séries vérifiées il y a moins de 30 jours sont ignorées, sauf si un tome a été ajouté depuis.</p>
+
+                <p class="hint">⚠️ Babengas ne remonte <strong>pas</strong> le statut de publication : la fiche Babelio affiche « En cours » y compris sur des séries achevées de longue date. Ce statut reste géré par MangaUpdates ou saisi à la main.</p>
+
+                <div class="tools-actions">
+                    <button id="babengas-launch" class="button">Lancer une campagne</button>
+                    <button id="babengas-launch-all" class="button button-opt" title="Vérifie toutes les séries éligibles, y compris celles contrôlées il y a moins de 30 jours">Forcer toutes les séries</button>
+                    <button id="babengas-cancel" class="button button-opt" style="display:none;">Annuler la campagne</button>
+                </div>
+
+                <div id="babengas-progress"></div>
+                <div id="babengas-results"></div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <!-- ── Onglet : Incohérences ───────────────────────────────────────── -->
         <div class="tools-tab-panel" data-tab-panel="coherences">
@@ -696,6 +744,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
         </div>
     </div>
 
+    <!-- Ajout d'une URL Babelio depuis le récapitulatif de campagne -->
+    <div class="modal" id="add-babelio-url-modal">
+        <div class="modal-content modal-content--narrow">
+            <span class="close-modal" id="close-add-babelio-url-modal">&times;</span>
+            <h2>Ajouter une URL Babelio</h2>
+            <p id="add-babelio-url-series-name" class="add-mu-url-series-name"></p>
+            <input type="hidden" id="add-babelio-url-series-id">
+            <input type="text" id="add-babelio-url-input" placeholder="https://www.babelio.com/serie/nom-de-la-serie/12345" autocomplete="off">
+            <p class="hint">Collez l'URL de la fiche <strong>série</strong> (adresse en <code>/serie/…</code>). Une URL de tome (<code>/livres/…</code>) est refusée : seule la fiche série porte la liste complète des tomes.</p>
+            <div class="modal-actions">
+                <button id="save-add-babelio-url-btn" class="button button-ats">Enregistrer</button>
+            </div>
+            <p id="add-babelio-url-feedback" class="add-mu-url-feedback"></p>
+        </div>
+    </div>
+
     <!-- Alertes personnalisées -->
     <div class="modal" id="custom-alert-modal">
         <div class="modal-content">
@@ -741,6 +805,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
     </script>
     <script src="assets/js/admin/tools/page.js"></script>
     <script src="assets/js/admin/tools/incomplete.js"></script>
+    <?php if (function_exists('babengas_enabled') && babengas_enabled()): ?>
+        <script src="assets/js/admin/tools/babengas.js"></script>
+    <?php endif; ?>
     <script src="assets/js/admin/tools/coherence.js"></script>
     <script src="assets/js/admin/tools/backups.js"></script>
     <script src="assets/js/admin/tools/mangaupdates-assoc.js"></script>

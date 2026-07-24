@@ -145,6 +145,7 @@ function createLightSeriesCard(series) {
                 <span class="series-status-badge ${statusClass}">${statusIcon}</span>
                 ${series.has_review ? '<span class="review-badge">✏️ Critique</span>' : ''}
                 ${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}
+                ${series.babelio_url ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}
             </div>
             <button class="load-volumes-btn" data-series-id="${series.id}" data-volumes-count="${series.volumes_count}">Voir les tomes (${series.volumes_count})</button>
             <div class="volumes-container" data-series-id="${series.id}"></div>
@@ -296,6 +297,8 @@ document.getElementById('series-list').addEventListener('click', (e) => {
                 document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
                 document.getElementById('edit-series-genres').value = series.genres ? series.genres.join(', ') : '';
                 document.getElementById('edit-series-mangaupdates-url').value = series.mangaupdates_url || '';
+                const babelioField = document.getElementById('edit-series-babelio-url');
+                if (babelioField) babelioField.value = series.babelio_url || '';
                 document.getElementById('edit-series-new-volumes-count').value = 0;
                 document.getElementById('edit-series-new-volumes-status').value = 'à lire';
                 document.querySelector('#edit-series-form [name="new_volumes_collector"]').checked = false;

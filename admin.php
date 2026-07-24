@@ -4,6 +4,7 @@ require 'includes/auth.php';
 require 'includes/helpers.php';
 require_once 'includes/status_filter.php';
 require 'includes/mangaupdates.php';
+require_once 'includes/babengas.php';
 require 'fonctions/series.php';
 require 'fonctions/volumes.php';
 require 'fonctions/wishlist.php';
@@ -36,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $categories = trim($_POST['categories'] ?? '');
     $genres = trim($_POST['genres'] ?? '');
     $mangaupdates_url = trim($_POST['mangaupdates_url'] ?? '');
+    $babelio_url = trim($_POST['babelio_url'] ?? '');
     $mature = !empty($_POST['mature']);
     $favorite = !empty($_POST['favorite']);
     $volumes_count = (int)($_POST['volumes_count'] ?? 1);
@@ -60,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     }
 
     // Appeler add_series avec $image (qui peut être null)
-    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned);
+    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned);
 
     if ($result['success']) {
         save_data($result['data']);
@@ -155,6 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $categories = trim($_POST['edit_categories'] ?? '');
     $genres = trim($_POST['edit_genres'] ?? '');
     $mangaupdates_url = trim($_POST['edit_mangaupdates_url'] ?? '');
+    $babelio_url = trim($_POST['edit_babelio_url'] ?? '');
     $mature = !empty($_POST['edit_mature']);
     $favorite = !empty($_POST['edit_favorite']);
     $remove_image = !empty($_POST['remove_image']);
@@ -177,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         }
     }
 
-    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned);
+    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned);
     if ($result['success']) {
         save_data($result['data']);
         // Réchauffer le cache MangaUpdates pour la série modifiée
@@ -217,6 +220,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $options['private_mode'] = !empty($_POST['private_mode']);
     $options['hide_mature'] = !empty($_POST['hide_mature']);
     $options['hide_reviews'] = !empty($_POST['hide_reviews']);
+
+    // ── Babengas (facultatif) ────────────────────────────────────────────────
+    // L'URL est normalisée sans barre oblique finale, comme attendu par le
+    // service. Une clé laissée vide dans le formulaire conserve l'ancienne :
+    // elle est affichée masquée, on ne veut pas l'effacer par mégarde.
+    $options['babengas_url']     = rtrim(trim($_POST['babengas_url'] ?? ''), '/');
+    $options['babengas_enabled'] = !empty($_POST['babengas_enabled']);
+
+    $babengas_key_in = trim($_POST['babengas_key'] ?? '');
+    if ($babengas_key_in !== '') {
+        $options['babengas_key'] = $babengas_key_in;
+    }
 
     // ── Thème du site (validé contre les fichiers _variables-*.css présents) ──
     $theme_key = strtolower(trim($_POST['theme'] ?? 'dark'));
@@ -509,6 +524,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 'status' => $status,
                 'reading_status' => $reading_status,
                 'mangaupdates_url'           => $series['mangaupdates_url'] ?? '',
+                'babelio_url'                => $series['babelio_url'] ?? '',
                 'read_elsewhere'             => (bool)($series['read_elsewhere'] ?? false),
                 'reading_abandoned'          => (bool)($series['reading_abandoned'] ?? false),
                 'has_review'                 => isset($review_series_ids[$series['id']]),
@@ -840,6 +856,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <p>URL MangaUpdates :</p>
                     <input type="text" name="mangaupdates_url" placeholder="https://www.mangaupdates.com/series/xxxxxxx/nom-de-la-serie (facultatif)" autocomplete="off">
                     <p class="hint"><a tabindex="0" data-hint="L'URL MangaUpdates sert à détecter les tomes manquants des séries terminées (outil « Séries incomplètes »). Sur mangaupdates.com, ouvrez la fiche de votre série puis copiez l'URL complète. L'outil « Associer MangaUpdates » (modale Outils) peut aussi remplir ce champ automatiquement.">À quoi ça sert ? Où la trouver ?</a></p>
+                    <p>URL Babelio :</p>
+                    <input type="text" name="babelio_url" placeholder="https://www.babelio.com/serie/nom-de-la-serie/12345 (facultatif)" autocomplete="off">
+                    <p class="hint"><a tabindex="0" data-hint="L'URL Babelio permet de connaître le nombre de tomes réellement parus en France, via le service Babengas (onglet « Vérification Babelio » de la page Outils). Sur babelio.com, ouvrez la fiche SÉRIE (adresse en /serie/…) et non celle d'un tome, puis copiez l'URL complète.">À quoi ça sert ? Où la trouver ?</a></p>
                     <label>
                         <input type="checkbox" name="mature"> Contenu mature 🔞
                     </label>
@@ -956,6 +975,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <input type="text" name="edit_genres" id="edit-series-genres" placeholder="Genres (séparés par des virgules)" autocomplete="off">
                     <p>URL MangaUpdates (facultatif) :</p>
                     <input type="text" name="edit_mangaupdates_url" id="edit-series-mangaupdates-url" placeholder="https://www.mangaupdates.com/series/xxxxxxx/nom-de-la-serie" autocomplete="off">
+                    <p>URL Babelio (facultatif) :</p>
+                    <input type="text" name="edit_babelio_url" id="edit-series-babelio-url" placeholder="https://www.babelio.com/serie/nom-de-la-serie/12345" autocomplete="off">
                     <p>Nombre de nouveaux tomes à créer :</p>
                     <input type="number" name="new_volumes_count" id="edit-series-new-volumes-count" placeholder="Nombre de nouveaux tomes" min="0" value="0" autocomplete="off">
                     <p>Statut des nouveaux tomes :</p>
@@ -1209,6 +1230,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <input type="checkbox" name="hide_reviews" <?= !empty($options['hide_reviews']) ? 'checked' : '' ?>> Cacher les critiques
                     </label>
                     <p class="hint">Vos critiques ne seront pas visibles au public.</p>
+
+                    <!-- ══ BABENGAS ══════════════════════════════════════════ -->
+                    <h3 class="options-section-title">Babengas (Babelio)</h3>
+                    <p class="hint">
+                        Babengas est un microservice à héberger chez vous (Docker, IP résidentielle)
+                        qui interroge Babelio pour connaître le nombre de tomes <strong>réellement
+                        parus en France</strong>. Il complète MangaUpdates, dont le décompte VF est
+                        souvent absent. Laissez ces champs vides pour désactiver la fonctionnalité :
+                        Lengas reste 100 % fonctionnel.
+                    </p>
+
+                    <label for="babengas-url">URL du service</label>
+                    <input type="text" name="babengas_url" id="babengas-url"
+                           placeholder="https://babengas.mondomaine.fr"
+                           value="<?= htmlspecialchars($options['babengas_url'] ?? '') ?>"
+                           autocomplete="off">
+                    <p class="hint">Sans barre oblique finale. Le HTTPS n'est pas optionnel : la clé circule dans un en-tête à chaque appel.</p>
+
+                    <label for="babengas-key">Clé partagée</label>
+                    <input type="password" name="babengas_key" id="babengas-key"
+                           placeholder="<?= !empty($options['babengas_key']) ? 'Clé enregistrée — laisser vide pour ne pas modifier' : 'Valeur de BABENGAS_KEY dans le fichier .env' ?>"
+                           autocomplete="off">
+
+                    <label>
+                        <input type="checkbox" name="babengas_enabled" <?= !empty($options['babengas_enabled']) ? 'checked' : '' ?>> Activer la vérification via Babengas
+                    </label>
+
+                    <?php if (function_exists('babengas_enabled') && babengas_enabled()): ?>
+                        <?php $bg_state = babengas_check_service(); ?>
+                        <?php if ($bg_state['ok']): ?>
+                            <p class="hint"><span class="ok">●</span> Service joignable<?= $bg_state['version'] !== '' ? ' — version ' . htmlspecialchars($bg_state['version']) : '' ?><?= $bg_state['actif'] ? '' : ' (traitement en pause côté Babengas)' ?>.</p>
+                        <?php else: ?>
+                            <p class="hint"><span class="warn">●</span> Service injoignable : <?= htmlspecialchars($bg_state['error']) ?></p>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <p class="hint"><span class="warn">●</span> Vérification via Babengas : <strong>inactive</strong>.</p>
+                    <?php endif; ?>
 
                     <!-- ══ MOT DE PASSE ══════════════════════════════════════ -->
                     <h3 class="options-section-title">Mot de passe</h3>
