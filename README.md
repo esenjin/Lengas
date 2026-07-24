@@ -332,3 +332,4 @@ lengas/
 - Utilise [JSDelivr](https://www.jsdelivr.com/)
 - Icônes via [Iconify / Material Design Icons](https://iconify.design/)
 - Connexion SSO facultative via [Vestikan](https://git.crystalyx.net/Esenjin_Asakha/Vestikan)
+- Extension Docker [Babengas](https://git.crystalyx.net/Esenjin_Asakha/Babengas)
