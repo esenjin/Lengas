@@ -263,6 +263,7 @@ lengas/
 │   ├── img/               # Images (logo, favicon)
 │   │   ├── logo.png
 │   │   ├── favicon.ico
+│   │   ├── babelogo.png
 │   │   └── mulogo.png
 │   └── js/                # Scripts JavaScript
 │       ├── admin/
