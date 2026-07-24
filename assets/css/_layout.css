@@ -73,9 +73,22 @@
 }
 
 /* ── Barre de recherche + bouton Appliquer ───────────────────────────────── */
+/* Conteneur créé dynamiquement par autocomplete.js autour des champs à
+   suggestions. Il doit rester transparent pour la mise en page : sans
+   « width: 100% », les champs concernés (Nom, Auteur, Éditeur) seraient plus
+   étroits que les autres dans les modales d'ajout et de modification.
+   La largeur fixe de la barre de recherche est portée par « .search-row
+   input », plus bas — inutile de la dupliquer ici. */
 .autocomplete-container {
-    width: 400px;
-    max-width: 70%;
+    width: 100%;
+}
+
+/* Dans la barre de recherche, le conteneur suit le comportement flex de la
+   rangée plutôt que d'occuper toute la largeur disponible. */
+.search-row .autocomplete-container {
+    flex: 0 1 400px;
+    width: auto;
+    min-width: 0;
 }
 
 .search-row {

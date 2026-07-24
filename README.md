@@ -157,27 +157,23 @@ Elles ne sont pas obligatoire, mais il est recommandé de passer par les version
 
 ## Comment vérifier les sorties françaises avec Babengas
 
-[Babengas](https://git.crystalyx.net/Esenjin_Asakha/Babengas) est un microservice
-Docker qui interroge Babelio pour connaître le nombre de tomes **réellement parus
-en France**. Il complète MangaUpdates, dont le décompte se base surtout sur
-l'édition d'origine (VO) et renseigne rarement l'édition française.
+[Babengas](https://git.crystalyx.net/Esenjin_Asakha/Babengas) est un microservice Docker qui interroge Babelio pour connaître le nombre de tomes **réellement parus en France**. Il complète MangaUpdates, dont le décompte se base surtout sur l'édition l'origine (VO) et renseigne rarement l'édition française.
 
-Son intégration à Lengas est **entièrement facultative** : sans les fichiers
-Babengas ni la configuration dans les options, la fonctionnalité reste invisible
-et le site fonctionne normalement.
+Son intégration à Lengas est **entièrement facultative** : sans les fichiers Babengas ni la configuration dans les options, la fonctionnalité reste invisible et le site fonctionne normalement.
 
-Babelio filtrant les IP d'hébergeurs, Babengas doit tourner sur une machine à IP
-résidentielle (un homelab), exposée en HTTPS via un reverse proxy. Une fois le
-service en ligne, renseignez son URL et sa clé partagée dans les options du site
-(page « Gestion », section « Babengas ») : un onglet « Vérification Babelio »
-apparaît alors sur la page « Outils ».
+Babelio filtrant les IP d'hébergeurs, Babengas doit tourner sur une machine à IP résidentielle (un homelab), exposée en HTTPS via un reverse proxy. Une fois le service en ligne, renseignez son URL et sa clé partagée dans les options du site (page « Gestion », section « Babengas ») : un onglet « Vérification Babelio » apparaît alors sur la page « Outils ».
 
-Chaque série à vérifier doit disposer d'une **URL de fiche série Babelio**
-(champ dédié à l'ajout et à la modification), au format `/serie/SLUG/ID` :
+Chaque série à vérifier doit disposer d'une **URL de fiche série Babelio** (champ dédié à l'ajout et à la modification), au format `/serie/SLUG/ID` :
 
 ```
 https://www.babelio.com/serie/Silent-Witch/54358
 ```
+
+Pour un **one-shot** (série d'un seul tome, qui n'a pas de fiche série sur Babelio), collez plutôt l'adresse de la fiche du tome unique (`/livres/SLUG/ID`) : Lengas la reconnaît et la traite localement, sans passer par Babengas.
+
+Le traitement est volontairement lent — une série toutes les cinq minutes, par courtoisie envers Babelio. Une campagne se lance puis se poursuit en arrière-plan : vous pouvez fermer la page, le suivi reprend à votre retour. L'état des fichiers Babengas apparaît dans l'outil de vérification d'intégrité (une absence y est signalée en orange « Absent », car non bloquante).
+
+> ⚠️ Babengas ne remonte **pas** le statut de publication : la fiche Babelio affiche « En cours » y compris sur des séries terminées depuis des années. Ce statut reste géré par MangaUpdates ou saisi manuellement.
 
 ## Comment se connecter avec Vestikan
 

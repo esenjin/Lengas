@@ -123,7 +123,7 @@
                         </summary>
                         <ul class="summary-list">
                             ${noRef.map(s =>
-                                `<li><strong>${esc(s.name)}</strong>${s.read_elsewhere ? ' <span class="read-elsewhere-badge">Lue ailleurs</span>' : ''}${s.author ? ' — ' + esc(s.author) : ''}${s.invalid_url ? ' <span class="summary-reason">URL Babelio invalide (attendu : /serie/…)</span>' : ''}${s.id ? ` <button class="add-babelio-url-btn summary-edit-btn" data-series-id="${esc(s.id)}" data-series-name="${esc(s.name)}">Ajouter</button>` : ''}</li>`
+                                `<li><strong>${esc(s.name)}</strong>${s.read_elsewhere ? ' <span class="read-elsewhere-badge">Lue ailleurs</span>' : ''}${s.author ? ' — ' + esc(s.author) : ''}${s.invalid_url ? ' <span class="summary-reason">URL Babelio invalide (attendu : /serie/… ou /livres/…)</span>' : ''}${s.id ? ` <button class="add-babelio-url-btn summary-edit-btn" data-series-id="${esc(s.id)}" data-series-name="${esc(s.name)}">Ajouter</button>` : ''}</li>`
                             ).join('')}
                         </ul>
                     </details>`;
@@ -152,6 +152,12 @@
                     ? ` <small style="opacity:.6">(${nbRef - ref} tome${nbRef - ref > 1 ? 's' : ''} à paraître)</small>`
                     : '';
 
+                // Étiquette de source : Babelio (fiche série) ou one-shot (fiche
+                // de tome, décomptée localement à 1 exemplaire).
+                const srcLabel = series.ref_volumes_source === 'babelio-oneshot'
+                    ? '(one-shot)'
+                    : '(Babelio)';
+
                 html += `
                     <div class="incomplete-series-item">
                         <div class="incomplete-series-header">
@@ -159,7 +165,7 @@
                         </div>
                         <p><strong>Auteur :</strong> ${esc(series.author)}</p>
                         <p><strong>Éditeur :</strong> ${esc(series.publisher)}</p>
-                        <p><strong>${series.read_elsewhere ? 'Tomes lus' : 'Tomes possédés'} :</strong> ${owned} / ${ref} <small style="opacity:.6">(Babelio)</small>${upcoming}</p>`;
+                        <p><strong>${series.read_elsewhere ? 'Tomes lus' : 'Tomes possédés'} :</strong> ${owned} / ${ref} <small style="opacity:.6">${srcLabel}</small>${upcoming}</p>`;
 
                 if (missing.length > 0) {
                     html += `<p><strong>Tomes manquants :</strong> ${missing.join(', ')}</p>`;
@@ -297,6 +303,16 @@
                     return;
                 }
 
+                // Cas « one-shots seulement » : le serveur a tout résolu
+                // localement, il n'y a pas de campagne à suivre.
+                if (d.local_only) {
+                    clearProgress();
+                    setBusy(false);
+                    renderResults(d);
+                    showSuccessModal(d.message);
+                    return;
+                }
+
                 showSuccessModal(d.message);
                 startPolling();
                 poll();
@@ -381,7 +397,7 @@
                 if (feedback) { feedback.textContent = 'URL enregistrée ✅'; feedback.className = 'add-mu-url-feedback is-success'; }
                 setTimeout(() => document.getElementById('add-babelio-url-modal')?.classList.remove('modal-active'), 900);
             } else if (feedback) {
-                feedback.textContent = 'URL invalide. Attendu : une fiche série (https://www.babelio.com/serie/…/12345).';
+                feedback.textContent = 'URL invalide. Attendu : une fiche série (/serie/…) ou, pour un one-shot, une fiche tome (/livres/…).';
                 feedback.className = 'add-mu-url-feedback is-error';
             }
         })

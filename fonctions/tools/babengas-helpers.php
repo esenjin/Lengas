@@ -65,10 +65,31 @@ function babengas_launch_campaign(array $data, bool $all = false): array {
 
     $targets = babengas_targets($data, $all);
     if ($targets === []) {
+        // Aucune fiche série à envoyer à Babengas. Peut-être reste-t-il des
+        // one-shots (fiches de tome), qui se résolvent localement sans campagne.
+        $oneshots = babengas_local_oneshots($data);
+        if ($oneshots['incomplete'] !== [] || $oneshots['ok_count'] > 0) {
+            return [
+                'success'           => true,
+                'local_only'        => true,
+                'termine'           => true,
+                'incomplete_series' => $oneshots['incomplete'],
+                'failed_series'     => [],
+                'ok_count'          => $oneshots['ok_count'],
+                'no_reference_series' => babengas_series_without_url($data),
+                'message'           => sprintf(
+                    '%d one-shot%s vérifié%s localement (aucune fiche série à envoyer à Babengas).',
+                    $oneshots['ok_count'],
+                    $oneshots['ok_count'] > 1 ? 's' : '',
+                    $oneshots['ok_count'] > 1 ? 's' : ''
+                ),
+            ];
+        }
+
         return [
             'success' => false,
             'message' => $all
-                ? "Aucune série éligible : renseignez des URL Babelio (les séries terminées et celles avec un « dernier tome » sont exclues)."
+                ? "Aucune série éligible : renseignez des URL Babelio (les séries terminées, en pause, abandonnées et celles avec un « dernier tome » sont exclues)."
                 : "Aucune série à rafraîchir. Toutes les séries éligibles ont été vérifiées il y a moins de 30 jours.",
         ];
     }
@@ -146,6 +167,17 @@ function babengas_campaign_status(array $data, ?string $campagne_id = null): arr
         babengas_clear_current_campaign();
     }
 
+    // Les one-shots (fiche de tome) ne passent pas par Babengas : on les résout
+    // localement et on les fusionne dans le rapport, mais seulement une fois la
+    // campagne terminée, pour ne pas les afficher en boucle pendant le suivi.
+    $incomplete = $report['incomplete'];
+    $ok_count   = $report['ok_count'];
+    if ($done) {
+        $oneshots = babengas_local_oneshots($data);
+        $incomplete = array_merge($incomplete, $oneshots['incomplete']);
+        $ok_count  += $oneshots['ok_count'];
+    }
+
     return [
         'success'             => true,
         'campagne_id'         => $state['campagne_id'],
@@ -154,9 +186,9 @@ function babengas_campaign_status(array $data, ?string $campagne_id = null): arr
         'traites'             => $state['traites'],
         'progression'         => $state['progression'],
         'termine'             => $done,
-        'incomplete_series'   => $report['incomplete'],
+        'incomplete_series'   => $incomplete,
         'failed_series'       => $report['failed'],
-        'ok_count'            => $report['ok_count'],
+        'ok_count'            => $ok_count,
         'no_reference_series' => $done ? babengas_series_without_url($data) : [],
     ];
 }

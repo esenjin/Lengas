@@ -50,7 +50,6 @@ function check_site_integrity(array $data): array {
         'page-prets.php', 'page-wishlist.php', 'page-critiques.php', 'page-outils.php',
         'assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js',
         'assets/img/', 'assets/img/logo.png', 'assets/img/favicon.ico', 'assets/img/mulogo.png',
-        'assets/img/babelogo.png',
         'assets/js/admin/', 'assets/js/admin/tools/',
         'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php',
         'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php',
@@ -197,6 +196,7 @@ function check_site_integrity(array $data): array {
         'babengas-ping.php',
         'assets/js/admin/tools/babengas.js',
         'assets/css/_babengas.css',
+        'assets/img/babelogo.png',
     ];
     foreach ($babengas_files as $file) {
         $results['babengas_files'][$file] = file_exists($file);

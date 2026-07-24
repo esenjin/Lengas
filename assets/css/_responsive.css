@@ -75,6 +75,11 @@
         gap: 8px;
     }
 
+    .search-row .autocomplete-container {
+        flex: 1 1 auto;
+        width: 100%;
+    }
+
     .search-row input[type="text"] {
         width: 100%;
     }

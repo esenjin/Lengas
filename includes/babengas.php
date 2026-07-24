@@ -44,10 +44,19 @@ function babengas_enabled(): bool {
 }
 
 // ── Validation des URL Babelio ────────────────────────────────────────────────
+//
+// Deux formes d'URL sont acceptées, qui ne se traitent PAS de la même façon :
+//
+//   • Fiche SÉRIE  (/serie/SLUG/ID)  → envoyée à Babengas, qui lit le bloc
+//     « Série de N livres » pour compter les tomes VF parus.
+//
+//   • Fiche TOME   (/livres/SLUG/ID) → cas des one-shots. Un one-shot n'a pas
+//     de fiche série sur Babelio, seulement la fiche de son unique tome.
+//     Babengas ne saurait rien en faire (il cherche un bloc « Série de N
+//     livres » qui n'existe pas) : on ne la lui envoie donc jamais. Lengas la
+//     traite localement — une fiche de tome vaut un seul tome paru.
 
-// Extrait l'ID Babelio d'une URL de fiche SÉRIE : /serie/SLUG/54358 → "54358".
-// Une URL de TOME (/livres/…) est volontairement refusée : seule la fiche série
-// porte la liste complète des tomes.
+// Extrait l'ID d'une fiche SÉRIE : /serie/SLUG/54358 → "54358". null sinon.
 function babelio_serie_id_from_url(string $url): ?string {
     $url = trim($url);
     if ($url === '') return null;
@@ -57,9 +66,30 @@ function babelio_serie_id_from_url(string $url): ?string {
     return null;
 }
 
-// L'URL est-elle une fiche série Babelio exploitable ?
-function babelio_url_is_valid(string $url): bool {
+// Extrait l'ID d'une fiche TOME : /livres/SLUG/1883854 → "1883854". null sinon.
+function babelio_livre_id_from_url(string $url): ?string {
+    $url = trim($url);
+    if ($url === '') return null;
+    if (preg_match('#babelio\.com/livres/[^/]+/(\d+)#i', $url, $m)) {
+        return $m[1];
+    }
+    return null;
+}
+
+// L'URL est-elle une fiche SÉRIE ? (celle que Babengas sait traiter)
+function babelio_is_serie_url(string $url): bool {
     return babelio_serie_id_from_url($url) !== null;
+}
+
+// L'URL est-elle une fiche TOME ? (one-shot, traité localement)
+function babelio_is_livre_url(string $url): bool {
+    return babelio_livre_id_from_url($url) !== null;
+}
+
+// L'URL est-elle exploitable, quelle que soit sa forme (série OU tome) ?
+// C'est le contrôle à utiliser partout où l'on valide une saisie utilisateur.
+function babelio_url_is_valid(string $url): bool {
+    return babelio_is_serie_url($url) || babelio_is_livre_url($url);
 }
 
 // ── Requête cURL vers Babengas ────────────────────────────────────────────────
@@ -283,23 +313,35 @@ function babelio_get_volumes_for_url(string $url, int $max_age = BABELIO_CACHE_T
 }
 
 // ── Ciblage des séries à rafraîchir ───────────────────────────────────────────
-// Critères (voir la conception de Babengas) :
-//   • URL Babelio renseignée et valide
+// Critères :
+//   • URL Babelio de SÉRIE renseignée et valide (les fiches de tome — one-shots
+//     — sont traitées localement, pas par Babengas : voir babengas_local_oneshots)
+//   • EXCLURE les séries dont la publication est figée : « terminée », « en pause »
+//     ou « abandonnée ». Aucune n'a de nouveau tome à espérer, donc rien à
+//     apprendre de Babelio.
 //   • EXCLURE les séries possédant un tome tagué « dernier tome »
-//   • EXCLURE les séries au statut « terminée » (publication terminée)
 //   • EXCLURE celles vérifiées il y a moins d'un mois ET sans tome ajouté depuis
 //
-// $all = true → ignore les critères d'ancienneté (mais garde les exclusions
-// « série terminée », qui n'ont plus rien à apprendre de Babelio).
+// $all = true → ignore les critères d'ancienneté (mais garde les exclusions de
+// statut et de « dernier tome », qui n'ont plus rien à apprendre de Babelio).
+
+// Statuts pour lesquels plus aucun tome n'est attendu : inutile d'interroger
+// Babelio. « en cours » est le seul statut « vivant ».
+const BABENGAS_STATUTS_FIGES = ['terminée', 'en pause', 'abandonnée'];
+
 function babengas_targets(array $data, bool $all = false): array {
     $targets = [];
 
     foreach ($data as $series) {
         $url = trim((string)($series['babelio_url'] ?? ''));
-        if ($url === '' || !babelio_url_is_valid($url)) continue;
+        if ($url === '') continue;
 
-        // Exclusion : publication terminée
-        if (($series['status'] ?? '') === 'terminée') continue;
+        // Seules les fiches SÉRIE partent à Babengas. Une fiche de tome
+        // (one-shot) ne serait pas exploitable par le service.
+        if (!babelio_is_serie_url($url)) continue;
+
+        // Exclusion : publication figée (terminée, en pause, abandonnée)
+        if (in_array($series['status'] ?? '', BABENGAS_STATUTS_FIGES, true)) continue;
 
         // Exclusion : un tome est tagué « dernier tome »
         $has_last = false;
@@ -420,6 +462,69 @@ function babengas_integrate_results(array $data, array $resultats): array {
     return [
         'incomplete' => $incomplete,
         'failed'     => $failed,
+        'ok_count'   => $ok_count,
+    ];
+}
+
+// ── One-shots (fiche de TOME) : décompte local, sans Babengas ─────────────────
+// Un one-shot n'a pas de fiche série sur Babelio, seulement la fiche de son
+// unique tome. Babengas ne saurait rien en faire. On tranche donc localement :
+// une fiche de tome vaut un tome paru. La règle est simple et sûre — un one-shot,
+// par définition, ne comporte qu'un volume.
+//
+// On ne met rien en cache : il n'y a pas de serie_id, et le « décompte » (1)
+// est une constante, pas une donnée à rafraîchir. On applique les mêmes
+// exclusions de statut que pour les séries : une série figée n'a rien à signaler.
+//
+// Retourne les mêmes structures que babengas_integrate_results (incomplete +
+// ok_count), pour un affichage homogène.
+function babengas_local_oneshots(array $data): array {
+    $incomplete = [];
+    $ok_count   = 0;
+
+    foreach ($data as $series) {
+        $url = trim((string)($series['babelio_url'] ?? ''));
+
+        // On ne traite ici QUE les fiches de tome ; les fiches série passent
+        // par Babengas.
+        if ($url === '' || !babelio_is_livre_url($url)) continue;
+
+        // Mêmes exclusions que le ciblage Babengas : publication figée ou
+        // « dernier tome » posé → rien à signaler.
+        if (in_array($series['status'] ?? '', BABENGAS_STATUTS_FIGES, true)) continue;
+
+        $has_last = false;
+        foreach ($series['volumes'] ?? [] as $v) {
+            if (!empty($v['last'])) { $has_last = true; break; }
+        }
+        if ($has_last) continue;
+
+        $owned    = count($series['volumes'] ?? []);
+        $expected = 1; // un one-shot = un tome
+
+        $ok_count++;
+
+        if ($owned < $expected) {
+            $series['ref_volumes_source'] = 'babelio-oneshot';
+            $series['ref_volumes']        = $expected;
+            $series['ref_reference']      = $expected;
+            $series['missing_volumes']    = [1];
+            $incomplete[] = $series;
+        } elseif ($owned > $expected) {
+            // Plus d'un tome alors que l'URL pointe un one-shot : sans doute une
+            // URL de tome collée sur une vraie série. On le signale.
+            $series['ref_volumes_source'] = 'babelio-oneshot';
+            $series['ref_volumes']        = $expected;
+            $series['ref_reference']      = $expected;
+            $series['has_more_volumes']   = true;
+            $series['missing_volumes']    = [];
+            $incomplete[] = $series;
+        }
+        // else : le one-shot est possédé → rien à signaler
+    }
+
+    return [
+        'incomplete' => $incomplete,
         'ok_count'   => $ok_count,
     ];
 }

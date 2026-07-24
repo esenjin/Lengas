@@ -69,7 +69,6 @@ function displayIntegrityResults(results) {
     const toolFunctionFiles = [
         'fonctions/tools/backups.php', 'fonctions/tools/integrity.php', 'fonctions/tools/cleanup.php',
         'fonctions/tools/mangaupdates_assoc.php', 'fonctions/tools/incomplete.php',
-        'fonctions/tools/babengas-helpers.php',
         'fonctions/tools/coherence.php'
     ];
     toolFunctionFiles.forEach(file => {
@@ -83,7 +82,7 @@ function displayIntegrityResults(results) {
                     <ul>
     `;
     const includeFiles = [
-        'includes/mangaupdates.php', 'includes/babengas.php', 'includes/auth.php', 'includes/helpers.php',
+        'includes/mangaupdates.php', 'includes/auth.php', 'includes/helpers.php',
         'includes/sidebar.php', 'includes/public-sidebar.php', 'includes/custom_icons.php',
         'includes/themes.php', 'includes/status_filter.php'
     ];
@@ -145,7 +144,6 @@ function displayIntegrityResults(results) {
     const jsToolFiles = [
         'assets/js/admin/tools/backups.js', 'assets/js/admin/tools/integrity.js',
         'assets/js/admin/tools/mangaupdates-assoc.js', 'assets/js/admin/tools/incomplete.js',
-        'assets/js/admin/tools/babengas.js',
         'assets/js/admin/tools/coherence.js'
     ];
     jsToolFiles.forEach(file => {
