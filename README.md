@@ -327,7 +327,7 @@ lengas/
 ---
 
 ## Crédits
-- Développé avec l'aide de [Mistral](https://chat.mistral.ai/) et [Claude](https://claude.ai/)
+- Développé avec l'aide de [Claude](https://claude.ai/)
 - Utilise l'API de [MangaUpdates](https://api.mangaupdates.com/)
 - Utilise [JSDelivr](https://www.jsdelivr.com/)
 - Icônes via [Iconify / Material Design Icons](https://iconify.design/)
