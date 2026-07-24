@@ -137,7 +137,7 @@ Lors d'une mise à jour, **NE JAMAIS SAUTER PLUSIEURS VERSIONS MAJEURES**, merci
 
 - 1.x vers 2.0 suivre les instructions de [la publication de la version](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/2.0.0). Point important : Refacto complet du code.
 - 2.x vers 3.0 suivre les instructions de [la publication de la version](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.0.0). Points importants : Passage de l'enregistrement des données en base de JSON à SQlite. Récupération des données des séries via Nautiljon.
-- 3.0 vers 3.1 suivre les instructions de [la publication de la version](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.1.0). Point important : Suppression de la récupération des informations via Nautiljon (ne fonctionne pas)
+- 3.0 vers 3.1 suivre les instructions de [la publication de la version](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.1.0). Point important : Suppression de la récupération des informations via Nautiljon (ne fonctionne pas).
 
 > Exemple : Je suis en 2.2.1, la dernière version est la 3.9.0, je dois d'abord installer la 3.0, puis la 3.1 et enfin passer sur la dernière, la 3.9.0.
 
