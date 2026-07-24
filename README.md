@@ -207,6 +207,9 @@ Le traitement est volontairement lent — une série toutes les cinq minutes, pa
 
 > ⚠️ Babengas ne remonte **pas** le statut de publication : la fiche Babelio affiche « En cours » y compris sur des séries terminées depuis des années. Ce statut reste géré par MangaUpdates ou saisi manuellement.
 
+Pour installer Babengas sur son homelab :
+- Lire : [Babengas/README.md](https://git.crystalyx.net/Esenjin_Asakha/Babengas/src/branch/main/README.md)
+
 ---
 
 ## Comment se connecter avec Vestikan
@@ -216,8 +219,8 @@ Vestikan est un système de connexion SSO (« Se connecter avec Vestikan »). So
 Lorsqu'il est configuré, un bouton « Se connecter avec Vestikan » apparaît sur la page de connexion, en complément du mot de passe. L'état de la connexion (active / inactive) est visible dans les options du site, sous le champ de mot de passe, et le détail des fichiers Vestikan apparaît dans l'outil de vérification d'intégrité (page « Outils ») (une absence y est signalée en orange « Absent », car non bloquante).
 
 Pour l'activer :
-- Guide d'intégration : [INTEGRATION.md](https://git.crystalyx.net/Esenjin_Asakha/Vestikan/src/branch/main/INTEGRATION.md)
-- Installer sa propre instance de Vestikan : [README.md](https://git.crystalyx.net/Esenjin_Asakha/Vestikan/src/branch/main/README.md)
+- Guide d'intégration : [Vestikan/INTEGRATION.md](https://git.crystalyx.net/Esenjin_Asakha/Vestikan/src/branch/main/INTEGRATION.md)
+- Installer sa propre instance de Vestikan : [Vestikan/README.md](https://git.crystalyx.net/Esenjin_Asakha/Vestikan/src/branch/main/README.md)
 
 ---
 
