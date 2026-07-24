@@ -316,18 +316,14 @@ function babelio_get_volumes_for_url(string $url, int $max_age = BABELIO_CACHE_T
 // Critères :
 //   • URL Babelio de SÉRIE renseignée et valide (les fiches de tome — one-shots
 //     — sont traitées localement, pas par Babengas : voir babengas_local_oneshots)
-//   • EXCLURE les séries dont la publication est figée : « terminée », « en pause »
-//     ou « abandonnée ». Aucune n'a de nouveau tome à espérer, donc rien à
-//     apprendre de Babelio.
-//   • EXCLURE les séries possédant un tome tagué « dernier tome »
+//   • EXCLURE les séries possédant un tome tagué « dernier tome ». C'est le SEUL
+//     critère d'exclusion : le statut de publication n'entre PAS en compte.
+//     Une série peut être terminée de publier tout en étant incomplète dans la
+//     collection ; on veut justement savoir ce qu'il manque pour la finaliser.
 //   • EXCLURE celles vérifiées il y a moins d'un mois ET sans tome ajouté depuis
 //
-// $all = true → ignore les critères d'ancienneté (mais garde les exclusions de
-// statut et de « dernier tome », qui n'ont plus rien à apprendre de Babelio).
-
-// Statuts pour lesquels plus aucun tome n'est attendu : inutile d'interroger
-// Babelio. « en cours » est le seul statut « vivant ».
-const BABENGAS_STATUTS_FIGES = ['terminée', 'en pause', 'abandonnée'];
+// $all = true → ignore les critères d'ancienneté (mais garde l'exclusion du
+// « dernier tome », seule série n'ayant plus rien à apprendre de Babelio).
 
 function babengas_targets(array $data, bool $all = false): array {
     $targets = [];
@@ -340,10 +336,10 @@ function babengas_targets(array $data, bool $all = false): array {
         // (one-shot) ne serait pas exploitable par le service.
         if (!babelio_is_serie_url($url)) continue;
 
-        // Exclusion : publication figée (terminée, en pause, abandonnée)
-        if (in_array($series['status'] ?? '', BABENGAS_STATUTS_FIGES, true)) continue;
-
-        // Exclusion : un tome est tagué « dernier tome »
+        // Exclusion : un tome est tagué « dernier tome ». C'est le SEUL critère
+        // qui écarte une série. Le statut de publication n'entre pas en compte :
+        // une série peut être « terminée » côté publication mais incomplète dans
+        // la collection, et l'on veut alors savoir ce qu'il manque pour la finir.
         $has_last = false;
         foreach ($series['volumes'] ?? [] as $v) {
             if (!empty($v['last'])) { $has_last = true; break; }
@@ -489,10 +485,12 @@ function babengas_local_oneshots(array $data): array {
         // par Babengas.
         if ($url === '' || !babelio_is_livre_url($url)) continue;
 
-        // Mêmes exclusions que le ciblage Babengas : publication figée ou
-        // « dernier tome » posé → rien à signaler.
-        if (in_array($series['status'] ?? '', BABENGAS_STATUTS_FIGES, true)) continue;
-
+        // Même critère que le ciblage Babengas : un « dernier tome » posé →
+        // rien à signaler. Le statut de publication n'entre pas en compte.
+        //
+        // NB : pour un one-shot, l'unique tome est par définition le dernier ;
+        // s'il est possédé et tagué « dernier », la série est déjà finalisée et
+        // ne remonte pas. Le cas utile ici est celui du one-shot manquant.
         $has_last = false;
         foreach ($series['volumes'] ?? [] as $v) {
             if (!empty($v['last'])) { $has_last = true; break; }
