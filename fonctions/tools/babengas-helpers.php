@@ -68,12 +68,22 @@ function babengas_launch_campaign(array $data, bool $all = false): array {
         // Aucune fiche série à envoyer à Babengas. Peut-être reste-t-il des
         // one-shots (fiches de tome), qui se résolvent localement sans campagne.
         $oneshots = babengas_local_oneshots($data);
-        if ($oneshots['incomplete'] !== [] || $oneshots['ok_count'] > 0) {
+
+        // Vue complète : on complète avec les séries déjà connues comme
+        // incomplètes via le cache Babelio (aucune n'était à rafraîchir, mais
+        // leur décompte connu doit rester visible). On exclut les one-shots
+        // déjà listés pour éviter les doublons.
+        $seen = [];
+        foreach ($oneshots['incomplete'] as $s) $seen[] = (string)$s['id'];
+        $from_cache = babengas_cached_incomplete($data, $seen);
+        $incomplete = array_merge($oneshots['incomplete'], $from_cache['incomplete']);
+
+        if ($incomplete !== [] || $oneshots['ok_count'] > 0) {
             return [
                 'success'           => true,
                 'local_only'        => true,
                 'termine'           => true,
-                'incomplete_series' => $oneshots['incomplete'],
+                'incomplete_series' => $incomplete,
                 'failed_series'     => [],
                 'ok_count'          => $oneshots['ok_count'],
                 'no_reference_series' => babengas_series_without_url($data),
@@ -89,7 +99,7 @@ function babengas_launch_campaign(array $data, bool $all = false): array {
         return [
             'success' => false,
             'message' => $all
-                ? "Aucune série éligible : renseignez des URL Babelio (les séries terminées, en pause, abandonnées et celles avec un « dernier tome » sont exclues)."
+                ? "Aucune série éligible : renseignez des URL Babelio (les séries avec un « dernier tome » sont exclues)."
                 : "Aucune série à rafraîchir. Toutes les séries éligibles ont été vérifiées il y a moins de 30 jours.",
         ];
     }
@@ -176,6 +186,20 @@ function babengas_campaign_status(array $data, ?string $campagne_id = null): arr
         $oneshots = babengas_local_oneshots($data);
         $incomplete = array_merge($incomplete, $oneshots['incomplete']);
         $ok_count  += $oneshots['ok_count'];
+
+        // Vue complète : une campagne ne renvoie que les séries qu'elle a
+        // (re)vérifiées. On complète avec les séries déjà connues comme
+        // incomplètes via le cache Babelio (vérifiées récemment, donc hors
+        // ciblage), afin d'afficher TOUT ce qui manque réellement — pas
+        // seulement le delta de cette campagne. On exclut les séries déjà
+        // présentes dans le rapport (traitées ou en échec) pour éviter les
+        // doublons ; les résultats frais priment sur leur cache.
+        $seen = [];
+        foreach ($incomplete as $s)          $seen[] = (string)$s['id'];
+        foreach ($report['failed'] as $s)    $seen[] = (string)$s['id'];
+
+        $from_cache = babengas_cached_incomplete($data, $seen);
+        $incomplete = array_merge($incomplete, $from_cache['incomplete']);
     }
 
     return [

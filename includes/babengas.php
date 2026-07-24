@@ -382,6 +382,74 @@ function babengas_volume_added_since(array $series, int $since): bool {
     return false;
 }
 
+// ── Séries incomplètes connues via le cache Babelio ───────────────────────────
+// Une campagne ne renvoie QUE les séries qu'elle a (re)vérifiées. Les séries
+// déjà connues comme incomplètes, mais vérifiées récemment (donc écartées du
+// ciblage), disparaîtraient sinon du rapport, donnant une vue partielle de ce
+// qu'il manque réellement. Cette fonction rejoue le décompte à partir du cache
+// pour offrir une vue complète, sans aucun appel réseau.
+//
+// $exclude_ids = identifiants déjà présents dans le rapport de campagne, pour
+// éviter les doublons (une série fraîchement traitée prime sur son cache).
+//
+// Mêmes critères d'éligibilité et même forme de sortie que
+// babengas_integrate_results : les entrées se fondent dans le même affichage.
+function babengas_cached_incomplete(array $data, array $exclude_ids = []): array {
+    $exclude    = array_flip(array_map('strval', $exclude_ids));
+    $incomplete = [];
+
+    foreach ($data as $series) {
+        if (isset($exclude[(string)$series['id']])) continue;
+
+        $url = trim((string)($series['babelio_url'] ?? ''));
+        if ($url === '') continue;
+
+        // Seules les fiches SÉRIE ont un décompte en cache (les one-shots sont
+        // résolus localement, voir babengas_local_oneshots).
+        if (!babelio_is_serie_url($url)) continue;
+
+        // Même exclusion que le ciblage : un « dernier tome » posé → série
+        // considérée finalisée, rien à signaler. Le statut n'entre pas en compte.
+        $has_last = false;
+        foreach ($series['volumes'] ?? [] as $v) {
+            if (!empty($v['last'])) { $has_last = true; break; }
+        }
+        if ($has_last) continue;
+
+        $sid = babelio_serie_id_from_url($url);
+        if ($sid === null) continue;
+
+        // Cache seul (aucun appel réseau). $max_age = 0 → on accepte toute
+        // valeur en cache, quelle que soit son ancienneté : c'est justement le
+        // décompte déjà connu que l'on veut réafficher.
+        $cached = babelio_get_cached($sid, 0);
+        if ($cached === null) continue;
+
+        $nb_tomes = (int)$cached['nb_tomes'];
+        $nb_ref   = $cached['nb_reference'];
+        $owned    = count($series['volumes'] ?? []);
+
+        $series['ref_volumes_source'] = 'babelio';
+        $series['ref_volumes']        = $nb_tomes;
+        $series['ref_reference']      = $nb_ref;
+        $series['from_cache']         = true;
+
+        if ($owned < $nb_tomes) {
+            $missing = [];
+            for ($i = $owned + 1; $i <= $nb_tomes; $i++) $missing[] = $i;
+            $series['missing_volumes'] = $missing;
+            $incomplete[] = $series;
+        } elseif ($owned > $nb_tomes) {
+            $series['has_more_volumes'] = true;
+            $series['missing_volumes']  = [];
+            $incomplete[] = $series;
+        }
+        // else : série à jour d'après le cache → non retournée
+    }
+
+    return ['incomplete' => $incomplete];
+}
+
 // ── Intégration des résultats d'une campagne ──────────────────────────────────
 // Écrit en cache les décomptes fiables, laisse les échecs intacts (l'ancienne
 // valeur et l'ancien timestamp sont conservés) et retourne un rapport prêt à
