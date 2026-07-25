@@ -106,11 +106,6 @@ form {
     margin-bottom: 8px;
 }
 
-.custom-icon-field .custom-icon-select {
-    flex: 1;
-    margin-bottom: 0;
-}
-
 .custom-icon-preview {
     width: 24px;
     height: 24px;
@@ -120,4 +115,119 @@ form {
     background: var(--background-darker, rgba(0, 0, 0, 0.25));
     border-radius: var(--border-radius-sm);
     border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Bouton déclencheur : affiche l'icône courante + son libellé, ouvre la modale */
+.custom-icon-trigger {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-color);
+    font-size: 0.9em;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: var(--transition-fast);
+}
+
+.custom-icon-trigger:hover { border-color: var(--input-border-focus); }
+
+.custom-icon-trigger .custom-icon-preview {
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    width: 22px;
+    height: 22px;
+}
+
+.custom-icon-trigger .custom-icon-label { flex: 1; }
+
+.custom-icon-trigger .custom-icon-caret {
+    color: var(--text-muted);
+    font-size: 0.8em;
+    flex-shrink: 0;
+}
+
+/* ── Modale de sélection d'icône ─────────────────────────────────────────── */
+.icon-picker-search {
+    width: 100%;
+    margin-bottom: 14px;
+}
+
+.icon-picker-grid-wrap {
+    max-height: 55vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.icon-picker-group-title {
+    font-size: 0.72em;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    font-weight: 700;
+    font-family: 'Outfit', system-ui, sans-serif;
+    margin: 14px 0 8px;
+}
+
+.icon-picker-group:first-child .icon-picker-group-title { margin-top: 0; }
+
+.icon-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 8px;
+}
+
+.icon-picker-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 6px;
+    background: var(--background-medium);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--border-radius);
+    color: var(--text-muted);
+    font-size: 0.72em;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.icon-picker-item:hover {
+    background: var(--background-lighter);
+    border-color: rgba(74, 222, 128, 0.35);
+    color: var(--text-color);
+}
+
+.icon-picker-item img {
+    opacity: 0.85;
+    transition: opacity 0.15s ease;
+}
+
+.icon-picker-item:hover img { opacity: 1; }
+
+.icon-picker-item span {
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.icon-picker-item.is-selected {
+    border-color: var(--primary-color);
+    background: rgba(74, 222, 128, 0.10);
+    color: var(--text-white);
+}
+
+.icon-picker-empty {
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 16px 4px;
+    margin: 0;
 }

@@ -227,8 +227,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                 <p class="hint">Ces liens apparaissent dans le menu latéral des pages publiques (accueil et statistiques). Choisissez une icône pour chacun.</p>
 
                 <?php
-                $icon_labels = custom_link_icon_labels();
-                $icon_map    = custom_link_icons();
                 for ($__i = 1; $__i <= 3; $__i++):
                     $__s        = $__i === 1 ? '' : $__i;
                     $__name_val = htmlspecialchars($options["custom_button_name$__s"] ?? '');
@@ -241,36 +239,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                     <label for="custom-button-url<?= $__s ?>">URL du bouton personnalisé (<?= $__i ?>)</label>
                     <input type="text" name="custom_button_url<?= $__s ?>" id="custom-button-url<?= $__s ?>" placeholder="URL du bouton" value="<?= $__url_val ?>">
 
-                    <label for="custom-button-icon<?= $__s ?>">Icône du bouton (<?= $__i ?>)</label>
+                    <label>Icône du bouton (<?= $__i ?>)</label>
                     <div class="custom-icon-field">
-                        <img class="custom-icon-preview" id="custom-icon-preview<?= $__s ?>"
-                             src="https://api.iconify.design/<?= str_replace(':', '/', custom_link_icon_name($__icon_val)) ?>.svg?color=%234ade80"
-                             width="22" height="22" alt="">
-                        <select name="custom_button_icon<?= $__s ?>" id="custom-button-icon<?= $__s ?>"
-                                class="custom-icon-select"
-                                data-icon-map='<?= htmlspecialchars(json_encode($icon_map), ENT_QUOTES) ?>'
-                                data-preview="custom-icon-preview<?= $__s ?>">
-                            <?php foreach ($icon_labels as $__key => $__lbl): ?>
-                                <option value="<?= $__key ?>" <?= $__icon_val === $__key ? 'selected' : '' ?>><?= htmlspecialchars($__lbl) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <input type="hidden" name="custom_button_icon<?= $__s ?>"
+                               id="custom-button-icon<?= $__s ?>" value="<?= htmlspecialchars($__icon_val) ?>">
+                        <button type="button"
+                                class="custom-icon-trigger"
+                                data-target="custom-button-icon<?= $__s ?>"
+                                data-preview="custom-icon-preview<?= $__s ?>"
+                                data-label="custom-icon-label<?= $__s ?>">
+                            <img class="custom-icon-preview" id="custom-icon-preview<?= $__s ?>"
+                                 src="https://api.iconify.design/<?= str_replace(':', '/', custom_link_icon_name($__icon_val)) ?>.svg?color=%234ade80"
+                                 width="22" height="22" alt="">
+                            <span class="custom-icon-label" id="custom-icon-label<?= $__s ?>"><?= htmlspecialchars(custom_link_icon_label($__icon_val)) ?></span>
+                            <span class="custom-icon-caret">▾</span>
+                        </button>
                     </div>
                     <p class="hint">Laisser le nom ou l'URL vide pour masquer le bouton.</p>
                 <?php endfor; ?>
-                <script>
-                (function() {
-                    document.querySelectorAll('.custom-icon-select').forEach(function(sel) {
-                        var map = {};
-                        try { map = JSON.parse(sel.dataset.iconMap || '{}'); } catch (e) {}
-                        var preview = document.getElementById(sel.dataset.preview);
-                        sel.addEventListener('change', function() {
-                            if (!preview) return;
-                            var iconName = (map[sel.value] || 'mdi:link-variant').replace(':', '/');
-                            preview.src = 'https://api.iconify.design/' + iconName + '.svg?color=%234ade80';
-                        });
-                    });
-                })();
-                </script>
 
                 <!-- ══ STATISTIQUES ══════════════════════════════════════ -->
                 <h3 class="options-section-title">Statistiques</h3>
@@ -445,6 +431,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
         </div>
     </main>
 
+    <!-- ── Modale de sélection d'icône (liens personnalisés) ───────────────── -->
+    <div class="modal" id="icon-picker-modal">
+        <div class="modal-content modal-content--narrow">
+            <span class="close-modal" id="close-icon-picker-modal">&times;</span>
+            <h2>Choisir une icône</h2>
+            <input type="text" id="icon-picker-search" class="icon-picker-search"
+                   placeholder="Rechercher une icône…" autocomplete="off">
+            <div id="icon-picker-grid-wrap" class="icon-picker-grid-wrap">
+                <?php foreach (custom_link_icon_groups() as $__group => $__keys): ?>
+                    <div class="icon-picker-group" data-group>
+                        <h3 class="icon-picker-group-title"><?= htmlspecialchars($__group) ?></h3>
+                        <div class="icon-picker-grid">
+                            <?php foreach ($__keys as $__key):
+                                $__lbl  = custom_link_icon_label($__key);
+                                $__name = str_replace(':', '/', custom_link_icon_name($__key)); ?>
+                                <button type="button" class="icon-picker-item"
+                                        data-key="<?= htmlspecialchars($__key) ?>"
+                                        data-label="<?= htmlspecialchars($__lbl) ?>"
+                                        data-search="<?= htmlspecialchars(mb_strtolower($__lbl . ' ' . $__key)) ?>"
+                                        title="<?= htmlspecialchars($__lbl) ?>">
+                                    <img src="https://api.iconify.design/<?= $__name ?>.svg?color=%23d4d4e8"
+                                         width="24" height="24" alt="" loading="lazy">
+                                    <span><?= htmlspecialchars($__lbl) ?></span>
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+                <p id="icon-picker-empty" class="icon-picker-empty" style="display:none;">Aucune icône ne correspond.</p>
+            </div>
+        </div>
+    </div>
+
     <button id="back-to-top" title="Retour en haut">↑</button>
 
     <script>
@@ -456,6 +475,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     document.getElementById('back-to-top')?.addEventListener('click', function () {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
+    </script>
+
+    <script>
+    // ── Sélecteur visuel d'icône pour les liens personnalisés ────────────────
+    (function () {
+        var modal   = document.getElementById('icon-picker-modal');
+        var closeEl = document.getElementById('close-icon-picker-modal');
+        var search  = document.getElementById('icon-picker-search');
+        var emptyEl = document.getElementById('icon-picker-empty');
+        if (!modal) return;
+
+        // Champ (hidden) et aperçus visés par le bouton actuellement ouvert
+        var active = { input: null, preview: null, label: null };
+
+        function openModal(trigger) {
+            active.input   = document.getElementById(trigger.dataset.target);
+            active.preview = document.getElementById(trigger.dataset.preview);
+            active.label   = document.getElementById(trigger.dataset.label);
+
+            // Réinitialise la recherche et marque l'icône courante
+            search.value = '';
+            filterIcons('');
+            var current = active.input ? active.input.value : '';
+            modal.querySelectorAll('.icon-picker-item').forEach(function (item) {
+                item.classList.toggle('is-selected', item.dataset.key === current);
+            });
+
+            modal.classList.add('modal-active');
+            setTimeout(function () { search.focus(); }, 50);
+        }
+
+        function closeModal() {
+            modal.classList.remove('modal-active');
+            active = { input: null, preview: null, label: null };
+        }
+
+        function chooseIcon(item) {
+            if (!active.input) { closeModal(); return; }
+            var key  = item.dataset.key;
+            var lbl  = item.dataset.label;
+            var img  = item.querySelector('img');
+            active.input.value = key;
+            if (active.label)   active.label.textContent = lbl;
+            if (active.preview && img) {
+                // Réutilise l'URL de la vignette, en repassant à la couleur verte de l'aperçu
+                active.preview.src = img.getAttribute('src').replace('color=%23d4d4e8', 'color=%234ade80');
+            }
+            closeModal();
+        }
+
+        function filterIcons(term) {
+            term = (term || '').trim().toLowerCase();
+            var anyVisible = false;
+            // Filtre chaque item, puis masque les groupes devenus vides
+            modal.querySelectorAll('[data-group]').forEach(function (group) {
+                var groupHasMatch = false;
+                group.querySelectorAll('.icon-picker-item').forEach(function (item) {
+                    var match = !term || (item.dataset.search || '').indexOf(term) !== -1;
+                    item.style.display = match ? '' : 'none';
+                    if (match) { groupHasMatch = true; anyVisible = true; }
+                });
+                group.style.display = groupHasMatch ? '' : 'none';
+            });
+            if (emptyEl) emptyEl.style.display = anyVisible ? 'none' : 'block';
+        }
+
+        // Ouverture depuis chaque bouton d'aperçu
+        document.querySelectorAll('.custom-icon-trigger').forEach(function (btn) {
+            btn.addEventListener('click', function () { openModal(btn); });
+        });
+
+        // Sélection d'une icône
+        modal.querySelectorAll('.icon-picker-item').forEach(function (item) {
+            item.addEventListener('click', function () { chooseIcon(item); });
+        });
+
+        // Recherche
+        if (search) search.addEventListener('input', function () { filterIcons(search.value); });
+
+        // Fermeture (croix, clic extérieur, Échap)
+        if (closeEl) closeEl.addEventListener('click', closeModal);
+        modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal.classList.contains('modal-active')) closeModal();
+        });
+    })();
     </script>
 
 </body>

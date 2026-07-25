@@ -119,7 +119,7 @@ Tous les outils du site sont regroupés sur la page `page-outils.php`, accessibl
 Toutes les options du site sont regroupées sur la page `page-options.php`, accessible via l'icône engrenage du menu latéral.
 
 - Nom, description et titres de pages personnalisables
-- Jusqu'à 3 boutons de liens personnalisés affichés sur la page publique (avec icône au choix)
+- Jusqu'à 3 boutons de liens personnalisés affichés sur la page publique, avec choix de l'icône via un sélecteur visuel (aperçu de chaque icône, recherche et catégories ; une trentaine d'icônes disponibles : médias, flux RSS, réseaux, etc.)
 - Réglages des statistiques (temps de lecture et valeur d'un tome, par catégorie)
 - Choix du thème (clair, sombre ou personnalisé)
 - Mode privé, masquage des séries matures, masquage des critiques
