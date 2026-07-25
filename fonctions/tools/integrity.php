@@ -47,7 +47,7 @@ function check_site_integrity(array $data): array {
     // 1. Existence des fichiers/dossiers
     $required_files = [
         'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php', '.htaccess',
-        'page-prets.php', 'page-wishlist.php', 'page-critiques.php', 'page-outils.php',
+        'page-prets.php', 'page-wishlist.php', 'page-critiques.php', 'page-outils.php', 'page-options.php',
         'assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js',
         'assets/img/', 'assets/img/logo.png', 'assets/img/favicon.ico', 'assets/img/mulogo.png',
         'assets/js/admin/', 'assets/js/admin/tools/',

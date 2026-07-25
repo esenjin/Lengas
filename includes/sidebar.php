@@ -99,14 +99,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         <!-- Options -->
         <li>
-            <button type="button"
-                    class="sidebar-link"
-                    id="sidebar-options-btn"
-                    data-tooltip="Options"
-                    data-modal-trigger="open-options-modal"
-                    data-admin-redirect="admin.php#open-options">
+            <a href="page-options.php"
+               class="sidebar-link <?= $current_page === 'page-options.php' ? 'is-active' : '' ?>"
+               data-tooltip="Options">
                 <img src="https://api.iconify.design/mdi/cog.svg?color=%23fb923c" width="22" height="22" alt="">
-            </button>
+            </a>
         </li>
 
         <!-- Outils -->
@@ -240,8 +237,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
             if (hash) {
                 history.replaceState(null, '', window.location.pathname + window.location.search);
             }
-
-            if (hash === '#open-options')     document.getElementById('open-options-modal')?.click();
 
             /* Pré-remplissage depuis page-wishlist.php → ajouter une série */
             var params = new URLSearchParams(window.location.search);

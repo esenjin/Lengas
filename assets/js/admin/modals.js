@@ -5,8 +5,7 @@ const modals = {
     'edit-volume': { modal: document.getElementById('edit-volume-modal'), closeBtn: document.getElementById('close-edit-volume-modal') },
     'edit-series': { modal: document.getElementById('edit-series-modal'), closeBtn: document.getElementById('close-edit-series-modal') },
     'read': { modal: document.getElementById('read-modal'), closeBtn: document.getElementById('close-read-modal') },
-    'edit-read': { modal: document.getElementById('edit-read-modal'), closeBtn: document.getElementById('close-edit-read-modal') },
-    'options': { modal: document.getElementById('options-modal'), closeBtn: document.getElementById('close-options-modal') }
+    'edit-read': { modal: document.getElementById('edit-read-modal'), closeBtn: document.getElementById('close-edit-read-modal') }
 };
 
 // Ouverture des modales
@@ -15,14 +14,9 @@ document.getElementById('open-add-multiple-volumes-modal')?.addEventListener('cl
     modals['add-multiple-volumes'].modal.classList.add('modal-active');
     document.getElementById('multiple-series-results').style.display = 'block';
 });
-document.getElementById('open-options-modal')?.addEventListener('click', () => modals['options'].modal.classList.add('modal-active'));
-
-// Fonction pour fermer une modale et recharger la page si c'est la modale d'options
+// Fermeture d'une modale (fonction conservée pour un point d'extension éventuel)
 function closeModalAndReloadIfTools(modal) {
     modal.classList.remove('modal-active');
-    if (modal.id === 'options-modal') {
-        window.location.reload();
-    }
 }
 
 // Fermeture des modales via la croix

@@ -115,11 +115,16 @@ Tous les outils du site sont regroupés sur la page `page-outils.php`, accessibl
 - **Association MangaUpdates** : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement ; un second outil récupère de la même façon les genres manquants
 - **Vérification d'intégrité** : contrôle des fichiers (dont les thèmes et les fichiers Vestikan), des permissions, de la structure de la base de données, des thèmes personnalisés présents et de la connectivité à l'API MangaUpdates
 
-### Options
+### Options (page dédiée « Options »)
+Toutes les options du site sont regroupées sur la page `page-options.php`, accessible via l'icône engrenage du menu latéral.
+
 - Nom, description et titres de pages personnalisables
-- Jusqu'à 3 boutons de liens personnalisés affichés sur la page publique
-- Mode privé, masquage des séries matures
+- Jusqu'à 3 boutons de liens personnalisés affichés sur la page publique (avec icône au choix)
+- Réglages des statistiques (temps de lecture et valeur d'un tome, par catégorie)
+- Choix du thème (clair, sombre ou personnalisé)
+- Mode privé, masquage des séries matures, masquage des critiques
 - Remplacement de la vignette par défaut
+- Configuration du service Babengas (facultatif)
 - Modification du mot de passe administrateur
 
 ### Interface intuitive
@@ -196,7 +201,7 @@ Elles ne sont pas obligatoire, mais il est recommandé de passer par les version
 
 Son intégration à Lengas est **entièrement facultative** : sans les fichiers Babengas ni la configuration dans les options, la fonctionnalité reste invisible et le site fonctionne normalement.
 
-Babelio filtrant les IP d'hébergeurs, Babengas doit tourner sur une machine à IP résidentielle (un homelab), exposée en HTTPS via un reverse proxy. Une fois le service en ligne, renseignez son URL et sa clé partagée dans les options du site (page « Gestion », section « Babengas ») : un onglet « Vérification Babelio » apparaît alors sur la page « Outils ».
+Babelio filtrant les IP d'hébergeurs, Babengas doit tourner sur une machine à IP résidentielle (un homelab), exposée en HTTPS via un reverse proxy. Une fois le service en ligne, renseignez son URL et sa clé partagée dans les options du site (page « Options », section « Babengas ») : un onglet « Vérification Babelio » apparaît alors sur la page « Outils ».
 
 Chaque série à vérifier doit disposer d'une **URL de fiche série Babelio** (champ dédié à l'ajout et à la modification), au format `/serie/SLUG/ID` :
 
@@ -238,6 +243,7 @@ lengas/
 ├── page-wishlist.php      # Page de la liste d'envies
 ├── page-critiques.php     # Page de rédaction des critiques + rendu Markdown
 ├── page-outils.php        # Page des outils (+ endpoints SSE/POST associés)
+├── page-options.php       # Page des options du site (configuration + mise à jour)
 ├── config.php             # Configuration du site
 ├── login.php              # Connexion
 ├── logout.php             # Déconnexion

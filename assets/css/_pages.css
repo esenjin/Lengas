@@ -17,6 +17,26 @@
     margin: 0;
 }
 
+/* ── Page Options (formulaire dédié, ex-modale) ─────────────────────────── */
+.options-page-form {
+    max-width: 720px;
+    background: var(--background-card);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius-lg);
+    padding: 24px 28px;
+}
+
+.options-page-form .options-section-title:first-of-type {
+    margin-top: 0;
+}
+
+@media (max-width: 768px) {
+    .options-page-form {
+        padding: 16px;
+        border-radius: var(--border-radius);
+    }
+}
+
 /* ── Adapatation admin.php avec sidebar ─────────────────────────────────── */
 body.with-sidebar .container {
     padding: 32px 36px;
