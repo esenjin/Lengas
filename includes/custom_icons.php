@@ -139,3 +139,103 @@ function custom_link_icon_label(?string $key): string {
     $labels = custom_link_icon_labels();
     return $labels[$key] ?? $labels['link'];
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Couleurs des icônes (palette prédéfinie, accordée au thème — non criardes)
+// La clé est stockée avec chaque lien, la valeur est le code hexadécimal utilisé
+// pour teinter l'icône SVG via l'API Iconify (paramètre ?color=).
+// ──────────────────────────────────────────────────────────────────────────────
+function custom_link_colors(): array {
+    return [
+        'red'    => '#f87171',
+        'orange' => '#fb923c',
+        'yellow' => '#fbbf24',
+        'green'  => '#4ade80',
+        'blue'   => '#38bdf8',
+        'purple' => '#c084fc',
+        'brown'  => '#b08968',
+        'gray'   => '#9ca3af',
+        'white'  => '#f0f0ff',
+    ];
+}
+
+function custom_link_color_labels(): array {
+    return [
+        'red'    => 'Rouge',
+        'orange' => 'Orange',
+        'yellow' => 'Jaune',
+        'green'  => 'Vert',
+        'blue'   => 'Bleu',
+        'purple' => 'Violet',
+        'brown'  => 'Brun',
+        'gray'   => 'Gris',
+        'white'  => 'Blanc',
+    ];
+}
+
+// Couleur par défaut d'une icône de lien personnalisé
+function custom_link_default_color(): string {
+    return 'green';
+}
+
+// Renvoie le code hexadécimal pour une clé de couleur (repli sur la couleur par défaut)
+function custom_link_color_hex(?string $key): string {
+    $colors = custom_link_colors();
+    return $colors[$key] ?? $colors[custom_link_default_color()];
+}
+
+// Valide une clé de couleur contre la palette (repli sur la couleur par défaut)
+function custom_link_normalize_color(?string $key): string {
+    $colors = custom_link_colors();
+    return isset($colors[$key]) ? $key : custom_link_default_color();
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Lecture centralisée des liens personnalisés.
+//
+// Les liens sont désormais stockés sous une clé JSON unique « custom_links »
+// (tableau d'objets {name, url, icon, color}), ce qui permet un nombre variable
+// de liens. Pour rester rétrocompatible, si cette clé est absente, on retombe
+// sur les anciennes clés fixes custom_button_name / _url / _icon (max 3).
+//
+// Renvoie un tableau de liens normalisés : [['name'=>…, 'url'=>…, 'icon'=>…,
+// 'color'=>…], …]. Les liens sans nom ou sans URL sont ignorés.
+// ──────────────────────────────────────────────────────────────────────────────
+function custom_link_get_links(array $options): array {
+    $links = [];
+
+    // Source moderne : clé JSON « custom_links »
+    if (!empty($options['custom_links'])) {
+        $decoded = json_decode($options['custom_links'], true);
+        if (is_array($decoded)) {
+            foreach ($decoded as $item) {
+                if (!is_array($item)) continue;
+                $name = trim((string)($item['name'] ?? ''));
+                $url  = trim((string)($item['url']  ?? ''));
+                if ($name === '' || $url === '') continue;
+                $links[] = [
+                    'name'  => $name,
+                    'url'   => $url,
+                    'icon'  => (string)($item['icon'] ?? 'link'),
+                    'color' => custom_link_normalize_color($item['color'] ?? null),
+                ];
+            }
+            return $links;
+        }
+    }
+
+    // Repli : anciennes clés fixes (custom_button_name / _url / _icon, max 3)
+    for ($i = 1; $i <= 3; $i++) {
+        $suffix = $i === 1 ? '' : $i;
+        $name = trim((string)($options["custom_button_name$suffix"] ?? ''));
+        $url  = trim((string)($options["custom_button_url$suffix"]  ?? ''));
+        if ($name === '' || $url === '') continue;
+        $links[] = [
+            'name'  => $name,
+            'url'   => $url,
+            'icon'  => (string)($options["custom_button_icon$suffix"] ?? 'link'),
+            'color' => custom_link_default_color(), // les anciens liens n'avaient pas de couleur
+        ];
+    }
+    return $links;
+}

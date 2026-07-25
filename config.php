@@ -475,6 +475,18 @@ function save_options(array $options): void {
     }
 }
 
+// Supprime définitivement des clés d'options (ex. anciennes clés migrées).
+// save_options ne fait que des INSERT OR REPLACE : cette fonction permet de
+// retirer des clés obsolètes du stockage.
+function delete_options(array $keys): void {
+    if (empty($keys)) return;
+    $db   = get_db();
+    $stmt = $db->prepare("DELETE FROM options WHERE key = ?");
+    foreach ($keys as $k) {
+        $stmt->execute([$k]);
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Upload d'image (identique à l'original)
 // ──────────────────────────────────────────────────────────────────────────────

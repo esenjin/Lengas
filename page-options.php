@@ -52,20 +52,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $theme_key = strtolower(trim($_POST['theme'] ?? 'dark'));
     $options['theme'] = theme_exists($theme_key) ? $theme_key : 'dark';
     $options['admin_pseudo'] = trim($_POST['admin_pseudo'] ?? '');
-    $options['custom_button_name'] = trim($_POST['custom_button_name'] ?? '');
-    $options['custom_button_url'] = trim($_POST['custom_button_url'] ?? '');
-    $options['custom_button_name2'] = trim($_POST['custom_button_name2'] ?? '');
-    $options['custom_button_url2'] = trim($_POST['custom_button_url2'] ?? '');
-    $options['custom_button_name3']   = trim($_POST['custom_button_name3'] ?? '');
-    $options['custom_button_url3']    = trim($_POST['custom_button_url3'] ?? '');
 
-    // ── Icônes des liens personnalisés (validées contre le jeu autorisé) ──
+    // ── Liens personnalisés (nombre variable) ────────────────────────────────
+    // Les liens arrivent sous forme de tableaux parallèles POST :
+    //   custom_link_name[], custom_link_url[], custom_link_icon[], custom_link_color[]
+    // On les valide et on les stocke dans une clé JSON unique « custom_links ».
+    // Les anciennes clés fixes custom_button_* sont retirées (migration).
     require_once 'includes/custom_icons.php';
-    $allowed_icon_keys = array_keys(custom_link_icons());
-    foreach (['', '2', '3'] as $suffix) {
-        $key = $_POST["custom_button_icon$suffix"] ?? 'link';
-        $options["custom_button_icon$suffix"] = in_array($key, $allowed_icon_keys, true) ? $key : 'link';
+    $allowed_icon_keys  = array_keys(custom_link_icons());
+    $allowed_color_keys = array_keys(custom_link_colors());
+
+    $names  = $_POST['custom_link_name']  ?? [];
+    $urls   = $_POST['custom_link_url']   ?? [];
+    $icons  = $_POST['custom_link_icon']  ?? [];
+    $colors = $_POST['custom_link_color'] ?? [];
+    if (!is_array($names))  $names  = [];
+    if (!is_array($urls))   $urls   = [];
+    if (!is_array($icons))  $icons  = [];
+    if (!is_array($colors)) $colors = [];
+
+    $custom_links = [];
+    $count = max(count($names), count($urls));
+    for ($i = 0; $i < $count; $i++) {
+        $name = trim((string)($names[$i] ?? ''));
+        $url  = trim((string)($urls[$i]  ?? ''));
+        // On ignore les lignes incomplètes (nom ou URL manquant)
+        if ($name === '' || $url === '') continue;
+
+        $icon  = $icons[$i]  ?? 'link';
+        $color = $colors[$i] ?? custom_link_default_color();
+        $custom_links[] = [
+            'name'  => $name,
+            'url'   => $url,
+            'icon'  => in_array($icon, $allowed_icon_keys, true) ? $icon : 'link',
+            'color' => in_array($color, $allowed_color_keys, true) ? $color : custom_link_default_color(),
+        ];
     }
+    $options['custom_links'] = json_encode($custom_links, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    // Nettoyage des anciennes clés fixes (devenues obsolètes) : on les retire
+    // du tableau ET du stockage, car save_options ne supprime jamais de clés.
+    $legacy_keys = [];
+    foreach (['', '2', '3'] as $suffix) {
+        foreach (["custom_button_name$suffix", "custom_button_url$suffix", "custom_button_icon$suffix"] as $lk) {
+            unset($options[$lk]);
+            $legacy_keys[] = $lk;
+        }
+    }
+    delete_options($legacy_keys);
 
     // ── Section "Statistiques" : valeurs de repli globales + par catégorie ──
     $norm_num = function ($v) {
@@ -224,39 +258,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                 <p class="hint">Utilisé pour créditer les critiques auprès des visiteurs.</p>
 
                 <h3 class="options-section-title">Liens personnalisés</h3>
-                <p class="hint">Ces liens apparaissent dans le menu latéral des pages publiques (accueil et statistiques). Choisissez une icône pour chacun.</p>
+                <p class="hint">Ces liens apparaissent dans le menu latéral des pages publiques (accueil et statistiques). Vous pouvez en ajouter autant que souhaité ; choisissez une icône et une couleur pour chacun. Un lien sans nom ou sans URL est ignoré.</p>
 
                 <?php
-                for ($__i = 1; $__i <= 3; $__i++):
-                    $__s        = $__i === 1 ? '' : $__i;
-                    $__name_val = htmlspecialchars($options["custom_button_name$__s"] ?? '');
-                    $__url_val  = htmlspecialchars($options["custom_button_url$__s"]  ?? '');
-                    $__icon_val = $options["custom_button_icon$__s"] ?? 'link';
-                ?>
-                    <label for="custom-button-name<?= $__s ?>">Nom du bouton personnalisé (<?= $__i ?>)</label>
-                    <input type="text" name="custom_button_name<?= $__s ?>" id="custom-button-name<?= $__s ?>" placeholder="Nom du bouton" value="<?= $__name_val ?>">
+                // Fragment de rendu d'une carte de lien. $link = ['name','url','icon','color'].
+                // $tpl = true → gabarit vide, champs sans attribut name pour ne pas être
+                // soumis tant que la ligne n'est pas clonée et activée par le JS.
+                $render_custom_link = function (array $link, bool $tpl = false): void {
+                    $name  = $tpl ? '' : htmlspecialchars($link['name']);
+                    $url   = $tpl ? '' : htmlspecialchars($link['url']);
+                    $icon  = $tpl ? 'link' : ($link['icon'] ?? 'link');
+                    $color = $tpl ? custom_link_default_color() : ($link['color'] ?? custom_link_default_color());
+                    $icon_hex = custom_link_color_hex($color);
+                    $icon_url = 'https://api.iconify.design/' . str_replace(':', '/', custom_link_icon_name($icon)) . '.svg?color=' . rawurlencode($icon_hex);
+                    // Attribut name : vide dans le gabarit (activé au clonage par le JS)
+                    $n = function (string $field) use ($tpl): string {
+                        return $tpl ? '' : ' name="custom_link_' . $field . '[]"';
+                    };
+                    ?>
+                    <div class="custom-link-card" data-custom-link<?= $tpl ? ' data-template' : '' ?>>
+                        <div class="custom-link-card-head">
+                            <span class="custom-link-card-title">Lien personnalisé</span>
+                            <button type="button" class="custom-link-remove" title="Supprimer ce lien" aria-label="Supprimer ce lien">&times;</button>
+                        </div>
 
-                    <label for="custom-button-url<?= $__s ?>">URL du bouton personnalisé (<?= $__i ?>)</label>
-                    <input type="text" name="custom_button_url<?= $__s ?>" id="custom-button-url<?= $__s ?>" placeholder="URL du bouton" value="<?= $__url_val ?>">
+                        <label>Nom du bouton</label>
+                        <input type="text"<?= $n('name') ?> class="cl-name" placeholder="Nom du bouton" value="<?= $name ?>">
 
-                    <label>Icône du bouton (<?= $__i ?>)</label>
-                    <div class="custom-icon-field">
-                        <input type="hidden" name="custom_button_icon<?= $__s ?>"
-                               id="custom-button-icon<?= $__s ?>" value="<?= htmlspecialchars($__icon_val) ?>">
-                        <button type="button"
-                                class="custom-icon-trigger"
-                                data-target="custom-button-icon<?= $__s ?>"
-                                data-preview="custom-icon-preview<?= $__s ?>"
-                                data-label="custom-icon-label<?= $__s ?>">
-                            <img class="custom-icon-preview" id="custom-icon-preview<?= $__s ?>"
-                                 src="https://api.iconify.design/<?= str_replace(':', '/', custom_link_icon_name($__icon_val)) ?>.svg?color=%234ade80"
-                                 width="22" height="22" alt="">
-                            <span class="custom-icon-label" id="custom-icon-label<?= $__s ?>"><?= htmlspecialchars(custom_link_icon_label($__icon_val)) ?></span>
-                            <span class="custom-icon-caret">▾</span>
-                        </button>
+                        <label>URL du bouton</label>
+                        <input type="text"<?= $n('url') ?> class="cl-url" placeholder="https://exemple.fr" value="<?= $url ?>">
+
+                        <label>Icône &amp; couleur</label>
+                        <div class="custom-icon-field">
+                            <input type="hidden"<?= $n('icon') ?>  class="cl-icon"  value="<?= htmlspecialchars($icon) ?>">
+                            <input type="hidden"<?= $n('color') ?> class="cl-color" value="<?= htmlspecialchars($color) ?>">
+                            <button type="button" class="custom-icon-trigger">
+                                <img class="custom-icon-preview" src="<?= $icon_url ?>" width="22" height="22" alt="">
+                                <span class="custom-icon-label"><?= htmlspecialchars(custom_link_icon_label($icon)) ?></span>
+                                <span class="custom-icon-caret">▾</span>
+                            </button>
+                        </div>
                     </div>
-                    <p class="hint">Laisser le nom ou l'URL vide pour masquer le bouton.</p>
-                <?php endfor; ?>
+                    <?php
+                };
+
+                $existing_links = custom_link_get_links($options);
+                ?>
+
+                <div id="custom-links-list">
+                    <?php foreach ($existing_links as $__link) $render_custom_link($__link, false); ?>
+                </div>
+
+                <p id="custom-links-empty" class="hint" style="<?= empty($existing_links) ? '' : 'display:none;' ?>">
+                    Aucun lien pour le moment. Cliquez sur « Ajouter un lien personnalisé » pour commencer.
+                </p>
+
+                <button type="button" id="add-custom-link-btn" class="button button-ats">＋ Ajouter un lien personnalisé</button>
+
+                <!-- Gabarit d'un nouveau lien (cloné par le JS) -->
+                <template id="custom-link-template">
+                    <?php $render_custom_link(['name' => '', 'url' => '', 'icon' => 'link', 'color' => custom_link_default_color()], true); ?>
+                </template>
 
                 <!-- ══ STATISTIQUES ══════════════════════════════════════ -->
                 <h3 class="options-section-title">Statistiques</h3>
@@ -431,11 +493,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
         </div>
     </main>
 
-    <!-- ── Modale de sélection d'icône (liens personnalisés) ───────────────── -->
+    <!-- ── Modale de sélection d'icône + couleur (liens personnalisés) ─────── -->
     <div class="modal" id="icon-picker-modal">
         <div class="modal-content modal-content--narrow">
             <span class="close-modal" id="close-icon-picker-modal">&times;</span>
-            <h2>Choisir une icône</h2>
+            <h2>Choisir l'icône et la couleur</h2>
+
+            <div class="icon-picker-colors" id="icon-picker-colors">
+                <?php foreach (custom_link_colors() as $__ck => $__hex): ?>
+                    <button type="button" class="icon-picker-color"
+                            data-color="<?= htmlspecialchars($__ck) ?>"
+                            data-hex="<?= htmlspecialchars($__hex) ?>"
+                            style="--swatch: <?= htmlspecialchars($__hex) ?>;"
+                            title="<?= htmlspecialchars(custom_link_color_labels()[$__ck] ?? $__ck) ?>"
+                            aria-label="<?= htmlspecialchars(custom_link_color_labels()[$__ck] ?? $__ck) ?>"></button>
+                <?php endforeach; ?>
+            </div>
+
             <input type="text" id="icon-picker-search" class="icon-picker-search"
                    placeholder="Rechercher une icône…" autocomplete="off">
             <div id="icon-picker-grid-wrap" class="icon-picker-grid-wrap">
@@ -449,6 +523,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                                 <button type="button" class="icon-picker-item"
                                         data-key="<?= htmlspecialchars($__key) ?>"
                                         data-label="<?= htmlspecialchars($__lbl) ?>"
+                                        data-icon-path="<?= htmlspecialchars($__name) ?>"
                                         data-search="<?= htmlspecialchars(mb_strtolower($__lbl . ' ' . $__key)) ?>"
                                         title="<?= htmlspecialchars($__lbl) ?>">
                                     <img src="https://api.iconify.design/<?= $__name ?>.svg?color=%23d4d4e8"
@@ -478,28 +553,105 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     </script>
 
     <script>
-    // ── Sélecteur visuel d'icône pour les liens personnalisés ────────────────
+    // ── Liens personnalisés : ajout / suppression + sélecteur icône & couleur ─
     (function () {
+        var COLORS = <?= json_encode(custom_link_colors(), JSON_UNESCAPED_SLASHES) ?>;
+        var DEFAULT_COLOR = <?= json_encode(custom_link_default_color()) ?>;
+
+        var list    = document.getElementById('custom-links-list');
+        var tpl     = document.getElementById('custom-link-template');
+        var addBtn  = document.getElementById('add-custom-link-btn');
+        var emptyEl = document.getElementById('custom-links-empty');
+
         var modal   = document.getElementById('icon-picker-modal');
         var closeEl = document.getElementById('close-icon-picker-modal');
         var search  = document.getElementById('icon-picker-search');
-        var emptyEl = document.getElementById('icon-picker-empty');
-        if (!modal) return;
+        var emptyIc = document.getElementById('icon-picker-empty');
+        var colorRow = document.getElementById('icon-picker-colors');
 
-        // Champ (hidden) et aperçus visés par le bouton actuellement ouvert
-        var active = { input: null, preview: null, label: null };
+        if (!list || !modal) return;
 
-        function openModal(trigger) {
-            active.input   = document.getElementById(trigger.dataset.target);
-            active.preview = document.getElementById(trigger.dataset.preview);
-            active.label   = document.getElementById(trigger.dataset.label);
+        function hex(colorKey) { return COLORS[colorKey] || COLORS[DEFAULT_COLOR]; }
+        function iconUrl(path, colorKey) {
+            return 'https://api.iconify.design/' + path + '.svg?color=' + encodeURIComponent(hex(colorKey));
+        }
 
-            // Réinitialise la recherche et marque l'icône courante
+        // ── Gestion des cartes de liens ──────────────────────────────────────
+        function refreshEmpty() {
+            if (!emptyEl) return;
+            emptyEl.style.display = list.querySelector('.custom-link-card') ? 'none' : '';
+        }
+
+        function activateCard(card) {
+            // Active les name[] (le gabarit les laisse vides pour ne pas être soumis)
+            card.querySelector('.cl-name').setAttribute('name', 'custom_link_name[]');
+            card.querySelector('.cl-url').setAttribute('name', 'custom_link_url[]');
+            card.querySelector('.cl-icon').setAttribute('name', 'custom_link_icon[]');
+            card.querySelector('.cl-color').setAttribute('name', 'custom_link_color[]');
+            card.removeAttribute('data-template');
+        }
+
+        function wireCard(card) {
+            var removeBtn = card.querySelector('.custom-link-remove');
+            if (removeBtn) removeBtn.addEventListener('click', function () {
+                card.remove();
+                refreshEmpty();
+            });
+            var trigger = card.querySelector('.custom-icon-trigger');
+            if (trigger) trigger.addEventListener('click', function () { openModal(card); });
+        }
+
+        if (addBtn && tpl) {
+            addBtn.addEventListener('click', function () {
+                var frag = tpl.content.cloneNode(true);
+                var card = frag.querySelector('.custom-link-card');
+                activateCard(card);
+                list.appendChild(card);
+                wireCard(card);
+                refreshEmpty();
+                card.querySelector('.cl-name').focus();
+            });
+        }
+
+        // Câble les cartes déjà présentes au chargement
+        list.querySelectorAll('.custom-link-card').forEach(wireCard);
+        refreshEmpty();
+
+        // ── Modale icône + couleur ───────────────────────────────────────────
+        var activeCard = null;
+
+        function currentColor() {
+            if (!activeCard) return DEFAULT_COLOR;
+            var c = activeCard.querySelector('.cl-color').value;
+            return COLORS[c] ? c : DEFAULT_COLOR;
+        }
+
+        function paintPreviewItems(colorKey) {
+            // Teinte tous les items de la grille selon la couleur choisie
+            modal.querySelectorAll('.icon-picker-item').forEach(function (item) {
+                var img = item.querySelector('img');
+                if (img) img.src = iconUrl(item.dataset.iconPath, colorKey);
+            });
+        }
+
+        function markSelectedColor(colorKey) {
+            if (!colorRow) return;
+            colorRow.querySelectorAll('.icon-picker-color').forEach(function (sw) {
+                sw.classList.toggle('is-selected', sw.dataset.color === colorKey);
+            });
+        }
+
+        function openModal(card) {
+            activeCard = card;
+            var iconKey  = card.querySelector('.cl-icon').value || 'link';
+            var colorKey = currentColor();
+
             search.value = '';
             filterIcons('');
-            var current = active.input ? active.input.value : '';
+            markSelectedColor(colorKey);
+            paintPreviewItems(colorKey);
             modal.querySelectorAll('.icon-picker-item').forEach(function (item) {
-                item.classList.toggle('is-selected', item.dataset.key === current);
+                item.classList.toggle('is-selected', item.dataset.key === iconKey);
             });
 
             modal.classList.add('modal-active');
@@ -508,27 +660,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
 
         function closeModal() {
             modal.classList.remove('modal-active');
-            active = { input: null, preview: null, label: null };
+            activeCard = null;
+        }
+
+        function applyPreview() {
+            if (!activeCard) return;
+            var iconKey  = activeCard.querySelector('.cl-icon').value || 'link';
+            var colorKey = currentColor();
+            var item = modal.querySelector('.icon-picker-item[data-key="' + iconKey + '"]');
+            var path = item ? item.dataset.iconPath : 'mdi/link-variant';
+            var img  = activeCard.querySelector('.custom-icon-preview');
+            if (img) img.src = iconUrl(path, colorKey);
+        }
+
+        function chooseColor(colorKey) {
+            if (!activeCard) return;
+            activeCard.querySelector('.cl-color').value = colorKey;
+            markSelectedColor(colorKey);
+            paintPreviewItems(colorKey); // met à jour la grille en direct
+            applyPreview();
         }
 
         function chooseIcon(item) {
-            if (!active.input) { closeModal(); return; }
-            var key  = item.dataset.key;
-            var lbl  = item.dataset.label;
-            var img  = item.querySelector('img');
-            active.input.value = key;
-            if (active.label)   active.label.textContent = lbl;
-            if (active.preview && img) {
-                // Réutilise l'URL de la vignette, en repassant à la couleur verte de l'aperçu
-                active.preview.src = img.getAttribute('src').replace('color=%23d4d4e8', 'color=%234ade80');
-            }
+            if (!activeCard) { closeModal(); return; }
+            activeCard.querySelector('.cl-icon').value = item.dataset.key;
+            var lbl = activeCard.querySelector('.custom-icon-label');
+            if (lbl) lbl.textContent = item.dataset.label;
+            applyPreview();
             closeModal();
         }
 
         function filterIcons(term) {
             term = (term || '').trim().toLowerCase();
             var anyVisible = false;
-            // Filtre chaque item, puis masque les groupes devenus vides
             modal.querySelectorAll('[data-group]').forEach(function (group) {
                 var groupHasMatch = false;
                 group.querySelectorAll('.icon-picker-item').forEach(function (item) {
@@ -538,15 +702,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                 });
                 group.style.display = groupHasMatch ? '' : 'none';
             });
-            if (emptyEl) emptyEl.style.display = anyVisible ? 'none' : 'block';
+            if (emptyIc) emptyIc.style.display = anyVisible ? 'none' : 'block';
         }
 
-        // Ouverture depuis chaque bouton d'aperçu
-        document.querySelectorAll('.custom-icon-trigger').forEach(function (btn) {
-            btn.addEventListener('click', function () { openModal(btn); });
+        // Couleurs
+        if (colorRow) colorRow.querySelectorAll('.icon-picker-color').forEach(function (sw) {
+            sw.addEventListener('click', function () { chooseColor(sw.dataset.color); });
         });
 
-        // Sélection d'une icône
+        // Icônes
         modal.querySelectorAll('.icon-picker-item').forEach(function (item) {
             item.addEventListener('click', function () { chooseIcon(item); });
         });
@@ -554,7 +718,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
         // Recherche
         if (search) search.addEventListener('input', function () { filterIcons(search.value); });
 
-        // Fermeture (croix, clic extérieur, Échap)
+        // Fermeture
         if (closeEl) closeEl.addEventListener('click', closeModal);
         modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
         document.addEventListener('keydown', function (e) {

@@ -119,7 +119,7 @@ Tous les outils du site sont regroupés sur la page `page-outils.php`, accessibl
 Toutes les options du site sont regroupées sur la page `page-options.php`, accessible via l'icône engrenage du menu latéral.
 
 - Nom, description et titres de pages personnalisables
-- Jusqu'à 3 boutons de liens personnalisés affichés sur la page publique, avec choix de l'icône via un sélecteur visuel (aperçu de chaque icône, recherche et catégories ; une trentaine d'icônes disponibles : médias, flux RSS, réseaux, etc.)
+- Nombre illimité de liens personnalisés affichés dans le menu latéral public (bouton « Ajouter un lien personnalisé »), chacun avec une icône choisie via un sélecteur visuel (aperçu, recherche, catégories ; une trentaine d'icônes : médias, flux RSS, réseaux, etc.) et une couleur au choix dans une palette prédéfinie accordée au thème
 - Réglages des statistiques (temps de lecture et valeur d'un tome, par catégorie)
 - Choix du thème (clair, sombre ou personnalisé)
 - Mode privé, masquage des séries matures, masquage des critiques
@@ -300,7 +300,7 @@ lengas/
 │   ├── mangaupdates.php      # API MangaUpdates (suivi des tomes et du statut)
 │   ├── sidebar.php           # Menu latéral à icônes de l'administration
 │   ├── public-sidebar.php    # Menu latéral à icônes des pages publiques (accueil et statistiques)
-│   ├── custom_icons.php      # Jeu d'icônes des liens personnalisés (partagé options/sidebar)
+│   ├── custom_icons.php      # Icônes, couleurs et lecture des liens personnalisés (partagé options/sidebar)
 │   ├── themes.php            # Gestion des thèmes (base + personnalisés)
 │   ├── status_filter.php     # Filtrage des séries par statut
 │   ├── vestikan.php          # Point d'entrée SSO Vestikan (facultatif)

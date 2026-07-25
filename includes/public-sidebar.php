@@ -36,37 +36,28 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </li>
 
         <?php
-        // ── Liens personnalisés (avec icône choisie) ──────────────────────────
-        $has_custom = false;
-        for ($i = 1; $i <= 3; $i++) {
-            $suffix = $i === 1 ? '' : $i;
-            $name = trim($options["custom_button_name$suffix"] ?? '');
-            $url  = trim($options["custom_button_url$suffix"]  ?? '');
-            if ($name !== '' && $url !== '') { $has_custom = true; break; }
-        }
+        // ── Liens personnalisés (icône + couleur choisies) ────────────────────
+        $custom_links = custom_link_get_links($options);
         ?>
 
-        <?php if ($has_custom): ?>
+        <?php if (!empty($custom_links)): ?>
             <li class="sidebar-separator"></li>
         <?php endif; ?>
 
-        <?php for ($i = 1; $i <= 3; $i++):
-            $suffix = $i === 1 ? '' : $i;
-            $name = trim($options["custom_button_name$suffix"] ?? '');
-            $url  = trim($options["custom_button_url$suffix"]  ?? '');
-            if ($name === '' || $url === '') continue;
-            $icon_key  = $options["custom_button_icon$suffix"] ?? 'link';
-            $icon_name = str_replace(':', '/', custom_link_icon_name($icon_key));
+        <?php foreach ($custom_links as $link):
+            $icon_name = str_replace(':', '/', custom_link_icon_name($link['icon']));
+            $icon_hex  = custom_link_color_hex($link['color']);
+            $icon_col  = rawurlencode($icon_hex); // ex. %23f87171
         ?>
             <li>
-                <a href="<?= htmlspecialchars($url) ?>"
+                <a href="<?= htmlspecialchars($link['url']) ?>"
                    class="sidebar-link"
-                   data-tooltip="<?= htmlspecialchars($name) ?>"
+                   data-tooltip="<?= htmlspecialchars($link['name']) ?>"
                    target="_blank" rel="noopener">
-                    <img src="https://api.iconify.design/<?= $icon_name ?>.svg?color=%234ade80" width="22" height="22" alt="">
+                    <img src="https://api.iconify.design/<?= $icon_name ?>.svg?color=<?= $icon_col ?>" width="22" height="22" alt="">
                 </a>
             </li>
-        <?php endfor; ?>
+        <?php endforeach; ?>
 
         <?php if ($current_page === 'index.php'): ?>
             <li class="sidebar-separator"></li>

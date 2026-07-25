@@ -231,3 +231,86 @@ form {
     padding: 16px 4px;
     margin: 0;
 }
+
+/* ── Cartes de liens personnalisés (nombre variable) ─────────────────────── */
+#custom-links-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.custom-link-card {
+    background: var(--background-medium);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: var(--border-radius);
+    padding: 14px 16px 16px;
+}
+
+.custom-link-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.custom-link-card-title {
+    font-size: 0.72em;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    font-weight: 700;
+    font-family: 'Outfit', system-ui, sans-serif;
+}
+
+.custom-link-remove {
+    background: transparent;
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    color: var(--error-color);
+    width: 26px;
+    height: 26px;
+    line-height: 1;
+    font-size: 1.1rem;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.custom-link-remove:hover {
+    background: var(--error-subtle);
+    border-color: var(--error-color);
+}
+
+/* Le bouton « Ajouter » reste discret, aligné à gauche */
+#add-custom-link-btn { margin-top: 4px; }
+
+/* ── Pastilles de couleur dans la modale ─────────────────────────────────── */
+.icon-picker-colors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.icon-picker-color {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--swatch, #4ade80);
+    border: 2px solid transparent;
+    outline: 1px solid rgba(255, 255, 255, 0.12);
+    outline-offset: -1px;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.icon-picker-color:hover { transform: scale(1.12); }
+
+.icon-picker-color.is-selected {
+    border-color: var(--text-white);
+    box-shadow: 0 0 0 2px var(--swatch, #4ade80);
+}
