@@ -99,7 +99,7 @@ function loadBackupsList() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            displayBackupsList(data.backups);
+            displayBackupsList(data.backups, data);
         } else {
             console.error('Erreur lors du chargement des sauvegardes.');
         }
@@ -110,7 +110,7 @@ function loadBackupsList() {
 }
 
 // Afficher la liste des sauvegardes
-function displayBackupsList(backups) {
+function displayBackupsList(backups, meta) {
     const backupsListDiv = document.getElementById('backups-list');
     backupsListDiv.innerHTML = '';
 
@@ -122,8 +122,17 @@ function displayBackupsList(backups) {
     backups.forEach(backup => {
         const backupDiv = document.createElement('div');
         backupDiv.className = 'backup-item';
+
+        // Détails : taille et, si disponible, nombre de fichiers
+        const details = [];
+        if (backup.size) details.push(backup.size);
+        if (backup.file_count !== null && backup.file_count !== undefined) {
+            details.push(`${backup.file_count} fichier${backup.file_count > 1 ? 's' : ''}`);
+        }
+        const detailsText = details.length ? ` — ${details.join(' • ')}` : '';
+
         backupDiv.innerHTML = `
-            <p><strong>${backup.name}</strong> (${backup.date})</p>
+            <p><strong>${backup.name}</strong> (${backup.date})${detailsText}</p>
             <div class="backup-actions">
                 <a href="page-outils.php?download_backup=${encodeURIComponent(backup.name)}" class="button button-oas">Télécharger</a>
                 <button class="delete-backup-btn" data-backup-file="${backup.name}">Supprimer</button>
@@ -131,6 +140,14 @@ function displayBackupsList(backups) {
         `;
         backupsListDiv.appendChild(backupDiv);
     });
+
+    // Total occupé par l'ensemble des sauvegardes
+    if (meta && meta.total_size) {
+        const totalDiv = document.createElement('p');
+        totalDiv.className = 'backups-total';
+        totalDiv.innerHTML = `<strong>Total :</strong> ${backups.length} sauvegarde${backups.length > 1 ? 's' : ''} — ${meta.total_size}`;
+        backupsListDiv.appendChild(totalDiv);
+    }
 
     document.querySelectorAll('.delete-backup-btn').forEach(button => {
         button.addEventListener('click', function() {

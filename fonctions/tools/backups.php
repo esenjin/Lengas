@@ -6,6 +6,17 @@
 // ainsi que l'export JSON complet des données.
 // ────────────────────────────────────────────────────────────────────────────
 
+// Formate une taille en octets en chaîne lisible (o, Ko, Mo, Go, To)
+function format_backup_size(int $bytes): string {
+    if ($bytes <= 0) return '0 o';
+    $units = ['o', 'Ko', 'Mo', 'Go', 'To'];
+    $power = (int)floor(log($bytes, 1024));
+    $power = min($power, count($units) - 1);
+    $value = $bytes / (1024 ** $power);
+    $decimals = ($power === 0) ? 0 : 1;
+    return number_format($value, $decimals, ',', ' ') . ' ' . $units[$power];
+}
+
 // Gestion des sauvegardes — sauvegarde maintenant le fichier SQLite
 function create_backup(): array {
     $backup_dir = 'saves';
@@ -58,19 +69,48 @@ function create_backup(): array {
 
 // Lister les sauvegardes
 function list_backups(): array {
-    $backup_dir = 'saves';
-    $backups    = [];
+    $backup_dir  = 'saves';
+    $backups     = [];
+    $total_bytes = 0;
     if (file_exists($backup_dir)) {
         foreach (scandir($backup_dir) as $file) {
             if ($file !== '.' && $file !== '..' && pathinfo($file, PATHINFO_EXTENSION) === 'zip') {
                 $timestamp = (int)str_replace(['save_', '.zip'], '', $file);
                 $date      = date('d/m/Y H:i', $timestamp);
-                $backups[] = ['name' => $file, 'date' => $date, 'timestamp' => $timestamp];
+                $path      = "$backup_dir/$file";
+
+                // Taille du fichier ZIP
+                $size_bytes   = @filesize($path);
+                $size_bytes   = ($size_bytes !== false) ? (int)$size_bytes : 0;
+                $total_bytes += $size_bytes;
+
+                // Nombre de fichiers contenus dans l'archive (si lisible)
+                $file_count = null;
+                $zip = new ZipArchive();
+                if ($zip->open($path) === TRUE) {
+                    $file_count = $zip->numFiles;
+                    $zip->close();
+                }
+
+                $backups[] = [
+                    'name'       => $file,
+                    'date'       => $date,
+                    'timestamp'  => $timestamp,
+                    'size_bytes' => $size_bytes,
+                    'size'       => format_backup_size($size_bytes),
+                    'file_count' => $file_count,
+                ];
             }
         }
         usort($backups, fn($a, $b) => $b['timestamp'] - $a['timestamp']);
     }
-    return ['success' => true, 'backups' => $backups];
+    return [
+        'success'           => true,
+        'backups'           => $backups,
+        'total_bytes'       => $total_bytes,
+        'total_size'        => format_backup_size($total_bytes),
+        'count'             => count($backups),
+    ];
 }
 
 // Supprimer une sauvegarde
