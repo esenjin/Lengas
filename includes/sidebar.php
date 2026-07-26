@@ -20,7 +20,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
 
-        <!-- Ajouter une série -->
+<?php if ($current_page === 'admin.php'): ?>
+        <!-- Ajouter une série (uniquement sur la page admin : les modales
+             correspondantes n'existent que là) -->
         <li>
             <button type="button"
                     class="sidebar-link"
@@ -43,6 +45,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <img src="https://api.iconify.design/mdi/book-plus-multiple.svg?color=%234ade80" width="22" height="22" alt="">
             </button>
         </li>
+<?php endif; ?>
 
         <!-- Critiques -->
         <li>
@@ -120,9 +123,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <!-- Bas de sidebar -->
     <ul class="sidebar-nav sidebar-nav--bottom" role="list">
         <li>
-            <a href="admin.php"
+            <a href="#"
                class="sidebar-link"
-               data-tooltip="Recharger">
+               data-tooltip="Recharger"
+               onclick="location.reload(); return false;">
                 <img src="https://api.iconify.design/mdi/refresh.svg?color=%23d4d4e8" width="22" height="22" alt="">
             </a>
         </li>

@@ -480,7 +480,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
     <link rel="stylesheet" href="assets/css/main.css">
     <?= theme_link_tag($options) ?>
 </head>
-<body class="with-sidebar">
+<body class="with-sidebar tools-page">
 
     <?php include 'includes/sidebar.php'; ?>
 
@@ -498,7 +498,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
 <?php endif; ?>
             <button type="button" class="tools-tab" data-tab="coherences">Incohérences</button>
             <button type="button" class="tools-tab" data-tab="backups">Sauvegardes</button>
-            <button type="button" class="tools-tab" data-tab="associate">Association MangaUpdates</button>
+            <button type="button" class="tools-tab" data-tab="associate">Associations MangaUpdates</button>
             <button type="button" class="tools-tab" data-tab="integrity">Vérification d'intégrité</button>
         </div>
 
@@ -616,7 +616,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
         <!-- ── Onglet : Association MangaUpdates ───────────────────────────── -->
         <div class="tools-tab-panel" data-tab-panel="associate">
             <div class="tools-section">
-                <h2>Associer MangaUpdates</h2>
+                <h2>Associer une fiche MU aux séries</h2>
                 <p>Recherche automatiquement une fiche MangaUpdates pour chaque série sans URL renseignée (titre + auteur), puis vous laisse valider la bonne correspondance avant l'enregistrement. Selon le nombre de séries, l'opération peut prendre quelques minutes.</p>
                 <button id="mu-associate-btn" class="button button-opt">
                     <span id="mu-associate-text">Recherche des liens</span>
@@ -627,7 +627,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
             </div>
 
             <div class="tools-section">
-                <h2>Associer les genres</h2>
+                <h2>Associer les genres aux séries</h2>
                 <p>Recherche les genres indiqués sur la fiche MangaUpdates de chaque série qui possède une URL mais aucun genre renseigné. Les genres sont traduits en français et pré-remplis : vous pouvez les modifier avant de valider, série par série ou toutes à la fois.</p>
                 <button id="mu-genres-btn" class="button button-opt">
                     <span id="mu-genres-text">Recherche des genres</span>

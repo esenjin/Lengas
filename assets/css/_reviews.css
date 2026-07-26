@@ -413,15 +413,17 @@ button.review-badge:hover {
     border-color: rgba(59, 130, 246, 0.5);
 }
 
-/* Bouton "Critique" dans les actions de carte admin */
+/* Bouton "Critique" dans les actions de carte admin — même style que
+   le bouton « Modifier » (violet, cf. .edit-series-btn dans _admin.css) */
 .review-series-btn {
     background: transparent;
-    color: var(--button-otl);
-    border: 1px solid var(--button-otl) !important;
+    color: var(--primary-color);
+    border: 1px solid rgba(192, 132, 252, 0.4) !important;
 }
 .review-series-btn:hover {
-    background: var(--button-otl);
-    color: #0d0d12;
+    background: var(--primary-subtle);
+    border-color: var(--primary-color) !important;
+    color: var(--primary-color);
 }
 
 /* ── Modale critique publique ───────────────────────────────────────────── */

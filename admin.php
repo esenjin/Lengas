@@ -502,7 +502,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
         }
 
         $title_attr = !empty($tooltip_lines)
-            ? ' title="' . htmlspecialchars(implode("\n", $tooltip_lines), ENT_QUOTES) . '"'
+            ? ' data-title="' . htmlspecialchars(implode("\n", $tooltip_lines), ENT_QUOTES) . '"'
             : '';
 
         $volumes_html .= sprintf(
@@ -727,7 +727,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <label>
                         <input type="checkbox" name="all_collector"> Tous en collector ⭐
                     </label>
-                    <p>Statut de lecture de la série :</p>
+                    <p>Statut de publication de la série :</p>
                     <select name="series_status" id="add-series-status" required>
                         <option value="en cours">En cours ▶️</option>
                         <option value="terminée">Terminée ✅</option>
@@ -869,7 +869,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <label>
                         <input type="checkbox" name="new_volumes_collector"> Tous en collector ⭐
                     </label>
-                    <p>Statut de lecture de la série :</p>
+                    <p>Statut de publication de la série :</p>
                     <select name="series_status" id="edit-series-status" required>
                         <option value="en cours">En cours ▶️</option>
                         <option value="terminée">Terminée ✅</option>

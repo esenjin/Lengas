@@ -22,7 +22,8 @@
     justify-content: center;
 }
 
-.edit-series-btn {
+.edit-series-btn,
+.review-series-btn {
     background-color: transparent;
     color: var(--primary-color);
     border: 1px solid rgba(192, 132, 252, 0.4) !important;
@@ -34,7 +35,8 @@
     transition: var(--transition);
 }
 
-.edit-series-btn:hover {
+.edit-series-btn:hover,
+.review-series-btn:hover {
     background-color: var(--primary-subtle);
     border-color: var(--primary-color) !important;
     transform: translateY(-1px);
@@ -243,6 +245,13 @@
     vertical-align: middle;
 }
 
+
+/* ── Page « Outils » : largeur limitée (comme la page Options) ────────────── */
+.tools-page .page-header,
+.tools-page .tools-tabs,
+.tools-page .tools-tab-panel {
+    max-width: 900px;
+}
 
 /* ── Modale « Outils » : onglets ─────────────────────────────────────────── */
 .tools-tabs {

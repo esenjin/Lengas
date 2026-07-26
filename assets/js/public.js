@@ -1,4 +1,25 @@
 // scripts/public.js
+
+// Construit le texte de la pop-up (data-title) d'un tome, façon admin.
+// Formate les dates au format JJ/MM/AAAA si présentes.
+function buildVolumeTooltip(volume) {
+    const lines = [];
+    const fmt = (d) => {
+        if (!d) return '';
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
+        return m ? `${m[3]}/${m[2]}/${m[1]}` : d;
+    };
+    const added = fmt(volume.added_at);
+    if (added) lines.push(`Date d'ajout à la collection : ${added}`);
+    if (volume.status === 'terminé') {
+        const read = fmt(volume.read_at);
+        if (read) lines.push(`Date de lecture : ${read}`);
+    }
+    if (volume.collector) lines.push('Tome collector !');
+    if (volume.last) lines.push('Dernier tome de la série !');
+    return lines.join('\n');
+}
+
 let currentSearchTerm = '';
 let currentSortBy = 'name';
 let currentSortOrder = 'asc';
@@ -130,6 +151,8 @@ document.querySelectorAll('.series-card').forEach(card => {
             const li = document.createElement('li');
             li.className = `status-${volume.status.replace(' ', '-')} ${volume.collector ? 'volume-collector' : ''} ${volume.last ? 'volume-last' : ''}`;
             li.textContent = volume.number;
+            const tip = buildVolumeTooltip(volume);
+            if (tip) li.setAttribute('data-title', tip);
             volumesList.appendChild(li);
         });
 
@@ -252,6 +275,8 @@ function loadMoreSeries() {
                             const li = document.createElement('li');
                             li.className = `status-${volume.status.replace(' ', '-')} ${volume.collector ? 'volume-collector' : ''} ${volume.last ? 'volume-last' : ''}`;
                             li.textContent = volume.number;
+                            const tip = buildVolumeTooltip(volume);
+                            if (tip) li.setAttribute('data-title', tip);
                             volumesList.appendChild(li);
                         });
 
@@ -387,6 +412,8 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
                             const li = document.createElement('li');
                             li.className = `status-${volume.status.replace(' ', '-')} ${volume.collector ? 'volume-collector' : ''} ${volume.last ? 'volume-last' : ''}`;
                             li.textContent = volume.number;
+                            const tip = buildVolumeTooltip(volume);
+                            if (tip) li.setAttribute('data-title', tip);
                             volumesList.appendChild(li);
                         });
 

@@ -453,7 +453,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     borderColor: C.amber,
                     strokeDashArray: 4,
                     label: {
-                        text: '📚 Création de la bibliothèque',
+                        text: '📚 Créa. de la biblio.',
                         orientation: 'horizontal',
                         position: 'top',
                         style: { color: '#1a1a28', background: C.amber, fontSize: '11px', fontWeight: 600 }

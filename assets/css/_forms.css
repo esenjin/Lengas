@@ -4,6 +4,17 @@ form {
     flex-direction: column;
 }
 
+/* ── Champs obligatoires (modales ajout / édition de série) ──────────────────
+   Fond légèrement distinct pour repérer d'un coup d'œil les champs requis.
+   Le focus reprend la main via --input-bg-focus (voir _base.css). */
+#add-series-modal input:required,
+#add-series-modal select:required,
+#edit-series-modal input:required,
+#edit-series-modal select:required {
+    background-color: var(--input-bg-required, var(--input-bg));
+    border-color: var(--input-border-required, var(--input-border));
+}
+
 /* Champ de recherche pour les séries */
 .series-search {
     margin-bottom: 14px;
@@ -308,9 +319,18 @@ form {
     transition: transform 0.12s ease, border-color 0.12s ease;
 }
 
-.icon-picker-color:hover { transform: scale(1.12); }
+/* Au survol : on garde la couleur de la pastille (var --swatch) et on
+   n'affiche qu'un contour, sans le fond violet hérité de la règle
+   générique `button:hover` de _base.css. */
+.icon-picker-color:hover {
+    background: var(--swatch, #4ade80);
+    transform: scale(1.12);
+    border-color: var(--text-white);
+    box-shadow: none;
+}
 
 .icon-picker-color.is-selected {
+    background: var(--swatch, #4ade80);
     border-color: var(--text-white);
     box-shadow: 0 0 0 2px var(--swatch, #4ade80);
 }

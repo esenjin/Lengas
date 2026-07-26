@@ -129,8 +129,8 @@ function createLightSeriesCard(series) {
         <img class="series-image" src="${imageSrc}" alt="${series.name}" loading="lazy">
         <div class="series-actions">
             <button class="edit-series-btn" data-series-id="${series.id}">Modifier</button>
+            <button class="review-series-btn" data-series-id="${series.id}">${series.has_review ? 'Éditer la critique' : 'Ajouter une critique'}</button>
             <button class="delete-series-btn" data-series-id="${series.id}">Supprimer</button>
-            <button class="review-series-btn button" data-series-id="${series.id}">${series.has_review ? 'Éditer la critique' : 'Ajouter une critique'}</button>
         </div>
         <div class="series-info">
             <h2>${series.name}</h2>

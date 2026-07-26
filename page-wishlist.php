@@ -158,7 +158,7 @@ $wishlist = load_wishlist();
                 <span class="close-modal" id="close-add-from-wishlist-modal">&times;</span>
                 <h2>Ajouter à la collection</h2>
                 <p>La série <strong id="afw-series-name"></strong> va être retirée de votre liste d'envies.</p>
-                <p class="hint">Vous serez redirigé vers l'administration pour finaliser l'ajout.</p>
+                <p class="hint">Vous serez redirigé vers l'administration pour finaliser l'ajout. La série sera retirée de la liste d'envies, dès que vous cliquerez sur "continuer", même si l'ajout n'est aps finalisé.</p>
                 <div class="modal-actions">
                     <button class="button button-ats" id="afw-confirm-btn">Continuer</button>
                     <button class="button button-ext" id="afw-cancel-btn">Annuler</button>

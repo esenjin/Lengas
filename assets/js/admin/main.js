@@ -109,6 +109,70 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ─────────────────────────────────────────────────────────────
+// Pop-up (tooltip) stylisée au survol des tomes
+// Fonctionne à l'admin comme dans les modales de détail des séries à l'index.
+// On délègue depuis document pour couvrir les tomes injectés dynamiquement,
+// et on lit l'attribut data-title (échappé côté serveur / JS).
+(function () {
+    var tip = null;
+
+    function ensureTip() {
+        if (!tip) {
+            tip = document.createElement('div');
+            tip.className = 'volume-tooltip';
+            document.body.appendChild(tip);
+        }
+        return tip;
+    }
+
+    function showTip(target) {
+        var text = target.getAttribute('data-title');
+        if (!text) return;
+
+        var el = ensureTip();
+        el.textContent = text;
+        el.classList.remove('is-below');
+        el.classList.add('is-visible');
+
+        var r = target.getBoundingClientRect();
+        var tr = el.getBoundingClientRect();
+        var margin = 8;
+
+        // Position horizontale : centrée sur le tome, bornée à la fenêtre
+        var left = r.left + r.width / 2 - tr.width / 2;
+        left = Math.max(margin, Math.min(left, window.innerWidth - tr.width - margin));
+
+        // Par défaut au-dessus ; bascule en dessous s'il manque de place
+        var top = r.top - tr.height - margin;
+        if (top < margin) {
+            top = r.bottom + margin;
+            el.classList.add('is-below');
+        }
+        el.style.left = left + 'px';
+        el.style.top = top + 'px';
+
+        // Flèche alignée sur le centre du tome
+        var arrow = r.left + r.width / 2 - left;
+        arrow = Math.max(12, Math.min(arrow, tr.width - 12));
+        el.style.setProperty('--arrow-left', arrow + 'px');
+    }
+
+    function hideTip() {
+        if (tip) tip.classList.remove('is-visible');
+    }
+
+    document.addEventListener('mouseover', function (e) {
+        var target = e.target.closest('.volumes-list li[data-title]');
+        if (target) showTip(target);
+    });
+    document.addEventListener('mouseout', function (e) {
+        if (e.target.closest('.volumes-list li[data-title]')) hideTip();
+    });
+    // On masque aussi au défilement (position fixe => sinon décalage)
+    window.addEventListener('scroll', hideTip, true);
+})();
+
+// ─────────────────────────────────────────────────────────────
 // Blocage du défilement de l'arrière-plan quand une modale est ouverte
 // (universel : couvre les modales via .modal-active et via display:flex inline)
 (function () {

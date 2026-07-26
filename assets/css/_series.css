@@ -288,6 +288,56 @@
     background: rgba(192, 132, 252, 0.5);
 }
 
+/* ── Pop-up (tooltip) stylisée au survol des tomes ───────────────────────────
+   Alimentée par l'attribut data-title et positionnée en JS (voir main.js /
+   public.js, fonction initVolumeTooltip). Utilisée à l'admin comme dans les
+   modales de détail des séries à l'index. */
+.volume-tooltip {
+    position: fixed;
+    z-index: 4000;
+    max-width: 260px;
+    padding: 8px 11px;
+    background: var(--tooltip-bg);
+    color: var(--tooltip-text);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: var(--border-radius-sm);
+    box-shadow: var(--box-shadow-lg, 0 8px 30px rgba(0, 0, 0, 0.45));
+    font-size: 0.78em;
+    line-height: 1.45;
+    font-weight: 500;
+    white-space: pre-line;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.volume-tooltip.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.volume-tooltip::after {
+    content: "";
+    position: absolute;
+    left: var(--arrow-left, 50%);
+    bottom: -5px;
+    width: 9px;
+    height: 9px;
+    background: var(--tooltip-bg);
+    border-right: 1px solid rgba(255, 255, 255, 0.10);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+    transform: translateX(-50%) rotate(45deg);
+}
+
+.volume-tooltip.is-below::after {
+    bottom: auto;
+    top: -5px;
+    border: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.10);
+    border-top: 1px solid rgba(255, 255, 255, 0.10);
+}
+
 .volumes-list li {
     background-color: var(--background-medium);
     padding: 7px 10px;

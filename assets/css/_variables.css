@@ -69,6 +69,9 @@
     --input-border: #2e2e3e;
     --input-border-focus: var(--primary-color);
     --input-bg: #131320;
+    --input-bg-focus: #181825;
+    --input-bg-required: #1a1726;
+    --input-border-required: #3a2f4d;
     --tooltip-bg: #1e1e2b;
     --tooltip-text: var(--primary-color);
     --tooltip-warning: var(--warning-color);

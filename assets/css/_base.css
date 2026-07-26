@@ -125,8 +125,8 @@ select {
 
 option,
 select option {
-    background-color: #1e1e2b;
-    color: #d4d4e8;
+    background-color: var(--background-medium);
+    color: var(--text-color);
     font-family: 'Inter', system-ui, sans-serif;
     padding: 8px 12px;
 }
@@ -134,8 +134,8 @@ select option {
 option:checked,
 option:hover,
 select option:checked {
-    background-color: #2e2040;
-    color: #c084fc;
+    background-color: var(--primary-subtle);
+    color: var(--primary-color);
 }
 
 input[type="text"]:focus,
@@ -145,7 +145,7 @@ input[type="number"]:focus,
 select:focus {
     outline: none;
     border-color: var(--primary-color);
-    background-color: #181825;
+    background-color: var(--input-bg-focus, var(--input-bg));
     box-shadow: 0 0 0 3px var(--primary-subtle);
 }
 

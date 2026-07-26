@@ -271,16 +271,26 @@
         max-height: 50vh;
     }
 
-    /* Onglets outils : plus compacts */
+    /* Onglets outils : une seule ligne défilante horizontalement plutôt
+       qu'un empilement serré sur plusieurs lignes. */
     .tools-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
         gap: 2px;
-        padding-bottom: 2px;
+        padding-bottom: 0;
+    }
+
+    .tools-tabs::-webkit-scrollbar {
+        display: none;
     }
 
     .tools-tab {
-        font-size: 0.78rem;
-        padding: 8px 10px;
-        flex: 1;
+        font-size: 0.8rem;
+        padding: 8px 12px;
+        flex: 0 0 auto;
+        white-space: nowrap;
         text-align: center;
     }
 
