@@ -150,3 +150,22 @@ function get_status_icon($status) {
         default: return '▶️';
     }
 }
+
+// Récupère la dernière version publiée sur Gitea (null si indisponible).
+if (!function_exists('get_latest_version_from_gitea')) {
+    function get_latest_version_from_gitea() {
+        if (!function_exists('curl_init')) return null;
+        $ch = curl_init('https://git.crystalyx.net/api/v1/repos/Esenjin_Asakha/Lengas/releases/latest');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Lengas-Version-Checker');
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        if ($response) {
+            $decoded = json_decode($response, true);
+            if (isset($decoded['tag_name'])) return ltrim($decoded['tag_name'], 'v');
+        }
+        return null;
+    }
+}

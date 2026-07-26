@@ -19,7 +19,6 @@ require 'includes/helpers.php';
 require_once 'includes/babengas.php';
 require 'fonctions/series.php';
 require 'fonctions/options.php';
-require 'fonctions/tools.php'; // pour get_latest_version_from_gitea()
 require 'includes/custom_icons.php';
 require 'includes/themes.php';
 require_once 'vestikan/vestikan.php';
