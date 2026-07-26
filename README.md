@@ -80,13 +80,19 @@ Mobile
 - Le pseudo, auparavant réglé dans les Options, se gère désormais ici (il continue de créditer les critiques)
 - Sur la page d'accueil publique, un bouton « Qui suis-je ? » ouvre une modale présentant le profil (affiché uniquement si au moins un champ est renseigné)
 
-### Critiques
-- Rédaction d'un avis par série via un éditeur Markdown dédié (page « Critiques »)
+### Critiques- Rédaction d'un avis par série via un éditeur Markdown dédié (page « Critiques »)
 - Éditeur avec aperçu en direct, barre de mise en forme flottante (gras, italique, souligné, barré, titres, listes, citations, code, liens, images et médias) et raccourcis annuler/rétablir
 - Mise en forme réversible : re-cliquer sur un style déjà appliqué à la sélection le retire
 - Insertion de médias externes (YouTube, Vimeo, SoundCloud, ou fichiers audio/vidéo directs)
 - Alerte lorsque la série n'est pas (ou pas entièrement) marquée comme lue
 - Filtre « Avec critique » et badge ✏️ sur la page publique ; les visiteurs consultent la critique dans une modale dédiée
+
+### Notation
+- Note subjective facultative par série, au choix parmi trois valeurs : ☺️ « J'ai apprécié », 😑 « Mi-figue mi-raisin », 😠 « Je n'ai pas aimé »
+- Réglable à l'ajout et à la modification d'une série (menu déroulant « Notation »)
+- Affichée sous forme de badge emoji (texte au survol) : dans la carte de série côté administration, et dans la modale de détails côté public
+- Catégorie « Notation » ajoutée aux filtres de statuts (les trois notes + « Sans note »)
+- Script autonome `notation.php` (à placer à la racine) pour noter en masse, rapidement, toutes les séries en cours de lecture ou dont la lecture est terminée (réservé à l'administrateur connecté)
 
 ### Liste d'envies
 - Ajout et suppression de séries dans une liste d'envies
@@ -245,6 +251,7 @@ lengas/
 ├── index.php              # Page publique
 ├── admin.php              # Interface d'administration
 ├── stats.php              # Page des statistiques
+├── notation.php           # Notation rapide en masse (script autonome, facultatif)
 ├── page-prets.php         # Page de gestion des prêts
 ├── page-wishlist.php      # Page de la liste d'envies
 ├── page-critiques.php     # Page de rédaction des critiques + rendu Markdown

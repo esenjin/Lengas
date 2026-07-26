@@ -63,6 +63,16 @@ function status_filter_categories() {
                 'no_review'  => 'Sans critique 📝',
             ],
         ],
+        'rating' => [
+            'label' => 'Notation',
+            'multi' => true,
+            'items' => [
+                'rating_apprecie' => "J'ai apprécié ☺️",
+                'rating_mitige'   => 'Mi-figue mi-raisin 😑',
+                'rating_deteste'  => "Je n'ai pas aimé 😠",
+                'rating_none'     => 'Sans note ➖',
+            ],
+        ],
     ];
 }
 
@@ -111,6 +121,14 @@ function series_matches_status_token($series, $token, $has_review) {
             return $has_last;
         case 'reading_abandoned':
             return !empty($series['reading_abandoned']);
+        case 'rating_apprecie':
+            return ($series['rating'] ?? '') === 'apprecie';
+        case 'rating_mitige':
+            return ($series['rating'] ?? '') === 'mitige';
+        case 'rating_deteste':
+            return ($series['rating'] ?? '') === 'deteste';
+        case 'rating_none':
+            return empty($series['rating']);
         default:
             // Statut de publication
             $status = 'en cours';

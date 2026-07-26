@@ -134,6 +134,34 @@
     border: 1px solid rgba(56, 189, 248, 0.2);
 }
 
+.rating-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    line-height: 1;
+    cursor: help;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rating-apprecie {
+    background: rgba(74, 222, 128, 0.12);
+    border-color: rgba(74, 222, 128, 0.28);
+}
+
+.rating-mitige {
+    background: rgba(250, 204, 21, 0.12);
+    border-color: rgba(250, 204, 21, 0.28);
+}
+
+.rating-deteste {
+    background: rgba(248, 113, 113, 0.12);
+    border-color: rgba(248, 113, 113, 0.28);
+}
+
 .anilist-badge {
     display: inline-flex;
     align-items: center;

@@ -143,6 +143,7 @@ function createLightSeriesCard(series) {
                 ${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}
                 ${series.read_elsewhere ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}
                 <span class="series-status-badge ${statusClass}">${statusIcon}</span>
+                ${ratingBadgeHtml(series)}
                 ${series.has_review ? '<span class="review-badge">✏️ Critique</span>' : ''}
                 ${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}
                 ${series.babelio_url ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}

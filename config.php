@@ -147,6 +147,12 @@ function init_db(PDO $pdo): void {
         $pdo->exec("ALTER TABLE series ADD COLUMN reading_abandoned INTEGER NOT NULL DEFAULT 0");
     } catch (Exception $e) { /* colonne déjà présente */ }
 
+    // ── Colonne rating (notation subjective : apprecie / mitige / deteste) ──────
+    // Valeur vide = pas de note.
+    try {
+        $pdo->exec("ALTER TABLE series ADD COLUMN rating TEXT NOT NULL DEFAULT ''");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
     // ── Colonne read_at (date de passage au statut "terminé" d'un tome) ────────
     try {
         $pdo->exec("ALTER TABLE volumes ADD COLUMN read_at TEXT NOT NULL DEFAULT ''");
@@ -368,6 +374,7 @@ function load_data(): array {
             'babelio_url'            => $s['babelio_url'] ?? '',
             'read_elsewhere'         => (bool)($s['read_elsewhere'] ?? false),
             'reading_abandoned'      => (bool)($s['reading_abandoned'] ?? false),
+            'rating'                 => $s['rating'] ?? '',
             'volumes'                => $vols,
         ];
     }
@@ -391,8 +398,8 @@ function save_data(array $data): void {
         }
 
         $upsertSeries = $db->prepare("
-            INSERT INTO series (id, name, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned)
-            VALUES (:id,:name,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned)
+            INSERT INTO series (id, name, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating)
+            VALUES (:id,:name,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating)
             ON CONFLICT(id) DO UPDATE SET
                 name=excluded.name, author=excluded.author, publisher=excluded.publisher,
                 other_contributors=excluded.other_contributors, categories=excluded.categories,
@@ -400,7 +407,8 @@ function save_data(array $data): void {
                 mature=excluded.mature, favorite=excluded.favorite, status=excluded.status,
                 mangaupdates_url=excluded.mangaupdates_url, babelio_url=excluded.babelio_url,
                 read_elsewhere=excluded.read_elsewhere,
-                reading_abandoned=excluded.reading_abandoned
+                reading_abandoned=excluded.reading_abandoned,
+                rating=excluded.rating
         ");
 
         $deleteVols  = $db->prepare("DELETE FROM volumes WHERE series_id = ?");
@@ -427,6 +435,7 @@ function save_data(array $data): void {
                 ':babelio_url'         => $s['babelio_url'] ?? '',
                 ':read_elsewhere'     => (int)($s['read_elsewhere'] ?? false),
                 ':reading_abandoned'  => (int)($s['reading_abandoned'] ?? false),
+                ':rating'             => $s['rating'] ?? '',
             ]);
 
             $deleteVols->execute([$s['id']]);

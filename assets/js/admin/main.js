@@ -1,3 +1,17 @@
+// Notation subjective d'une série → badge emoji (texte au survol).
+// Renvoie '' si la série n'a pas de note.
+function ratingBadgeHtml(series) {
+    if (!series || !series.rating) return '';
+    const defs = {
+        apprecie: { emoji: '☺️', label: "J'ai apprécié" },
+        mitige:   { emoji: '😑', label: 'Mi-figue mi-raisin' },
+        deteste:  { emoji: '😠', label: "Je n'ai pas aimé" }
+    };
+    const def = defs[series.rating];
+    if (!def) return '';
+    return `<span class="rating-badge rating-${series.rating}" title="${def.label}" aria-label="${def.label}">${def.emoji}</span>`;
+}
+
 // Fonction pour afficher une alerte personnalisée
 function showCustomAlert(title, message) {
     const modal = document.getElementById('custom-alert-modal');

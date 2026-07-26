@@ -38,6 +38,8 @@ document.addEventListener('click', function(e) {
             document.getElementById('edit-series-favorite').checked = series.favorite || false;
             document.getElementById('edit-series-read-elsewhere').checked = series.read_elsewhere || false;
             document.getElementById('edit-series-reading-abandoned').checked = series.reading_abandoned || false;
+            const editRating = document.getElementById('edit-series-rating');
+            if (editRating) editRating.value = series.rating || '';
             document.getElementById('current-series-image').src = series.image;
             const statusSelect = document.getElementById('edit-series-status');
             Array.from(statusSelect.options).forEach(option => {

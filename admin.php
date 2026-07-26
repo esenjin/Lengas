@@ -47,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $status        = $_POST['series_status'] ?? 'en cours';
     $read_elsewhere = !empty($_POST['read_elsewhere']);
     $reading_abandoned = !empty($_POST['reading_abandoned']);
+    $rating = sanitize_rating($_POST['rating'] ?? '');
 
     // Initialiser $image à null par défaut
     $image = null;
@@ -62,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     }
 
     // Appeler add_series avec $image (qui peut être null)
-    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned);
+    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned, $rating);
 
     if ($result['success']) {
         save_data($result['data']);
@@ -168,6 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $new_status         = $_POST['series_status'] ?? null;
     $edit_read_elsewhere = !empty($_POST['edit_read_elsewhere']);
     $edit_reading_abandoned = !empty($_POST['edit_reading_abandoned']);
+    $edit_rating = sanitize_rating($_POST['edit_rating'] ?? '');
 
     $new_image = null;
     if (!empty($_FILES['edit_image']['name'])) {
@@ -180,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         }
     }
 
-    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned);
+    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned, $edit_rating);
     if ($result['success']) {
         save_data($result['data']);
         // Réchauffer le cache MangaUpdates pour la série modifiée
@@ -409,6 +411,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 'babelio_url'                => $series['babelio_url'] ?? '',
                 'read_elsewhere'             => (bool)($series['read_elsewhere'] ?? false),
                 'reading_abandoned'          => (bool)($series['reading_abandoned'] ?? false),
+                'rating'                     => $series['rating'] ?? '',
                 'has_review'                 => isset($review_series_ids[$series['id']]),
             ];
         }, $paginated_data);
@@ -754,6 +757,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <input type="checkbox" name="reading_abandoned" id="add-series-reading-abandoned"> Lecture abandonnée 📕
                     </label>
                     <p class="hint">Cochez si vous avez arrêté de lire cette série.</p>
+                    <p>Notation (facultatif) :</p>
+                    <select name="rating" id="add-series-rating">
+                        <option value="">Aucune note ➖</option>
+                        <option value="apprecie">J'ai apprécié ☺️</option>
+                        <option value="mitige">Mi-figue mi-raisin 😑</option>
+                        <option value="deteste">Je n'ai pas aimé 😠</option>
+                    </select>
                     <p>Vignette :</p>
                     <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp">
                     <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
@@ -890,6 +900,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <input type="checkbox" name="edit_reading_abandoned" id="edit-series-reading-abandoned"> Lecture abandonnée 📕
                     </label>
                     <p class="hint">Cochez si vous avez arrêté de lire cette série.</p>
+                    <p>Notation (facultatif) :</p>
+                    <select name="edit_rating" id="edit-series-rating">
+                        <option value="">Aucune note ➖</option>
+                        <option value="apprecie">J'ai apprécié ☺️</option>
+                        <option value="mitige">Mi-figue mi-raisin 😑</option>
+                        <option value="deteste">Je n'ai pas aimé 😠</option>
+                    </select>
                     <div class="current-image-container">
                         <p>Vignette actuelle :</p>
                         <img id="current-series-image" src="" alt="Image actuelle" style="max-width: 100px; margin-bottom: 10px;">

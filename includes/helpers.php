@@ -1,4 +1,24 @@
 <?php
+// ──────────────────────────────────────────────────────────────────────────────
+// Notation subjective des séries (facultative)
+// Valeurs stockées : 'apprecie', 'mitige', 'deteste' (ou '' = pas de note).
+// ──────────────────────────────────────────────────────────────────────────────
+if (!function_exists('rating_definitions')) {
+    function rating_definitions() {
+        return [
+            'apprecie' => ['emoji' => '☺️', 'label' => "J'ai apprécié"],
+            'mitige'   => ['emoji' => '😑', 'label' => 'Mi-figue mi-raisin'],
+            'deteste'  => ['emoji' => '😠', 'label' => "Je n'ai pas aimé"],
+        ];
+    }
+
+    // Normalise une valeur de note ; renvoie '' si invalide.
+    function sanitize_rating($value) {
+        $value = trim((string)$value);
+        return array_key_exists($value, rating_definitions()) ? $value : '';
+    }
+}
+
 // Fonction pour générer un UUID unique
 function generate_uuid() {
     return sprintf(

@@ -1,6 +1,6 @@
 <?php
 // Ajouter une série
-function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours', $read_elsewhere = false, $reading_abandoned = false) {
+function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours', $read_elsewhere = false, $reading_abandoned = false, $rating = '') {
     $volumes = [];
     for ($i = 1; $i <= $volumes_count; $i++) {
         $volumes[] = [
@@ -49,6 +49,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         'status' => $status,
         'read_elsewhere' => (bool)$read_elsewhere,
         'reading_abandoned' => (bool)$reading_abandoned,
+        'rating' => sanitize_rating($rating),
         'volumes' => $volumes
     ];
 
@@ -56,7 +57,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
 }
 
 // Mettre à jour une série
-function update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null, $new_status = null, $read_elsewhere = null, $reading_abandoned = null) {
+function update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null, $new_status = null, $read_elsewhere = null, $reading_abandoned = null, $rating = null) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
         return ['success' => false, 'message' => "Série introuvable."];
@@ -94,6 +95,9 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
     }
     if ($reading_abandoned !== null) {
         $data[$series_key]['reading_abandoned'] = (bool)$reading_abandoned;
+    }
+    if ($rating !== null) {
+        $data[$series_key]['rating'] = sanitize_rating($rating);
     }
 
     // Gestion de l'image
