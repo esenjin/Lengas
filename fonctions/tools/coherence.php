@@ -55,6 +55,68 @@ function generate_notifications(array $volumes, ?int $ref_volumes = null): array
     return $notifications;
 }
 
+// ── Décompte de tomes de référence pour une série (Babengas → MU) ─────────────
+// Renvoie la meilleure source disponible pour le NOMBRE DE TOMES paru :
+//   1. Babengas (décompte VF réellement paru, lu dans le cache Babelio — aucun
+//      appel réseau : les données proviennent des campagnes Babengas). Priorité,
+//      car c'est le décompte le plus fiable pour l'édition française.
+//   2. Fallback MangaUpdates (décompte souvent VO), issu du cache pré-chargé.
+//
+// Un one-shot (fiche de TOME Babelio, /livres/…) n'a pas de décompte en cache
+// mais vaut par définition un tome ; on le renseigne localement.
+//
+// Retourne ['volumes'=>int, 'source'=>'babelio'|'babelio-oneshot'|'mangaupdates',
+//           'source_label'=>string] ou null si aucune référence exploitable.
+function coherence_reference_volumes(array $series, array $mu_cache_map = []): ?array {
+    // 1) Babengas / Babelio (VF) — prioritaire, s'il est configuré et disponible.
+    if (!function_exists('babengas_enabled') || babengas_enabled()) {
+        $burl = trim((string)($series['babelio_url'] ?? ''));
+        if ($burl !== '') {
+            // Fiche SÉRIE : décompte VF issu du cache Babelio (campagnes Babengas).
+            // max_age = 0 → on accepte tout décompte déjà connu, quelle que soit
+            // son ancienneté (comme babengas_cached_incomplete) : mieux vaut un
+            // décompte VF un peu ancien qu'un fallback VO. Le rafraîchissement
+            // reste du ressort des campagnes Babengas.
+            if (function_exists('babelio_get_volumes_for_url')) {
+                $cached = babelio_get_volumes_for_url($burl, 0);
+                if ($cached !== null && (int)$cached['nb_tomes'] > 0) {
+                    return [
+                        'volumes'      => (int)$cached['nb_tomes'],
+                        'source'       => 'babelio',
+                        'source_label' => 'Babelio (VF, via Babengas)',
+                    ];
+                }
+            }
+            // Fiche de TOME : one-shot, résolu localement (un tome paru).
+            if (function_exists('babelio_is_livre_url') && babelio_is_livre_url($burl)) {
+                return [
+                    'volumes'      => 1,
+                    'source'       => 'babelio-oneshot',
+                    'source_label' => 'Babelio (one-shot)',
+                ];
+            }
+        }
+    }
+
+    // 2) Fallback MangaUpdates (décompte souvent VO).
+    if (!empty($series['mangaupdates_url']) && function_exists('mangaupdates_get_id_from_url')) {
+        $mu_id = mangaupdates_get_id_from_url($series['mangaupdates_url']);
+        if ($mu_id !== null) {
+            $mu_info = $mu_cache_map[$mu_id]
+                ?? (function_exists('mangaupdates_get_volumes') ? mangaupdates_get_volumes($mu_id) : null);
+            if ($mu_info !== null && ($mu_info['volumes'] ?? null) !== null && (int)$mu_info['volumes'] > 0) {
+                return [
+                    'volumes'      => (int)$mu_info['volumes'],
+                    'source'       => 'mangaupdates',
+                    'source_label' => 'MangaUpdates',
+                ];
+            }
+        }
+    }
+
+    return null;
+}
+
 // Vérification des incohérences de la collection
 function check_collection_coherence(array $data): array {
     $issues = [];
@@ -150,6 +212,14 @@ function check_collection_coherence(array $data): array {
         // On utilise d'abord mu_cache_map (pré-chargé en lot, avec appels réseau
         // si nécessaire), puis on se rabat sur mangaupdates_get_cached_status en
         // lecture seule si la série n'y figure pas (URL invalide, échec réseau…).
+        //
+        // ⚠️ Deux natures de contrôle, deux sources :
+        //   • Le STATUT de publication (en cours / terminé) vient TOUJOURS de
+        //     MangaUpdates : Babengas ne remonte pas le statut (Babelio affiche
+        //     « En cours » même sur des séries terminées).
+        //   • Le NOMBRE DE TOMES de référence privilégie Babengas (décompte VF
+        //     réellement paru, via le cache Babelio) et se rabat sur MangaUpdates
+        //     quand Babengas n'a pas de décompte pour cette série.
         if (!empty($series['mangaupdates_url']) && function_exists('mangaupdates_get_id_from_url')) {
             $mu_id = mangaupdates_get_id_from_url($series['mangaupdates_url']);
             if ($mu_id !== null) {
@@ -175,14 +245,27 @@ function check_collection_coherence(array $data): array {
                             $series_issues[] = ['type' => 'mu_complete_unmarked', 'message' => 'MangaUpdates indique la série comme terminée (« ' . $mu_status_text . ' », ' . (int)$mu_volumes . ' tomes) et vous semblez la posséder entièrement, mais elle n\'est pas marquée comme terminée.'];
                         }
                     }
-
-                    // mu_more_volumes : le nombre de tomes seul suffit (pas besoin du statut textuel)
-                    // On utilise count($volumes) pour être cohérent avec la modale "Séries incomplètes"
-                    $owned_count = count($volumes);
-                    if ($mu_volumes !== null && $owned_count > (int)$mu_volumes) {
-                        $series_issues[] = ['type' => 'mu_more_volumes', 'message' => 'Vous possédez plus de tomes (' . $owned_count . ') que ce qu\'indique MangaUpdates (' . (int)$mu_volumes . ').'];
-                    }
                 }
+            }
+        }
+
+        // ── Nombre de tomes de référence : Babengas (VF) prioritaire, sinon MU ──
+        // On centralise le décompte de référence via coherence_reference_volumes(),
+        // qui privilégie le cache Babelio (données Babengas, VF réellement parue)
+        // et se rabat sur MangaUpdates. Le contrôle « vous possédez plus de tomes
+        // que la référence » s'appuie ensuite sur cette source, en le mentionnant
+        // dans le message pour lever toute ambiguïté.
+        //
+        // On utilise count($volumes) pour être cohérent avec la modale
+        // « Séries incomplètes ».
+        $ref = coherence_reference_volumes($series, $mu_cache_map);
+        if ($ref !== null) {
+            $owned_count = count($volumes);
+            if ($owned_count > $ref['volumes']) {
+                $series_issues[] = [
+                    'type'    => 'ref_more_volumes',
+                    'message' => 'Vous possédez plus de tomes (' . $owned_count . ') que ce qu\'indique ' . $ref['source_label'] . ' (' . $ref['volumes'] . ').',
+                ];
             }
         }
 
