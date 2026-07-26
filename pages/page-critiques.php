@@ -1,4 +1,9 @@
 <?php
+
+// Rétablit le dossier de travail à la racine du projet : cette page vit dans
+// pages/ mais tous les chemins relatifs (config.php, includes/, bdd/, uploads/…)
+// sont résolus depuis la racine.
+chdir(__DIR__ . '/..');
 require 'config.php';
 require 'includes/auth.php';
 require 'includes/helpers.php';
@@ -85,8 +90,8 @@ $eligible = array_map(function ($s) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Critiques — <?= htmlspecialchars($options['site_name'] ?? 'Lengas') ?></title>
     <meta name="description" content="Gestion des critiques de séries.">
-    <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
+    <link rel="stylesheet" href="../assets/css/main.css">
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">
@@ -239,7 +244,7 @@ $eligible = array_map(function ($s) {
     <script>
         window.reviewPrefillSeriesId = <?= json_encode($prefill_series_id) ?>;
     </script>
-    <script src="assets/js/admin/main.js"></script>
-    <script src="assets/js/admin/reviews.js"></script>
+    <script src="../assets/js/admin/main.js"></script>
+    <script src="../assets/js/admin/reviews.js"></script>
 </body>
 </html>

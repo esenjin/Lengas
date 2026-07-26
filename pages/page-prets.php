@@ -1,4 +1,9 @@
 <?php
+
+// Rétablit le dossier de travail à la racine du projet : cette page vit dans
+// pages/ mais tous les chemins relatifs (config.php, includes/, bdd/, uploads/…)
+// sont résolus depuis la racine.
+chdir(__DIR__ . '/..');
 require 'config.php';
 require 'includes/auth.php';
 require 'includes/helpers.php';
@@ -86,8 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_action'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Livres prêtés — <?= htmlspecialchars($options['site_name'] ?? 'Lengas') ?></title>
     <meta name="description" content="Gestion des livres prêtés.">
-    <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
+    <link rel="stylesheet" href="../assets/css/main.css">
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">

@@ -2,4 +2,4 @@ bdd/lengas.db
 saves/
 
 # Config Vestikan : contient le client_secret, ne jamais versionner.
-includes/vestikan-config.php
+vestikan/vestikan-config.php

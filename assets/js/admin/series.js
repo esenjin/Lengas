@@ -56,7 +56,7 @@ document.addEventListener('click', function(e) {
     if (!btn) return;
     const seriesId = btn.dataset.seriesId;
     if (seriesId) {
-        window.location.href = 'page-critiques.php?series_id=' + encodeURIComponent(seriesId);
+        window.location.href = 'pages/page-critiques.php?series_id=' + encodeURIComponent(seriesId);
     }
 });
 

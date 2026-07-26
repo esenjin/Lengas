@@ -1,4 +1,9 @@
 <?php
+
+// Rétablit le dossier de travail à la racine du projet : cette page vit dans
+// pages/ mais tous les chemins relatifs (config.php, includes/, bdd/, uploads/…)
+// sont résolus depuis la racine.
+chdir(__DIR__ . '/..');
 // ────────────────────────────────────────────────────────────────────────────
 // page-profil.php — Profil de l'administrateur
 //
@@ -134,8 +139,8 @@ $has_avatar    = ($avatar !== '' && file_exists($avatar));
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profil — <?= htmlspecialchars($options['site_name'] ?? 'Lengas') ?></title>
     <meta name="description" content="Profil de l'administrateur du site.">
-    <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
+    <link rel="stylesheet" href="../assets/css/main.css">
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">
@@ -170,7 +175,7 @@ $has_avatar    = ($avatar !== '' && file_exists($avatar));
 
                 <div class="profil-avatar-field">
                     <div class="profil-avatar-preview" id="profil-avatar-preview">
-                        <img src="<?= $has_avatar ? htmlspecialchars($avatar) . '?v=' . filemtime($avatar) : 'assets/img/logo.png' ?>"
+                        <img src="<?= $has_avatar ? '../' . htmlspecialchars($avatar) . '?v=' . filemtime($avatar) : '../assets/img/logo.png' ?>"
                              alt="Photo de profil" id="profil-avatar-img">
                     </div>
                     <div class="profil-avatar-controls">
@@ -377,8 +382,8 @@ $has_avatar    = ($avatar !== '' && file_exists($avatar));
         window.profilColors       = <?= json_encode(custom_link_colors(), JSON_UNESCAPED_SLASHES) ?>;
         window.profilDefaultColor = <?= json_encode(custom_link_default_color()) ?>;
     </script>
-    <script src="assets/js/admin/main.js"></script>
-    <script src="assets/js/admin/profil.js"></script>
+    <script src="../assets/js/admin/main.js"></script>
+    <script src="../assets/js/admin/profil.js"></script>
 
     <script>
     // Bouton « Retour en haut »

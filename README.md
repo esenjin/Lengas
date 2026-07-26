@@ -117,7 +117,7 @@ Mobile
 - Thèmes personnalisés : déposez un fichier `assets/css/_variables-<nom>.css` pour l'ajouter automatiquement à la liste
 
 ### Outils (page dédiée « Outils », organisée en onglets)
-Tous les outils du site sont regroupés sur la page `page-outils.php`, accessible via l'icône clé à molette du menu latéral. L'onglet actif est mémorisé dans l'URL (ex. `page-outils.php#integrity`), ce qui permet de partager un lien direct.
+Tous les outils du site sont regroupés sur la page `pages/page-outils.php`, accessible via l'icône clé à molette du menu latéral. L'onglet actif est mémorisé dans l'URL (ex. `pages/page-outils.php#integrity`), ce qui permet de partager un lien direct.
 
 - **Séries incomplètes** : détecte les tomes manquants en comparant votre collection au nombre de tomes indiqué par MangaUpdates (le décompte VF est privilégié lorsqu'il est disponible), avec progression en direct, filtres et ajout des tomes manquants
 - **Incohérences** : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome », statut différent de MangaUpdates, prêts orphelins, etc.) et propose une édition rapide de la série concernée
@@ -126,7 +126,7 @@ Tous les outils du site sont regroupés sur la page `page-outils.php`, accessibl
 - **Vérification d'intégrité** : contrôle des fichiers (dont les thèmes et les fichiers Vestikan), des permissions, de la structure de la base de données, des thèmes personnalisés présents et de la connectivité à l'API MangaUpdates
 
 ### Options (page dédiée « Options »)
-Toutes les options du site sont regroupées sur la page `page-options.php`, accessible via l'icône engrenage du menu latéral.
+Toutes les options du site sont regroupées sur la page `pages/page-options.php`, accessible via l'icône engrenage du menu latéral.
 
 - Nom, description et titres de pages personnalisables
 - Nombre illimité de liens personnalisés affichés dans le menu latéral public (bouton « Ajouter un lien personnalisé »), chacun avec une icône choisie via un sélecteur visuel (aperçu, recherche, catégories ; une trentaine d'icônes : médias, flux RSS, réseaux, etc.) et une couleur au choix dans une palette prédéfinie accordée au thème
@@ -232,7 +232,7 @@ Pour installer Babengas sur son homelab :
 
 ## Comment se connecter avec Vestikan
 
-Vestikan est un système de connexion SSO (« Se connecter avec Vestikan »). Son intégration à Lengas est **entièrement facultative** : sans les fichiers Vestikan ni le fichier `includes/vestikan-config.php`, le site reste **100 % fonctionnel** et la connexion se fait par mot de passe comme d'habitude.
+Vestikan est un système de connexion SSO (« Se connecter avec Vestikan »). Son intégration à Lengas est **entièrement facultative** : sans les fichiers Vestikan ni le fichier `vestikan/vestikan-config.php`, le site reste **100 % fonctionnel** et la connexion se fait par mot de passe comme d'habitude.
 
 Lorsqu'il est configuré, un bouton « Se connecter avec Vestikan » apparaît sur la page de connexion, en complément du mot de passe. L'état de la connexion (active / inactive) est visible dans les options du site, sous le champ de mot de passe, et le détail des fichiers Vestikan apparaît dans l'outil de vérification d'intégrité (page « Outils ») (une absence y est signalée en orange « Absent », car non bloquante).
 
@@ -250,18 +250,24 @@ lengas/
 ├── admin.php              # Interface d'administration
 ├── stats.php              # Page des statistiques
 ├── notation.php           # Notation rapide en masse (script autonome, facultatif)
-├── page-prets.php         # Page de gestion des prêts
-├── page-wishlist.php      # Page de la liste d'envies
-├── page-critiques.php     # Page de rédaction des critiques + rendu Markdown
-├── page-profil.php        # Page du profil de l'admin (photo, pseudo, bio, liens sociaux)
-├── page-outils.php        # Page des outils (+ endpoints SSE/POST associés)
-├── page-options.php       # Page des options du site (configuration + mise à jour)
 ├── config.php             # Configuration du site
 ├── login.php              # Connexion
 ├── logout.php             # Déconnexion
-├── vestikan-login.php     # Démarrage de la connexion Vestikan (facultatif)
-├── vestikan-callback.php  # Callback OAuth Vestikan (facultatif)
+├── babengas-ping.php      # Endpoint de test Babengas (facultatif)
 ├── .htaccess
+├── pages/                 # Pages secondaires de l'administration
+│   ├── page-prets.php     # Page de gestion des prêts
+│   ├── page-wishlist.php  # Page de la liste d'envies
+│   ├── page-critiques.php # Page de rédaction des critiques + rendu Markdown
+│   ├── page-profil.php    # Page du profil de l'admin (photo, pseudo, bio, liens sociaux)
+│   ├── page-outils.php    # Page des outils (+ endpoints SSE/POST associés)
+│   └── page-options.php   # Page des options du site (configuration + mise à jour)
+├── vestikan/              # Connexion SSO Vestikan (facultatif, non versionné pour la config)
+│   ├── vestikan-login.php    # Démarrage de la connexion Vestikan
+│   ├── vestikan-callback.php # Callback OAuth Vestikan
+│   ├── vestikan.php          # Point d'entrée SSO Vestikan
+│   ├── vestikan-sdk.php      # SDK Vestikan
+│   └── vestikan-config.php   # Configuration SSO Vestikan (non versionné)
 ├── assets/
 │   ├── css/               # Fichiers CSS
 │   │   ├── _admin.css
@@ -314,10 +320,7 @@ lengas/
 │   ├── public-sidebar.php    # Menu latéral à icônes des pages publiques (accueil et statistiques)
 │   ├── custom_icons.php      # Icônes, couleurs et lecture des liens personnalisés (partagé options/sidebar)
 │   ├── themes.php            # Gestion des thèmes (base + personnalisés)
-│   ├── status_filter.php     # Filtrage des séries par statut
-│   ├── vestikan.php          # Point d'entrée SSO Vestikan (facultatif)
-│   ├── vestikan-sdk.php      # SDK Vestikan (facultatif)
-│   └── vestikan-config.php   # Configuration SSO Vestikan (facultatif, non versionné)
+│   └── status_filter.php     # Filtrage des séries par statut
 ├── fonctions/
 │   ├── series.php        # Fonctions de gestion des séries
 │   ├── volumes.php       # Fonctions de gestion des tomes
@@ -340,7 +343,7 @@ lengas/
    └── lengas.db          # Base de données SQLite (chmod 0660)
 ```
 
-> Note : `includes/vestikan-config.php` contient le `client_secret` et ne doit jamais être versionné (il est dans `.gitignore`). Son absence désactive simplement le SSO.
+> Note : `vestikan/vestikan-config.php` contient le `client_secret` et ne doit jamais être versionné (il est dans `.gitignore`). Son absence désactive simplement le SSO.
 
 ---
 

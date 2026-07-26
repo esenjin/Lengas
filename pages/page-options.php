@@ -1,4 +1,9 @@
 <?php
+
+// Rétablit le dossier de travail à la racine du projet : cette page vit dans
+// pages/ mais tous les chemins relatifs (config.php, includes/, bdd/, uploads/…)
+// sont résolus depuis la racine.
+chdir(__DIR__ . '/..');
 // ────────────────────────────────────────────────────────────────────────────
 // page-options.php — Page dédiée aux options du site
 //
@@ -17,7 +22,7 @@ require 'fonctions/options.php';
 require 'fonctions/tools.php'; // pour get_latest_version_from_gitea()
 require 'includes/custom_icons.php';
 require 'includes/themes.php';
-require_once 'includes/vestikan.php';
+require_once 'vestikan/vestikan.php';
 
 $data    = load_data();
 $options = load_options();
@@ -148,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
             $_SESSION['error_message'] = "Seuls le PNG est autorisés pour le logo.";
         } else {
             // Chemin absolu vers logo.png
-            $logo_path = __DIR__ . '/assets/img/logo.png';
+            $logo_path = __DIR__ . '/../assets/img/logo.png';
 
             // Supprimer l'ancien logo.png s'il existe
             if (file_exists($logo_path)) {
@@ -187,8 +192,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Options — <?= htmlspecialchars($options['site_name'] ?? 'Lengas') ?></title>
     <meta name="description" content="Options et configuration du site.">
-    <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
+    <link rel="stylesheet" href="../assets/css/main.css">
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">
@@ -396,7 +401,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                     <p class="hint">Vignette par défaut actuelle :</p>
                     <?php if (file_exists('assets/img/logo.png')): ?>
                         <div>
-                            <img src="assets/img/logo.png?v=<?= time() ?>" alt="Logo actuel" style="max-width: 100px; max-height: 100px;">
+                            <img src="../assets/img/logo.png?v=<?= time() ?>" alt="Logo actuel" style="max-width: 100px; max-height: 100px;">
                         </div>
                     <?php endif; ?>
                 </div>
@@ -488,7 +493,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                 <?php if (function_exists('vestikan_enabled') && vestikan_enabled()): ?>
                     <p class="hint"><span class="ok">●</span> Connexion via Vestikan : <strong>active</strong>.</p>
                 <?php else: ?>
-                    <p class="hint"><span class="warn">●</span> Connexion via Vestikan : <strong>inactive</strong>. Déposez les fichiers Vestikan et <code>includes/vestikan-config.php</code> pour l'activer.</p>
+                    <p class="hint"><span class="warn">●</span> Connexion via Vestikan : <strong>inactive</strong>. Déposez les fichiers Vestikan et <code>vestikan/vestikan-config.php</code> pour l'activer.</p>
                 <?php endif; ?>
 
                 <button type="submit" name="update_options" class="button button-opt">Mettre à jour</button>

@@ -1,4 +1,9 @@
 <?php
+
+// Rétablit le dossier de travail à la racine du projet : cette page vit dans
+// pages/ mais tous les chemins relatifs (config.php, includes/, bdd/, uploads/…)
+// sont résolus depuis la racine.
+chdir(__DIR__ . '/..');
 // ────────────────────────────────────────────────────────────────────────────
 // page-outils.php — Page dédiée aux outils
 //
@@ -476,8 +481,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Outils — <?= htmlspecialchars($options['site_name'] ?? 'Lengas') ?></title>
     <meta name="description" content="Outils de maintenance et de vérification de la collection.">
-    <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
+    <link rel="stylesheet" href="../assets/css/main.css">
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar tools-page">
@@ -810,15 +815,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
     <script>
         window.seriesData = <?= json_encode($series_with_status) ?>;
     </script>
-    <script src="assets/js/admin/tools/page.js"></script>
-    <script src="assets/js/admin/tools/incomplete.js"></script>
+    <script src="../assets/js/admin/tools/page.js"></script>
+    <script src="../assets/js/admin/tools/incomplete.js"></script>
     <?php if (function_exists('babengas_enabled') && babengas_enabled()): ?>
-        <script src="assets/js/admin/tools/babengas.js"></script>
+        <script src="../assets/js/admin/tools/babengas.js"></script>
     <?php endif; ?>
-    <script src="assets/js/admin/tools/coherence.js"></script>
-    <script src="assets/js/admin/tools/backups.js"></script>
-    <script src="assets/js/admin/tools/mangaupdates-assoc.js"></script>
-    <script src="assets/js/admin/tools/integrity.js"></script>
+    <script src="../assets/js/admin/tools/coherence.js"></script>
+    <script src="../assets/js/admin/tools/backups.js"></script>
+    <script src="../assets/js/admin/tools/mangaupdates-assoc.js"></script>
+    <script src="../assets/js/admin/tools/integrity.js"></script>
 
 </body>
 </html>

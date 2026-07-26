@@ -144,8 +144,14 @@ function theme_link_tag(?array $options = null): string {
     if ($href === null) {
         return '';
     }
+    // $href est relatif à la racine du projet (ex. "assets/css/_variables-x.css").
+    // La lecture disque se fait depuis la racine (CWD rétabli par les pages),
+    // mais l'URL envoyée au navigateur doit tenir compte de la profondeur de la
+    // page appelante : les pages de pages/ sont un cran plus bas.
     $v = @filemtime($href) ?: time();
+    $in_pages = strpos(str_replace('\\', '/', $_SERVER['PHP_SELF'] ?? ''), '/pages/') !== false;
+    $url = ($in_pages ? '../' : '') . $href;
     return '<link rel="stylesheet" id="theme-css" href="'
-        . htmlspecialchars($href, ENT_QUOTES)
+        . htmlspecialchars($url, ENT_QUOTES)
         . '?v=' . $v . '">';
 }

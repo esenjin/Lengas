@@ -28,7 +28,7 @@ function displayIntegrityResults(results) {
     `;
     const rootFiles = [
         'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php', '.htaccess',
-        'page-prets.php', 'page-wishlist.php', 'page-critiques.php', 'page-outils.php', 'page-options.php'
+        'pages/page-prets.php', 'pages/page-wishlist.php', 'pages/page-critiques.php', 'pages/page-outils.php', 'pages/page-options.php', 'pages/page-profil.php'
     ];
     rootFiles.forEach(file => {
         html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;

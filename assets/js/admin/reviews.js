@@ -148,7 +148,7 @@
             const card = document.createElement('div');
             card.className = 'review-card';
             card.dataset.seriesId = r.series_id;
-            const img = (r.image && r.image !== '') ? htmlEscape(r.image) : 'assets/img/logo.png';
+            const img = '../' + ((r.image && r.image !== '') ? htmlEscape(r.image) : 'assets/img/logo.png');
             card.innerHTML = `
                 <button type="button" class="review-card-delete" title="Supprimer la critique" aria-label="Supprimer la critique">&times;</button>
                 <img class="review-card-thumb" src="${img}" alt="" loading="lazy">

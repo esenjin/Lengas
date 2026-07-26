@@ -13,7 +13,7 @@
 (function () {
     'use strict';
 
-    const panel = document.querySelector('[data-tab-panel="babengas"]');
+    const panel = document.querySelector('[data-subtab-panel="babengas"]');
     if (!panel) return; // Intégration non configurée : rien à faire
 
     const resultsDiv  = document.getElementById('babengas-results');
@@ -106,7 +106,7 @@
                         <ul class="summary-list">
                             ${failed.map(s => {
                                 const badge = s.babelio_url
-                                    ? ` <a class="babelio-badge" href="${esc(s.babelio_url)}" target="_blank" rel="noopener" title="Voir la fiche sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>`
+                                    ? ` <a class="babelio-badge" href="${esc(s.babelio_url)}" target="_blank" rel="noopener" title="Voir la fiche sur Babelio"><img src="../assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>`
                                     : '';
                                 return `<li><strong>${esc(s.name)}</strong>${s.read_elsewhere ? ' <span class="read-elsewhere-badge">Lue ailleurs</span>' : ''}${s.author ? ' — ' + esc(s.author) : ''} <span class="summary-reason">${esc(s.reason)}</span>${badge}</li>`;
                             }).join('')}

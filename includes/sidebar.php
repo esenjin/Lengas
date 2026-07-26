@@ -1,19 +1,24 @@
 <?php
 // includes/sidebar.php
 $current_page = basename($_SERVER['PHP_SELF']);
+// Prefixe d'URL selon la profondeur de la page qui inclut ce menu :
+// les pages de pages/ sont un cran plus bas que la racine du site.
+$__in_pages = strpos(str_replace('\\', '/', $_SERVER['PHP_SELF']), '/pages/') !== false;
+$base  = $__in_pages ? '../' : '';
+$pages = $base . 'pages/';
 ?>
 <nav class="sidebar" id="sidebar" aria-label="Navigation principale">
 
     <!-- Logo -->
     <div class="sidebar-brand">
-        <img src="assets/img/logo.png" alt="Lengas" class="sidebar-logo" width="30" height="30">
+        <img src="<?= $base ?>assets/img/logo.png" alt="Lengas" class="sidebar-logo" width="30" height="30">
     </div>
 
     <ul class="sidebar-nav" role="list">
 
         <!-- Bibliothèque -->
         <li>
-            <a href="admin.php"
+            <a href="<?= $base ?>admin.php"
                class="sidebar-link <?= $current_page === 'admin.php' ? 'is-active' : '' ?>"
                data-tooltip="Bibliothèque">
                 <img src="https://api.iconify.design/mdi/bookshelf.svg?color=%23c084fc" width="22" height="22" alt="">
@@ -29,7 +34,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     id="sidebar-add-series-btn"
                     data-tooltip="Ajouter une série"
                     data-modal-trigger="open-add-series-modal"
-                    data-admin-redirect="admin.php">
+                    data-admin-redirect="<?= $base ?>admin.php">
                 <img src="https://api.iconify.design/mdi/book-plus.svg?color=%234ade80" width="22" height="22" alt="">
             </button>
         </li>
@@ -41,7 +46,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     id="sidebar-add-volumes-btn"
                     data-tooltip="Ajouter des tomes"
                     data-modal-trigger="open-add-multiple-volumes-modal"
-                    data-admin-redirect="admin.php">
+                    data-admin-redirect="<?= $base ?>admin.php">
                 <img src="https://api.iconify.design/mdi/book-plus-multiple.svg?color=%234ade80" width="22" height="22" alt="">
             </button>
         </li>
@@ -49,7 +54,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         <!-- Critiques -->
         <li>
-            <a href="page-critiques.php"
+            <a href="<?= $pages ?>page-critiques.php"
                class="sidebar-link <?= $current_page === 'page-critiques.php' ? 'is-active' : '' ?>"
                data-tooltip="Critiques">
                 <img src="https://api.iconify.design/mdi/pencil.svg?color=%234ade80" width="22" height="22" alt="">
@@ -60,7 +65,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         <!-- Prêts -->
         <li>
-            <a href="page-prets.php"
+            <a href="<?= $pages ?>page-prets.php"
                class="sidebar-link <?= $current_page === 'page-prets.php' ? 'is-active' : '' ?>"
                data-tooltip="Livres prêtés">
                 <img src="https://api.iconify.design/mdi/book-arrow-right.svg?color=%2338bdf8" width="22" height="22" alt="">
@@ -69,7 +74,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         <!-- Liste d'envies -->
         <li>
-            <a href="page-wishlist.php"
+            <a href="<?= $pages ?>page-wishlist.php"
                class="sidebar-link <?= $current_page === 'page-wishlist.php' ? 'is-active is-active--blue' : '' ?>"
                data-tooltip="Liste d'envies">
                 <img src="https://api.iconify.design/mdi/heart-multiple.svg?color=%2338bdf8" width="22" height="22" alt="">
@@ -80,7 +85,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         <!-- Statistiques -->
         <li>
-            <a href="stats.php"
+            <a href="<?= $base ?>stats.php"
                class="sidebar-link <?= $current_page === 'stats.php' ? 'is-active' : '' ?>"
                data-tooltip="Statistiques"
                target="_blank">
@@ -90,7 +95,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         <!-- Accueil public -->
         <li>
-            <a href="index.php"
+            <a href="<?= $base ?>index.php"
                class="sidebar-link"
                data-tooltip="Accueil public"
                target="_blank">
@@ -102,7 +107,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         <!-- Profil -->
         <li>
-            <a href="page-profil.php"
+            <a href="<?= $pages ?>page-profil.php"
                class="sidebar-link <?= $current_page === 'page-profil.php' ? 'is-active' : '' ?>"
                data-tooltip="Profil">
                 <img src="https://api.iconify.design/mdi/account-circle.svg?color=%23fb923c" width="22" height="22" alt="">
@@ -111,7 +116,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         <!-- Options -->
         <li>
-            <a href="page-options.php"
+            <a href="<?= $pages ?>page-options.php"
                class="sidebar-link <?= $current_page === 'page-options.php' ? 'is-active' : '' ?>"
                data-tooltip="Options">
                 <img src="https://api.iconify.design/mdi/cog.svg?color=%23fb923c" width="22" height="22" alt="">
@@ -120,7 +125,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         <!-- Outils -->
         <li>
-            <a href="page-outils.php"
+            <a href="<?= $pages ?>page-outils.php"
                class="sidebar-link <?= $current_page === 'page-outils.php' ? 'is-active' : '' ?>"
                data-tooltip="Outils">
                 <img src="https://api.iconify.design/mdi/wrench.svg?color=%23fb923c" width="22" height="22" alt="">
@@ -140,7 +145,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
-            <a href="logout.php"
+            <a href="<?= $base ?>logout.php"
                class="sidebar-link sidebar-link--danger"
                data-tooltip="Déconnexion">
                 <img src="https://api.iconify.design/mdi/logout.svg?color=%23f87171" width="22" height="22" alt="">

@@ -47,7 +47,7 @@ function check_site_integrity(array $data): array {
     // 1. Existence des fichiers/dossiers
     $required_files = [
         'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php', '.htaccess',
-        'page-prets.php', 'page-wishlist.php', 'page-critiques.php', 'page-outils.php', 'page-options.php',
+        'pages/page-prets.php', 'pages/page-wishlist.php', 'pages/page-critiques.php', 'pages/page-outils.php', 'pages/page-options.php', 'pages/page-profil.php',
         'assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js',
         'assets/img/', 'assets/img/logo.png', 'assets/img/favicon.ico', 'assets/img/mulogo.png',
         'assets/js/admin/', 'assets/js/admin/tools/',
@@ -179,11 +179,11 @@ function check_site_integrity(array $data): array {
 
     // 5ter. Fichiers Vestikan (facultatifs — absence non bloquante)
     $vestikan_files = [
-        'includes/vestikan-config.php',
-        'includes/vestikan-sdk.php',
-        'includes/vestikan.php',
-        'vestikan-callback.php',
-        'vestikan-login.php',
+        'vestikan/vestikan-config.php',
+        'vestikan/vestikan-sdk.php',
+        'vestikan/vestikan.php',
+        'vestikan/vestikan-callback.php',
+        'vestikan/vestikan-login.php',
     ];
     foreach ($vestikan_files as $file) {
         $results['vestikan_files'][$file] = file_exists($file);

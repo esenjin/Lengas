@@ -127,7 +127,7 @@ function renderCoherences(issues) {
             muBadge.rel = 'noopener';
             muBadge.className = 'mu-badge';
             muBadge.title = 'Voir sur MangaUpdates';
-            muBadge.innerHTML = '<img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo">';
+            muBadge.innerHTML = '<img src="../assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo">';
             header.appendChild(muBadge);
         }
 

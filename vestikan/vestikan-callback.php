@@ -11,11 +11,16 @@
  *  et le reste de l'app fonctionnent sans modification.
  * ─────────────────────────────────────────────────────────────────────────────
  */
-require 'config.php';
-require 'includes/vestikan.php';
+require __DIR__ . '/../config.php';
+// Rétablit le dossier de travail à la racine du projet : ce script vit dans
+// vestikan/ mais config.php et get_db() résolvent leurs chemins (bdd/, uploads/…)
+// depuis la racine.
+chdir(__DIR__ . '/..');
+
+require __DIR__ . '/vestikan.php';
 
 if (!vestikan_enabled()) {
-    header('Location: login.php');
+    header('Location: ../login.php');
     exit;
 }
 
@@ -30,7 +35,7 @@ try {
 } catch (VestikanException $e) {
     // Un échec Vestikan = refus d'authentification : on n'ouvre AUCUNE session.
     error_log('[Lengas] Connexion Vestikan refusée : ' . $e->getMessage());
-    header('Location: login.php?sso_error=1');
+    header('Location: ../login.php?sso_error=1');
     exit;
 }
 
@@ -53,11 +58,11 @@ $_SESSION['logged_in']   = true;
 $_SESSION['vestikan_id'] = $vestikanId; // informatif (traçabilité), non requis
 
 // Destination mémorisée dans begin() (ici 'admin.php'), sinon repli.
-$dest = $vk->popReturnTo() ?: 'admin.php';
+$dest = $vk->popReturnTo() ?: '../admin.php';
 
 // Garde-fou anti-open-redirect : on n'autorise qu'une cible interne relative.
 if (!preg_match('#^[A-Za-z0-9._/-]+$#', $dest) || str_starts_with($dest, '//')) {
-    $dest = 'admin.php';
+    $dest = '../admin.php';
 }
 
 header('Location: ' . $dest);

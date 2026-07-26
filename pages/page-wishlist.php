@@ -1,4 +1,9 @@
 <?php
+
+// Rétablit le dossier de travail à la racine du projet : cette page vit dans
+// pages/ mais tous les chemins relatifs (config.php, includes/, bdd/, uploads/…)
+// sont résolus depuis la racine.
+chdir(__DIR__ . '/..');
 require 'config.php';
 require 'includes/auth.php';
 require 'includes/helpers.php';
@@ -76,8 +81,8 @@ $wishlist = load_wishlist();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Liste d'envies — <?= htmlspecialchars($options['site_name'] ?? 'Lengas') ?></title>
     <meta name="description" content="Gestion de la liste d'envies.">
-    <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
+    <link rel="stylesheet" href="../assets/css/main.css">
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">
@@ -337,7 +342,7 @@ $wishlist = load_wishlist();
                     prefill_publisher: item.publisher,
                     open_add_series:   '1'
                 });
-                window.location.href = 'admin.php?' + params.toString();
+                window.location.href = '../admin.php?' + params.toString();
             }
             pendingAddFromWishlist = null;
         });

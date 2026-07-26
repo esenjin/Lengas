@@ -1,7 +1,7 @@
 <?php
 require 'config.php';
 require 'includes/themes.php';
-require 'includes/vestikan.php';
+require 'vestikan/vestikan.php';
 $options = load_options();
 
 $error = '';
@@ -165,7 +165,7 @@ $sso_error = isset($_GET['sso_error']);
         <button type="submit">Se connecter</button>
         <?php if (vestikan_enabled()): ?>
             <div class="sso-separator"><span>ou</span></div>
-            <a href="vestikan-login.php" class="sso-button">Se connecter avec Vestikan</a>
+            <a href="vestikan/vestikan-login.php" class="sso-button">Se connecter avec Vestikan</a>
         <?php endif; ?>
     </form>
     <a href="index.php" class="home-link">← Retour à l'accueil</a>

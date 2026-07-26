@@ -15,7 +15,7 @@ require 'fonctions/tools.php';
 require 'fonctions/reviews.php';
 require 'includes/custom_icons.php';
 require 'includes/themes.php';
-require_once 'includes/vestikan.php';
+require_once 'vestikan/vestikan.php';
 
 $data = load_data();
 $options = load_options();

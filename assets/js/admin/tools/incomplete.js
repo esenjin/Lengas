@@ -325,7 +325,7 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
                     <ul class="summary-list">
                         ${failed_series.map(s => {
                             const muBadge = (s.reason === 'Nombre de tomes non renseigné sur MangaUpdates' && s.mangaupdates_url)
-                                ? ` <a class="mu-badge" href="${s.mangaupdates_url}" target="_blank" rel="noopener" title="Voir la fiche sur MangaUpdates (nombre de tomes non renseigné)"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>`
+                                ? ` <a class="mu-badge" href="${s.mangaupdates_url}" target="_blank" rel="noopener" title="Voir la fiche sur MangaUpdates (nombre de tomes non renseigné)"><img src="../assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>`
                                 : '';
                             const addBtn = s.id && !s.has_mu_url
                                 ? ` <button class="add-mu-url-btn summary-edit-btn" data-series-id="${s.id}" data-series-name="${(s.name || '').replace(/"/g, '&quot;')}">Ajouter</button>`
