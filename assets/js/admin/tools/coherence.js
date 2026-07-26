@@ -131,6 +131,17 @@ function renderCoherences(issues) {
             header.appendChild(muBadge);
         }
 
+        if (item.babelio_url) {
+            const babelioBadge = document.createElement('a');
+            babelioBadge.href = item.babelio_url;
+            babelioBadge.target = '_blank';
+            babelioBadge.rel = 'noopener';
+            babelioBadge.className = 'babelio-badge';
+            babelioBadge.title = 'Voir sur Babelio';
+            babelioBadge.innerHTML = '<img src="../assets/img/babelogo.png" alt="Babelio" class="babelio-logo">';
+            header.appendChild(babelioBadge);
+        }
+
         if (item.series_id) {
             // Issues exclusivement liées aux prêts → lien vers page-prets
             const loanTypes = new Set(['loan_deleted_series', 'loan_read_elsewhere']);

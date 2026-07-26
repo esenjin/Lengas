@@ -274,6 +274,7 @@ function check_collection_coherence(array $data): array {
                 'series'           => $name,
                 'series_id'        => $series['id'],
                 'mangaupdates_url' => $series['mangaupdates_url'] ?? '',
+                'babelio_url'      => $series['babelio_url'] ?? '',
                 'problems'         => $series_issues,
             ];
         }
