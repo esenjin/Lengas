@@ -123,7 +123,7 @@ Tous les outils du site sont regroupés sur la page `pages/page-outils.php`, acc
 - **Incohérences** : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome », statut différent de MangaUpdates, prêts orphelins, etc.) et propose une édition rapide de la série concernée
 - **Sauvegardes** : création et téléchargement d'archives de vos données, ainsi que l'export JSON complet
 - **Association MangaUpdates** : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement ; un second outil récupère de la même façon les genres manquants
-- **Vérification d'intégrité** : contrôle des fichiers (dont les thèmes et les fichiers Vestikan), des permissions, de la structure de la base de données, des thèmes personnalisés présents et de la connectivité à l'API MangaUpdates
+- **Vérification d'intégrité** : compare automatiquement votre instance au dépôt Gitea, **au tag correspondant à votre version installée** (si aucun tag ne correspond, la comparaison se fait avec la version la plus récente et le signale). Pour chaque fichier versionné, elle vérifie la **présence** ET le **contenu** (comparaison d'empreinte : « OK », « Modifié » ou « Manquant ») — plus besoin de maintenir une liste de fichiers à la main. Elle repère aussi les **fichiers étrangers au dépôt** (présents sur l'instance mais absents du dépôt, hors données `uploads/` `saves/` `bdd/`, config Vestikan, thèmes personnalisés et photo de profil de l'admin), l'**état des modules facultatifs** Vestikan et Babengas (installés ? réellement activés ? service distant fonctionnel ?), les permissions, les fichiers interdits, les doublons, les images orphelines (la photo de profil de l'admin n'est jamais considérée comme orpheline), l'accès externe aux dossiers sensibles, la structure de la base de données, les thèmes personnalisés présents et la connectivité à l'API MangaUpdates
 
 ### Options (page dédiée « Options »)
 Toutes les options du site sont regroupées sur la page `pages/page-options.php`, accessible via l'icône engrenage du menu latéral.
@@ -221,7 +221,7 @@ https://www.babelio.com/serie/Silent-Witch/54358
 
 Pour un **one-shot** (série d'un seul tome, qui n'a pas de fiche série sur Babelio), collez plutôt l'adresse de la fiche du tome unique (`/livres/SLUG/ID`) : Lengas la reconnaît et la traite localement, sans passer par Babengas.
 
-Le traitement est volontairement lent — une série toutes les cinq minutes, par courtoisie envers Babelio. Une campagne se lance puis se poursuit en arrière-plan : vous pouvez fermer la page, le suivi reprend à votre retour. L'état des fichiers Babengas apparaît dans l'outil de vérification d'intégrité (une absence y est signalée en orange « Absent », car non bloquante).
+Le traitement est volontairement lent — une série toutes les cinq minutes, par courtoisie envers Babelio. Une campagne se lance puis se poursuit en arrière-plan : vous pouvez fermer la page, le suivi reprend à votre retour. L'état des fichiers Babengas apparaît dans l'outil de vérification d'intégrité (une absence y est signalée en orange « Absent », car non bloquante), qui indique en plus si le module est **réellement activé** (URL + clé renseignées, case cochée) et si le **microservice répond** (sonde `/sante`, avec sa version).
 
 > ⚠️ Babengas ne remonte **pas** le statut de publication : la fiche Babelio affiche « En cours » y compris sur des séries terminées depuis des années. Ce statut reste géré par MangaUpdates ou saisi manuellement.
 
@@ -234,7 +234,7 @@ Pour installer Babengas sur son homelab :
 
 Vestikan est un système de connexion SSO (« Se connecter avec Vestikan »). Son intégration à Lengas est **entièrement facultative** : sans les fichiers Vestikan ni le fichier `vestikan/vestikan-config.php`, le site reste **100 % fonctionnel** et la connexion se fait par mot de passe comme d'habitude.
 
-Lorsqu'il est configuré, un bouton « Se connecter avec Vestikan » apparaît sur la page de connexion, en complément du mot de passe. L'état de la connexion (active / inactive) est visible dans les options du site, sous le champ de mot de passe, et le détail des fichiers Vestikan apparaît dans l'outil de vérification d'intégrité (page « Outils ») (une absence y est signalée en orange « Absent », car non bloquante).
+Lorsqu'il est configuré, un bouton « Se connecter avec Vestikan » apparaît sur la page de connexion, en complément du mot de passe. L'état de la connexion (active / inactive) est visible dans les options du site, sous le champ de mot de passe, et le détail des fichiers Vestikan apparaît dans l'outil de vérification d'intégrité (page « Outils ») (une absence y est signalée en orange « Absent », car non bloquante). L'outil indique en plus si le SSO est **réellement activé** (fichier `vestikan/vestikan-config.php` présent et complet) et si le **serveur Vestikan répond** (sonde de l'URL d'autorisation).
 
 Pour l'activer :
 - Guide d'intégration : [Vestikan/INTEGRATION.md](https://git.crystalyx.net/Esenjin_Asakha/Vestikan/src/branch/main/INTEGRATION.md)

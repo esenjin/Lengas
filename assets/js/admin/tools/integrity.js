@@ -149,6 +149,57 @@ function displayIntegrityResults(results) {
         html += `</div></div>`;
     }
 
+    // ── 2bis. État d'activation et de fonctionnement des modules ──────────────
+    if (results.modules_status) {
+        const renderModule = (name, m, disabledHint) => {
+            if (!m) return '';
+            let stateClass, stateText;
+            if (!m.installed) {
+                stateClass = 'warn';
+                stateText  = 'Non installé';
+            } else if (!m.enabled) {
+                stateClass = 'warn';
+                stateText  = 'Installé mais désactivé';
+            } else if (m.functional === true) {
+                stateClass = 'ok';
+                stateText  = 'Activé et fonctionnel';
+            } else if (m.functional === false) {
+                stateClass = 'error';
+                stateText  = 'Activé mais NON fonctionnel';
+            } else {
+                stateClass = 'warn';
+                stateText  = 'Activé (fonctionnement non testé)';
+            }
+            let extra = '';
+            if (name === 'Vestikan' && m.base_url) {
+                extra = `<li>Serveur : <a href="${m.base_url}" target="_blank">${escHtml(m.base_url)}</a></li>`;
+            }
+            if (name === 'Babengas' && m.version) {
+                extra = `<li>Version du service : ${escHtml(m.version)}</li>`;
+            }
+            return `
+                <div class="file-category">
+                    <h4>${escHtml(name)}</h4>
+                    <ul>
+                        <li>État : <span class="${stateClass}">${stateText}</span></li>
+                        ${m.detail ? `<li>${escHtml(m.detail)}</li>` : ''}
+                        ${extra}
+                    </ul>
+                </div>
+            `;
+        };
+        html += `
+            <div class="integrity-section">
+                <h3>Modules facultatifs — activation et fonctionnement</h3>
+                <p class="hint">Vérifie si Vestikan (SSO) et Babengas (décompte VF) sont installés, réellement activés, et — le cas échéant — si leur service distant répond.</p>
+                <div class="file-categories">
+                    ${renderModule('Vestikan', results.modules_status.vestikan)}
+                    ${renderModule('Babengas', results.modules_status.babengas)}
+                </div>
+            </div>
+        `;
+    }
+
     // ── 3. Fichiers intrus (présents localement, absents du dépôt) ────────────
     if (repo.reachable) {
         html += `

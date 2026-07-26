@@ -240,6 +240,151 @@ function integrity_find_extra_files(array $repo_tree, array $custom_theme_files,
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// État des modules facultatifs (Vestikan / Babengas)
+//
+// Pour chaque module : présence des fichiers nécessaires, activation réelle
+// (config / options), et — si activé — test de fonctionnement en interrogeant
+// le service distant.
+// ────────────────────────────────────────────────────────────────────────────
+
+// Vestikan : SSO. Activé = fichier vestikan/vestikan-config.php présent et
+// complet. Fonctionnel = le serveur Vestikan (base_url) répond.
+function integrity_check_vestikan(): array {
+    $status = [
+        'installed'  => false,   // fichiers présents
+        'enabled'    => false,   // configuré (config complète)
+        'functional' => null,    // null = non testé ; true/false sinon
+        'detail'     => '',       // message lisible
+        'base_url'   => '',
+    ];
+
+    // Fichiers minimaux pour faire tourner l'intégration.
+    $entry = 'vestikan/vestikan.php';
+    $sdk   = 'vestikan/vestikan-sdk.php';
+    $status['installed'] = (is_file($entry) && is_file($sdk));
+
+    if (!$status['installed']) {
+        $status['detail'] = 'Fichiers Vestikan absents : SSO non installé (connexion par mot de passe uniquement).';
+        return $status;
+    }
+
+    // On inclut le point d'entrée de façon défensive pour disposer de
+    // vestikan_enabled() / vestikan_config() sans casser la page s'il manque.
+    if (!function_exists('vestikan_enabled')) {
+        // Le require peut échouer si un fichier est corrompu : on protège.
+        try {
+            require_once $entry;
+        } catch (\Throwable $e) {
+            $status['detail'] = 'Impossible de charger Vestikan : ' . $e->getMessage();
+            return $status;
+        }
+    }
+
+    if (!function_exists('vestikan_enabled') || !function_exists('vestikan_config')) {
+        $status['detail'] = 'Fichiers Vestikan présents mais illisibles (fonctions manquantes).';
+        return $status;
+    }
+
+    $status['enabled'] = vestikan_enabled();
+    if (!$status['enabled']) {
+        $status['detail'] = 'Fichiers présents mais configuration absente ou incomplète : SSO désactivé.';
+        return $status;
+    }
+
+    $cfg = vestikan_config();
+    $status['base_url'] = (string)($cfg['base_url'] ?? '');
+
+    // Test de fonctionnement : le serveur Vestikan répond-il ?
+    // On sonde base_url/authorize sans suivre la redirection : toute réponse
+    // HTTP du serveur (y compris 302/400) prouve qu'il est joignable.
+    $probe = integrity_http_probe(rtrim($status['base_url'], '/') . '/authorize');
+    if ($probe['reachable']) {
+        $status['functional'] = true;
+        $status['detail']     = 'Configuré et serveur Vestikan joignable (HTTP ' . $probe['http'] . ').';
+    } else {
+        $status['functional'] = false;
+        $status['detail']     = 'Configuré mais serveur Vestikan injoignable' .
+            ($probe['error'] !== '' ? ' : ' . $probe['error'] : '.') ;
+    }
+
+    return $status;
+}
+
+// Babengas : décompte VF via Babelio. Activé = option cochée + URL + clé.
+// Fonctionnel = la sonde /sante répond « ok ».
+function integrity_check_babengas(): array {
+    $status = [
+        'installed'  => false,
+        'enabled'    => false,
+        'functional' => null,
+        'detail'     => '',
+        'version'    => '',
+    ];
+
+    $status['installed'] = is_file('includes/babengas.php');
+    if (!$status['installed']) {
+        $status['detail'] = 'Fichiers Babengas absents : vérification VF non installée.';
+        return $status;
+    }
+
+    if (!function_exists('babengas_enabled') || !function_exists('babengas_check_service')) {
+        $status['detail'] = 'Fichiers Babengas présents mais fonctions indisponibles.';
+        return $status;
+    }
+
+    $status['enabled'] = babengas_enabled();
+    if (!$status['enabled']) {
+        $status['detail'] = 'Fichiers présents mais intégration désactivée (URL/clé manquante ou case décochée).';
+        return $status;
+    }
+
+    // Test de fonctionnement : sonde /sante du microservice.
+    $health = babengas_check_service();
+    if (!empty($health['ok'])) {
+        $status['functional'] = true;
+        $status['version']    = (string)($health['version'] ?? '');
+        $status['detail']     = 'Configuré et service Babengas en ligne'
+            . ($status['version'] !== '' ? ' (version ' . $status['version'] . ')' : '')
+            . (!empty($health['actif']) ? '.' : ' — mais signalé inactif.');
+    } else {
+        $status['functional'] = false;
+        $status['detail']     = 'Configuré mais service Babengas injoignable'
+            . (!empty($health['error']) ? ' : ' . $health['error'] : '.');
+    }
+
+    return $status;
+}
+
+// Petite sonde HTTP générique : le serveur répond-il quoi que ce soit ?
+// Retourne ['reachable'=>bool, 'http'=>int, 'error'=>string].
+function integrity_http_probe(string $url, int $timeout = 8): array {
+    if ($url === '' || !preg_match('#^https?://#i', $url)) {
+        return ['reachable' => false, 'http' => 0, 'error' => 'URL invalide'];
+    }
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_NOBODY         => true,   // HEAD : on ne déclenche aucun flow
+        CURLOPT_FOLLOWLOCATION => false,  // une 302 = serveur joignable
+        CURLOPT_TIMEOUT        => $timeout,
+        CURLOPT_CONNECTTIMEOUT => 6,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_USERAGENT      => 'Lengas-Integrity-Checker',
+    ]);
+    curl_exec($ch);
+    $http  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $errno = curl_errno($ch);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    // Toute réponse HTTP (même 4xx/5xx) prouve que le serveur est joignable.
+    if ($errno === 0 && $http > 0) {
+        return ['reachable' => true, 'http' => $http, 'error' => ''];
+    }
+    return ['reachable' => false, 'http' => $http, 'error' => $error !== '' ? $error : 'Aucune réponse'];
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Vérification principale
 // ────────────────────────────────────────────────────────────────────────────
 function check_site_integrity(array $data): array {
@@ -250,6 +395,7 @@ function check_site_integrity(array $data): array {
         'repo'            => [],   // état de la récupération Gitea + version
         'files'           => [],   // fichiers requis (présence + hash)
         'optional_files'  => [],   // Vestikan / Babengas (absence non bloquante)
+        'modules_status'  => [],   // activation + fonctionnement Vestikan / Babengas
         'extra_files'     => [],   // intrus (présents localement, absents du dépôt)
         'forbidden_files' => [],
         'permissions'     => [],
@@ -358,6 +504,12 @@ function check_site_integrity(array $data): array {
     foreach (integrity_forbidden_files() as $file) {
         $results['forbidden_files'][$file] = !file_exists($file);
     }
+
+    // ── 4bis. État des modules facultatifs (activés ? fonctionnels ?) ──────────
+    $results['modules_status'] = [
+        'vestikan' => integrity_check_vestikan(),
+        'babengas' => integrity_check_babengas(),
+    ];
 
     // ── 5. Permissions ─────────────────────────────────────────────────────────
     $checks = [
