@@ -492,18 +492,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
 
         <!-- Onglets -->
         <div class="tools-tabs" role="tablist">
-            <button type="button" class="tools-tab tools-tab--active" data-tab="incomplete">Séries incomplètes</button>
-<?php if (function_exists('babengas_enabled') && babengas_enabled()): ?>
-            <button type="button" class="tools-tab" data-tab="babengas">Vérification Babengas</button>
-<?php endif; ?>
+            <button type="button" class="tools-tab tools-tab--active" data-tab="completude">Complétude des séries</button>
             <button type="button" class="tools-tab" data-tab="coherences">Incohérences</button>
             <button type="button" class="tools-tab" data-tab="backups">Sauvegardes</button>
             <button type="button" class="tools-tab" data-tab="associate">Associations MangaUpdates</button>
             <button type="button" class="tools-tab" data-tab="integrity">Vérification d'intégrité</button>
         </div>
 
-        <!-- ── Onglet : Séries incomplètes ─────────────────────────────────── -->
-        <div class="tools-tab-panel tools-tab-panel--active" data-tab-panel="incomplete">
+        <!-- ── Onglet : Complétude des séries ──────────────────────────────── -->
+        <div class="tools-tab-panel tools-tab-panel--active" data-tab-panel="completude">
+
+            <!-- Sous-onglets -->
+            <div class="tools-subtabs" role="tablist">
+                <button type="button" class="tools-subtab tools-subtab--active" data-subtab="incomplete">Vérification via MangaUpdates</button>
+<?php if (function_exists('babengas_enabled') && babengas_enabled()): ?>
+                <button type="button" class="tools-subtab" data-subtab="babengas">Vérification avec Babengas (via Babelio)</button>
+<?php endif; ?>
+            </div>
+
+            <!-- ── Sous-onglet : Vérification via MangaUpdates ─────────────── -->
+            <div class="tools-subtab-panel tools-subtab-panel--active" data-subtab-panel="incomplete">
             <div class="tools-section">
                 <h2>Séries incomplètes</h2>
                 <p>Cet outil vous permet de trouver les séries pour lesquelles il vous manque des tomes, en comparant votre collection aux données de l'API MangaUpdates.</p>
@@ -544,11 +552,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
                     <!-- Les résultats seront affichés ici -->
                 </div>
             </div>
-        </div>
+            </div><!-- /sous-onglet incomplete -->
 
-        <!-- ── Onglet : Vérification Babelio (Babengas) ─────────────────────── -->
-        <?php if (function_exists('babengas_enabled') && babengas_enabled()): ?>
-        <div class="tools-tab-panel" data-tab-panel="babengas">
+            <!-- ── Sous-onglet : Vérification avec Babengas (via Babelio) ───── -->
+            <?php if (function_exists('babengas_enabled') && babengas_enabled()): ?>
+            <div class="tools-subtab-panel" data-subtab-panel="babengas">
             <div class="tools-section">
                 <h2>Vérification via Babengas</h2>
                 <p>Cet outil interroge <strong>Babelio</strong> — via votre service Babengas — pour connaître le nombre de tomes <strong>réellement parus en France</strong>. Là où MangaUpdates se base surtout sur l'édition d'origine, Babelio couvre bien mieux les sorties VF : en cas de divergence, c'est ce décompte qui fait foi.</p>
@@ -565,8 +573,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
                 <div id="babengas-progress"></div>
                 <div id="babengas-results"></div>
             </div>
-        </div>
-        <?php endif; ?>
+            </div><!-- /sous-onglet babengas -->
+            <?php endif; ?>
+
+        </div><!-- /onglet completude -->
 
         <!-- ── Onglet : Incohérences ───────────────────────────────────────── -->
         <div class="tools-tab-panel" data-tab-panel="coherences">

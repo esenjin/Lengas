@@ -285,6 +285,38 @@
     display: block;
 }
 
+/* ── Sous-onglets (ex. « Complétude des séries ») ────────────────────────── */
+.tools-subtabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0 0 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.tools-subtab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-gray);
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.tools-subtab:hover {
+    color: var(--text-white);
+}
+.tools-subtab--active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+.tools-subtab-panel {
+    display: none;
+}
+.tools-subtab-panel--active {
+    display: block;
+}
+
 /* ── Modale étroite : ajout d'une URL MangaUpdates ───────────────────────── */
 .modal-content--narrow {
     max-width: 480px;
