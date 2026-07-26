@@ -1,15 +1,67 @@
 // ──────────────────────────────────────────────────────────────────────────
 // assets/js/admin/tools/integrity.js — Outil « Vérification d'intégrité »
 //
-// Lance la vérification et met en forme le rapport (fichiers, permissions,
-// base de données, thèmes, Vestikan, API MangaUpdates…), ainsi que les
-// actions de nettoyage proposées.
+// Compare l'instance au dépôt Gitea (au tag de la version installée) :
+// présence ET contenu (hash git-blob) de chaque fichier versionné, fichiers
+// facultatifs (Vestikan/Babengas), fichiers « intrus » (présents localement,
+// absents du dépôt). Met aussi en forme permissions, base de données, thèmes,
+// API MangaUpdates, infos serveur… et les actions de nettoyage proposées.
 // ──────────────────────────────────────────────────────────────────────────
+
+// Échappe le HTML pour l'affichage de chemins de fichiers.
+function escHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+// Regroupe un objet { chemin => infos } par sa propriété "category".
+function groupByCategory(filesObj) {
+    const groups = {};
+    for (const [path, info] of Object.entries(filesObj)) {
+        const cat = info.category || 'Autres';
+        (groups[cat] = groups[cat] || []).push([path, info]);
+    }
+    return groups;
+}
+
+// Rend l'état d'un fichier requis (présence + hash).
+function renderRequiredFileLine(path, info) {
+    let statusClass, statusText;
+    if (!info.exists) {
+        statusClass = 'error';
+        statusText  = 'Manquant';
+    } else if (!info.hash_ok) {
+        statusClass = 'error';
+        statusText  = 'Modifié';
+    } else {
+        statusClass = 'ok';
+        statusText  = 'OK';
+    }
+    return `<li>${escHtml(path)}: <span class="${statusClass}">${statusText}</span></li>`;
+}
+
+// Rend l'état d'un fichier facultatif (absence non bloquante = orange).
+function renderOptionalFileLine(path, info) {
+    let statusClass, statusText;
+    if (!info.exists) {
+        statusClass = 'warn';
+        statusText  = 'Absent';
+    } else if (!info.hash_ok) {
+        statusClass = 'error';
+        statusText  = 'Modifié';
+    } else {
+        statusClass = 'ok';
+        statusText  = 'OK';
+    }
+    return `<li>${escHtml(path)}: <span class="${statusClass}">${statusText}</span></li>`;
+}
 
 // Fonction pour afficher les résultats de la vérification d'intégrité
 function displayIntegrityResults(results) {
     const container = document.getElementById('integrity-results-container');
     if (!container) return;
+
     let html = `
         <div class="integrity-header">
             <h3>Résultats de la vérification d'intégrité</h3>
@@ -17,168 +69,116 @@ function displayIntegrityResults(results) {
         <div class="integrity-results">
     `;
 
-    // 1. Existence des fichiers/dossiers
-    html += `
-        <div class="integrity-section">
-            <h3>Existence des fichiers/dossiers</h3>
-            <div class="file-categories">
-                <div class="file-category">
-                    <h4>Fichiers racines</h4>
-                    <ul>
-    `;
-    const rootFiles = [
-        'index.php', 'admin.php', 'stats.php', 'config.php', 'login.php', 'logout.php', '.htaccess',
-        'pages/page-prets.php', 'pages/page-wishlist.php', 'pages/page-critiques.php', 'pages/page-outils.php', 'pages/page-options.php', 'pages/page-profil.php'
-    ];
-    rootFiles.forEach(file => {
-        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
-    });
-    html += `</ul></div><br>`;
+    // ── 0. État de la comparaison avec le dépôt Gitea ─────────────────────────
+    const repo = results.repo || {};
+    html += `<div class="integrity-section"><h3>Comparaison avec le dépôt</h3>`;
+    if (!repo.reachable) {
+        html += `
+            <p class="hint error">⚠️ Impossible de récupérer l'arborescence du dépôt Gitea.
+            La vérification des fichiers (présence et contenu) n'a pas pu être effectuée.
+            Vérifiez la connectivité du serveur à <code>git.crystalyx.net</code> et la constante
+            <code>URL_GITEA</code>.</p>
+        `;
+    } else {
+        html += `<ul>`;
+        html += `<li>Tag de référence utilisé : <span class="ok">${escHtml(repo.checked_tag || '?')}</span></li>`;
+        html += `<li>Fichiers versionnés analysés : ${repo.file_count ?? 0}</li>`;
+        if (repo.used_fallback) {
+            html += `<li class="warn">La version installée (${escHtml(results.version.current)}) n'a pas de tag correspondant sur le dépôt : comparaison effectuée avec le tag le plus récent (${escHtml(repo.checked_tag || '?')}).</li>`;
+        }
+        html += `</ul>`;
+    }
+    html += `</div>`;
 
-    html += `
-                <div class="file-category">
-                    <h4>Fichiers d'assets (général)</h4>
-                    <ul>
-    `;
-    const generalAssets = ['assets/css/main.css', 'assets/js/public.js', 'assets/js/stats.js', 'assets/js/admin/'];
-    generalAssets.forEach(file => {
-        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
-    });
-    html += `</ul></div><br>`;
+    // ── 1. Fichiers requis (présence + contenu), regroupés par catégorie ──────
+    if (repo.reachable && results.files) {
+        html += `
+            <div class="integrity-section">
+                <h3>Fichiers du site (présence et contenu)</h3>
+                <p class="hint">Chaque fichier versionné est comparé au dépôt : « Manquant » s'il est absent, « Modifié » si son contenu diffère du dépôt, « OK » sinon.</p>
+                <div class="file-categories">
+        `;
+        const groups = groupByCategory(results.files);
+        // Ordre d'affichage privilégié, puis le reste alphabétiquement.
+        const preferredOrder = [
+            'Fichiers racines', 'Pages', 'Includes', 'Fonctions', 'Fonctions (outils)',
+            'CSS', 'JS (général)', 'JS (admin)', 'JS (outils)', 'Images', 'Assets', 'Autres'
+        ];
+        const cats = Object.keys(groups).sort((a, b) => {
+            const ia = preferredOrder.indexOf(a), ib = preferredOrder.indexOf(b);
+            if (ia === -1 && ib === -1) return a.localeCompare(b);
+            if (ia === -1) return 1;
+            if (ib === -1) return -1;
+            return ia - ib;
+        });
+        cats.forEach(cat => {
+            const entries = groups[cat].sort((a, b) => a[0].localeCompare(b[0]));
+            html += `<div class="file-category"><h4>${escHtml(cat)}</h4><ul>`;
+            entries.forEach(([path, info]) => { html += renderRequiredFileLine(path, info); });
+            html += `</ul></div><br>`;
+        });
+        html += `</div>`;
 
-    html += `
-                <div class="file-category">
-                    <h4>Fichiers de fonctions</h4>
-                    <ul>
-    `;
-    const functionFiles = [
-        'fonctions/loans.php', 'fonctions/options.php', 'fonctions/tools.php', 'fonctions/read.php',
-        'fonctions/series.php', 'fonctions/wishlist.php', 'fonctions/volumes.php',
-        'fonctions/stats_compute.php', 'fonctions/reviews.php'
-    ];
-    functionFiles.forEach(file => {
-        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
-    });
-    html += `</ul></div><br>`;
+        // Récapitulatif des problèmes.
+        const problems = Object.entries(results.files).filter(([, i]) => !i.exists || !i.hash_ok);
+        if (problems.length === 0) {
+            html += `<p class="hint ok">✔️ Tous les fichiers versionnés sont présents et conformes au dépôt.</p>`;
+        } else {
+            const missing  = problems.filter(([, i]) => !i.exists).length;
+            const modified = problems.filter(([, i]) => i.exists && !i.hash_ok).length;
+            html += `<p class="hint error">⚠️ ${missing} fichier(s) manquant(s), ${modified} fichier(s) modifié(s) par rapport au dépôt.</p>`;
+        }
+        html += `</div>`;
+    }
 
-    html += `
-                <div class="file-category">
-                    <h4>Fichiers de fonctions (outils)</h4>
-                    <ul>
-    `;
-    const toolFunctionFiles = [
-        'fonctions/tools/backups.php', 'fonctions/tools/integrity.php', 'fonctions/tools/cleanup.php',
-        'fonctions/tools/mangaupdates_assoc.php', 'fonctions/tools/incomplete.php',
-        'fonctions/tools/coherence.php'
-    ];
-    toolFunctionFiles.forEach(file => {
-        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
-    });
-    html += `</ul></div><br>`;
+    // ── 2. Fichiers facultatifs (Vestikan / Babengas) ─────────────────────────
+    if (repo.reachable && results.optional_files && Object.keys(results.optional_files).length > 0) {
+        html += `
+            <div class="integrity-section">
+                <h3>Modules facultatifs (Vestikan / Babengas)</h3>
+                <p class="hint">Ces fichiers sont facultatifs : absents, le module concerné est simplement désactivé et le site reste 100% fonctionnel. S'ils sont présents, leur contenu est tout de même comparé au dépôt.</p>
+                <div class="file-categories">
+        `;
+        const groups = groupByCategory(results.optional_files);
+        Object.keys(groups).sort().forEach(cat => {
+            const entries = groups[cat].sort((a, b) => a[0].localeCompare(b[0]));
+            html += `<div class="file-category"><h4>${escHtml(cat)}</h4><ul>`;
+            entries.forEach(([path, info]) => { html += renderOptionalFileLine(path, info); });
+            html += `</ul></div><br>`;
+        });
+        html += `</div></div>`;
+    }
 
-    html += `
-                <div class="file-category">
-                    <h4>Fichiers includes</h4>
-                    <ul>
-    `;
-    const includeFiles = [
-        'includes/mangaupdates.php', 'includes/auth.php', 'includes/helpers.php',
-        'includes/sidebar.php', 'includes/public-sidebar.php', 'includes/custom_icons.php',
-        'includes/themes.php', 'includes/status_filter.php'
-    ];
-    includeFiles.forEach(file => {
-        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
-    });
-    html += `</ul></div><br>`;
+    // ── 3. Fichiers intrus (présents localement, absents du dépôt) ────────────
+    if (repo.reachable) {
+        html += `
+            <div class="integrity-section">
+                <h3>Fichiers étrangers au dépôt</h3>
+                <p class="hint">Fichiers présents sur l'instance mais absents du dépôt (hors données : <code>uploads/</code>, <code>saves/</code>, <code>bdd/</code>, config Vestikan, thèmes personnalisés, photo de profil). Ils ne devraient normalement pas être là — vérifiez-les avant de les supprimer manuellement.</p>
+                <ul>
+        `;
+        const extras = results.extra_files || [];
+        if (extras.length > 0) {
+            extras.forEach(f => {
+                html += `<li>${escHtml(f)} <span class="warn">(non versionné)</span></li>`;
+            });
+        } else {
+            html += `<li>Aucun fichier étranger détecté</li>`;
+        }
+        html += `</ul></div>`;
+    }
 
-    html += `
-                <div class="file-category">
-                    <h4>Dossiers principaux</h4>
-                    <ul>
-    `;
-    const mainDirectories = ['includes/', 'fonctions/', 'uploads/', 'saves/', 'bdd/'];
-    mainDirectories.forEach(file => {
-        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
-    });
-    html += `</ul></div><br>`;
-
-    html += `
-                <div class="file-category">
-                    <h4>Fichiers CSS</h4>
-                    <ul>
-    `;
-    const cssFiles = [
-        'assets/css/_admin.css', 'assets/css/_base.css', 'assets/css/_buttons.css',
-        'assets/css/_forms.css', 'assets/css/_layout.css', 'assets/css/_modals.css',
-        'assets/css/_public.css', 'assets/css/_responsive.css', 'assets/css/_series.css',
-        'assets/css/_stats.css', 'assets/css/_utils.css', 'assets/css/_variables.css',
-        'assets/css/_sidebar.css', 'assets/css/_pages.css', 'assets/css/_reviews.css',
-        'assets/css/_variables-light.css'
-    ];
-    cssFiles.forEach(file => {
-        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
-    });
-    html += `</ul></div><br>`;
-
-    html += `
-                <div class="file-category">
-                    <h4>Fichiers JS (admin)</h4>
-                    <ul>
-    `;
-    const jsFiles = [
-        'assets/js/admin/series.js', 'assets/js/admin/volumes.js', 'assets/js/admin/wishlist.js',
-        'assets/js/admin/loans.js', 'assets/js/admin/autocomplete.js', 'assets/js/admin/modals.js',
-        'assets/js/admin/pagination.js', 'assets/js/admin/reviews.js',
-        'assets/js/admin/main.js'
-    ];
-    jsFiles.forEach(file => {
-        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
-    });
-    html += `</ul></div><br>`;
-
-    html += `
-                <div class="file-category">
-                    <h4>Fichiers JS (outils)</h4>
-                    <ul>
-    `;
-    const jsToolFiles = [
-        'assets/js/admin/tools/backups.js', 'assets/js/admin/tools/integrity.js',
-        'assets/js/admin/tools/mangaupdates-assoc.js', 'assets/js/admin/tools/incomplete.js',
-        'assets/js/admin/tools/coherence.js'
-    ];
-    jsToolFiles.forEach(file => {
-        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
-    });
-    html += `</ul></div><br>`;
-
-    // Base de données SQLite
-    html += `
-                <div class="file-category">
-                    <h4>Base de données (bdd/)</h4>
-                    <ul>
-    `;
-    const bddFiles = ['bdd/lengas.db'];
-    bddFiles.forEach(file => {
-        html += `<li>${file}: <span class="${results.file_existence[file] ? 'ok' : 'error'}">${results.file_existence[file] ? 'OK' : 'Manquant'}</span></li>`;
-    });
-    html += `</ul></div>`;
-
-    html += `
-            </div>
-        </div>
-    `;
-
-    // 2. Fichiers interdits
+    // ── 4. Fichiers interdits ─────────────────────────────────────────────────
     html += `
         <div class="integrity-section">
             <h3>Fichiers interdits</h3>
+            <p class="hint">Fichiers d'installation/migration à supprimer une fois le site en place.</p>
             <ul>
     `;
     for (const [file, ok] of Object.entries(results.forbidden_files)) {
-        html += `<li>${file}: <span class="${ok ? 'ok' : 'error'}">${ok ? 'Absent' : 'Présent'}</span></li>`;
+        html += `<li>${escHtml(file)}: <span class="${ok ? 'ok' : 'error'}">${ok ? 'Absent' : 'Présent'}</span></li>`;
     }
     html += `</ul>`;
-
     if (Object.values(results.forbidden_files).some(ok => !ok)) {
         html += `
             <button id="clean-forbidden-files-btn" class="button button-opt">
@@ -188,7 +188,7 @@ function displayIntegrityResults(results) {
     }
     html += `</div>`;
 
-    // 3. Permissions
+    // ── 5. Permissions ────────────────────────────────────────────────────────
     html += `
         <div class="integrity-section">
             <h3>Permissions des fichiers/dossiers</h3>
@@ -206,20 +206,16 @@ function displayIntegrityResults(results) {
     for (const [file, data] of Object.entries(results.permissions)) {
         html += `
             <tr>
-                <td>${file}</td>
+                <td>${escHtml(file)}</td>
                 <td>${data.current}</td>
                 <td>${data.expected}</td>
                 <td class="${data.ok ? 'ok' : 'error'}">${data.ok ? 'OK' : 'Incorrect'}</td>
             </tr>
         `;
     }
-    html += `
-                </tbody>
-            </table>
-        </div>
-    `;
+    html += `</tbody></table></div>`;
 
-    // 4. Accès externe aux dossiers sensibles
+    // ── 6. Accès externe aux dossiers sensibles ───────────────────────────────
     html += `
         <div class="integrity-section">
             <h3>Accès externe aux dossiers sensibles</h3>
@@ -237,7 +233,7 @@ function displayIntegrityResults(results) {
             statusClass = 'error';
             statusText  = `Accessible ! (code HTTP ${info.status})`;
         }
-        html += `<li>${folder} : <span class="${statusClass}">${statusText}</span></li>`;
+        html += `<li>${escHtml(folder)} : <span class="${statusClass}">${statusText}</span></li>`;
     }
     html += `</ul>`;
     if (Object.values(results.external_access).some(i => i.ok === false)) {
@@ -245,24 +241,23 @@ function displayIntegrityResults(results) {
     }
     html += `</div>`;
 
-    // 5. Doublons
+    // ── 7. Doublons ───────────────────────────────────────────────────────────
     html += `
         <div class="integrity-section">
             <h3>Doublons</h3>
             <ul>
     `;
     if (results.duplicates.collection_wishlist.length > 0) {
-        html += `<li>Séries présentes à la fois dans la collection et la liste d'envies: <span class="error">${results.duplicates.collection_wishlist.join(', ')}</span></li>`;
+        html += `<li>Séries présentes à la fois dans la collection et la liste d'envies: <span class="error">${escHtml(results.duplicates.collection_wishlist.join(', '))}</span></li>`;
     } else {
         html += `<li>Aucun doublon collection/envies</li>`;
     }
     if (results.duplicates.deleted_loans.length > 0) {
-        html += `<li>Séries supprimées mais encore en prêt: <span class="error">${results.duplicates.deleted_loans.join(', ')}</span></li>`;
+        html += `<li>Séries supprimées mais encore en prêt: <span class="error">${escHtml(results.duplicates.deleted_loans.join(', '))}</span></li>`;
     } else {
         html += `<li>Aucune série supprimée en prêt</li>`;
     }
     html += `</ul>`;
-
     if (results.duplicates.collection_wishlist.length > 0 || results.duplicates.deleted_loans.length > 0) {
         html += `
             <button id="clean-duplicates-btn" class="button button-opt">
@@ -272,7 +267,7 @@ function displayIntegrityResults(results) {
     }
     html += `</div>`;
 
-    // 5. Images orphelines
+    // ── 8. Images orphelines ──────────────────────────────────────────────────
     html += `
         <div class="integrity-section">
             <h3>Images orphelines</h3>
@@ -280,13 +275,12 @@ function displayIntegrityResults(results) {
     `;
     if (results.orphaned_images.length > 0) {
         results.orphaned_images.forEach(image => {
-            html += `<li>${image} <span class="error">(orpheline)</span></li>`;
+            html += `<li>${escHtml(image)} <span class="error">(orpheline)</span></li>`;
         });
     } else {
         html += `<li>Aucune image orpheline</li>`;
     }
     html += `</ul>`;
-
     if (results.orphaned_images.length > 0) {
         html += `
             <button id="clean-orphaned-images-btn" class="button button-opt">
@@ -296,7 +290,7 @@ function displayIntegrityResults(results) {
     }
     html += `</div>`;
 
-    // 5a-bis. Thèmes personnalisés
+    // ── 9. Thèmes personnalisés ───────────────────────────────────────────────
     html += `
         <div class="integrity-section">
             <h3>Thèmes personnalisés</h3>
@@ -304,46 +298,14 @@ function displayIntegrityResults(results) {
     `;
     if (results.custom_themes && results.custom_themes.length > 0) {
         results.custom_themes.forEach(theme => {
-            html += `<li>${theme.label} <span class="ok">(${theme.file})</span></li>`;
+            html += `<li>${escHtml(theme.label)} <span class="ok">(${escHtml(theme.file)})</span></li>`;
         });
     } else {
         html += `<li>Aucun thème personnalisé détecté</li>`;
     }
     html += `</ul></div>`;
 
-    // 5a-ter. Fichiers Vestikan (facultatifs — absence non bloquante)
-    if (results.vestikan_files) {
-        html += `
-            <div class="integrity-section">
-                <h3>Fichiers Vestikan</h3>
-                <p class="hint">Ces fichiers sont facultatifs : s'ils sont absents, la connexion via Vestikan est simplement désactivée. Le site reste 100% fonctionnel.</p>
-                <ul>
-        `;
-        for (const [file, present] of Object.entries(results.vestikan_files)) {
-            const statusClass = present ? 'ok' : 'warn';
-            const statusText  = present ? 'OK' : 'Absent';
-            html += `<li>${file}: <span class="${statusClass}">${statusText}</span></li>`;
-        }
-        html += `</ul></div>`;
-    }
-
-    // 5a-quater. Fichiers Babengas (facultatifs — absence non bloquante)
-    if (results.babengas_files) {
-        html += `
-            <div class="integrity-section">
-                <h3>Fichiers Babengas</h3>
-                <p class="hint">Ces fichiers sont facultatifs : s'ils sont absents, la vérification du décompte VF via Babelio est simplement désactivée. Le site reste 100% fonctionnel.</p>
-                <ul>
-        `;
-        for (const [file, present] of Object.entries(results.babengas_files)) {
-            const statusClass = present ? 'ok' : 'warn';
-            const statusText  = present ? 'OK' : 'Absent';
-            html += `<li>${file}: <span class="${statusClass}">${statusText}</span></li>`;
-        }
-        html += `</ul></div>`;
-    }
-
-    // 5b. Structure de la base de données (MangaUpdates)
+    // ── 10. Structure de la base de données (MangaUpdates) ────────────────────
     if (results.db_structure) {
         html += `
             <div class="integrity-section">
@@ -351,15 +313,12 @@ function displayIntegrityResults(results) {
                 <ul>
         `;
         for (const [label, ok] of Object.entries(results.db_structure)) {
-            html += `<li>${label} : <span class="${ok ? 'ok' : 'error'}">${ok ? 'OK' : 'Manquant'}</span></li>`;
+            html += `<li>${escHtml(label)} : <span class="${ok ? 'ok' : 'error'}">${ok ? 'OK' : 'Manquant'}</span></li>`;
         }
-        html += `
-                </ul>
-            </div>
-        `;
+        html += `</ul></div>`;
     }
 
-    // 5c. Connectivité de l'API MangaUpdates
+    // ── 11. Connectivité de l'API MangaUpdates ────────────────────────────────
     if (results.mangaupdates_api) {
         const api = results.mangaupdates_api;
         html += `
@@ -367,32 +326,32 @@ function displayIntegrityResults(results) {
                 <h3>API MangaUpdates</h3>
                 <ul>
                     <li>Accès à l'API : <span class="${api.ok ? 'ok' : 'error'}">${api.ok ? 'OK' : 'Échec'}</span>${(!api.ok && api.http) ? ` (HTTP ${api.http})` : ''}</li>
-                    ${(!api.ok && api.error) ? `<li class="error">Erreur : ${api.error}</li>` : ''}
+                    ${(!api.ok && api.error) ? `<li class="error">Erreur : ${escHtml(api.error)}</li>` : ''}
                     <li>Entrées en cache : ${api.cache_count ?? 0}</li>
                 </ul>
             </div>
         `;
     }
 
-    // 6. Version
+    // ── 12. Version ───────────────────────────────────────────────────────────
     html += `
         <div class="integrity-section">
             <h3>Version du site</h3>
             <ul>
-                <li>Version actuelle : ${results.version.current}</li>
-                <li>Dernière version : ${results.version.latest || 'Inconnue'}</li>
+                <li>Version actuelle : ${escHtml(results.version.current)}</li>
+                <li>Dernière version : ${results.version.latest ? escHtml(results.version.latest) : 'Inconnue'}</li>
                 ${results.version.needs_update ?
                     `<li class="error">Une nouvelle version est disponible !</li>` : ''}
             </ul>
         </div>
     `;
 
-    // 7. Informations sur le site
+    // ── 13. Informations sur le site ──────────────────────────────────────────
     html += `
         <div class="integrity-section">
             <h3>Informations sur le site</h3>
             <ul>
-                <li>URL du site : <a href="${results.site_info.site_url}" target="_blank">${results.site_info.site_url}</a></li>
+                <li>URL du site : <a href="${results.site_info.site_url}" target="_blank">${escHtml(results.site_info.site_url)}</a></li>
                 <li>HTTPS : <span class="${results.site_info.uses_https ? 'ok' : 'error'}">${results.site_info.uses_https ? 'Activé' : 'Non activé'}</span></li>
                 <li>Taille du dossier uploads (vignettes) : ${results.site_info.uploads_size}</li>
                 <li>Taille maximale des fichiers téléversés : ${results.site_info.max_upload_size}</li>
@@ -401,14 +360,14 @@ function displayIntegrityResults(results) {
         </div>
     `;
 
-    // 8. Informations serveur
+    // ── 14. Informations serveur ──────────────────────────────────────────────
     html += `
         <div class="integrity-section">
             <h3>Informations sur le serveur</h3>
             <ul>
-                <li>Architecture serveur : ${results.site_info.server_info.server_architecture}</li>
-                <li>Serveur web : ${results.site_info.server_info.server_software}</li>
-                <li>Version de PHP : ${results.site_info.server_info.php_version}</li>
+                <li>Architecture serveur : ${escHtml(results.site_info.server_info.server_architecture)}</li>
+                <li>Serveur web : ${escHtml(results.site_info.server_info.server_software)}</li>
+                <li>Version de PHP : ${escHtml(results.site_info.server_info.php_version)}</li>
                 <li>Limite d'exécution PHP : ${results.site_info.server_info.max_execution_time} secondes</li>
                 <li>Limite de mémoire PHP : ${results.site_info.server_info.memory_limit}</li>
             </ul>
@@ -418,85 +377,46 @@ function displayIntegrityResults(results) {
     html += `</div>`;
     container.innerHTML = html;
 
-    // Événements boutons de nettoyage
+    // ── Événements des boutons de nettoyage ───────────────────────────────────
+    const postClean = (action, confirmMsg) => {
+        showCustomConfirm('Confirmation', confirmMsg).then((confirmed) => {
+            if (!confirmed) return;
+            fetch('page-outils.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'tool_action=' + encodeURIComponent(action)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccessModal(data.message);
+                    window.location.reload();
+                } else {
+                    showErrorModal(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showErrorModal('Une erreur est survenue.');
+            });
+        });
+    };
+
     if (results.duplicates.collection_wishlist.length > 0 || results.duplicates.deleted_loans.length > 0) {
         document.getElementById('clean-duplicates-btn').addEventListener('click', () => {
-            showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir nettoyer les doublons ?').then((confirmed) => {
-                if (confirmed) {
-                    fetch('page-outils.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: 'tool_action=clean_duplicates'
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showSuccessModal(data.message);
-                            window.location.reload();
-                        } else {
-                            showErrorModal(data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erreur:', error);
-                        showErrorModal('Une erreur est survenue.');
-                    });
-                }
-            });
+            postClean('clean_duplicates', 'Êtes-vous sûr de vouloir nettoyer les doublons ?');
         });
     }
 
     if (results.orphaned_images.length > 0) {
         document.getElementById('clean-orphaned-images-btn').addEventListener('click', () => {
-            showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer les images orphelines ?').then((confirmed) => {
-                if (confirmed) {
-                    fetch('page-outils.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: 'tool_action=clean_orphaned_images'
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showSuccessModal(data.message);
-                            window.location.reload();
-                        } else {
-                            showErrorModal(data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erreur:', error);
-                        showErrorModal('Une erreur est survenue.');
-                    });
-                }
-            });
+            postClean('clean_orphaned_images', 'Êtes-vous sûr de vouloir supprimer les images orphelines ?');
         });
     }
 
     if (Object.values(results.forbidden_files).some(ok => !ok)) {
         document.getElementById('clean-forbidden-files-btn').addEventListener('click', () => {
-            showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer les fichiers interdits ?').then((confirmed) => {
-                if (confirmed) {
-                    fetch('page-outils.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: 'tool_action=clean_forbidden_files'
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showSuccessModal(data.message);
-                            window.location.reload();
-                        } else {
-                            showErrorModal(data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erreur:', error);
-                        showErrorModal('Une erreur est survenue.');
-                    });
-                }
-            });
+            postClean('clean_forbidden_files', 'Êtes-vous sûr de vouloir supprimer les fichiers interdits ?');
         });
     }
 }

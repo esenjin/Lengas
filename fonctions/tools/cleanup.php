@@ -53,6 +53,11 @@ function clean_orphaned_images(): array {
         if (!empty($series['image'])) $used_images[] = $series['image'];
     }
 
+    // Ne jamais supprimer la photo de profil de l'admin.
+    $options      = load_options();
+    $admin_avatar = trim($options['admin_avatar'] ?? '');
+    if ($admin_avatar !== '') $used_images[] = $admin_avatar;
+
     foreach (array_diff($uploaded_images, $used_images) as $image) {
         if (file_exists($image) && unlink($image)) $deleted_images[] = $image;
     }
@@ -72,7 +77,8 @@ function clean_forbidden_files(): array {
     $failed_files    = [];
 
     foreach ($forbidden_files as $file) {
-        $path = __DIR__ . '/../' . $file;
+        // CWD = racine du projet (chdir dans page-outils.php).
+        $path = $file;
         if (file_exists($path)) {
             if (unlink($path)) {
                 $deleted_files[] = $file;

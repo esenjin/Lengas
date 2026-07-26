@@ -167,6 +167,13 @@ input::placeholder {
     font-size: 0.875em;
 }
 
+/* Messages d'avertissement (ex. fichiers facultatifs « Absent », intrus) */
+.warn {
+    color: var(--warning-color);
+    font-weight: 600;
+    font-size: 0.875em;
+}
+
 /* Scrollbar personnalisée */
 ::-webkit-scrollbar {
     width: 6px;
