@@ -343,6 +343,28 @@
             emptyEl.style.display = list.querySelector('.custom-link-card') ? 'none' : '';
         }
 
+        // Désactive « Monter » sur la première carte et « Descendre » sur la dernière
+        function refreshMoveButtons() {
+            const cards = list.querySelectorAll('.custom-link-card');
+            cards.forEach(function (card, i) {
+                const up   = card.querySelector('.custom-link-up');
+                const down = card.querySelector('.custom-link-down');
+                if (up)   up.disabled   = (i === 0);
+                if (down) down.disabled = (i === cards.length - 1);
+            });
+        }
+
+        function moveCard(card, dir) {
+            if (dir < 0) {
+                const prev = card.previousElementSibling;
+                if (prev) list.insertBefore(card, prev);
+            } else {
+                const next = card.nextElementSibling;
+                if (next) list.insertBefore(next, card);
+            }
+            refreshMoveButtons();
+        }
+
         function activateCard(card) {
             card.querySelector('.cl-name').setAttribute('name', 'social_link_name[]');
             card.querySelector('.cl-url').setAttribute('name', 'social_link_url[]');
@@ -356,7 +378,12 @@
             if (removeBtn) removeBtn.addEventListener('click', function () {
                 card.remove();
                 refreshEmpty();
+                refreshMoveButtons();
             });
+            const upBtn = card.querySelector('.custom-link-up');
+            if (upBtn) upBtn.addEventListener('click', function () { moveCard(card, -1); });
+            const downBtn = card.querySelector('.custom-link-down');
+            if (downBtn) downBtn.addEventListener('click', function () { moveCard(card, 1); });
             const trigger = card.querySelector('.custom-icon-trigger');
             if (trigger) trigger.addEventListener('click', function () { openModal(card); });
         }
@@ -369,12 +396,14 @@
                 list.appendChild(card);
                 wireCard(card);
                 refreshEmpty();
+                refreshMoveButtons();
                 card.querySelector('.cl-name').focus();
             });
         }
 
         list.querySelectorAll('.custom-link-card').forEach(wireCard);
         refreshEmpty();
+        refreshMoveButtons();
 
         // ── Modale icône + couleur ───────────────────────────────────────────
         let activeCard = null;

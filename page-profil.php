@@ -257,7 +257,11 @@ $has_avatar    = ($avatar !== '' && file_exists($avatar));
                     <div class="custom-link-card" data-custom-link<?= $tpl ? ' data-template' : '' ?>>
                         <div class="custom-link-card-head">
                             <span class="custom-link-card-title">Lien social</span>
-                            <button type="button" class="custom-link-remove" title="Supprimer ce lien" aria-label="Supprimer ce lien">&times;</button>
+                            <div class="custom-link-actions">
+                                <button type="button" class="custom-link-move custom-link-up" title="Monter ce lien" aria-label="Monter ce lien">▲</button>
+                                <button type="button" class="custom-link-move custom-link-down" title="Descendre ce lien" aria-label="Descendre ce lien">▼</button>
+                                <button type="button" class="custom-link-remove" title="Supprimer ce lien" aria-label="Supprimer ce lien">&times;</button>
+                            </div>
                         </div>
 
                         <label>Nom du lien</label>

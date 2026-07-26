@@ -278,7 +278,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                     <div class="custom-link-card" data-custom-link<?= $tpl ? ' data-template' : '' ?>>
                         <div class="custom-link-card-head">
                             <span class="custom-link-card-title">Lien personnalisé</span>
-                            <button type="button" class="custom-link-remove" title="Supprimer ce lien" aria-label="Supprimer ce lien">&times;</button>
+                            <div class="custom-link-actions">
+                                <button type="button" class="custom-link-move custom-link-up" title="Monter ce lien" aria-label="Monter ce lien">▲</button>
+                                <button type="button" class="custom-link-move custom-link-down" title="Descendre ce lien" aria-label="Descendre ce lien">▼</button>
+                                <button type="button" class="custom-link-remove" title="Supprimer ce lien" aria-label="Supprimer ce lien">&times;</button>
+                            </div>
                         </div>
 
                         <label>Nom du bouton</label>
@@ -581,6 +585,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
             emptyEl.style.display = list.querySelector('.custom-link-card') ? 'none' : '';
         }
 
+        // Désactive « Monter » sur la première carte et « Descendre » sur la dernière
+        function refreshMoveButtons() {
+            var cards = list.querySelectorAll('.custom-link-card');
+            cards.forEach(function (card, i) {
+                var up   = card.querySelector('.custom-link-up');
+                var down = card.querySelector('.custom-link-down');
+                if (up)   up.disabled   = (i === 0);
+                if (down) down.disabled = (i === cards.length - 1);
+            });
+        }
+
+        function moveCard(card, dir) {
+            if (dir < 0) {
+                var prev = card.previousElementSibling;
+                if (prev) list.insertBefore(card, prev);
+            } else {
+                var next = card.nextElementSibling;
+                if (next) list.insertBefore(next, card);
+            }
+            refreshMoveButtons();
+        }
+
         function activateCard(card) {
             // Active les name[] (le gabarit les laisse vides pour ne pas être soumis)
             card.querySelector('.cl-name').setAttribute('name', 'custom_link_name[]');
@@ -595,7 +621,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
             if (removeBtn) removeBtn.addEventListener('click', function () {
                 card.remove();
                 refreshEmpty();
+                refreshMoveButtons();
             });
+            var upBtn = card.querySelector('.custom-link-up');
+            if (upBtn) upBtn.addEventListener('click', function () { moveCard(card, -1); });
+            var downBtn = card.querySelector('.custom-link-down');
+            if (downBtn) downBtn.addEventListener('click', function () { moveCard(card, 1); });
             var trigger = card.querySelector('.custom-icon-trigger');
             if (trigger) trigger.addEventListener('click', function () { openModal(card); });
         }
@@ -608,6 +639,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                 list.appendChild(card);
                 wireCard(card);
                 refreshEmpty();
+                refreshMoveButtons();
                 card.querySelector('.cl-name').focus();
             });
         }
@@ -615,6 +647,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
         // Câble les cartes déjà présentes au chargement
         list.querySelectorAll('.custom-link-card').forEach(wireCard);
         refreshEmpty();
+        refreshMoveButtons();
 
         // ── Modale icône + couleur ───────────────────────────────────────────
         var activeCard = null;

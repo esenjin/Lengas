@@ -293,6 +293,39 @@ form {
     border-color: var(--error-color);
 }
 
+/* Groupe de boutons d'action de la carte (monter / descendre / supprimer) */
+.custom-link-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* Boutons de réordonnancement (monter / descendre) */
+.custom-link-move {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-muted);
+    width: 26px;
+    height: 26px;
+    line-height: 1;
+    font-size: 0.7rem;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.custom-link-move:hover:not(:disabled) {
+    background: var(--background-light, rgba(255, 255, 255, 0.06));
+    border-color: var(--accent-color, rgba(255, 255, 255, 0.35));
+    color: var(--text-color);
+}
+
+.custom-link-move:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
 /* Le bouton « Ajouter » reste discret, aligné à gauche */
 #add-custom-link-btn { margin-top: 4px; }
 
