@@ -91,8 +91,6 @@ Mobile
 - Note subjective facultative par série, au choix parmi trois valeurs : ☺️ « J'ai apprécié », 😑 « Mi-figue mi-raisin », 😠 « Je n'ai pas aimé »
 - Réglable à l'ajout et à la modification d'une série (menu déroulant « Notation »)
 - Affichée sous forme de badge emoji (texte au survol) : dans la carte de série côté administration, et dans la modale de détails côté public
-- Catégorie « Notation » ajoutée aux filtres de statuts (les trois notes + « Sans note »)
-- Script autonome `notation.php` (à placer à la racine) pour noter en masse, rapidement, toutes les séries en cours de lecture ou dont la lecture est terminée (réservé à l'administrateur connecté)
 
 ### Liste d'envies
 - Ajout et suppression de séries dans une liste d'envies
