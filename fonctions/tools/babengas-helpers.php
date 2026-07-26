@@ -21,8 +21,11 @@ if (!function_exists('babengas_enabled')) {
 
 // ── Lancement d'une campagne ────────────────────────────────────────────────
 // $all = true → forcer toutes les séries éligibles, sans tenir compte du cache.
+// $force = true → vérifier VRAIMENT toutes les séries sans exception (ignore
+//   aussi l'exclusion du « dernier tome »). Implique $all.
 // Retourne ['success'=>bool, 'message'=>string, 'campagne_id'=>…, 'total'=>…].
-function babengas_launch_campaign(array $data, bool $all = false): array {
+function babengas_launch_campaign(array $data, bool $all = false, bool $force = false): array {
+    if ($force) $all = true;
     if (!babengas_enabled()) {
         return ['success' => false, 'message' => "Babengas n'est pas configuré."];
     }
@@ -63,7 +66,7 @@ function babengas_launch_campaign(array $data, bool $all = false): array {
         babengas_clear_current_campaign();
     }
 
-    $targets = babengas_targets($data, $all);
+    $targets = babengas_targets($data, $all, $force);
     if ($targets === []) {
         // Aucune fiche série à envoyer à Babengas. Peut-être reste-t-il des
         // one-shots (fiches de tome), qui se résolvent localement sans campagne.
@@ -98,9 +101,11 @@ function babengas_launch_campaign(array $data, bool $all = false): array {
 
         return [
             'success' => false,
-            'message' => $all
-                ? "Aucune série éligible : renseignez des URL Babelio (les séries avec un « dernier tome » sont exclues)."
-                : "Aucune série à rafraîchir. Toutes les séries éligibles ont été vérifiées il y a moins de 30 jours.",
+            'message' => $force
+                ? "Aucune série à vérifier : renseignez des URL de fiche série Babelio (/serie/…)."
+                : ($all
+                    ? "Aucune série éligible : renseignez des URL Babelio (les séries avec un « dernier tome » sont exclues)."
+                    : "Aucune série à rafraîchir. Toutes les séries éligibles ont été vérifiées il y a moins de 30 jours."),
         ];
     }
 

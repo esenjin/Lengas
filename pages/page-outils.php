@@ -446,7 +446,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
             break;
 
         case 'babengas_launch':
-            $response = babengas_launch_campaign($data, ($_POST['all'] ?? '0') === '1');
+            $response = babengas_launch_campaign(
+                $data,
+                ($_POST['all'] ?? '0') === '1',
+                ($_POST['force'] ?? '0') === '1'
+            );
             break;
 
         case 'babengas_status':
@@ -571,7 +575,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
 
                 <div class="tools-actions">
                     <button id="babengas-launch" class="button">Lancer une campagne</button>
-                    <button id="babengas-launch-all" class="button button-opt" title="Vérifie toutes les séries éligibles, y compris celles contrôlées il y a moins de 30 jours">Forcer toutes les séries</button>
+                    <button id="babengas-launch-all" class="button button-opt" title="Vérifie toutes les séries éligibles, y compris celles contrôlées il y a moins de 30 jours (les séries avec un tome tagué « dernier » restent exclues)">Forcer les séries éligibles</button>
+                    <button id="babengas-launch-force" class="button button-opt" title="Vérifie l'intégralité des séries ayant une URL de fiche série Babelio, sans aucune exception (y compris celles avec un tome tagué « dernier »)">Forcer toutes les séries</button>
                     <button id="babengas-cancel" class="button button-opt" style="display:none;">Annuler la campagne</button>
                 </div>
 

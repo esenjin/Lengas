@@ -20,6 +20,7 @@
     const progressDiv = document.getElementById('babengas-progress');
     const launchBtn   = document.getElementById('babengas-launch');
     const launchAllBtn = document.getElementById('babengas-launch-all');
+    const launchForceBtn = document.getElementById('babengas-launch-force');
     const cancelBtn   = document.getElementById('babengas-cancel');
 
     let pollTimer = null;
@@ -45,9 +46,10 @@
     }
 
     function setBusy(busy) {
-        if (launchBtn)    launchBtn.disabled    = busy;
-        if (launchAllBtn) launchAllBtn.disabled = busy;
-        if (cancelBtn)    cancelBtn.style.display = busy ? '' : 'none';
+        if (launchBtn)      launchBtn.disabled      = busy;
+        if (launchAllBtn)   launchAllBtn.disabled   = busy;
+        if (launchForceBtn) launchForceBtn.disabled = busy;
+        if (cancelBtn)      cancelBtn.style.display = busy ? '' : 'none';
     }
 
     // ── Progression ─────────────────────────────────────────────────────────
@@ -277,12 +279,12 @@
         pollTimer = null;
     }
 
-    function launch(all) {
+    function launch(all, force) {
         setBusy(true);
         if (resultsDiv)  resultsDiv.innerHTML = '';
         if (progressDiv) progressDiv.innerHTML = '<p class="analysis-progress"><span class="progress-spinner"></span>Création de la campagne…</p>';
 
-        post({ tool_action: 'babengas_launch', all: all ? '1' : '0' })
+        post({ tool_action: 'babengas_launch', all: (all || force) ? '1' : '0', force: force ? '1' : '0' })
             .then(d => {
                 if (!d.success) {
                     clearProgress();
@@ -326,8 +328,14 @@
 
     // ── Écouteurs ───────────────────────────────────────────────────────────
 
-    launchBtn?.addEventListener('click', () => launch(false));
-    launchAllBtn?.addEventListener('click', () => launch(true));
+    launchBtn?.addEventListener('click', () => launch(false, false));
+    launchAllBtn?.addEventListener('click', () => launch(true, false));
+    launchForceBtn?.addEventListener('click', () => {
+        showCustomConfirm(
+            'Forcer toutes les séries',
+            'Vérifier l\'intégralité des séries ayant une URL de fiche série Babelio, sans aucune exception (y compris les séries terminées ou possédant un tome tagué « dernier ») ? La campagne peut être longue.'
+        ).then(ok => { if (ok) launch(false, true); });
+    });
 
     cancelBtn?.addEventListener('click', function () {
         showCustomConfirm('Confirmation', 'Annuler la campagne en cours ? Les séries déjà traitées garderont leur résultat.')

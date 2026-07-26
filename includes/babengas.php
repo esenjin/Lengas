@@ -324,8 +324,13 @@ function babelio_get_volumes_for_url(string $url, int $max_age = BABELIO_CACHE_T
 //
 // $all = true → ignore les critères d'ancienneté (mais garde l'exclusion du
 // « dernier tome », seule série n'ayant plus rien à apprendre de Babelio).
+//
+// $force = true → vérifie VRAIMENT toutes les séries sans exception : ignore
+// à la fois l'ancienneté ET l'exclusion du « dernier tome ». Utilisé par le
+// bouton « Forcer toutes les séries ». Implique $all.
 
-function babengas_targets(array $data, bool $all = false): array {
+function babengas_targets(array $data, bool $all = false, bool $force = false): array {
+    if ($force) $all = true;
     $targets = [];
 
     foreach ($data as $series) {
@@ -340,11 +345,15 @@ function babengas_targets(array $data, bool $all = false): array {
         // qui écarte une série. Le statut de publication n'entre pas en compte :
         // une série peut être « terminée » côté publication mais incomplète dans
         // la collection, et l'on veut alors savoir ce qu'il manque pour la finir.
-        $has_last = false;
-        foreach ($series['volumes'] ?? [] as $v) {
-            if (!empty($v['last'])) { $has_last = true; break; }
+        // En mode $force, on lève même cette exclusion : toutes les séries avec
+        // une URL Babelio de série valide sont envoyées, sans aucune exception.
+        if (!$force) {
+            $has_last = false;
+            foreach ($series['volumes'] ?? [] as $v) {
+                if (!empty($v['last'])) { $has_last = true; break; }
+            }
+            if ($has_last) continue;
         }
-        if ($has_last) continue;
 
         if (!$all) {
             $sid    = babelio_serie_id_from_url($url);
