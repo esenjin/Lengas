@@ -3,6 +3,7 @@ require 'config.php';
 require_once 'fonctions/reviews.php';
 require_once 'includes/themes.php';
 require_once 'includes/status_filter.php';
+require_once 'includes/custom_icons.php';
 $data = load_data();
 $options = load_options();
 
@@ -10,6 +11,15 @@ $options = load_options();
 $reviews_public = empty($options['hide_reviews']);
 $public_review_ids = $reviews_public ? array_flip(get_review_series_ids()) : [];
 $admin_pseudo = trim($options['admin_pseudo'] ?? '');
+
+// ── Profil de l'administrateur (pour la modale « Qui suis-je ? ») ─────────────
+$profil_avatar = trim($options['admin_avatar'] ?? '');
+$profil_pseudo = trim($options['admin_pseudo'] ?? '');
+$profil_bio    = (string)($options['admin_bio'] ?? '');
+$profil_social = profil_get_social_links($options);
+$profil_has_avatar = ($profil_avatar !== '' && file_exists($profil_avatar));
+$has_profil = ($profil_pseudo !== '' || trim($profil_bio) !== '' ||
+               $profil_has_avatar || !empty($profil_social));
 
 // Récupère la date la plus récente (added_at ou read_at) parmi les tomes d'une série
 function series_latest_date($series, $field) {
@@ -460,6 +470,46 @@ function get_latest_version_from_gitea() {
             </div>
         </div>
     </div>
+
+    <?php if ($has_profil): ?>
+    <!-- Modale « Qui suis-je ? » (profil de l'administrateur) -->
+    <div class="modal" id="profil-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-profil-modal">&times;</span>
+
+            <div class="profil-modal-header">
+                <img class="profil-modal-avatar"
+                     src="<?= $profil_has_avatar ? htmlspecialchars($profil_avatar) . '?v=' . filemtime($profil_avatar) : 'assets/img/logo.png' ?>"
+                     alt="<?= htmlspecialchars($profil_pseudo !== '' ? $profil_pseudo : 'Profil') ?>">
+                <div class="profil-modal-heading">
+                    <h2><?= $profil_pseudo !== '' ? htmlspecialchars($profil_pseudo) : 'Qui suis-je ?' ?></h2>
+                </div>
+            </div>
+
+            <?php if (trim($profil_bio) !== ''): ?>
+                <div class="profil-modal-bio review-rendered">
+                    <?= review_render_markdown($profil_bio) ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($profil_social)): ?>
+                <div class="profil-modal-social">
+                    <?php foreach ($profil_social as $__link):
+                        $__icon_name = str_replace(':', '/', custom_link_icon_name($__link['icon']));
+                        $__icon_col  = rawurlencode(custom_link_color_hex($__link['color'])); ?>
+                        <a href="<?= htmlspecialchars($__link['url']) ?>"
+                           class="profil-social-link"
+                           target="_blank" rel="noopener"
+                           title="<?= htmlspecialchars($__link['name']) ?>">
+                            <img src="https://api.iconify.design/<?= $__icon_name ?>.svg?color=<?= $__icon_col ?>" width="22" height="22" alt="">
+                            <span><?= htmlspecialchars($__link['name']) ?></span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <button id="back-to-top" title="Retour en haut">↑</button>
 

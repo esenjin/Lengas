@@ -100,6 +100,15 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         <li class="sidebar-separator"></li>
 
+        <!-- Profil -->
+        <li>
+            <a href="page-profil.php"
+               class="sidebar-link <?= $current_page === 'page-profil.php' ? 'is-active' : '' ?>"
+               data-tooltip="Profil">
+                <img src="https://api.iconify.design/mdi/account-circle.svg?color=%23fb923c" width="22" height="22" alt="">
+            </a>
+        </li>
+
         <!-- Options -->
         <li>
             <a href="page-options.php"

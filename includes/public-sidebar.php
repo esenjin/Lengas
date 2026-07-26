@@ -60,7 +60,30 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <?php endforeach; ?>
 
         <?php if ($current_page === 'index.php'): ?>
+            <?php
+            // ── Profil de l'admin : bouton « Qui suis-je ? » ──────────────────
+            // Affiché uniquement si au moins un champ du profil est renseigné.
+            $profil_avatar = trim($options['admin_avatar'] ?? '');
+            $profil_pseudo = trim($options['admin_pseudo'] ?? '');
+            $profil_bio    = trim($options['admin_bio'] ?? '');
+            $profil_social = profil_get_social_links($options);
+            $has_profil = ($profil_pseudo !== '' || $profil_bio !== '' ||
+                           ($profil_avatar !== '' && file_exists($profil_avatar)) ||
+                           !empty($profil_social));
+            ?>
             <li class="sidebar-separator"></li>
+
+            <?php if ($has_profil): ?>
+                <!-- Qui suis-je ? (profil de l'admin, modale disponible) -->
+                <li>
+                    <button type="button"
+                            class="sidebar-link"
+                            id="open-profil-modal"
+                            data-tooltip="Qui suis-je ?">
+                        <img src="https://api.iconify.design/mdi/account-circle.svg?color=%23c084fc" width="22" height="22" alt="">
+                    </button>
+                </li>
+            <?php endif; ?>
 
             <!-- Légende / infos (uniquement sur l'accueil : modale disponible) -->
             <li>

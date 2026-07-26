@@ -82,6 +82,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Bouton « Qui suis-je ? » (profil de l'administrateur)
+    const openProfilModalButton = document.getElementById('open-profil-modal');
+    if (openProfilModalButton) {
+        openProfilModalButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            openModal('profil-modal');
+        });
+    }
+
     // Boutons de fermeture de modale
     document.querySelectorAll('.close-modal').forEach(button => {
         button.addEventListener('click', function(e) {

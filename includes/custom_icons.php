@@ -239,3 +239,35 @@ function custom_link_get_links(array $options): array {
     }
     return $links;
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Liens sociaux du profil de l'administrateur.
+//
+// Même structure et même validation que les liens personnalisés, stockés sous
+// la clé JSON « admin_social_links » (tableau d'objets {name, url, icon, color}).
+// Réutilise le même jeu d'icônes/couleurs. Les liens sans nom ou sans URL sont
+// ignorés.
+// ──────────────────────────────────────────────────────────────────────────────
+function profil_get_social_links(array $options): array {
+    $links = [];
+    if (empty($options['admin_social_links'])) {
+        return $links;
+    }
+    $decoded = json_decode($options['admin_social_links'], true);
+    if (!is_array($decoded)) {
+        return $links;
+    }
+    foreach ($decoded as $item) {
+        if (!is_array($item)) continue;
+        $name = trim((string)($item['name'] ?? ''));
+        $url  = trim((string)($item['url']  ?? ''));
+        if ($name === '' || $url === '') continue;
+        $links[] = [
+            'name'  => $name,
+            'url'   => $url,
+            'icon'  => (string)($item['icon'] ?? 'link'),
+            'color' => custom_link_normalize_color($item['color'] ?? null),
+        ];
+    }
+    return $links;
+}

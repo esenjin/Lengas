@@ -1,0 +1,118 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Profil de l'administrateur — page d'édition (admin) + modale publique
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Champ photo de profil (page d'édition) ─────────────────────────────── */
+.profil-avatar-field {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+.profil-avatar-preview {
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--background-medium);
+    border: var(--border-subtle);
+}
+.profil-avatar-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.profil-avatar-controls {
+    flex: 1;
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+}
+.profil-avatar-choose {
+    cursor: pointer;
+    display: inline-block;
+}
+.profil-avatar-remove-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--text-gray);
+    cursor: pointer;
+}
+
+/* ── Modale « Qui suis-je ? » (public) ──────────────────────────────────── */
+.profil-modal-header {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 18px;
+    padding-bottom: 16px;
+    border-bottom: var(--border-subtle);
+}
+.profil-modal-avatar {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--background-medium);
+    border: var(--border-subtle);
+}
+.profil-modal-heading h2 {
+    margin: 0;
+    color: var(--series-title-color);
+}
+.profil-modal-bio {
+    max-height: 55vh;
+    overflow-y: auto;
+    padding-right: 6px;
+    margin-bottom: 18px;
+}
+
+/* ── Liens sociaux (public) ─────────────────────────────────────────────── */
+.profil-modal-social {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: 16px;
+    border-top: var(--border-subtle);
+}
+.profil-social-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius);
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: var(--transition);
+}
+.profil-social-link:hover {
+    background: var(--input-bg-focus);
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+.profil-social-link img {
+    display: block;
+}
+
+/* ── Adaptation mobile ──────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .profil-modal-header {
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+    }
+    .profil-avatar-field {
+        justify-content: center;
+    }
+}

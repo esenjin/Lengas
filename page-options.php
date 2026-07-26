@@ -51,7 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     // ── Thème du site (validé contre les fichiers _variables-*.css présents) ──
     $theme_key = strtolower(trim($_POST['theme'] ?? 'dark'));
     $options['theme'] = theme_exists($theme_key) ? $theme_key : 'dark';
-    $options['admin_pseudo'] = trim($_POST['admin_pseudo'] ?? '');
+    // Note : le pseudo de l'admin (admin_pseudo) se règle depuis la page Profil.
+    // On ne le touche pas ici pour ne pas l'écraser.
 
     // ── Liens personnalisés (nombre variable) ────────────────────────────────
     // Les liens arrivent sous forme de tableaux parallèles POST :
@@ -253,9 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                 <label for="stats-page-title">Titre de la page de statistiques</label>
                 <input type="text" name="stats_page_title" id="stats-page-title" placeholder="Titre de la page de statistiques" value="<?= htmlspecialchars($options['stats_page_title']) ?>" required>
 
-                <label for="admin-pseudo">Pseudo de l'admin</label>
-                <input type="text" name="admin_pseudo" id="admin-pseudo" placeholder="Ex : Esenjin" value="<?= htmlspecialchars($options['admin_pseudo'] ?? '') ?>">
-                <p class="hint">Utilisé pour créditer les critiques auprès des visiteurs.</p>
+                <p class="hint">Le pseudo de l'admin (utilisé pour créditer les critiques) se règle désormais depuis la page <a href="page-profil.php">Profil</a>.</p>
 
                 <h3 class="options-section-title">Liens personnalisés</h3>
                 <p class="hint">Ces liens apparaissent dans le menu latéral des pages publiques (accueil et statistiques). Vous pouvez en ajouter autant que souhaité ; choisissez une icône et une couleur pour chacun. Un lien sans nom ou sans URL est ignoré.</p>

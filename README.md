@@ -74,6 +74,12 @@ Mobile
 - Marquage « Lue ailleurs » pour les séries lues sans les posséder (bibliothèque, ami, revendue…)
 - Marquage « Lecture abandonnée » pour les séries dont on a arrêté la lecture
 
+### Profil de l'administrateur
+- Page « Profil » dédiée (icône compte du menu latéral admin) pour se présenter aux visiteurs
+- Photo de profil (téléversée dans `uploads/`), pseudo, biographie en Markdown (même éditeur et même rendu que les critiques) et liens sociaux illimités (même sélecteur d'icône et de couleur que les liens personnalisés du menu latéral)
+- Le pseudo, auparavant réglé dans les Options, se gère désormais ici (il continue de créditer les critiques)
+- Sur la page d'accueil publique, un bouton « Qui suis-je ? » ouvre une modale présentant le profil (affiché uniquement si au moins un champ est renseigné)
+
 ### Critiques
 - Rédaction d'un avis par série via un éditeur Markdown dédié (page « Critiques »)
 - Éditeur avec aperçu en direct, barre de mise en forme flottante (gras, italique, souligné, barré, titres, listes, citations, code, liens, images et médias) et raccourcis annuler/rétablir
@@ -242,6 +248,7 @@ lengas/
 ├── page-prets.php         # Page de gestion des prêts
 ├── page-wishlist.php      # Page de la liste d'envies
 ├── page-critiques.php     # Page de rédaction des critiques + rendu Markdown
+├── page-profil.php        # Page du profil de l'admin (photo, pseudo, bio, liens sociaux)
 ├── page-outils.php        # Page des outils (+ endpoints SSE/POST associés)
 ├── page-options.php       # Page des options du site (configuration + mise à jour)
 ├── config.php             # Configuration du site
