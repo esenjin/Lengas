@@ -7,26 +7,6 @@ require 'includes/themes.php';
 $data    = load_data();
 $options = load_options();
 
-// Fonction pour récupérer la dernière version depuis Gitea
-function get_latest_version_from_gitea() {
-    $url = "https://git.crystalyx.net/api/v1/repos/Esenjin_Asakha/Lengas/releases/latest";
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_USERAGENT, "Lengas-Version-Checker");
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-    $response = curl_exec($ch);
-    curl_close($ch);
-    if ($response) {
-        $decoded = json_decode($response, true);
-        if (isset($decoded['tag_name'])) {
-            return ltrim($decoded['tag_name'], 'v');
-        }
-    }
-    return null;
-}
-
 // Le titre de la page stats utilise bien stats_page_title (bug corrigé)
 $page_title = $options['stats_page_title'] ?? ($options['site_name'] ?? 'Statistiques');
 
