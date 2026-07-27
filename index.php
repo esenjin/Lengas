@@ -488,6 +488,17 @@ if (!empty($search_term)) {
         <div class="modal-content">
             <span class="close-modal" id="close-legend-modal">&times;</span>
             <h2>Légende du site</h2>
+            <?php
+            // Vocabulaire de la collection affichée : « tome » ou « épisode »,
+            // « à lire » ou « à voir ». Rien n'est écrit en dur, tout vient du
+            // registre des types. Le tag collector, lui, n'a pas d'objet pour un
+            // épisode : c'est l'édition physique de la série entière qui est
+            // collector, pas l'épisode.
+            $__legend       = type_vocab($current_type);
+            $__legend_item  = $__legend['item_cap'];
+            $__legend_todo  = $__legend['todo'];
+            $__legend_class = 'status-' . str_replace(' ', '-', $__legend_todo);
+            ?>
             <div class="legend-content">
                 <div class="legend-item">
                     <img src="assets/img/logo.png" alt="Contenu mature" class="mature-thumbnail"><br>
@@ -495,23 +506,25 @@ if (!empty($search_term)) {
                 </div><br>
                 <div class="legend-item">
                     <div class="legend-sample status-terminé"></div>
-                    <span>Tome bleu : Fini</span>
+                    <span><?= htmlspecialchars($__legend_item) ?> bleu : Fini</span>
                 </div><br>
                 <div class="legend-item">
                     <div class="legend-sample status-en-cours"></div>
-                    <span>Tome violet : En cours</span>
+                    <span><?= htmlspecialchars($__legend_item) ?> violet : En cours</span>
                 </div><br>
                 <div class="legend-item">
-                    <div class="legend-sample status-à-lire"></div>
-                    <span>Tome rose : À lire</span>
+                    <div class="legend-sample <?= htmlspecialchars($__legend_class) ?>"></div>
+                    <span><?= htmlspecialchars($__legend_item) ?> rose : <?= htmlspecialchars(ucfirst($__legend_todo)) ?></span>
                 </div><br>
+                <?php if ($current_type !== 'anime'): ?>
                 <div class="legend-item">
                     <div class="legend-icon">⭐</div>
                     <span>Étoile : Collector</span>
                 </div><br>
+                <?php endif; ?>
                 <div class="legend-item">
                     <div class="legend-icon last-icon">✅</div>
-                    <span>Cochette verte : Dernier tome</span>
+                    <span>Cochette verte : Dernier <?= htmlspecialchars($__legend['item']) ?></span>
                 </div><br>
                 <div class="legend-item">
                     <div class="legend-sample favorite-border"></div>

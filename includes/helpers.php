@@ -127,6 +127,37 @@ function is_anime($series): bool {
     return series_type($series) === 'anime';
 }
 
+// ── Statut d'avancement d'une série animée ───────────────────────────────────
+// Statut de VISIONNAGE, calculé depuis les épisodes. Renvoie 'abandoned',
+// 'completed', 'in_progress' ou 'not_started' : exactement les mêmes clés que le
+// statut de lecture des mangas, pour que badges et filtres s'appliquent sans
+// distinction de type.
+//
+// Vit ici, et non dans fonctions/anime.php, parce qu'il ne s'agit que de LIRE
+// une série : la page publique et le filtre de statuts en ont besoin sans rien
+// charger de la mécanique d'écriture des animés.
+function anime_watching_status(array $series): string {
+    if (!empty($series['watching_abandoned'])) {
+        return 'abandoned';
+    }
+    $episodes = $series['volumes'] ?? [];
+    $total    = count($episodes);
+    if ($total === 0) {
+        return 'not_started';
+    }
+
+    $done     = type_vocab('anime', 'done');   // « terminé »
+    $watched  = 0;
+    $has_last = false;
+    foreach ($episodes as $episode) {
+        if (($episode['status'] ?? '') === $done) $watched++;
+        if (!empty($episode['last']))             $has_last = true;
+    }
+    if ($watched === 0)                   return 'not_started';
+    if ($watched === $total && $has_last) return 'completed';
+    return 'in_progress';
+}
+
 // Libellé affichable d'un type. $plural = true pour la forme au pluriel.
 function type_label($type, bool $plural = false): string {
     $def = series_type_registry()[series_type($type)];
@@ -175,8 +206,10 @@ function series_type_counts(array $data): array {
     return $counts;
 }
 
-// Registre allégé destiné au JavaScript (window.seriesTypes) : uniquement ce
-// dont le front a besoin pour afficher un badge de type.
+// Registre allégé destiné au JavaScript (window.seriesTypes) : de quoi afficher
+// un badge de type, et le vocabulaire du type pour que le front n'écrive lui non
+// plus aucun libellé en dur (« Épisode 3 » vient d'ici, pas d'une chaîne perdue
+// au milieu d'un fichier .js).
 function series_types_for_js(): array {
     $out = [];
     foreach (series_type_registry() as $key => $def) {
@@ -184,6 +217,7 @@ function series_types_for_js(): array {
             'label'  => $def['label'],
             'plural' => $def['label_plural'],
             'color'  => $def['color'],
+            'vocab'  => $def['vocab'],
         ];
     }
     return $out;

@@ -232,3 +232,35 @@
 .anime-editions .anime-edition-input {
     margin: 0;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Épisodes
+
+   La liste des épisodes réutilise `.volumes-list` : seules les différences
+   sont décrites ici. Le statut « à voir » reprend la couleur de « à lire »
+   (même sens : pas encore fait), et le bouton « + » passe au bleu de
+   l'Animethèque — il n'y ajoute rien, il marque l'épisode suivant comme vu.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.volumes-list li.status-à-voir {
+    background-color: var(--status-a-lire-bg);
+    border-left-color: var(--error-color);
+}
+
+.legend-sample.status-à-voir {
+    background-color: var(--status-a-lire-bg);
+    border-left-color: var(--error-color);
+}
+
+/* Bouton « + » des séries animées : marque l'épisode suivant comme vu. */
+.volumes-list li.volume-add-btn.episode-mark-btn {
+    border: 1px dashed rgba(56, 189, 248, 0.45);
+    border-left: 1px dashed rgba(56, 189, 248, 0.45);
+    color: var(--anime-title-color, #38bdf8);
+}
+
+.volumes-list li.volume-add-btn.episode-mark-btn:hover {
+    background-color: rgba(56, 189, 248, 0.12);
+    border-color: var(--anime-title-color, #38bdf8);
+    color: var(--text-white, #fff);
+}

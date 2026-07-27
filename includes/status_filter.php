@@ -77,7 +77,27 @@ function status_filter_categories() {
 }
 
 // Teste si UN critère unique correspond à une série.
+//
+// ⚠️ Typage : les critères d'avancement (« statut de lecture ») portent sur les
+// tomes ET sur les épisodes. Pour un animé, l'abandon se lit sur
+// `watching_abandoned` et non sur `reading_abandoned`, et le calcul complet est
+// déjà fait par anime_watching_status() : on s'y branche plutôt que de le
+// refaire. Le chemin manga, lui, est laissé rigoureusement intact — la refonte
+// du panneau (libellés « diffusion » / « visionnage », blocs sans objet) est
+// l'objet du bloc 6.
 function series_matches_status_token($series, $token, $has_review) {
+    $is_anime = function_exists('is_anime') && is_anime($series);
+    if ($is_anime && in_array($token, ['reading_not_started', 'reading_in_progress',
+                                       'reading_completed', 'reading_abandoned'], true)) {
+        $watching = anime_watching_status($series);
+        switch ($token) {
+            case 'reading_not_started': return $watching === 'not_started';
+            case 'reading_in_progress': return $watching === 'in_progress';
+            case 'reading_completed':   return $watching === 'completed';
+            case 'reading_abandoned':   return $watching === 'abandoned';
+        }
+    }
+
     switch ($token) {
         case 'has_review':
             return $has_review;
@@ -130,7 +150,11 @@ function series_matches_status_token($series, $token, $has_review) {
         case 'rating_none':
             return empty($series['rating']);
         default:
-            // Statut de publication
+            // Statut de publication — de DIFFUSION pour un animé, auquel cas il
+            // vient d'Anilist et ne se déduit jamais des épisodes.
+            if ($is_anime) {
+                return (($series['status'] ?? 'en cours') === $token);
+            }
             $status = 'en cours';
             if (!empty($series['volumes'])) {
                 foreach ($series['volumes'] as $volume) {

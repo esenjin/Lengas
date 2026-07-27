@@ -1,29 +1,15 @@
-// Édition d'un tome
-document.querySelectorAll('.volumes-list li').forEach(li => {
-    li.addEventListener('click', function() {
-        const seriesId = this.dataset.seriesId;
-        const volumeIndex = this.dataset.volumeIndex;
-        const volumeNumber = this.textContent.trim();
-
-        const series = seriesData.find(s => s.id === seriesId);
-        if (series) {
-            document.getElementById('edit-series-id').value = seriesId;
-            document.getElementById('edit-volume-index').value = volumeIndex;
-            document.getElementById('edit-volume-number-display').textContent = `Tome ${volumeNumber}`;
-
-            const volume = series.volumes[volumeIndex];
-            document.querySelector('#edit-volume-modal [name="status"]').value = volume.status;
-            document.querySelector('#edit-volume-modal [name="is_collector"]').checked = !!volume.collector;
-            document.querySelector('#edit-volume-modal [name="is_last"]').checked = !!volume.last;
-            document.getElementById('edit-volume-read-at').value = volume.read_at || '';
-            const applyAll = document.getElementById('edit-volume-apply-status-all');
-            if (applyAll) applyAll.checked = false;
-            updateReadAtVisibility();
-
-            modals['edit-volume'].modal.classList.add('modal-active');
-        }
-    });
-});
+// ─────────────────────────────────────────────────────────────────────────────
+// assets/js/admin/volumes.js — Tomes (Mangathèque)
+//
+// L'édition d'un tome est ouverte par la délégation d'événements de
+// pagination.js : les cartes, et donc les listes de tomes, sont injectées en
+// AJAX. Le bloc qui vivait ici parcourait `.volumes-list li` au chargement de la
+// page, alors qu'aucun tome n'y figure encore — du code mort, retiré.
+//
+// Le pendant de ce fichier pour l'Animethèque est episodes.js : un épisode ne
+// s'ajoute pas, ne se supprime pas, et n'a ni tag collector ni « dernier
+// épisode » à cocher.
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Affiche le champ "Date de lecture" uniquement quand le statut est "terminé"
 function updateReadAtVisibility() {

@@ -215,10 +215,7 @@ function loadSeriesVolumes(seriesId) {
 
 // Ouvre la modale « Ajouter des tomes » avec une série déjà sélectionnée.
 function openAddVolumesForSeries(seriesId) {
-    let series = null;
-    for (const key in window.seriesData) {
-        if (window.seriesData[key].id === seriesId) { series = window.seriesData[key]; break; }
-    }
+    const series = findSeriesById(seriesId);
     const hidden = document.getElementById('multiple-selected-series-id');
     const search = document.getElementById('multiple-series-search');
     if (hidden) hidden.value = seriesId;
@@ -233,46 +230,12 @@ function openAddVolumesForSeries(seriesId) {
     if (modal) modal.classList.add('modal-active');
 }
 
-// Écouteur unique pour TOUS les clics sur les tomes (délégation)
-document.getElementById('series-list').addEventListener('click', (e) => {
-    // Bouton « + » d'ajout rapide de tomes (prioritaire sur l'édition d'un tome)
-    const addBtn = e.target.closest('.volume-add-btn');
-    if (addBtn) {
-        e.preventDefault();
-        openAddVolumesForSeries(addBtn.dataset.seriesId);
-        return;
-    }
-
-    const volumeLi = e.target.closest('.volumes-list li:not(.volume-add-btn)');
-    if (volumeLi) {
-        e.preventDefault();
-        const seriesId = volumeLi.dataset.seriesId;
-        const volumeIndex = volumeLi.dataset.volumeIndex;
-        let series = null;
-        for (const key in window.seriesData) {
-            if (window.seriesData[key].id === seriesId) {
-                series = window.seriesData[key];
-                break;
-            }
-        }
-        if (series && series.volumes && series.volumes[volumeIndex]) {
-            const volume = series.volumes[volumeIndex];
-            document.getElementById('edit-series-id').value = seriesId;
-            document.getElementById('edit-volume-index').value = volumeIndex;
-            document.getElementById('edit-volume-number-display').textContent = `Tome ${volume.number}`;
-            document.querySelector('#edit-volume-modal [name="status"]').value = volume.status;
-            document.querySelector('#edit-volume-modal [name="is_collector"]').checked = !!volume.collector;
-            document.querySelector('#edit-volume-modal [name="is_last"]').checked = !!volume.last;
-            document.getElementById('edit-volume-read-at').value = volume.read_at || '';
-            const applyAll = document.getElementById('edit-volume-apply-status-all');
-            if (applyAll) applyAll.checked = false;
-            if (typeof updateReadAtVisibility === 'function') updateReadAtVisibility();
-            document.getElementById('edit-volume-modal').classList.add('modal-active');
-        }
-    }
-});
-
 // Écouteur unique pour tous les clics dans #series-list (délégation d'événements)
+//
+// Il n'y en avait ici que deux, strictement identiques sur les tomes et le
+// bouton « + » : le second suffisait, le premier ne faisait que rejouer le même
+// traitement. Le typage des séries en aurait fait deux copies à maintenir en
+// phase — l'une aurait fini par ouvrir la mauvaise modale. Fusionnés.
 document.getElementById('series-list').addEventListener('click', (e) => {
     // Bouton "Voir les tomes"
     const loadBtn = e.target.closest('.load-volumes-btn');
@@ -288,13 +251,7 @@ document.getElementById('series-list').addEventListener('click', (e) => {
         if (editBtn) {
             e.preventDefault();
             const seriesId = editBtn.dataset.seriesId;
-            let series = null;
-            for (const key in window.seriesData) {
-                if (window.seriesData[key].id === seriesId) {
-                    series = window.seriesData[key];
-                    break;
-                }
-            }
+            const series = findSeriesById(seriesId);
 
             // Les animés ouvrent leur propre modale, gérée par anime.js.
             if (series && series.type === 'anime') return;
@@ -353,27 +310,37 @@ document.getElementById('series-list').addEventListener('click', (e) => {
         return;
     }
 
-    // Bouton « + » d'ajout rapide de tomes (prioritaire sur l'édition d'un tome)
+    // Bouton « + » (prioritaire sur l'édition d'un tome). Deux sens selon la
+    // collection : ajouter des tomes à un manga, marquer l'épisode suivant d'un
+    // animé comme vu.
     const addVolBtn = e.target.closest('.volume-add-btn');
     if (addVolBtn) {
         e.preventDefault();
-        openAddVolumesForSeries(addVolBtn.dataset.seriesId);
+        const seriesId = addVolBtn.dataset.seriesId;
+        const series = findSeriesById(seriesId);
+        if (series && series.type === 'anime') {
+            markNextEpisode(seriesId);
+        } else {
+            openAddVolumesForSeries(seriesId);
+        }
         return;
     }
 
-    // Tome (pour modification)
+    // Tome ou épisode (pour modification)
     const volumeLi = e.target.closest('.volumes-list li:not(.volume-add-btn)');
     if (volumeLi) {
         e.preventDefault();
         const seriesId = volumeLi.dataset.seriesId;
         const volumeIndex = volumeLi.dataset.volumeIndex;
-        let series = null;
-        for (const key in window.seriesData) {
-            if (window.seriesData[key].id === seriesId) {
-                series = window.seriesData[key];
-                break;
-            }
+        const series = findSeriesById(seriesId);
+
+        // Un épisode a sa propre modale : pas de collector, pas de « dernier
+        // épisode » à cocher, pas de suppression.
+        if (series && series.type === 'anime') {
+            openEpisodeModal(series, volumeIndex);
+            return;
         }
+
         if (series && series.volumes && series.volumes[volumeIndex]) {
             const volume = series.volumes[volumeIndex];
             document.getElementById('edit-series-id').value = seriesId;

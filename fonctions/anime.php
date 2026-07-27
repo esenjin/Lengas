@@ -17,7 +17,9 @@
 //   • les éditions physiques.
 //
 // Dépendances : includes/anilist.php (connecteur), includes/helpers.php
-// (registre des types, vignettes, éditions), config.php (load_data/save_data).
+// (registre des types, vignettes, éditions, statut de visionnage),
+// fonctions/episodes.php (création et tenue de la liste des épisodes),
+// config.php (load_data/save_data).
 // ────────────────────────────────────────────────────────────────────────────
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -145,8 +147,9 @@ function find_series_by_anilist_id(array $data, $anilist_id): ?array {
 //     ces séries y sont routées d'office au lieu d'être rejetées. Le message
 //     temporaire ci-dessous est alors à retirer.
 //
-// Les épisodes ne sont pas créés ici : c'est l'objet du bloc 4. La série est
-// donc valide mais vide de tout épisode à l'issue de ce bloc.
+// Les épisodes sont créés dans la foulée, à partir du nombre d'épisodes
+// RÉELLEMENT DIFFUSÉS (fonctions/episodes.php) : ni plus, ni moins, et jamais à
+// la main ensuite.
 //
 // Retour : ['success', 'data', 'message', 'series_id', 'warning']
 function add_anime_series(array $data, array $media, bool $download_cover = true): array {
@@ -188,6 +191,11 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
 
     $series_id = generate_uuid();
 
+    // Épisodes : créés ici, une fois pour toutes, à partir des seuls épisodes
+    // déjà diffusés. Le tag « dernier épisode » est posé dans la foulée si la
+    // diffusion est terminée et le compte complet.
+    $episodes = anime_episodes_from_media($media);
+
     $data[] = [
         'id'   => $series_id,
         // Titre par défaut : romaji. Modifiable ensuite, mais uniquement par
@@ -227,15 +235,19 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
         'rewatch_count'      => 0,
         'anilist_synced_at'  => 0,
         'editions'           => [],
-        // Les épisodes sont créés au bloc 4, à partir du nombre d'épisodes
-        // réellement diffusés (anilist_aired_episodes()).
-        'volumes'            => [],
+        // Épisodes déjà diffusés, numérotés 1..N (cf. fonctions/episodes.php).
+        'volumes'            => $episodes,
     ];
+
+    $count   = count($episodes);
+    $created = $count > 0
+        ? "Série animée ajoutée avec succès (" . $count . " épisode" . ($count > 1 ? 's' : '') . " diffusé" . ($count > 1 ? 's' : '') . ")."
+        : "Série animée ajoutée avec succès, mais aucun épisode n'a encore été diffusé.";
 
     return [
         'success'   => true,
         'data'      => $data,
-        'message'   => $warning !== '' ? $warning : "Série animée ajoutée avec succès.",
+        'message'   => $warning !== '' ? $warning : $created,
         'series_id' => $series_id,
         'warning'   => $warning,
     ];
@@ -339,27 +351,10 @@ function update_anime_series(array $data, string $series_id, array $fields): arr
 // ────────────────────────────────────────────────────────────────────────────
 // 5. Statut de visionnage
 // ────────────────────────────────────────────────────────────────────────────
-
-// Statut de visionnage d'une série animée, calculé depuis ses épisodes.
-// Renvoie 'abandoned', 'completed', 'in_progress' ou 'not_started' — les mêmes
-// clés que le statut de lecture des mangas, pour que les filtres et les badges
-// existants s'appliquent sans distinction de type.
-function anime_watching_status(array $series): string {
-    if (!empty($series['watching_abandoned'])) {
-        return 'abandoned';
-    }
-    $episodes = $series['volumes'] ?? [];
-    $total    = count($episodes);
-    if ($total === 0) {
-        return 'not_started';
-    }
-    $watched  = 0;
-    $has_last = false;
-    foreach ($episodes as $episode) {
-        if (($episode['status'] ?? '') === 'terminé') $watched++;
-        if (!empty($episode['last'])) $has_last = true;
-    }
-    if ($watched === 0)                        return 'not_started';
-    if ($watched === $total && $has_last)      return 'completed';
-    return 'in_progress';
-}
+//
+// anime_watching_status() a rejoint includes/helpers.php, aux côtés du registre
+// des types. Raison : le filtre de statuts (includes/status_filter.php) en a
+// besoin sur la page publique, qui ne charge pas ce fichier-ci — index.php
+// n'écrit jamais dans la collection et n'a donc que faire des fonctions de
+// création et d'édition. Une fonction qui ne fait que lire une série n'avait de
+// toute façon rien à faire dans un fichier d'écriture.

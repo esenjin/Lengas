@@ -9,6 +9,7 @@ require_once 'includes/anilist.php';
 require 'fonctions/series.php';
 require 'fonctions/anime.php';
 require 'fonctions/volumes.php';
+require 'fonctions/episodes.php';
 require 'fonctions/wishlist.php';
 require 'fonctions/loans.php';
 require 'fonctions/read.php';
@@ -252,6 +253,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_multiple_volumes'
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
     $series_id = $_POST['series_id'] ?? '';
     $volume_index = (int)($_POST['volume_index'] ?? 0);
+
+    // Un épisode ne passe jamais par ici : update_volume() sait cocher
+    // « collector » et « dernier tome », et fait basculer le statut de la série
+    // au passage — trois choses qu'Anilist seul décide pour un animé. Le front
+    // n'envoie jamais ce formulaire pour une série animée ; le garde-fou vaut
+    // pour un POST forgé.
+    $target = find_series_by_id($data, $series_id);
+    if ($target && is_anime($target['data'])) {
+        $_SESSION['error_message'] = "Un épisode se modifie depuis sa propre fiche.";
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit;
+    }
+
     $status = $_POST['status'] ?? 'à lire';
     $is_collector = !empty($_POST['is_collector']);
     $is_last = !empty($_POST['is_last']);
@@ -277,10 +291,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
     exit;
 }
 
+// ── Mettre à jour un épisode (statut de visionnage et date) ─────────────────
+// Pendant de update_volume pour l'Animethèque, volontairement plus étroit : ni
+// collector, ni « dernier épisode », ni répercussion sur le statut de la série.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_episode'])) {
+    $series_id     = $_POST['series_id'] ?? '';
+    $episode_index = (int)($_POST['episode_index'] ?? 0);
+    $status        = $_POST['status'] ?? '';
+    $watched_at    = trim($_POST['watched_at'] ?? '');
+    // Même contrôle de format que pour les tomes : une date invalide est
+    // ignorée plutôt qu'enregistrée telle quelle.
+    if ($watched_at !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $watched_at)) {
+        $watched_at = null;
+    }
+
+    $result = update_episode($data, $series_id, $episode_index, $status, $watched_at);
+    if ($result['success']) {
+        // Option « tout marquer » : le statut de visionnage (et sa date) est
+        // recopié sur tous les épisodes de la série.
+        if (!empty($_POST['apply_status_all'])) {
+            $batch = apply_status_to_all_episodes($result['data'], $series_id, $status, $watched_at);
+            if ($batch['success']) {
+                $result['data'] = $batch['data'];
+            }
+        }
+        save_data($result['data']);
+    } else {
+        $_SESSION['error_message'] = $result['message'];
+    }
+
+    header("Location: " . $_SERVER['REQUEST_URI']);
+    exit;
+}
+
+// ── Bouton « + » d'une carte animée : épisode suivant marqué comme vu ───────
+// En AJAX, sans rechargement : des clics successifs font progresser le
+// visionnage épisode par épisode.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_next_episode'])) {
+    header('Content-Type: application/json');
+
+    $result = anime_mark_next_episode($data, $_POST['series_id'] ?? '');
+    if ($result['success']) {
+        save_data($result['data']);
+    }
+
+    echo json_encode([
+        'success'       => $result['success'],
+        'message'       => $result['message'] ?? '',
+        'episode_index' => $result['episode_index'] ?? null,
+        'episode'       => $result['episode'] ?? null,
+        'counts'        => $result['counts'] ?? null,
+    ]);
+    exit;
+}
+
 // Supprimer un tome
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_volume'])) {
     $series_id = $_POST['series_id'] ?? '';
     $volume_index = (int)($_POST['volume_index'] ?? 0);
+
+    // Les épisodes ne se suppriment pas : leur liste est le reflet de ce qu'a
+    // diffusé la série, pas un inventaire que l'on tient à la main.
+    $target = find_series_by_id($data, $series_id);
+    if ($target && is_anime($target['data'])) {
+        $_SESSION['error_message'] = "Les épisodes d'une série animée viennent d'Anilist : ils ne se suppriment pas à la main.";
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit;
+    }
 
     $result = delete_volume($data, $series_id, $volume_index);
     if ($result['success']) {
@@ -712,23 +789,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
             $is_loaned ? '<span class="volume-loan-badge" aria-label="En prêt">🤝</span>' : ''
         );
     }
-    // Bouton d'ajout rapide : ouvre la modale « Ajouter des tomes » avec la série
-    // pré-sélectionnée. On le masque si le dernier tome de la liste est marqué comme
-    // « dernier tome de la série » (collection réputée complète).
+    // Bouton « + » de fin de liste. Même geste, deux sens selon la collection :
     //
-    // Absent des séries animées : leurs épisodes viennent d'Anilist et ne
-    // s'ajoutent pas à la main. Le bouton « + » y prendra un tout autre sens au
-    // bloc 4 — faire passer le premier épisode non terminé en « terminé ».
+    //   • manga  → ouvre la modale « Ajouter des tomes », série pré-sélectionnée.
+    //     Masqué si le dernier tome porte le tag « dernier tome de la série »
+    //     (collection réputée complète) ;
+    //   • animé  → fait passer le PREMIER épisode non terminé en « terminé ».
+    //     Il n'ajoute donc rien : les épisodes viennent d'Anilist. Masqué une
+    //     fois tous les épisodes vus, faute d'épisode suivant à marquer.
     $volumes = $series['volumes'];
-    $last_volume = !empty($volumes) ? end($volumes) : null;
-    $series_is_complete = $last_volume !== null && !empty($last_volume['last']);
-    if (!$series_is_complete && !$series_is_anime) {
-        $volumes_html .= sprintf(
-            '<li class="volume-add-btn" data-series-id="%s" title="Ajouter des tomes à cette série" aria-label="Ajouter des tomes">+</li>',
-            htmlspecialchars($series_id, ENT_QUOTES)
-        );
+    if ($series_is_anime) {
+        if (anime_next_episode_index($series) >= 0) {
+            $volumes_html .= sprintf(
+                '<li class="volume-add-btn episode-mark-btn" data-series-id="%s" title="Marquer l\'épisode suivant comme %s" aria-label="Marquer l\'épisode suivant comme %s">+</li>',
+                htmlspecialchars($series_id, ENT_QUOTES),
+                htmlspecialchars($vocab['done_short'], ENT_QUOTES),
+                htmlspecialchars($vocab['done_short'], ENT_QUOTES)
+            );
+        }
+    } else {
+        $last_volume = !empty($volumes) ? end($volumes) : null;
+        $series_is_complete = $last_volume !== null && !empty($last_volume['last']);
+        if (!$series_is_complete) {
+            $volumes_html .= sprintf(
+                '<li class="volume-add-btn" data-series-id="%s" title="Ajouter des tomes à cette série" aria-label="Ajouter des tomes">+</li>',
+                htmlspecialchars($series_id, ENT_QUOTES)
+            );
+        }
     }
     $volumes_html .= '</ul>';
+
+    // Une série animée sans épisode n'est pas une série vide à compléter : c'est
+    // une série dont rien n'a encore été diffusé. On le dit, plutôt que de
+    // laisser une liste vide et sans explication.
+    if ($series_is_anime && empty($volumes)) {
+        $volumes_html = '<p class="hint">Aucun épisode diffusé pour le moment.</p>' . $volumes_html;
+    }
 
     // Ajouter les notifications si nécessaire
     if (!empty($notifications)) {
@@ -1068,6 +1164,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
             </div>
         </div>
 
+        <?php
+        // Modale d'édition d'un épisode. Calquée sur celle des tomes, à trois
+        // choses près : pas de bouton de suppression, pas de tag collector, pas
+        // de tag « dernier épisode » — ce dernier est posé automatiquement quand
+        // Anilist annonce la diffusion terminée. Les libellés viennent du
+        // registre des types, rien n'est écrit en dur.
+        $__ep_vocab = type_vocab('anime');
+        ?>
+        <!-- Modale pour éditer un épisode -->
+        <div class="modal" id="edit-episode-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-edit-episode-modal">&times;</span>
+                <h2>Éditer l'<?= htmlspecialchars($__ep_vocab['item']) ?></h2>
+                <form method="post">
+                    <input type="hidden" name="series_id" id="edit-episode-series-id">
+                    <input type="hidden" name="episode_index" id="edit-episode-index">
+                    <p id="edit-episode-number-display" class="volume-number-display"></p>
+                    <select name="status" id="edit-episode-status" required>
+                        <option value="<?= htmlspecialchars($__ep_vocab['todo']) ?>"><?= htmlspecialchars(ucfirst($__ep_vocab['todo'])) ?></option>
+                        <option value="<?= htmlspecialchars($__ep_vocab['doing']) ?>"><?= htmlspecialchars(ucfirst($__ep_vocab['doing'])) ?></option>
+                        <option value="<?= htmlspecialchars($__ep_vocab['done']) ?>"><?= htmlspecialchars(ucfirst($__ep_vocab['done'])) ?></option>
+                    </select>
+                    <label id="edit-episode-watched-at-label" class="volume-read-at-label">
+                        Date de <?= htmlspecialchars($__ep_vocab['activity']) ?>
+                        <input type="date" name="watched_at" id="edit-episode-watched-at">
+                    </label>
+                    <label>
+                        <input type="checkbox" name="apply_status_all" id="edit-episode-apply-status-all"> Appliquer ce statut de <?= htmlspecialchars($__ep_vocab['activity']) ?> à tous les épisodes de la série 📺
+                    </label>
+                    <p class="hint">Le statut (et, le cas échéant, la date de <?= htmlspecialchars($__ep_vocab['activity']) ?>) sera copié sur tous les épisodes de la série.</p>
+                    <div class="modal-actions">
+                        <button type="submit" name="update_episode">Mettre à jour</button>
+                    </div>
+                    <p class="hint">Les épisodes viennent d'Anilist : ils ne s'ajoutent ni ne se suppriment à la main. Une erreur de fiche se corrige à la source, sur Anilist.</p>
+                </form>
+            </div>
+        </div>
+
         <!-- Modale pour modifier une série -->
         <div class="modal" id="edit-series-modal">
             <div class="modal-content">
@@ -1350,6 +1484,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
     <script src="assets/js/admin/series.js"></script>
     <script src="assets/js/admin/anime.js"></script>
     <script src="assets/js/admin/volumes.js"></script>
+    <script src="assets/js/admin/episodes.js"></script>
     <script src="assets/js/admin/pagination.js"></script>
     <script src="assets/js/admin/main.js"></script>
 
