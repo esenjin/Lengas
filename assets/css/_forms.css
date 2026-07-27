@@ -72,6 +72,36 @@ form {
     color: var(--primary-color);
 }
 
+/* Suggestion typée : libellé à gauche, badge de collection à droite.
+   La couleur du badge vient du registre de types (includes/helpers.php), posée
+   en variable inline --type-color par le JavaScript : aucune couleur de type
+   n'est écrite en dur ici. */
+.autocomplete-suggestions .autocomplete-suggestion {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.autocomplete-suggestions .suggestion-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.suggestion-type-badge {
+    flex-shrink: 0;
+    font-size: 0.72em;
+    font-weight: 600;
+    line-height: 1;
+    padding: 3px 7px;
+    border-radius: var(--border-radius-sm);
+    color: var(--type-color, var(--text-gray));
+    border: 1px solid currentColor;
+    background-color: transparent;
+    white-space: nowrap;
+}
+
 /* Plage de tomes */
 .volume-range {
     display: flex;

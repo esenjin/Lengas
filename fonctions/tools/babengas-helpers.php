@@ -25,6 +25,11 @@ if (!function_exists('babengas_enabled')) {
 //   aussi l'exclusion du « dernier tome »). Implique $all.
 // Retourne ['success'=>bool, 'message'=>string, 'campagne_id'=>…, 'total'=>…].
 function babengas_launch_campaign(array $data, bool $all = false, bool $force = false): array {
+    // Périmètre V4 : Babelio ne référence que la Mangathèque. Filtrage sur la
+    // copie locale uniquement ($data est reçu par valeur), tout le ciblage en
+    // aval — cibles, one-shots, cache — hérite donc de cette restriction.
+    $data = series_of_type($data, 'manga');
+
     if ($force) $all = true;
     if (!babengas_enabled()) {
         return ['success' => false, 'message' => "Babengas n'est pas configuré."];
@@ -239,6 +244,12 @@ function babengas_cancel_current(): array {
 
 // ── Séries dépourvues d'URL Babelio (affichées dans le récapitulatif) ────────
 function babengas_series_without_url(array $data): array {
+    // Périmètre V4 : ces vérifications ne concernent que la Mangathèque.
+    // $data est reçu PAR VALEUR : le filtrage ne touche que cette copie locale,
+    // le tableau de l'appelant reste complet pour les écritures ultérieures
+    // (voir l'avertissement de save_data() dans config.php).
+    $data = series_of_type($data, 'manga');
+
     $out = [];
     foreach ($data as $series) {
         $url = trim((string)($series['babelio_url'] ?? ''));

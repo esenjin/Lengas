@@ -119,6 +119,12 @@ function coherence_reference_volumes(array $series, array $mu_cache_map = []): ?
 
 // Vérification des incohérences de la collection
 function check_collection_coherence(array $data): array {
+    // Périmètre V4 : ces vérifications ne concernent que la Mangathèque.
+    // $data est reçu PAR VALEUR : le filtrage ne touche que cette copie locale,
+    // le tableau de l'appelant reste complet pour les écritures ultérieures
+    // (voir l'avertissement de save_data() dans config.php).
+    $data = series_of_type($data, 'manga');
+
     $issues = [];
 
     // ── Pré-charger le cache MangaUpdates en lot (appel réseau si nécessaire) ──

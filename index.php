@@ -4,8 +4,17 @@ require_once 'fonctions/reviews.php';
 require_once 'includes/themes.php';
 require_once 'includes/status_filter.php';
 require_once 'includes/custom_icons.php';
+// Registre central des types. Les fonctions series_latest_date(), sort_series()
+// et normalize_string() définies plus bas dans ce fichier priment sur celles de
+// helpers.php (déclarations de haut niveau, compilées avant ce require) : la
+// recherche publique conserve donc exactement son comportement.
+require_once 'includes/helpers.php';
+
 $data = load_data();
 $options = load_options();
+
+// ── Collection affichée (Mangathèque / Animethèque) ──────────────────────────
+$current_type = sanitize_series_type($_GET['type'] ?? '');
 
 // Critiques visibles publiquement ? (option "cacher les critiques")
 $reviews_public = empty($options['hide_reviews']);
@@ -82,12 +91,13 @@ if (isset($_GET['get_paginated_series'])) {
     $sort_order = $_GET['sort_order'] ?? 'asc';
     $status_filter = $_GET['status_filter'] ?? '';
     $status_mode   = $_GET['status_mode'] ?? 'or';
+    $type_filter   = sanitize_series_type($_GET['type'] ?? '');
 
-    // Applique la recherche et le tri à chaque requête
-    $filtered_data = $data;
+    // Applique le type, la recherche et le tri à chaque requête
+    $filtered_data = series_of_type($data, $type_filter);
     if (!empty($search_term)) {
         $normalized_search = normalize_string($search_term);
-        $filtered_data = array_filter($data, function($series) use ($normalized_search) {
+        $filtered_data = array_filter($filtered_data, function($series) use ($normalized_search) {
             return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
                    strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
                    strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
@@ -128,29 +138,65 @@ if (isset($_GET['get_paginated_series'])) {
 }
 
 // ── Endpoint : suggestions d'autocomplétion pour la barre de recherche ──────
+// La barre de recherche TRAVERSE les collections : avec with_types=1, chaque
+// suggestion indique les types où elle apparaît, ce qui permet au front
+// d'afficher un badge coloré et de basculer de vue à la sélection.
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
     $all_data = load_data();
+
+    // Les séries matures masquées ne doivent pas ressortir dans les suggestions.
+    if ($options['hide_mature']) {
+        $all_data = array_filter($all_data, function ($series) {
+            return !($series['mature'] ?? false);
+        });
+    }
+
     $field = $_GET['field'] ?? '';
     $term  = trim($_GET['term'] ?? '');
     $normalizedTerm = normalize_string($term);
+
+    $restrict_type = (isset($_GET['restrict_type']) && $_GET['restrict_type'] !== '')
+        ? sanitize_series_type($_GET['restrict_type'])
+        : '';
+    $with_types = !empty($_GET['with_types']);
+
+    if ($restrict_type !== '') {
+        $all_data = series_of_type($all_data, $restrict_type);
+    }
+
+    // valeur => types où elle apparaît
     $suggestions = [];
 
     if (in_array($field, ['name', 'author', 'publisher', 'other_contributors', 'categories', 'genres'])) {
         foreach ($all_data as $series) {
             if (!isset($series[$field])) continue;
+            $series_type = series_type($series);
             $values = is_array($series[$field]) ? $series[$field] : [$series[$field]];
             foreach ($values as $value) {
                 $value = trim((string)$value);
                 if ($value === '') continue;
-                if (str_contains(normalize_string($value), $normalizedTerm) && !in_array($value, $suggestions)) {
-                    $suggestions[] = $value;
+                if (!str_contains(normalize_string($value), $normalizedTerm)) continue;
+
+                if (!isset($suggestions[$value])) {
+                    $suggestions[$value] = [];
+                }
+                if (!in_array($series_type, $suggestions[$value], true)) {
+                    $suggestions[$value][] = $series_type;
                 }
             }
         }
     }
 
     header('Content-Type: application/json');
-    echo json_encode(array_values(array_unique($suggestions)));
+    if ($with_types) {
+        $out = [];
+        foreach ($suggestions as $value => $types) {
+            $out[] = ['value' => (string)$value, 'types' => $types];
+        }
+        echo json_encode($out);
+    } else {
+        echo json_encode(array_map('strval', array_keys($suggestions)));
+    }
     exit;
 }
 
@@ -196,6 +242,10 @@ if ($options['hide_mature']) {
         return !($series['mature'] ?? false);
     });
 }
+
+// Ne conserver que la collection affichée (aucune écriture sur cette page :
+// $data ne sert qu'au rendu, contrairement à admin.php).
+$data = series_of_type($data, $current_type);
 
 // Vérifier si le mode privé est activé
 if ($options['private_mode']) {
@@ -301,6 +351,8 @@ if (!empty($search_term)) {
         <!-- Barre de filtres et recherche -->
         <div class="filters">
             <form method="get">
+                <!-- Conserve la collection affichée à la soumission du formulaire -->
+                <input type="hidden" name="type" value="<?= htmlspecialchars($current_type) ?>">
                 <div class="search-row">
                     <input type="text" name="search" id="search-index" placeholder="Rechercher une série, un auteur ou un éditeur..."
                            value="<?= htmlspecialchars($search_term ?? '') ?>" autocomplete="off">
@@ -500,6 +552,9 @@ if (!empty($search_term)) {
             return $s;
         }, $data))) ?>;
         window.reviewsPublic = <?= json_encode($reviews_public) ?>;
+        // Contexte de typage (collection affichée + registre allégé).
+        window.currentSeriesType = <?= json_encode($current_type) ?>;
+        window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
     </script>
     <script src="assets/js/admin/main.js"></script>
     <script src="assets/js/public.js"></script>

@@ -115,9 +115,10 @@ function add_from_wishlist(array $data, array $wishlist, int $index): array {
         $db     = get_db();
         $db->beginTransaction();
         try {
+            // Type figé à 'manga' : la liste d'envies n'est typée qu'au bloc 7.
             $db->prepare("
-                INSERT INTO series (id, name, author, publisher, categories, image, status)
-                VALUES (?, ?, ?, ?, '', '', 'en cours')
+                INSERT INTO series (id, name, type, author, publisher, categories, image, status)
+                VALUES (?, ?, 'manga', ?, ?, '', '', 'en cours')
             ")->execute([$new_id, $name, $author, $publisher]);
 
             $db->prepare("
@@ -141,6 +142,7 @@ function add_from_wishlist(array $data, array $wishlist, int $index): array {
         $data[] = [
             'id'                 => $new_id,
             'name'               => $name,
+            'type'               => 'manga',
             'author'             => $author,
             'publisher'          => $publisher,
             'other_contributors' => [''],

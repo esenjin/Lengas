@@ -17,8 +17,17 @@ require 'includes/custom_icons.php';
 require 'includes/themes.php';
 require_once 'vestikan/vestikan.php';
 
+// Rétro-compatibilité V4 : type 'manga' pour les séries héritées (une seule fois).
+backfill_series_types();
+
 $data = load_data();
 $options = load_options();
+
+// ── Type affiché (Mangathèque / Animethèque) ─────────────────────────────────
+// $data reste la collection COMPLÈTE : c'est elle que reçoivent les handlers
+// d'écriture, save_data() supprimant toute série absente du tableau transmis.
+// Le cloisonnement par type se fait en aval, sur des copies d'affichage.
+$current_type = sanitize_series_type($_GET['type'] ?? '');
 
 // Ensemble des IDs de séries possédant une critique (pour badges / filtre)
 $review_series_ids = array_flip(get_review_series_ids());
@@ -63,7 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     }
 
     // Appeler add_series avec $image (qui peut être null)
-    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned, $rating);
+    // Cette modale ne crée que des mangas et light-novels (cf. registre de types).
+    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned, $rating, 'manga');
 
     if ($result['success']) {
         save_data($result['data']);
@@ -327,8 +337,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
     $light_mode = isset($_GET['light']) && $_GET['light'] === 'true';
     $status_filter = $_GET['status_filter'] ?? '';
     $status_mode   = $_GET['status_mode'] ?? 'or';
+    $type_filter   = sanitize_series_type($_GET['type'] ?? '');
 
-    $filtered_data = $data;
+    // Copie d'affichage cloisonnée par type : recherche, tri et pagination ne
+    // voient que la collection courante.
+    $filtered_data = series_of_type($data, $type_filter);
     if ($search_term) {
         $normalized_search = normalize_string($search_term);
         $filtered_data = array_filter($filtered_data, function($series) use ($normalized_search) {
@@ -396,6 +409,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
             return [
                 'id' => $series['id'],
                 'name' => $series['name'],
+                'type' => series_type($series),
                 'author' => $series['author'],
                 'publisher' => $series['publisher'],
                 'other_contributors' => $series['other_contributors'] ?? [],
@@ -549,41 +563,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
     exit;
 }
 
-// Gestion des suggestions pour l'auto-complétion
+// ── Endpoint : suggestions d'autocomplétion ─────────────────────────────────
+// Deux usages, distingués par les paramètres :
+//   • champs des modales → restrict_type=<type>, réponse au format historique
+//     (tableau de chaînes), limitée à la collection concernée ;
+//   • barre de recherche principale → with_types=1, sans restrict_type : la
+//     suggestion TRAVERSE les types et chacune indique ceux où elle apparaît,
+//     ce qui permet au front d'afficher un badge et de basculer de vue.
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
     $field = $_GET['field'] ?? '';
     $term = trim($_GET['term'] ?? '');
     $normalizedTerm = normalize_string($term);
+
+    // Absent ou vide => aucune restriction, on balaie tous les types.
+    $restrict_type = (isset($_GET['restrict_type']) && $_GET['restrict_type'] !== '')
+        ? sanitize_series_type($_GET['restrict_type'])
+        : '';
+    $with_types = !empty($_GET['with_types']);
+
+    $pool = ($restrict_type !== '') ? series_of_type($data, $restrict_type) : $data;
+
+    // valeur => liste des types où elle apparaît (ordre de première rencontre)
     $suggestions = [];
 
     if (in_array($field, ['name', 'author', 'publisher', 'other_contributors', 'categories', 'genres'])) {
-        foreach ($data as $series) {
-            if (isset($series[$field])) {
-                // Si le champ est un tableau (autres contributeurs, genres, catégories)
-                if (is_array($series[$field])) {
-                    foreach ($series[$field] as $value) {
-                        $normalizedValue = normalize_string($value);
-                        if (str_contains($normalizedValue, $normalizedTerm) && !in_array($value, $suggestions)) {
-                            $suggestions[] = $value;
-                        }
-                    }
+        foreach ($pool as $series) {
+            if (!isset($series[$field])) continue;
+            $series_type = series_type($series);
+
+            // Le champ est soit un tableau (contributeurs, genres, catégories),
+            // soit une chaîne (nom, auteur, éditeur).
+            $values = is_array($series[$field]) ? $series[$field] : [$series[$field]];
+            foreach ($values as $value) {
+                $value = (string)$value;
+                if (trim($value) === '') continue;
+                if (!str_contains(normalize_string($value), $normalizedTerm)) continue;
+
+                if (!isset($suggestions[$value])) {
+                    $suggestions[$value] = [];
                 }
-                // Si le champ est une chaîne (auteur, éditeur)
-                else {
-                    $value = $series[$field];
-                    $normalizedValue = normalize_string($value);
-                    if (str_contains($normalizedValue, $normalizedTerm) && !in_array($value, $suggestions)) {
-                        $suggestions[] = $value;
-                    }
+                if (!in_array($series_type, $suggestions[$value], true)) {
+                    $suggestions[$value][] = $series_type;
                 }
             }
         }
     }
 
-    // Supprime les doublons
-    $suggestions = array_unique($suggestions);
     header('Content-Type: application/json');
-    echo json_encode(array_values($suggestions));
+    if ($with_types) {
+        $out = [];
+        foreach ($suggestions as $value => $types) {
+            $out[] = ['value' => (string)$value, 'types' => $types];
+        }
+        echo json_encode($out);
+    } else {
+        // Format historique : simple tableau de chaînes.
+        echo json_encode(array_map('strval', array_keys($suggestions)));
+    }
     exit;
 }
 
@@ -594,7 +630,9 @@ $search_term = $_GET['search'] ?? '';
 $status_filter = $_GET['status_filter'] ?? '';
 $status_mode = $_GET['status_mode'] ?? 'or';
 
-$filtered_data = $data;
+// Copie d'affichage : jamais transmise à save_data() (cf. avertissement dans
+// config.php), uniquement au rendu et à window.seriesData.
+$filtered_data = series_of_type($data, $current_type);
 
 sort_series($filtered_data, $sort_by, $sort_order);
 
@@ -670,6 +708,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
         <!-- Barre de filtres et recherche -->
         <div class="filters">
             <form method="get">
+                <!-- Conserve la collection affichée à la soumission du formulaire -->
+                <input type="hidden" name="type" value="<?= htmlspecialchars($current_type) ?>">
                 <div class="search-row">
                     <input type="text" name="search" autocomplete="off" id="search-all" placeholder="Rechercher une série, un auteur, un éditeur, etc.."
                            value="<?= htmlspecialchars($search_term) ?>">
@@ -783,7 +823,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <p>Choisir une série :</p>
                     <input type="text" id="multiple-series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
                     <div class="series-results" id="multiple-series-results">
-                        <?php foreach ($data as $series): ?>
+                        <?php foreach (series_of_type($data, $current_type) as $series): ?>
                             <div data-id="<?= $series['id'] ?>"><?= $series['name'] ?></div>
                         <?php endforeach; ?>
                     </div>
@@ -974,6 +1014,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
     ?>
     <script>
         window.seriesData = <?= json_encode($series_with_status) ?>;
+        // Contexte de typage : collection affichée + registre allégé (libellé et
+        // couleur de chaque type), pour les badges de l'autocomplétion.
+        window.currentSeriesType = <?= json_encode($current_type) ?>;
+        window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
     </script>
     <script src="assets/js/admin/modals.js"></script>
     <script src="assets/js/admin/autocomplete.js"></script>

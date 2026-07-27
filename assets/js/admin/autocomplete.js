@@ -81,14 +81,104 @@ function normalizeString(str) {
         .replace(/[\u0300-\u036f]/g, "");
 }
 
-async function fetchSuggestionsForFields(term, fields) {
+// ── Contexte de typage ──────────────────────────────────────────────────────
+// window.currentSeriesType et window.seriesTypes sont posés par admin.php.
+function currentSeriesType() {
+    return window.currentSeriesType || 'manga';
+}
+
+function seriesTypeDef(type) {
+    return (window.seriesTypes && window.seriesTypes[type]) || null;
+}
+
+// Badge coloré signalant la collection d'où provient une suggestion.
+function appendTypeBadges(container, types) {
+    if (!Array.isArray(types)) return;
+    types.forEach(type => {
+        const def = seriesTypeDef(type);
+        if (!def) return;
+        const badge = document.createElement('span');
+        badge.className = 'suggestion-type-badge';
+        badge.textContent = def.label;
+        badge.style.setProperty('--type-color', def.color);
+        container.appendChild(badge);
+    });
+}
+
+// Uniformise les deux formats de réponse de l'endpoint en { value, types }.
+function normalizeSuggestions(raw) {
+    return (raw || []).map(item =>
+        typeof item === 'string'
+            ? { value: item, types: [] }
+            : { value: item.value, types: item.types || [] }
+    );
+}
+
+// Sélection dans la barre de recherche principale : si la suggestion n'existe
+// que dans l'autre collection, on bascule la vue au lieu de chercher dans le
+// vide. Sinon, recherche classique dans la collection courante.
+function handleMainSearchSelection(item, input) {
+    const types = Array.isArray(item.types) ? item.types : [];
+    if (types.length > 0 && !types.includes(currentSeriesType())) {
+        const params = new URLSearchParams(window.location.search);
+        params.set('type', types[0]);
+        params.set('search', input.value);
+        params.delete('page');
+        window.location.search = params.toString();
+        return;
+    }
+    triggerMainSearch(input);
+}
+
+// Récupère les suggestions pour une liste de champs.
+// opts.withTypes   → réponse enrichie du type de chaque suggestion (barre de
+//                    recherche principale, qui traverse les collections) ;
+// opts.restrictType → limite la recherche à une seule collection (champs des
+//                    modales, qui ne concernent que la collection affichée).
+async function fetchSuggestionsForFields(term, fields, opts = {}) {
     const normalizedTerm = normalizeString(term);
+    const extra =
+        (opts.withTypes ? '&with_types=1' : '') +
+        (opts.restrictType ? `&restrict_type=${encodeURIComponent(opts.restrictType)}` : '');
+
     const promises = fields.map(field =>
-        fetch(`admin.php?get_suggestions=true&field=${field}&term=${encodeURIComponent(normalizedTerm)}`)
+        fetch(`admin.php?get_suggestions=true&field=${field}&term=${encodeURIComponent(normalizedTerm)}${extra}`)
             .then(response => response.json())
+            .catch(() => [])
     );
     const results = await Promise.all(promises);
-    return [...new Set(results.flat())];
+
+    if (!opts.withTypes) {
+        return [...new Set(results.flat())].map(value => ({ value, types: [] }));
+    }
+
+    // Une même valeur peut remonter de plusieurs champs : on cumule ses types.
+    const merged = new Map();
+    results.flat().forEach(item => {
+        if (!item || typeof item.value !== 'string') return;
+        const types = merged.get(item.value) || [];
+        (item.types || []).forEach(t => { if (!types.includes(t)) types.push(t); });
+        merged.set(item.value, types);
+    });
+    return [...merged.entries()].map(([value, types]) => ({ value, types }));
+}
+
+// Construit une ligne de suggestion. L'objet source est attaché au noeud pour
+// que la navigation clavier retrouve la valeur exacte (sans le texte du badge).
+function buildSuggestionItem(item, showBadges, onSelect) {
+    const div = document.createElement('div');
+    div.className = 'autocomplete-suggestion';
+
+    const label = document.createElement('span');
+    label.className = 'suggestion-label';
+    label.textContent = item.value;
+    div.appendChild(label);
+
+    if (showBadges) appendTypeBadges(div, item.types);
+
+    div.__suggestion = item;
+    div.addEventListener('click', () => onSelect(item));
+    return div;
 }
 
 // Helper : ajoute la navigation clavier à une liste de suggestions
@@ -96,7 +186,7 @@ function addKeyboardNav(input, suggestionsList, onSelect) {
     input.addEventListener('keydown', function(e) {
         if (suggestionsList.style.display === 'none') return;
 
-        const items = [...suggestionsList.querySelectorAll('div')];
+        const items = [...suggestionsList.children];
         if (!items.length) return;
 
         const activeIndex = items.findIndex(d => d.classList.contains('autocomplete-active'));
@@ -139,8 +229,18 @@ function setupAutocomplete(inputId, fields) {
     suggestionsList.className = 'autocomplete-suggestions';
     container.appendChild(suggestionsList);
 
-    // Indique si cet input est la barre de recherche principale
+    // La barre de recherche principale traverse les collections ; les champs des
+    // modales restent cantonnés à celle qui est affichée.
     const isMainSearch = (inputId === 'search-all');
+    const fetchOpts = isMainSearch
+        ? { withTypes: true }
+        : { restrictType: currentSeriesType() };
+
+    function applySuggestion(item) {
+        input.value = item.value;
+        suggestionsList.style.display = 'none';
+        if (isMainSearch) handleMainSearchSelection(item, input);
+    }
 
     input.addEventListener('input', async function() {
         const term = this.value.trim();
@@ -150,22 +250,20 @@ function setupAutocomplete(inputId, fields) {
         }
 
         try {
-            const suggestions = await fetchSuggestionsForFields(term, fields);
+            const suggestions = normalizeSuggestions(
+                await fetchSuggestionsForFields(term, fields, fetchOpts)
+            );
             suggestionsList.innerHTML = '';
-            if (suggestions.length > 0) {
-                const normalizedTerm = normalizeString(term);
-                suggestions
-                    .filter(suggestion => normalizeString(suggestion).includes(normalizedTerm))
-                    .forEach(suggestion => {
-                        const div = document.createElement('div');
-                        div.textContent = suggestion;
-                        div.addEventListener('click', () => {
-                            input.value = suggestion;
-                            suggestionsList.style.display = 'none';
-                            if (isMainSearch) triggerMainSearch(input);
-                        });
-                        suggestionsList.appendChild(div);
-                    });
+            const normalizedTerm = normalizeString(term);
+            const filtered = suggestions.filter(item =>
+                normalizeString(item.value).includes(normalizedTerm)
+            );
+            if (filtered.length > 0) {
+                filtered.forEach(item => {
+                    suggestionsList.appendChild(
+                        buildSuggestionItem(item, isMainSearch, applySuggestion)
+                    );
+                });
                 suggestionsList.style.display = 'block';
             } else {
                 suggestionsList.style.display = 'none';
@@ -176,10 +274,8 @@ function setupAutocomplete(inputId, fields) {
     });
 
     addKeyboardNav(input, suggestionsList, (activeItem) => {
-        input.value = activeItem.textContent;
         activeItem.classList.remove('autocomplete-active');
-        suggestionsList.style.display = 'none';
-        if (isMainSearch) triggerMainSearch(input);
+        applySuggestion(activeItem.__suggestion || { value: activeItem.textContent, types: [] });
     });
 
     document.addEventListener('click', (e) => {
@@ -207,20 +303,23 @@ function setupMultiAutocomplete(inputId, fields) {
     suggestionsList.className = 'autocomplete-suggestions';
     container.appendChild(suggestionsList);
 
-    // Indique si cet input est la barre de recherche principale
+    // Idem : seule la barre de recherche principale traverse les collections.
     const isMainSearch = (inputId === 'search-all');
+    const fetchOpts = isMainSearch
+        ? { withTypes: true }
+        : { restrictType: currentSeriesType() };
 
     function getLastTerm(value) {
         const parts = value.split(',').map(part => part.trim());
         return parts[parts.length - 1];
     }
 
-    function selectSuggestion(suggestionText) {
+    function selectSuggestion(item) {
         const parts = input.value.split(',').map(part => part.trim());
-        parts[parts.length - 1] = suggestionText;
+        parts[parts.length - 1] = item.value;
         input.value = parts.join(', ');
         suggestionsList.style.display = 'none';
-        if (isMainSearch) triggerMainSearch(input);
+        if (isMainSearch) handleMainSearchSelection(item, input);
     }
 
     input.addEventListener('input', async function() {
@@ -233,19 +332,20 @@ function setupMultiAutocomplete(inputId, fields) {
 
         try {
             const normalizedLastTerm = normalizeString(lastTerm);
-            const suggestions = await fetchSuggestionsForFields(lastTerm, fields);
+            const suggestions = normalizeSuggestions(
+                await fetchSuggestionsForFields(lastTerm, fields, fetchOpts)
+            );
 
             suggestionsList.innerHTML = '';
-            if (suggestions.length > 0) {
-                const filteredSuggestions = suggestions.filter(suggestion =>
-                    normalizeString(suggestion).includes(normalizedLastTerm)
-                );
+            const filteredSuggestions = suggestions.filter(item =>
+                normalizeString(item.value).includes(normalizedLastTerm)
+            );
 
-                filteredSuggestions.forEach(suggestion => {
-                    const div = document.createElement('div');
-                    div.textContent = suggestion;
-                    div.addEventListener('click', () => selectSuggestion(suggestion));
-                    suggestionsList.appendChild(div);
+            if (filteredSuggestions.length > 0) {
+                filteredSuggestions.forEach(item => {
+                    suggestionsList.appendChild(
+                        buildSuggestionItem(item, isMainSearch, selectSuggestion)
+                    );
                 });
                 suggestionsList.style.display = 'block';
             } else {
@@ -257,7 +357,7 @@ function setupMultiAutocomplete(inputId, fields) {
     });
 
     addKeyboardNav(input, suggestionsList, (activeItem) => {
-        selectSuggestion(activeItem.textContent);
+        selectSuggestion(activeItem.__suggestion || { value: activeItem.textContent, types: [] });
     });
 
     document.addEventListener('click', (e) => {

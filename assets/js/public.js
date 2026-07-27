@@ -1,3 +1,23 @@
+// ── Contexte de typage ──────────────────────────────────────────────────────
+// window.currentSeriesType et window.seriesTypes sont posés par index.php.
+function publicSeriesType() {
+    return window.currentSeriesType || 'manga';
+}
+
+// Badge coloré signalant la collection d'où provient une suggestion.
+function appendPublicTypeBadges(container, types) {
+    if (!Array.isArray(types)) return;
+    types.forEach(type => {
+        const def = (window.seriesTypes && window.seriesTypes[type]) || null;
+        if (!def) return;
+        const badge = document.createElement('span');
+        badge.className = 'suggestion-type-badge';
+        badge.textContent = def.label;
+        badge.style.setProperty('--type-color', def.color);
+        container.appendChild(badge);
+    });
+}
+
 // scripts/public.js
 
 // Construit le texte de la pop-up (data-title) d'un tome, façon admin.
@@ -204,7 +224,7 @@ function loadMoreSeries() {
     const sortBy = currentSortBy || urlParams.get('sort_by') || 'name';
     const sortOrder = currentSortOrder || urlParams.get('sort_order') || 'asc';
 
-    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=12&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}` + statusFilterQuery())
+    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=12&type=${encodeURIComponent(publicSeriesType())}&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}` + statusFilterQuery())
         .then(response => response.json())
         .then(data => {
             if (data.success && data.series && data.series.length > 0) {
@@ -340,7 +360,7 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
     document.getElementById('series-list').innerHTML = '<p>Chargement des résultats...</p>';
 
     // Charge les résultats via AJAX
-    fetch(`index.php?get_paginated_series=true&page=1&per_page=12&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}` + statusFilterQuery())
+    fetch(`index.php?get_paginated_series=true&page=1&per_page=12&type=${encodeURIComponent(publicSeriesType())}&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}` + statusFilterQuery())
         .then(response => response.json())
         .then(data => {
             const seriesList = document.getElementById('series-list');
@@ -511,21 +531,45 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const fields = ['name', 'author', 'publisher', 'categories', 'genres', 'other_contributors'];
 
+    // with_types=1 : la barre de recherche traverse les collections et chaque
+    // suggestion indique celles où elle apparaît.
     async function fetchSuggestions(term) {
         const normalized = normalizeString(term);
         const promises = fields.map(field =>
-            fetch(`index.php?get_suggestions=true&field=${field}&term=${encodeURIComponent(normalized)}`)
+            fetch(`index.php?get_suggestions=true&with_types=1&field=${field}&term=${encodeURIComponent(normalized)}`)
                 .then(r => r.ok ? r.json() : [])
                 .catch(() => [])
         );
         const results = await Promise.all(promises);
-        return [...new Set(results.flat())];
+
+        // Une même valeur peut remonter de plusieurs champs : on cumule ses types.
+        const merged = new Map();
+        results.flat().forEach(item => {
+            if (!item || typeof item.value !== 'string') return;
+            const types = merged.get(item.value) || [];
+            (item.types || []).forEach(t => { if (!types.includes(t)) types.push(t); });
+            merged.set(item.value, types);
+        });
+        return [...merged.entries()].map(([value, types]) => ({ value, types }));
     }
 
-    function selectSuggestion(value) {
-        input.value = value;
+    // Si la suggestion n'existe que dans l'autre collection, on y bascule ;
+    // sinon, recherche classique dans celle qui est affichée.
+    function selectSuggestion(item) {
+        input.value = item.value;
         suggestionsList.style.display = 'none';
         suggestionsList.querySelectorAll('div').forEach(d => d.classList.remove('autocomplete-active'));
+
+        const types = Array.isArray(item.types) ? item.types : [];
+        if (types.length > 0 && !types.includes(publicSeriesType())) {
+            const params = new URLSearchParams(window.location.search);
+            params.set('type', types[0]);
+            params.set('search', item.value);
+            params.delete('page');
+            window.location.search = params.toString();
+            return;
+        }
+
         const form = input.closest('form');
         if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     }
@@ -539,13 +583,22 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const suggestions = await fetchSuggestions(term);
             const normalizedTerm = normalizeString(term);
-            const filtered = suggestions.filter(s => normalizeString(s).includes(normalizedTerm));
+            const filtered = suggestions.filter(item => normalizeString(item.value).includes(normalizedTerm));
             suggestionsList.innerHTML = '';
             if (filtered.length > 0) {
-                filtered.forEach(suggestion => {
+                filtered.forEach(item => {
                     const div = document.createElement('div');
-                    div.textContent = suggestion;
-                    div.addEventListener('click', () => selectSuggestion(suggestion));
+                    div.className = 'autocomplete-suggestion';
+
+                    const label = document.createElement('span');
+                    label.className = 'suggestion-label';
+                    label.textContent = item.value;
+                    div.appendChild(label);
+
+                    appendPublicTypeBadges(div, item.types);
+
+                    div.__suggestion = item;
+                    div.addEventListener('click', () => selectSuggestion(item));
                     suggestionsList.appendChild(div);
                 });
                 suggestionsList.style.display = 'block';
@@ -560,7 +613,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Navigation clavier
     input.addEventListener('keydown', function(e) {
         if (suggestionsList.style.display === 'none') return;
-        const items = [...suggestionsList.querySelectorAll('div')];
+        const items = [...suggestionsList.children];
         if (!items.length) return;
         const activeIdx = items.findIndex(d => d.classList.contains('autocomplete-active'));
 
@@ -578,7 +631,7 @@ document.addEventListener('DOMContentLoaded', function() {
             items[prev].scrollIntoView({ block: 'nearest' });
         } else if (e.key === 'Enter' && activeIdx >= 0) {
             e.preventDefault();
-            selectSuggestion(items[activeIdx].textContent);
+            selectSuggestion(items[activeIdx].__suggestion || { value: items[activeIdx].textContent, types: [] });
         } else if (e.key === 'Escape') {
             suggestionsList.style.display = 'none';
             items.forEach(d => d.classList.remove('autocomplete-active'));

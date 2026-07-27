@@ -20,8 +20,12 @@ if (!function_exists('mangaupdates_get_id_from_url')) {
 // ── Ciblage ─────────────────────────────────────────────────────────────────
 
 // Séries dépourvues d'URL MangaUpdates (cibles de « Associer MangaUpdates »).
+// Périmètre V4 : Mangathèque uniquement (MangaUpdates ne référence pas d'animés).
 function mu_assoc_targets(array $data): array {
-    return array_values(array_filter($data, fn($s) => empty($s['mangaupdates_url'])));
+    return array_values(array_filter(
+        series_of_type($data, 'manga'),
+        fn($s) => empty($s['mangaupdates_url'])
+    ));
 }
 
 // Une série possède-t-elle au moins un genre non vide ?
@@ -35,9 +39,10 @@ function mu_series_has_genres(array $series): bool {
 }
 
 // Séries avec URL MangaUpdates mais sans genre (cibles de « Associer les genres »).
+// Périmètre V4 : Mangathèque uniquement.
 function mu_genres_targets(array $data): array {
     return array_values(array_filter(
-        $data,
+        series_of_type($data, 'manga'),
         fn($s) => !empty($s['mangaupdates_url']) && !mu_series_has_genres($s)
     ));
 }

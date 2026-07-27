@@ -58,8 +58,13 @@ async function loadMoreSeries() {
         const sortBy = currentSortBy || urlParams.get('sort_by') || 'name';
         const sortOrder = currentSortOrder || urlParams.get('sort_order') || 'asc';
 
+        // La collection affichée (Mangathèque / Animethèque) accompagne chaque
+        // requête : recherche, tri et pagination restent cloisonnés par type.
+        const seriesType = window.currentSeriesType || 'manga';
+
         const response = await fetch(
             `admin.php?get_paginated_series=true&page=${currentPage + 1}&per_page=9&light=true` +
+            `&type=${encodeURIComponent(seriesType)}` +
             `&search=${encodeURIComponent(searchTerm)}` +
             `&sort_by=${sortBy}&sort_order=${sortOrder}` +
             statusFilterQuery()

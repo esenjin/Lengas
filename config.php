@@ -147,6 +147,13 @@ function init_db(PDO $pdo): void {
         $pdo->exec("ALTER TABLE series ADD COLUMN reading_abandoned INTEGER NOT NULL DEFAULT 0");
     } catch (Exception $e) { /* colonne déjà présente */ }
 
+    // ── Colonne type (typage des séries : manga, anime, …) ─────────────────────
+    // Le registre des types vit dans includes/helpers.php. Le défaut 'manga'
+    // assure la rétro-compatibilité : toute série antérieure à la V4 en relève.
+    try {
+        $pdo->exec("ALTER TABLE series ADD COLUMN type TEXT NOT NULL DEFAULT 'manga'");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
     // ── Colonne rating (notation subjective : apprecie / mitige / deteste) ──────
     // Valeur vide = pas de note.
     try {
@@ -216,6 +223,33 @@ function init_db(PDO $pdo): void {
         foreach ($defaults as $k => $v) {
             $stmt->execute([$k, $v]);
         }
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Typage rétroactif des séries (V4)
+// ──────────────────────────────────────────────────────────────────────────────
+// Les bases antérieures à la V4 contiennent des séries sans type. On les rattache
+// une bonne fois à 'manga', silencieusement, à la première visite de admin.php.
+// L'opération est marquée dans les options pour ne pas se rejouer à chaque page ;
+// restaurer une ancienne base réinitialise ce marqueur avec elle, et la migration
+// se refera d'elle-même.
+function backfill_series_types(): void {
+    try {
+        $db = get_db();
+
+        $done = $db->query("SELECT value FROM options WHERE key = 'series_types_migrated'")
+                   ->fetchColumn();
+        if ($done === '1') {
+            return;
+        }
+
+        $db->exec("UPDATE series SET type = 'manga' WHERE type IS NULL OR TRIM(type) = ''");
+        $db->prepare("INSERT OR REPLACE INTO options (key, value) VALUES ('series_types_migrated', '1')")
+           ->execute();
+    } catch (Exception $e) {
+        // Migration non bloquante : une base non typée reste lisible, load_data()
+        // repliant de toute façon sur 'manga'.
     }
 }
 
@@ -360,6 +394,8 @@ function load_data(): array {
         $result[] = [
             'id'                 => $s['id'],
             'name'               => $s['name'],
+            // Repli sur 'manga' : couvre les bases non encore migrées.
+            'type'               => (isset($s['type']) && trim($s['type']) !== '') ? $s['type'] : 'manga',
             'author'             => $s['author'],
             'publisher'          => $s['publisher'],
             'other_contributors' => $s['other_contributors'] !== '' ? explode(',', $s['other_contributors']) : [''],
@@ -381,6 +417,23 @@ function load_data(): array {
     return $result;
 }
 
+/**
+ * Enregistre la collection.
+ *
+ * ⚠️ SYNCHRONISATION INTÉGRALE — À LIRE AVANT TOUT APPEL ⚠️
+ * Cette fonction ne fait pas qu'écrire : elle SUPPRIME de la base toute série
+ * absente de $data (c'est ce qui fait fonctionner delete_series()). Elle attend
+ * donc TOUJOURS la collection COMPLÈTE, tous types confondus.
+ *
+ * Ne lui passez jamais un tableau filtré — ni par type (series_of_type()), ni par
+ * recherche, ni par statut. En vue Mangathèque, un tableau filtré ne contient
+ * aucun animé : le premier enregistrement effacerait toute l'Animethèque et ses
+ * épisodes, sans le moindre message.
+ *
+ * Règle pratique : $data reste intact pour l'écriture, le filtrage par type se
+ * fait en aval sur une COPIE dédiée à l'affichage ($filtered_data), exactement
+ * comme le filtre de statuts.
+ */
 function save_data(array $data): void {
     $db = get_db();
     $db->beginTransaction();
@@ -398,10 +451,11 @@ function save_data(array $data): void {
         }
 
         $upsertSeries = $db->prepare("
-            INSERT INTO series (id, name, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating)
-            VALUES (:id,:name,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating)
+            INSERT INTO series (id, name, type, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating)
+            VALUES (:id,:name,:type,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating)
             ON CONFLICT(id) DO UPDATE SET
-                name=excluded.name, author=excluded.author, publisher=excluded.publisher,
+                name=excluded.name, type=excluded.type,
+                author=excluded.author, publisher=excluded.publisher,
                 other_contributors=excluded.other_contributors, categories=excluded.categories,
                 genres=excluded.genres, image=excluded.image, anilist_id=excluded.anilist_id,
                 mature=excluded.mature, favorite=excluded.favorite, status=excluded.status,
@@ -421,6 +475,7 @@ function save_data(array $data): void {
             $upsertSeries->execute([
                 ':id'                  => $s['id'],
                 ':name'                => $s['name'],
+                ':type'                => (isset($s['type']) && trim($s['type']) !== '') ? $s['type'] : 'manga',
                 ':author'              => $s['author'] ?? '',
                 ':publisher'           => $s['publisher'] ?? '',
                 ':other_contributors'  => implode(',', $s['other_contributors'] ?? ['']),

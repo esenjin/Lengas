@@ -315,6 +315,12 @@ function mangaupdates_check_api(): array {
 //   no_reference → séries sans URL MangaUpdates  (avec 'id' pour le bouton Éditer)
 //   failed       → séries avec URL mais analyse impossible (réseau / pas de tomes)
 function get_incomplete_series(array $data): array {
+    // Périmètre V4 : ces vérifications ne concernent que la Mangathèque.
+    // $data est reçu PAR VALEUR : le filtrage ne touche que cette copie locale,
+    // le tableau de l'appelant reste complet pour les écritures ultérieures
+    // (voir l'avertissement de save_data() dans config.php).
+    $data = series_of_type($data, 'manga');
+
     $incomplete_series        = [];
     $series_with_more_volumes = [];
     $no_reference_series      = [];

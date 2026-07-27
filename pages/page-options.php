@@ -25,6 +25,12 @@ require_once 'vestikan/vestikan.php';
 
 $data    = load_data();
 $options = load_options();
+// ── Périmètre V4 : Mangathèque uniquement ────────────────────────────────────
+// Cette page ne traite pas encore les séries animées. Le filtrage est sans
+// danger ici : aucune écriture sur la table `series` n'a lieu, $data ne sert
+// qu'à la lecture et à l'affichage (voir l'avertissement de save_data()).
+$data = series_of_type($data, 'manga');
+
 
 // ============================================================================
 // TRAITEMENT : mise à jour des options du site

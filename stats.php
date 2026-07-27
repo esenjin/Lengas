@@ -3,9 +3,16 @@ require 'config.php';
 require 'fonctions/stats_compute.php';
 require 'fonctions/reviews.php';
 require 'includes/themes.php';
+require 'includes/helpers.php'; // registre central des types
 
 $data    = load_data();
 $options = load_options();
+// ── Périmètre V4 : Mangathèque uniquement ────────────────────────────────────
+// Cette page ne traite pas encore les séries animées. Le filtrage est sans
+// danger ici : aucune écriture sur la table `series` n'a lieu, $data ne sert
+// qu'à la lecture et à l'affichage (voir l'avertissement de save_data()).
+$data = series_of_type($data, 'manga');
+
 
 // Le titre de la page stats utilise bien stats_page_title (bug corrigé)
 $page_title = $options['stats_page_title'] ?? ($options['site_name'] ?? 'Statistiques');

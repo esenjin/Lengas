@@ -1,6 +1,8 @@
 <?php
 // Ajouter une série
-function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours', $read_elsewhere = false, $reading_abandoned = false, $rating = '') {
+// $type : clé du registre de types (includes/helpers.php). Par défaut 'manga',
+// la modale d'ajout de cette page ne créant que des mangas et light-novels.
+function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours', $read_elsewhere = false, $reading_abandoned = false, $rating = '', $type = 'manga') {
     $volumes = [];
     for ($i = 1; $i <= $volumes_count; $i++) {
         $volumes[] = [
@@ -36,6 +38,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
     $data[] = [
         'id' => generate_uuid(),
         'name' => $name,
+        'type' => sanitize_series_type($type),
         'author' => $author,
         'publisher' => $publisher,
         'other_contributors' => explode(',', $other_contributors),
