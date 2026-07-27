@@ -175,12 +175,25 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tip) tip.classList.remove('is-visible');
     }
 
+    // Sélecteur des éléments porteurs d'une infobulle. Volontairement générique :
+    // la mécanique était initialement câblée sur les seuls tomes, ce qui laissait
+    // muet tout nouvel usage de data-title — le badge des éditions physiques d'une
+    // série animée, par exemple. Tout élément qui porte l'attribut est désormais
+    // pris en charge, sans avoir à revenir ici.
+    var TIP_SELECTOR = '[data-title]';
+
     document.addEventListener('mouseover', function (e) {
-        var target = e.target.closest('.volumes-list li[data-title]');
+        var target = e.target.closest(TIP_SELECTOR);
         if (target) showTip(target);
     });
     document.addEventListener('mouseout', function (e) {
-        if (e.target.closest('.volumes-list li[data-title]')) hideTip();
+        var target = e.target.closest(TIP_SELECTOR);
+        if (!target) return;
+        // Passer sur un enfant (l'image d'un badge, par exemple) ne fait pas
+        // sortir de l'élément : sans ce contrôle, l'infobulle clignoterait.
+        var to = e.relatedTarget;
+        if (to && target.contains(to)) return;
+        hideTip();
     });
     // On masque aussi au défilement (position fixe => sinon décalage)
     window.addEventListener('scroll', hideTip, true);

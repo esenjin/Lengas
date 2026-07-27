@@ -12,6 +12,10 @@ document.addEventListener('click', function(e) {
         const series = seriesData.find(s => s.id === seriesId);
         console.log("série trouvée :", series);
 
+        // Une série animée n'a rien à faire dans la modale des mangas : son
+        // édition passe par anime.js, qui a déjà intercepté le clic.
+        if (series && series.type === 'anime') return;
+
         if (series) {
             let seriesStatus = 'en cours';
             if (series.volumes && series.volumes.some(volume => volume.last)) {

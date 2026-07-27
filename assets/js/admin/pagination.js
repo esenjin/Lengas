@@ -60,7 +60,9 @@ async function loadMoreSeries() {
 
         // La collection affichée (Mangathèque / Animethèque) accompagne chaque
         // requête : recherche, tri et pagination restent cloisonnés par type.
-        const seriesType = window.currentSeriesType || 'manga';
+        const seriesType = typeof window.currentSeriesType === 'string'
+            ? window.currentSeriesType
+            : 'manga';
 
         const response = await fetch(
             `admin.php?get_paginated_series=true&page=${currentPage + 1}&per_page=9&light=true` +
@@ -96,6 +98,13 @@ async function loadMoreSeries() {
 
 // Crée une carte de série allégée (sans tomes)
 function createLightSeriesCard(series) {
+    // Les séries animées ont leur propre gabarit (studios et format à la place
+    // de l'auteur et de l'éditeur, badges Anilist et éditions physiques).
+    // Il vit dans anime.js, chargé avant ce fichier.
+    if (series.type === 'anime' && typeof createAnimeSeriesCard === 'function') {
+        return createAnimeSeriesCard(series);
+    }
+
     const seriesCard = document.createElement('div');
     seriesCard.className = 'series-card' + (series.favorite ? ' favorite' : '');
     seriesCard.dataset.seriesId = series.id;
@@ -286,6 +295,9 @@ document.getElementById('series-list').addEventListener('click', (e) => {
                     break;
                 }
             }
+
+            // Les animés ouvrent leur propre modale, gérée par anime.js.
+            if (series && series.type === 'anime') return;
 
             if (series) {
                 let seriesStatus = 'en cours';

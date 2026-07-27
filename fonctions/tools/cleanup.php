@@ -51,6 +51,12 @@ function clean_orphaned_images(): array {
     }
     foreach ($data as $series) {
         if (!empty($series['image'])) $used_images[] = $series['image'];
+        // V4 : la vignette Anilist d'une série existante n'est pas orpheline,
+        // même quand une vignette personnalisée la masque — supprimer la
+        // personnalisée doit la faire réapparaître (cf. series_thumbnail()).
+        // Celle d'une série supprimée l'est, mais delete_series() s'en charge
+        // déjà au moment de la suppression.
+        if (!empty($series['anilist_image'])) $used_images[] = $series['anilist_image'];
     }
 
     // Ne jamais supprimer la photo de profil de l'admin.

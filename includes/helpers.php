@@ -189,6 +189,127 @@ function series_types_for_js(): array {
     return $out;
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Vignette d'une série — cascade d'affichage
+// ──────────────────────────────────────────────────────────────────────────────
+// Ordre de priorité, sans exception :
+//   1. vignette personnalisée (`image`), téléversée par l'utilisateur ;
+//   2. vignette Anilist (`anilist_image`), téléchargée à l'import d'un animé ;
+//   3. vignette par défaut du site.
+//
+// Conséquence directe, et voulue : supprimer la vignette personnalisée d'un
+// animé fait automatiquement réapparaître celle d'Anilist. Le fichier n'ayant
+// jamais été effacé, il n'y a rien à retélécharger.
+//
+// Le fichier est vérifié à chaque niveau : une vignette dont le fichier a
+// disparu ne doit pas produire une image cassée, mais laisser la main au niveau
+// suivant de la cascade.
+function series_thumbnail($series, string $default = 'assets/img/logo.png'): string {
+    foreach (['image', 'anilist_image'] as $field) {
+        $path = trim((string)($series[$field] ?? ''));
+        if ($path !== '' && file_exists($path)) {
+            return $path;
+        }
+    }
+    return $default;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Titres alternatifs (animés)
+// ──────────────────────────────────────────────────────────────────────────────
+// Liste des titres proposés au sélecteur d'édition : romaji, anglais, natif et
+// synonymes, tels que récupérés sur Anilist. Le titre courant y est réinjecté en
+// tête s'il n'y figure pas — cas d'un titre choisi puis retiré d'Anilist, qui ne
+// doit jamais disparaître du sélecteur sous les yeux de l'utilisateur.
+function series_alt_titles($series): array {
+    $titles = [];
+    $current = trim((string)($series['name'] ?? ''));
+    if ($current !== '') $titles[] = $current;
+
+    $raw = $series['alt_titles'] ?? [];
+    if (is_string($raw)) {
+        $raw = function_exists('decode_alt_titles') ? decode_alt_titles($raw) : [];
+    }
+    foreach ((array)$raw as $title) {
+        $title = trim((string)$title);
+        if ($title !== '' && !in_array($title, $titles, true)) {
+            $titles[] = $title;
+        }
+    }
+    return $titles;
+}
+
+// Studios d'une série animée, sous forme de texte affichable.
+function series_studios_text($series): string {
+    $studios = $series['studios'] ?? [];
+    if (is_string($studios)) {
+        $studios = $studios !== '' ? explode(',', $studios) : [];
+    }
+    $studios = array_values(array_filter(array_map('trim', (array)$studios), fn($s) => $s !== ''));
+    return implode(', ', $studios);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Éditions physiques (animés)
+// ──────────────────────────────────────────────────────────────────────────────
+// Un commentaire libre = une édition (« Coffret Blu-ray collector », « DVD
+// import japonais »…). Plafonds : 5 éditions par série, 100 caractères chacune.
+function series_editions_max(): int {
+    return 5;
+}
+
+function series_edition_comment_max(): int {
+    return 100;
+}
+
+// Normalise une liste de commentaires : suppression des vides, découpe à
+// 100 caractères, plafond à 5 entrées. Renvoie une liste de chaînes.
+function sanitize_edition_comments($comments): array {
+    $out = [];
+    foreach ((array)$comments as $comment) {
+        if (is_array($comment)) {
+            $comment = $comment['comment'] ?? '';
+        }
+        $comment = trim(preg_replace('/\s+/u', ' ', (string)$comment));
+        if ($comment === '') continue;
+        $out[] = mb_substr($comment, 0, series_edition_comment_max());
+        if (count($out) >= series_editions_max()) break;
+    }
+    return $out;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Décoration d'une série pour l'affichage (JSON transmis au front)
+// ──────────────────────────────────────────────────────────────────────────────
+// Ajoute les champs que le navigateur ne doit pas avoir à calculer : vignette
+// déjà arbitrée par la cascade, studios en texte, libellé du format, éditions
+// aplaties. Le front affiche, il n'arbitre pas.
+//
+// Ne modifie aucun champ existant : c'est un enrichissement, jamais une
+// réécriture — le tableau reste utilisable tel quel par le reste du site.
+function decorate_series_for_display(array $series): array {
+    $series['thumbnail']    = series_thumbnail($series);
+    $series['custom_image'] = $series['image'] ?? '';
+    $series['studios_text'] = series_studios_text($series);
+    $series['format_label'] = (is_anime($series) && function_exists('anilist_format_label'))
+        ? anilist_format_label($series['anime_format'] ?? '')
+        : '';
+    $series['editions']     = series_edition_comments($series);
+    $series['alt_titles']   = series_alt_titles($series);
+    return $series;
+}
+
+// Liste des commentaires d'éditions d'une série, sous forme de simples chaînes.
+function series_edition_comments($series): array {
+    $out = [];
+    foreach ((array)($series['editions'] ?? []) as $edition) {
+        $comment = is_array($edition) ? ($edition['comment'] ?? '') : $edition;
+        $comment = trim((string)$comment);
+        if ($comment !== '') $out[] = $comment;
+    }
+    return $out;
+}
+
 } // end function_exists guard
 
 // ──────────────────────────────────────────────────────────────────────────────

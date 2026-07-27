@@ -6,6 +6,15 @@ $current_page = basename($_SERVER['PHP_SELF']);
 $__in_pages = strpos(str_replace('\\', '/', $_SERVER['PHP_SELF']), '/pages/') !== false;
 $base  = $__in_pages ? '../' : '';
 $pages = $base . 'pages/';
+
+// Collection actuellement affichée. Sert à marquer la bonne entrée comme active
+// et à n'exposer l'ajout d'un animé que dans l'Animethèque.
+// ⚠️ PROVISOIRE : la refonte complète du menu (sections, libellés au-dessus des
+// icônes, couleurs par collection) est l'objet du bloc 5. Ce qui suit est le
+// strict nécessaire pour atteindre l'Animethèque et y ajouter une série.
+$__sidebar_type = function_exists('sanitize_series_type')
+    ? sanitize_series_type($_GET['type'] ?? '')
+    : 'manga';
 ?>
 <nav class="sidebar" id="sidebar" aria-label="Navigation principale">
 
@@ -16,16 +25,16 @@ $pages = $base . 'pages/';
 
     <ul class="sidebar-nav" role="list">
 
-        <!-- Bibliothèque -->
+        <!-- Mangathèque -->
         <li>
-            <a href="<?= $base ?>admin.php"
-               class="sidebar-link <?= $current_page === 'admin.php' ? 'is-active' : '' ?>"
-               data-tooltip="Bibliothèque">
-                <img src="https://api.iconify.design/mdi/bookshelf.svg?color=%23c084fc" width="22" height="22" alt="">
+            <a href="<?= $base ?>admin.php?type=manga"
+               class="sidebar-link <?= ($current_page === 'admin.php' && $__sidebar_type === 'manga') ? 'is-active' : '' ?>"
+               data-tooltip="Mangathèque">
+                <img src="https://api.iconify.design/mdi/bookshelf.svg?color=%23c94e93" width="22" height="22" alt="">
             </a>
         </li>
 
-<?php if ($current_page === 'admin.php'): ?>
+<?php if ($current_page === 'admin.php' && $__sidebar_type === 'manga'): ?>
         <!-- Ajouter une série (uniquement sur la page admin : les modales
              correspondantes n'existent que là) -->
         <li>
@@ -48,6 +57,29 @@ $pages = $base . 'pages/';
                     data-modal-trigger="open-add-multiple-volumes-modal"
                     data-admin-redirect="<?= $base ?>admin.php">
                 <img src="https://api.iconify.design/mdi/book-plus-multiple.svg?color=%234ade80" width="22" height="22" alt="">
+            </button>
+        </li>
+<?php endif; ?>
+
+        <!-- Animethèque -->
+        <li>
+            <a href="<?= $base ?>admin.php?type=anime"
+               class="sidebar-link <?= ($current_page === 'admin.php' && $__sidebar_type === 'anime') ? 'is-active' : '' ?>"
+               data-tooltip="Animethèque">
+                <img src="https://api.iconify.design/mdi/television-classic.svg?color=%2338bdf8" width="22" height="22" alt="">
+            </a>
+        </li>
+
+<?php if ($current_page === 'admin.php' && $__sidebar_type === 'anime'): ?>
+        <!-- Ajouter une série animée (recherche Anilist) -->
+        <li>
+            <button type="button"
+                    class="sidebar-link"
+                    id="sidebar-add-anime-btn"
+                    data-tooltip="Ajouter une série animée"
+                    data-modal-trigger="open-add-anime-modal"
+                    data-admin-redirect="<?= $base ?>admin.php?type=anime">
+                <img src="https://api.iconify.design/mdi/video-plus.svg?color=%2338bdf8" width="22" height="22" alt="">
             </button>
         </li>
 <?php endif; ?>

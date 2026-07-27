@@ -15,6 +15,10 @@
     --series-title-color: #be3d84;
     --series-title-hover: #9d2f6b;
 
+    /* Titre des séries animées — bleu, distinct du rose des mangas */
+    --anime-title-color: #0284c7;
+    --anime-title-hover: #0369a1;
+
     --error-color: #dc2626;
     --error-hover: #b91c1c;
     --error-dark: #991b1b;

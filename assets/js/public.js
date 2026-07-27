@@ -22,22 +22,198 @@ function appendPublicTypeBadges(container, types) {
 
 // Construit le texte de la pop-up (data-title) d'un tome, façon admin.
 // Formate les dates au format JJ/MM/AAAA si présentes.
-function buildVolumeTooltip(volume) {
+function buildVolumeTooltip(volume, isAnime) {
     const lines = [];
     const fmt = (d) => {
         if (!d) return '';
         const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
         return m ? `${m[3]}/${m[2]}/${m[1]}` : d;
     };
+    // Un épisode ne s'achète pas : ni date d'ajout à la collection, ni collector.
     const added = fmt(volume.added_at);
-    if (added) lines.push(`Date d'ajout à la collection : ${added}`);
+    if (added && !isAnime) lines.push(`Date d'ajout à la collection : ${added}`);
     if (volume.status === 'terminé') {
-        const read = fmt(volume.read_at);
-        if (read) lines.push(`Date de lecture : ${read}`);
+        const done = fmt(volume.read_at);
+        if (done) lines.push(`Date de ${isAnime ? 'visionnage' : 'lecture'} : ${done}`);
     }
-    if (volume.collector) lines.push('Tome collector !');
-    if (volume.last) lines.push('Dernier tome de la série !');
+    if (volume.collector && !isAnime) lines.push('Tome collector !');
+    if (volume.last) lines.push(`Dernier ${isAnime ? 'épisode' : 'tome'} de la série !`);
     return lines.join('\n');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rendu partagé des séries (cartes et modale de détails)
+//
+// Ces fonctions étaient auparavant recopiées à l'identique à trois endroits —
+// affichage initial, pagination infinie et relance après recherche. Le typage
+// des séries en aurait fait trois copies à maintenir en phase : elles sont donc
+// factorisées ici, une bonne fois.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function publicIsAnime(series) {
+    return series && series.type === 'anime';
+}
+
+function publicEscape(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Vignette déjà arbitrée côté serveur (perso → Anilist → défaut).
+function publicThumbnail(series) {
+    return series.thumbnail || series.image || 'assets/img/logo.png';
+}
+
+// Statut de publication (manga) ou de diffusion (animé).
+function publicStatusBadge(series) {
+    let status = 'en cours';
+    if (series.volumes && series.volumes.some(v => v.last)) {
+        status = 'terminée';
+    } else if (series.status) {
+        status = series.status;
+    }
+    const word = publicIsAnime(series) ? 'diffusion' : 'publication';
+    switch (status) {
+        case 'terminée':   return { icon: `✅ ${word} terminée`,   cls: 'status-completed' };
+        case 'en pause':   return { icon: `⏳ ${word} en pause`,   cls: 'status-paused' };
+        case 'abandonnée': return { icon: `⛔ ${word} abandonnée`, cls: 'status-abandoned' };
+        default:           return { icon: `▶️ ${word} en cours`,   cls: 'status-in-progress' };
+    }
+}
+
+// Décompte affiché sous la carte et dans la modale.
+function publicSeriesCount(series) {
+    const total = series.volumes ? series.volumes.length : 0;
+    const done  = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
+    const p     = (n) => (n > 1 ? 's' : '');
+
+    if (publicIsAnime(series)) {
+        return `${total} épisode${p(total)} (${done} vu${p(done)})`;
+    }
+    if (series.read_elsewhere) {
+        return `${done} tome${p(done)} lu${p(done)}`;
+    }
+    return `${total} tome${p(total)} possédé${p(total)} (${done} lu${p(done)})`;
+}
+
+// Badge « éditions physiques » (animés) : commentaires au survol.
+function publicEditionsBadgeHtml(series) {
+    const editions = series.editions || [];
+    if (!editions.length) return '';
+    const tip = editions.map(e => '• ' + e).join('\n');
+    return `<span class="editions-badge" data-title="${publicEscape(tip)}" aria-label="Éditions physiques">` +
+           `<img src="assets/img/physique.png" alt="Éditions physiques" class="editions-logo"></span>`;
+}
+
+// Lien vers la fiche Anilist, sur le modèle des badges MangaUpdates et Babelio.
+function publicAnilistBadgeHtml(series) {
+    if (!series.anilist_url) return '';
+    return `<a class="anilist-badge" href="${publicEscape(series.anilist_url)}" target="_blank" rel="noopener" title="Voir la fiche sur Anilist">` +
+           `<img src="assets/img/anilogo.png" alt="Anilist" class="anilist-logo"></a>`;
+}
+
+function publicSeriesCardClass(series) {
+    return 'series-card'
+        + (publicIsAnime(series) ? ' series-card--anime' : '')
+        + (series.mature ? ' mature' : '')
+        + (series.favorite ? ' favorite' : '');
+}
+
+// Contenu d'une carte. Un animé montre ses studios et son format là où un manga
+// montre son auteur et son éditeur : ni l'un ni l'autre n'a de champ vide.
+function publicSeriesCardHtml(series) {
+    const identity = publicIsAnime(series)
+        ? `<p><strong>Studios :</strong> ${series.studios_text ? publicEscape(series.studios_text) : '<em>inconnus</em>'}</p>
+           <p><strong>Catégorie :</strong> ${publicEscape(series.format_label || '')}</p>`
+        : `<p><strong>Auteur :</strong> ${publicEscape(series.author || '')}</p>
+           <p><strong>Éditeur :</strong> ${publicEscape(series.publisher || '')}</p>`;
+
+    return `
+        <img class="series-image" src="${publicEscape(publicThumbnail(series))}" alt="${publicEscape(series.name)}" loading="lazy">
+        <div class="series-info">
+            <h2>${publicEscape(series.name)}</h2>
+            ${identity}
+            <div class="series-stats">${publicSeriesCount(series)}</div>
+        </div>
+    `;
+}
+
+// Remplit la modale de détails d'une série, quel que soit son type.
+function fillSeriesDetailModal(series) {
+    const isAnime = publicIsAnime(series);
+    const show = (id, visible) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = visible ? '' : 'none';
+    };
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+
+    document.getElementById('modal-series-title').textContent = series.name;
+    document.getElementById('modal-series-image').src = publicThumbnail(series);
+
+    // Lignes propres à chaque collection.
+    show('modal-row-author', !isAnime);
+    show('modal-row-publisher', !isAnime);
+    show('modal-row-contributors', !isAnime);
+    show('modal-row-studios', isAnime);
+
+    setText('modal-series-author', series.author || '');
+    setText('modal-series-publisher', series.publisher || '');
+    const contributors = (series.other_contributors || []).filter(i => i && i.trim() !== '');
+    setText('modal-series-other-contributors', contributors.length ? contributors.join(', ') : 'aucun');
+    setText('modal-series-studios', series.studios_text || 'inconnus');
+
+    // La catégorie d'un animé, c'est son format : le libellé passe au singulier.
+    setText('modal-label-categories', isAnime ? 'Catégorie :' : 'Catégories :');
+    setText('modal-series-categories', (series.categories || []).filter(c => c && c.trim() !== '').join(', '));
+
+    const genres = (series.genres || []).filter(i => i && i.trim() !== '');
+    setText('modal-series-genres', genres.length ? genres.join(', ') : 'aucun');
+
+    document.getElementById('modal-series-stats').innerHTML = publicSeriesCount(series);
+
+    const badge = publicStatusBadge(series);
+    document.getElementById('modal-series-badges').innerHTML =
+        `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
+        `${(!isAnime && series.read_elsewhere) ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}` +
+        `<span class="series-status-badge ${badge.cls}">${badge.icon}</span>` +
+        ratingBadgeHtml(series) +
+        reviewBadgeHtml(series) +
+        (isAnime ? publicEditionsBadgeHtml(series) : '') +
+        (isAnime ? publicAnilistBadgeHtml(series) : '') +
+        `${(!isAnime && series.mangaupdates_url) ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}` +
+        `${(!isAnime && series.babelio_url) ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}`;
+
+    const volumesTitle = document.getElementById('modal-volumes-title');
+    if (volumesTitle) volumesTitle.textContent = isAnime ? 'Liste des épisodes :' : 'Liste des tomes :';
+
+    const volumesList = document.getElementById('modal-volumes-list');
+    volumesList.innerHTML = '';
+    const sorted = series.volumes ? [...series.volumes].sort((a, b) => a.number - b.number) : [];
+    sorted.forEach(volume => {
+        const li = document.createElement('li');
+        li.className = `status-${volume.status.replace(' ', '-')} ${(!isAnime && volume.collector) ? 'volume-collector' : ''} ${volume.last ? 'volume-last' : ''}`;
+        li.textContent = volume.number;
+        const tip = buildVolumeTooltip(volume, isAnime);
+        if (tip) li.setAttribute('data-title', tip);
+        volumesList.appendChild(li);
+    });
+
+    const modalContent = document.querySelector('#series-detail-modal .modal-content');
+    modalContent.classList.toggle('favorite', !!series.favorite);
+    // Marque la collection d'origine : le titre suit la couleur de son type,
+    // comme sur la carte. La classe est portée par la modale et non par le titre
+    // lui-même, pour rester disponible si d'autres éléments doivent en dépendre.
+    modalContent.classList.toggle('modal-content--anime', isAnime);
+
+    window.__currentReviewSeries = series;
+    setModalReviewBtn(series);
 }
 
 let currentSearchTerm = '';
@@ -133,63 +309,7 @@ document.querySelectorAll('.series-card').forEach(card => {
         const seriesIndex = this.dataset.seriesIndex;
         const series = seriesData[seriesIndex];
 
-        document.getElementById('modal-series-title').textContent = series.name;
-        document.getElementById('modal-series-image').src = series.image || 'assets/img/logo.png';
-        document.getElementById('modal-series-author').textContent = series.author;
-        document.getElementById('modal-series-publisher').textContent = series.publisher;
-        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors && series.other_contributors.filter(i => i.trim()).length > 0 ? series.other_contributors.filter(i => i.trim()).join(', ') : 'aucun';
-        document.getElementById('modal-series-categories').textContent = series.categories ? series.categories.join(', ') : '';
-        document.getElementById('modal-series-genres').textContent = series.genres && series.genres.filter(i => i.trim()).length > 0 ? series.genres.filter(i => i.trim()).join(', ') : 'aucun';
-
-        const totalVolumes = series.volumes ? series.volumes.length : 0;
-        const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
-        if (series.read_elsewhere) {
-            document.getElementById('modal-series-stats').innerHTML =
-                `${readVolumes} tome${readVolumes > 1 ? 's' : ''} lu${readVolumes > 1 ? 's' : ''}`;
-        } else {
-            document.getElementById('modal-series-stats').innerHTML =
-                `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} ` +
-                `(${readVolumes} lu${readVolumes > 1 ? 's' : ''})`;
-        }
-
-        let seriesStatus = 'en cours';
-        if (series.volumes && series.volumes.some(v => v.last)) {
-            seriesStatus = 'terminée';
-        } else if (series.status) {
-            seriesStatus = series.status;
-        }
-        let statusIcon, statusClass;
-        switch (seriesStatus) {
-            case 'terminée':   statusIcon = '✅ publication terminée';   statusClass = 'status-completed';  break;
-            case 'en pause':   statusIcon = '⏳ publication en pause';   statusClass = 'status-paused';     break;
-            case 'abandonnée': statusIcon = '⛔ publication abandonnée'; statusClass = 'status-abandoned';  break;
-            default:           statusIcon = '▶️ publication en cours';   statusClass = 'status-in-progress';
-        }
-        document.getElementById('modal-series-badges').innerHTML =
-            `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
-            `${series.read_elsewhere ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}` +
-            `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
-            ratingBadgeHtml(series) +
-            reviewBadgeHtml(series) +
-            `${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}` +
-            `${series.babelio_url ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}`;
-
-        const volumesList = document.getElementById('modal-volumes-list');
-        volumesList.innerHTML = '';
-        const sortedVolumes = series.volumes ? [...series.volumes].sort((a, b) => a.number - b.number) : [];
-        sortedVolumes.forEach(volume => {
-            const li = document.createElement('li');
-            li.className = `status-${volume.status.replace(' ', '-')} ${volume.collector ? 'volume-collector' : ''} ${volume.last ? 'volume-last' : ''}`;
-            li.textContent = volume.number;
-            const tip = buildVolumeTooltip(volume);
-            if (tip) li.setAttribute('data-title', tip);
-            volumesList.appendChild(li);
-        });
-
-        document.querySelector('#series-detail-modal .modal-content').classList.toggle('favorite', !!series.favorite);
-
-        window.__currentReviewSeries = series;
-        setModalReviewBtn(series);
+        fillSeriesDetailModal(series);
         openModal('series-detail-modal');
     });
 });
@@ -234,87 +354,15 @@ function loadMoreSeries() {
                     const seriesIndex = seriesData.length - 1;
 
                     const seriesCard = document.createElement('div');
-                    seriesCard.className = `series-card ${series.mature ? 'mature' : ''} ${series.favorite ? 'favorite' : ''}`;
+                    seriesCard.className = publicSeriesCardClass(series);
                     seriesCard.dataset.seriesIndex = seriesIndex;
 
-                    const totalVolumes = series.volumes ? series.volumes.length : 0;
-                    const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
-
-                    seriesCard.innerHTML = `
-                        <img class="series-image" src="${series.image || 'assets/img/logo.png'}" alt="${series.name}" loading="lazy">
-                        <div class="series-info">
-                            <h2>${series.name}</h2>
-                            <p><strong>Auteur :</strong> ${series.author}</p>
-                            <p><strong>Éditeur :</strong> ${series.publisher}</p>
-                            <div class="series-stats">
-                                ${series.read_elsewhere
-                                    ? `${readVolumes} tome${readVolumes > 1 ? 's' : ''} lu${readVolumes > 1 ? 's' : ''}`
-                                    : `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} (${readVolumes} lu${readVolumes > 1 ? 's' : ''})`
-                                }
-                            </div>
-                        </div>
-                    `;
+                    seriesCard.innerHTML = publicSeriesCardHtml(series);
 
                     // Écouteur pour la nouvelle carte
                     seriesCard.addEventListener('click', function() {
                         const series = seriesData[this.dataset.seriesIndex];
-                        document.getElementById('modal-series-title').textContent = series.name;
-                        document.getElementById('modal-series-image').src = series.image || 'assets/img/logo.png';
-                        document.getElementById('modal-series-author').textContent = series.author;
-                        document.getElementById('modal-series-publisher').textContent = series.publisher;
-                        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors && series.other_contributors.filter(i => i.trim()).length > 0 ? series.other_contributors.filter(i => i.trim()).join(', ') : 'aucun';
-                        document.getElementById('modal-series-categories').textContent = series.categories ? series.categories.join(', ') : '';
-                        document.getElementById('modal-series-genres').textContent = series.genres && series.genres.filter(i => i.trim()).length > 0 ? series.genres.filter(i => i.trim()).join(', ') : 'aucun';
-
-                        const totalVolumes = series.volumes ? series.volumes.length : 0;
-                        const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
-                        if (series.read_elsewhere) {
-                            document.getElementById('modal-series-stats').innerHTML =
-                                `${readVolumes} tome${readVolumes > 1 ? 's' : ''} lu${readVolumes > 1 ? 's' : ''}`;
-                        } else {
-                            document.getElementById('modal-series-stats').innerHTML =
-                                `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} ` +
-                                `(${readVolumes} lu${readVolumes > 1 ? 's' : ''})`;
-                        }
-
-                        let seriesStatus = 'en cours';
-                        if (series.volumes && series.volumes.some(v => v.last)) {
-                            seriesStatus = 'terminée';
-                        } else if (series.status) {
-                            seriesStatus = series.status;
-                        }
-                        let statusIcon, statusClass;
-                        switch (seriesStatus) {
-                            case 'terminée':   statusIcon = '✅ publication terminée';   statusClass = 'status-completed';  break;
-                            case 'en pause':   statusIcon = '⏳ publication en pause';   statusClass = 'status-paused';     break;
-                            case 'abandonnée': statusIcon = '⛔ publication abandonnée'; statusClass = 'status-abandoned';  break;
-                            default:           statusIcon = '▶️ publication en cours';   statusClass = 'status-in-progress';
-                        }
-                        document.getElementById('modal-series-badges').innerHTML =
-                            `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
-                            `${series.read_elsewhere ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}` +
-                            `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
-                            ratingBadgeHtml(series) +
-                            reviewBadgeHtml(series) +
-                            `${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}` +
-                            `${series.babelio_url ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}`;
-
-                        const volumesList = document.getElementById('modal-volumes-list');
-                        volumesList.innerHTML = '';
-                        const sortedVolumes = series.volumes ? [...series.volumes].sort((a, b) => a.number - b.number) : [];
-                        sortedVolumes.forEach(volume => {
-                            const li = document.createElement('li');
-                            li.className = `status-${volume.status.replace(' ', '-')} ${volume.collector ? 'volume-collector' : ''} ${volume.last ? 'volume-last' : ''}`;
-                            li.textContent = volume.number;
-                            const tip = buildVolumeTooltip(volume);
-                            if (tip) li.setAttribute('data-title', tip);
-                            volumesList.appendChild(li);
-                        });
-
-                        document.querySelector('#series-detail-modal .modal-content').classList.toggle('favorite', !!series.favorite);
-
-                        window.__currentReviewSeries = series;
-                        setModalReviewBtn(series);
+                        fillSeriesDetailModal(series);
                         openModal('series-detail-modal');
                     });
 
@@ -372,87 +420,15 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
                     const seriesIndex = seriesData.length - 1;
 
                     const seriesCard = document.createElement('div');
-                    seriesCard.className = `series-card ${series.mature ? 'mature' : ''} ${series.favorite ? 'favorite' : ''}`;
+                    seriesCard.className = publicSeriesCardClass(series);
                     seriesCard.dataset.seriesIndex = seriesIndex;
 
-                    const totalVolumes = series.volumes ? series.volumes.length : 0;
-                    const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
-
-                    seriesCard.innerHTML = `
-                        <img class="series-image" src="${series.image || 'assets/img/logo.png'}" alt="${series.name}" loading="lazy">
-                        <div class="series-info">
-                            <h2>${series.name}</h2>
-                            <p><strong>Auteur :</strong> ${series.author}</p>
-                            <p><strong>Éditeur :</strong> ${series.publisher}</p>
-                            <div class="series-stats">
-                                ${series.read_elsewhere
-                                    ? `${readVolumes} tome${readVolumes > 1 ? 's' : ''} lu${readVolumes > 1 ? 's' : ''}`
-                                    : `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} (${readVolumes} lu${readVolumes > 1 ? 's' : ''})`
-                                }
-                            </div>
-                        </div>
-                    `;
+                    seriesCard.innerHTML = publicSeriesCardHtml(series);
 
                     // Écouteur pour la nouvelle carte
                     seriesCard.addEventListener('click', function() {
                         const series = seriesData[this.dataset.seriesIndex];
-                        document.getElementById('modal-series-title').textContent = series.name;
-                        document.getElementById('modal-series-image').src = series.image || 'assets/img/logo.png';
-                        document.getElementById('modal-series-author').textContent = series.author;
-                        document.getElementById('modal-series-publisher').textContent = series.publisher;
-                        document.getElementById('modal-series-other-contributors').textContent = series.other_contributors && series.other_contributors.filter(i => i.trim()).length > 0 ? series.other_contributors.filter(i => i.trim()).join(', ') : 'aucun';
-                        document.getElementById('modal-series-categories').textContent = series.categories ? series.categories.join(', ') : '';
-                        document.getElementById('modal-series-genres').textContent = series.genres && series.genres.filter(i => i.trim()).length > 0 ? series.genres.filter(i => i.trim()).join(', ') : 'aucun';
-
-                        const totalVolumes = series.volumes ? series.volumes.length : 0;
-                        const readVolumes = series.volumes ? series.volumes.filter(v => v.status === 'terminé').length : 0;
-                        if (series.read_elsewhere) {
-                            document.getElementById('modal-series-stats').innerHTML =
-                                `${readVolumes} tome${readVolumes > 1 ? 's' : ''} lu${readVolumes > 1 ? 's' : ''}`;
-                        } else {
-                            document.getElementById('modal-series-stats').innerHTML =
-                                `${totalVolumes} tome${totalVolumes > 1 ? 's' : ''} possédé${totalVolumes > 1 ? 's' : ''} ` +
-                                `(${readVolumes} lu${readVolumes > 1 ? 's' : ''})`;
-                        }
-
-                        let seriesStatus = 'en cours';
-                        if (series.volumes && series.volumes.some(v => v.last)) {
-                            seriesStatus = 'terminée';
-                        } else if (series.status) {
-                            seriesStatus = series.status;
-                        }
-                        let statusIcon, statusClass;
-                        switch (seriesStatus) {
-                            case 'terminée':   statusIcon = '✅ publication terminée';   statusClass = 'status-completed';  break;
-                            case 'en pause':   statusIcon = '⏳ publication en pause';   statusClass = 'status-paused';     break;
-                            case 'abandonnée': statusIcon = '⛔ publication abandonnée'; statusClass = 'status-abandoned';  break;
-                            default:           statusIcon = '▶️ publication en cours';   statusClass = 'status-in-progress';
-                        }
-                        document.getElementById('modal-series-badges').innerHTML =
-                            `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
-                            `${series.read_elsewhere ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}` +
-                            `<span class="series-status-badge ${statusClass}">${statusIcon}</span>` +
-                            ratingBadgeHtml(series) +
-                            reviewBadgeHtml(series) +
-                            `${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}` +
-                            `${series.babelio_url ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}`;
-
-                        const volumesList = document.getElementById('modal-volumes-list');
-                        volumesList.innerHTML = '';
-                        const sortedVolumes = series.volumes ? [...series.volumes].sort((a, b) => a.number - b.number) : [];
-                        sortedVolumes.forEach(volume => {
-                            const li = document.createElement('li');
-                            li.className = `status-${volume.status.replace(' ', '-')} ${volume.collector ? 'volume-collector' : ''} ${volume.last ? 'volume-last' : ''}`;
-                            li.textContent = volume.number;
-                            const tip = buildVolumeTooltip(volume);
-                            if (tip) li.setAttribute('data-title', tip);
-                            volumesList.appendChild(li);
-                        });
-
-                        document.querySelector('#series-detail-modal .modal-content').classList.toggle('favorite', !!series.favorite);
-
-                        window.__currentReviewSeries = series;
-                        setModalReviewBtn(series);
+                        fillSeriesDetailModal(series);
                         openModal('series-detail-modal');
                     });
 

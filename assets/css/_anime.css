@@ -1,0 +1,234 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   Animethèque — cartes, badges et modales des séries animées
+
+   Ce fichier ne redéfinit que ce qui diffère des mangas. Tout le reste (grille
+   des cartes, listes de tomes, boutons, modales) est repris tel quel : une
+   série animée est une série, pas un objet à part.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Titre des séries animées : bleu, là où les mangas sont roses ─────────── */
+.series-card--anime .series-info h2 {
+    color: var(--anime-title-color);
+}
+
+/* Modale de détails publique : le titre suit la même règle que la carte. */
+.modal-content--anime #modal-series-title {
+    color: var(--anime-title-color);
+}
+
+/* ── Badge « visionnage abandonné » ───────────────────────────────────────── */
+.watching-abandoned-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.72em;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--error-color);
+    background: var(--error-subtle);
+    border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+/* ── Badge « éditions physiques » ─────────────────────────────────────────── */
+/* Le détail des commentaires apparaît au survol, via l'infobulle commune
+   (data-title, gérée par main.js). */
+.editions-badge {
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.75;
+    cursor: help;
+    transition: opacity 0.2s;
+}
+
+.editions-badge:hover {
+    opacity: 1;
+}
+
+.editions-logo {
+    height: 16px;
+    width: auto;
+    display: block;
+}
+
+/* ── Badge Anilist ─────────────────────────────────────────────────────────
+   Le style de base (.anilist-badge / .anilist-logo) vit déjà dans _series.css,
+   aux côtés de ceux de MangaUpdates et Babelio : rien à redéfinir ici. */
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Modale « Ajouter une série animée »
+   ────────────────────────────────────────────────────────────────────────── */
+
+.anime-search-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    margin-bottom: 10px;
+}
+
+.anime-search-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+}
+
+.anime-search-row .button {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.anime-search-feedback {
+    min-height: 1.3em;
+    margin-bottom: 8px;
+    font-size: 0.88rem;
+    color: var(--text-gray);
+}
+
+.anime-search-feedback.is-error   { color: var(--error-color); }
+.anime-search-feedback.is-loading { color: var(--primary-color); }
+
+.anime-search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+.anime-result {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background-color: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius);
+    transition: border-color var(--transition-fast);
+}
+
+.anime-result:hover {
+    border-color: rgba(56, 189, 248, 0.35);
+}
+
+/* Résultat non ajoutable : déjà présent, ou pas encore diffusé. Grisé sur
+   place plutôt que cliquable pour rien. */
+.anime-result.is-blocked {
+    opacity: 0.55;
+}
+
+.anime-result.is-blocked:hover {
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
+.anime-result-cover {
+    width: 52px;
+    height: 74px;
+    object-fit: cover;
+    border-radius: var(--border-radius-sm);
+    flex-shrink: 0;
+    background-color: var(--background-darker);
+}
+
+.anime-result-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.anime-result-title {
+    margin: 0 0 2px;
+    font-weight: 600;
+    color: var(--text-white);
+}
+
+.anime-result-alt,
+.anime-result-meta {
+    margin: 0;
+    font-size: 0.8em;
+    color: var(--text-gray);
+}
+
+.anime-result-notice {
+    margin: 4px 0 0;
+    font-size: 0.8em;
+    color: var(--warning-color);
+}
+
+.anime-result-add {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Modale « Modifier la série animée »
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Bloc en lecture seule : ce qui vient d'Anilist ne doit pas ressembler à un
+   champ de saisie, sous peine de laisser croire que c'est modifiable. */
+.anime-readonly-block {
+    margin: 14px 0;
+    padding: 12px 14px;
+    background-color: var(--background-medium);
+    border: var(--border-subtle);
+    border-left: 3px solid var(--anime-title-color);
+    border-radius: var(--border-radius);
+}
+
+.anime-readonly-title {
+    margin: 0 0 10px;
+    font-weight: 600;
+    color: var(--text-white);
+    font-size: 0.9rem;
+}
+
+.anime-readonly-title span {
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: 0.85em;
+}
+
+.anime-readonly-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px 16px;
+}
+
+.anime-readonly-item {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.anime-readonly-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+}
+
+.anime-readonly-value {
+    color: var(--text-color);
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+}
+
+.anime-readonly-value a {
+    color: var(--anime-title-color);
+    text-decoration: none;
+}
+
+.anime-readonly-value a:hover {
+    text-decoration: underline;
+}
+
+/* ── Éditions physiques : jusqu'à cinq commentaires ───────────────────────── */
+.anime-editions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 8px 0 4px;
+}
+
+.anime-editions .anime-edition-input {
+    margin: 0;
+}

@@ -4,6 +4,9 @@ require_once 'fonctions/reviews.php';
 require_once 'includes/themes.php';
 require_once 'includes/status_filter.php';
 require_once 'includes/custom_icons.php';
+// Connecteur Anilist : seules ses tables de correspondance servent ici
+// (libellés de format). Aucun appel réseau n'est fait depuis la page publique.
+require_once 'includes/anilist.php';
 // Registre central des types. Les fonctions series_latest_date(), sort_series()
 // et normalize_string() définies plus bas dans ce fichier priment sur celles de
 // helpers.php (déclarations de haut niveau, compilées avant ce require) : la
@@ -122,8 +125,10 @@ if (isset($_GET['get_paginated_series'])) {
     $offset = ($page - 1) * $per_page;
     $paginated_data = array_slice($filtered_data, $offset, $per_page);
 
-    // Marque les séries possédant une critique visible.
+    // Marque les séries possédant une critique visible et ajoute les champs
+    // d'affichage (vignette résolue, studios, format, éditions).
     $paginated_data = array_map(function ($s) use ($public_review_ids) {
+        $s = decorate_series_for_display($s);
         $s['has_review'] = isset($public_review_ids[$s['id']]);
         return $s;
     }, array_values($paginated_data));
@@ -392,21 +397,31 @@ if (!empty($search_term)) {
                 foreach ($paginated_data as $series_index => $series):
                     $total_volumes = count($series['volumes'] ?? []);
                     $read_volumes = count(array_filter($series['volumes'] ?? [], fn($v) => $v['status'] === 'terminé'));
+                    $card_is_anime = is_anime($series);
                 ?>
-                    <div class="series-card <?= isset($series['mature']) && $series['mature'] ? 'mature' : '' ?> <?= isset($series['favorite']) && $series['favorite'] ? 'favorite' : '' ?>" data-series-index="<?= $series_index ?>">
-                        <img class="series-image" src="<?= !empty($series['image']) && file_exists($series['image']) ? $series['image'] : 'assets/img/logo.png' ?>" alt="<?= $series['name'] ?? '' ?>" loading="lazy">
+                    <div class="series-card <?= $card_is_anime ? 'series-card--anime' : '' ?> <?= isset($series['mature']) && $series['mature'] ? 'mature' : '' ?> <?= isset($series['favorite']) && $series['favorite'] ? 'favorite' : '' ?>" data-series-index="<?= $series_index ?>">
+                        <img class="series-image" src="<?= htmlspecialchars(series_thumbnail($series)) ?>" alt="<?= $series['name'] ?? '' ?>" loading="lazy">
                         <div class="series-info">
                             <h2><?= $series['name'] ?? '' ?></h2>
-                            <p><strong>Auteur :</strong> <?= $series['author'] ?? '' ?></p>
-                            <p><strong>Éditeur :</strong> <?= $series['publisher'] ?? '' ?></p>
-                            <div class="series-stats">
-                                <?php if (empty($series['read_elsewhere'])): ?>
-                                    <?= $total_volumes ?> tome<?= $total_volumes > 1 ? 's' : '' ?> possédé<?= $total_volumes > 1 ? 's' : '' ?>
-                                    (<?= $read_volumes ?> lu<?= $read_volumes > 1 ? 's' : '' ?>)
-                                <?php else: ?>
-                                    <?= $read_volumes ?> tome<?= $read_volumes > 1 ? 's' : '' ?> lu<?= $read_volumes > 1 ? 's' : '' ?>
-                                <?php endif; ?>
-                            </div>
+                            <?php if ($card_is_anime): ?>
+                                <p><strong>Studios :</strong> <?= htmlspecialchars(series_studios_text($series)) ?: '<em>inconnus</em>' ?></p>
+                                <p><strong>Catégorie :</strong> <?= htmlspecialchars(anilist_format_label($series['anime_format'] ?? '')) ?></p>
+                                <div class="series-stats">
+                                    <?= $total_volumes ?> épisode<?= $total_volumes > 1 ? 's' : '' ?>
+                                    (<?= $read_volumes ?> vu<?= $read_volumes > 1 ? 's' : '' ?>)
+                                </div>
+                            <?php else: ?>
+                                <p><strong>Auteur :</strong> <?= $series['author'] ?? '' ?></p>
+                                <p><strong>Éditeur :</strong> <?= $series['publisher'] ?? '' ?></p>
+                                <div class="series-stats">
+                                    <?php if (empty($series['read_elsewhere'])): ?>
+                                        <?= $total_volumes ?> tome<?= $total_volumes > 1 ? 's' : '' ?> possédé<?= $total_volumes > 1 ? 's' : '' ?>
+                                        (<?= $read_volumes ?> lu<?= $read_volumes > 1 ? 's' : '' ?>)
+                                    <?php else: ?>
+                                        <?= $read_volumes ?> tome<?= $read_volumes > 1 ? 's' : '' ?> lu<?= $read_volumes > 1 ? 's' : '' ?>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -428,16 +443,19 @@ if (!empty($search_term)) {
                             <div id="modal-series-review-btn"></div>
                         </div>
                         <div class="modal-series-info">
-                            <p><strong>Auteur :</strong> <span id="modal-series-author"></span></p>
-                            <p><strong>Éditeur :</strong> <span id="modal-series-publisher"></span></p>
-                            <p><strong>Autres contributeurs :</strong> <span id="modal-series-other-contributors"></span></p>
-                            <p><strong>Catégories :</strong> <span id="modal-series-categories"></span></p>
+                            <?php // Lignes propres aux mangas : masquées pour un animé (cf. public.js). ?>
+                            <p id="modal-row-author"><strong>Auteur :</strong> <span id="modal-series-author"></span></p>
+                            <p id="modal-row-publisher"><strong>Éditeur :</strong> <span id="modal-series-publisher"></span></p>
+                            <p id="modal-row-contributors"><strong>Autres contributeurs :</strong> <span id="modal-series-other-contributors"></span></p>
+                            <?php // Ligne propre aux animés : masquée pour un manga. ?>
+                            <p id="modal-row-studios"><strong>Studios :</strong> <span id="modal-series-studios"></span></p>
+                            <p id="modal-row-categories"><strong id="modal-label-categories">Catégories :</strong> <span id="modal-series-categories"></span></p>
                             <p><strong>Genres :</strong> <span id="modal-series-genres"></span></p>
                             <div class="series-stats" id="modal-series-stats"></div>
                             <div class="series-badges" id="modal-series-badges"></div>
                         </div>
                     </div>
-                    <h3>Liste des tomes :</h3>
+                    <h3 id="modal-volumes-title">Liste des tomes :</h3>
                     <ul class="volumes-list" id="modal-volumes-list"></ul>
                 </div>
             </div>
@@ -548,6 +566,7 @@ if (!empty($search_term)) {
     <script>
         // Données des séries pour JavaScript
         let seriesData = <?= json_encode(array_values(array_map(function ($s) use ($public_review_ids) {
+            $s = decorate_series_for_display($s);
             $s['has_review'] = isset($public_review_ids[$s['id']]);
             return $s;
         }, $data))) ?>;

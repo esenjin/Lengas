@@ -83,8 +83,14 @@ function normalizeString(str) {
 
 // ── Contexte de typage ──────────────────────────────────────────────────────
 // window.currentSeriesType et window.seriesTypes sont posés par admin.php.
-function currentSeriesType() {
-    return window.currentSeriesType || 'manga';
+//
+// ⚠️ Ne JAMAIS nommer cette fonction currentSeriesType : une déclaration de
+// fonction au premier niveau crée window.<nom>, ce qui écraserait la valeur
+// posée par admin.php par la fonction elle-même. La collection affichée serait
+// alors une fonction et non une chaîne, et toute la vue retomberait sur le type
+// par défaut.
+function currentViewType() {
+    return typeof window.currentSeriesType === 'string' ? window.currentSeriesType : 'manga';
 }
 
 function seriesTypeDef(type) {
@@ -119,7 +125,7 @@ function normalizeSuggestions(raw) {
 // vide. Sinon, recherche classique dans la collection courante.
 function handleMainSearchSelection(item, input) {
     const types = Array.isArray(item.types) ? item.types : [];
-    if (types.length > 0 && !types.includes(currentSeriesType())) {
+    if (types.length > 0 && !types.includes(currentViewType())) {
         const params = new URLSearchParams(window.location.search);
         params.set('type', types[0]);
         params.set('search', input.value);
@@ -234,7 +240,7 @@ function setupAutocomplete(inputId, fields) {
     const isMainSearch = (inputId === 'search-all');
     const fetchOpts = isMainSearch
         ? { withTypes: true }
-        : { restrictType: currentSeriesType() };
+        : { restrictType: currentViewType() };
 
     function applySuggestion(item) {
         input.value = item.value;
@@ -307,7 +313,7 @@ function setupMultiAutocomplete(inputId, fields) {
     const isMainSearch = (inputId === 'search-all');
     const fetchOpts = isMainSearch
         ? { withTypes: true }
-        : { restrictType: currentSeriesType() };
+        : { restrictType: currentViewType() };
 
     function getLastTerm(value) {
         const parts = value.split(',').map(part => part.trim());

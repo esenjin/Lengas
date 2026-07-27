@@ -69,6 +69,15 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
     $series_key = $series['key'];  // Utilise la clé associative
     $series_data = $series['data'];
 
+    // Garde-fou V4 : cette fonction est celle de la modale d'édition des mangas.
+    // Appliquée à un animé, elle écraserait des champs qu'Anilist seul renseigne
+    // (auteur, éditeur, catégories, genres) et créerait des tomes là où seuls
+    // des épisodes importés ont leur place. Les animés passent par
+    // update_anime_series() (fonctions/anime.php).
+    if (function_exists('is_anime') && is_anime($series_data)) {
+        return ['success' => false, 'message' => "Une série animée se modifie depuis sa propre fiche."];
+    }
+
     // Détermine le statut actuel si non fourni
     if ($new_status === null) {
         $has_last_volume = false;
@@ -178,6 +187,15 @@ function delete_series($data, $series_id) {
 
     if (file_exists($image_path)) {
         unlink($image_path);
+    }
+
+    // Vignette Anilist : purgée avec la série, au même titre que la vignette
+    // personnalisée. Sans quoi le fichier resterait indéfiniment dans uploads/.
+    // Les éditions physiques, elles, partent d'elles-mêmes : la table
+    // series_editions est en ON DELETE CASCADE sur series(id).
+    $anilist_image = trim((string)($data[$series_key]['anilist_image'] ?? ''));
+    if ($anilist_image !== '' && file_exists($anilist_image)) {
+        @unlink($anilist_image);
     }
 
     unset($data[$series_key]);

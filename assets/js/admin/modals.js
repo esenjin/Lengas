@@ -4,6 +4,8 @@ const modals = {
     'add-multiple-volumes': { modal: document.getElementById('add-multiple-volumes-modal'), closeBtn: document.getElementById('close-add-multiple-volumes-modal') },
     'edit-volume': { modal: document.getElementById('edit-volume-modal'), closeBtn: document.getElementById('close-edit-volume-modal') },
     'edit-series': { modal: document.getElementById('edit-series-modal'), closeBtn: document.getElementById('close-edit-series-modal') },
+    'add-anime': { modal: document.getElementById('add-anime-modal'), closeBtn: document.getElementById('close-add-anime-modal') },
+    'edit-anime': { modal: document.getElementById('edit-anime-modal'), closeBtn: document.getElementById('close-edit-anime-modal') },
     'read': { modal: document.getElementById('read-modal'), closeBtn: document.getElementById('close-read-modal') },
     'edit-read': { modal: document.getElementById('edit-read-modal'), closeBtn: document.getElementById('close-edit-read-modal') }
 };

@@ -5,7 +5,9 @@ require 'includes/helpers.php';
 require_once 'includes/status_filter.php';
 require 'includes/mangaupdates.php';
 require_once 'includes/babengas.php';
+require_once 'includes/anilist.php';
 require 'fonctions/series.php';
+require 'fonctions/anime.php';
 require 'fonctions/volumes.php';
 require 'fonctions/wishlist.php';
 require 'fonctions/loans.php';
@@ -91,6 +93,131 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     exit;
 }
 
+// ── Endpoint : recherche Anilist (modale d'ajout d'une série animée) ────────
+// Renvoie au plus 10 fiches normalisées. Aucune écriture : la sélection d'un
+// résultat déclenche ensuite un POST add_anime_series.
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['anilist_search'])) {
+    header('Content-Type: application/json');
+
+    $term = trim($_GET['q'] ?? '');
+    if ($term === '') {
+        echo json_encode(['success' => true, 'results' => []]);
+        exit;
+    }
+
+    $res = anilist_search($term, 10);
+    if (!$res['ok']) {
+        echo json_encode(['success' => false, 'message' => $res['error'], 'results' => []]);
+        exit;
+    }
+
+    // Identifiants déjà présents dans la vidéothèque : la modale grise les
+    // résultats correspondants plutôt que de laisser cliquer pour rien.
+    $known = [];
+    foreach ($data as $series) {
+        $aid = (int)($series['anilist_id'] ?? 0);
+        if ($aid > 0) $known[$aid] = $series['name'];
+    }
+
+    $results = [];
+    foreach ($res['results'] as $media) {
+        $results[] = [
+            'anilist_id'       => $media['anilist_id'],
+            'title'            => $media['title'],
+            'title_english'    => $media['title_english'],
+            'title_native'     => $media['title_native'],
+            'cover'            => $media['cover'],
+            'year'             => $media['start_year'] ?: $media['season_year'],
+            'format_label'     => $media['format_label'],
+            'status_label'     => $media['status_label'],
+            'episodes'         => $media['episodes'],
+            'studios_text'     => $media['studios_text'],
+            'is_adult'         => $media['is_adult'],
+            'not_yet_released' => $media['not_yet_released'],
+            'already_present'  => isset($known[$media['anilist_id']]),
+            'present_as'       => $known[$media['anilist_id']] ?? '',
+        ];
+    }
+
+    echo json_encode(['success' => true, 'results' => $results]);
+    exit;
+}
+
+// ── Ajout d'une série animée (import complet depuis Anilist) ────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_anime_series'])) {
+    header('Content-Type: application/json');
+
+    $anilist_id = (int)($_POST['anilist_id'] ?? 0);
+    if ($anilist_id <= 0) {
+        echo json_encode(['success' => false, 'message' => "Aucune série sélectionnée."]);
+        exit;
+    }
+
+    // On ne fait aucune confiance aux données envoyées par le navigateur : la
+    // fiche est rechargée depuis Anilist (ou son cache), seul l'identifiant
+    // transite. Anilist fait autorité, y compris face au front du site.
+    $fetch = anilist_fetch_media($anilist_id);
+    if (!$fetch['ok']) {
+        echo json_encode(['success' => false, 'message' => $fetch['error']]);
+        exit;
+    }
+
+    $result = add_anime_series($data, $fetch['media']);
+    if ($result['success']) {
+        save_data($result['data']);
+        $_SESSION['success_message'] = $result['message'];
+    }
+
+    echo json_encode([
+        'success' => $result['success'],
+        'message' => $result['message'],
+    ]);
+    exit;
+}
+
+// ── Mise à jour d'une série animée (champs personnalisables uniquement) ─────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_anime_series'])) {
+    $series_id = $_POST['series_id'] ?? '';
+
+    $new_image = null;
+    if (!empty($_FILES['anime_image']['name'])) {
+        $error_message = null;
+        $new_image = upload_image($_FILES['anime_image'], $error_message);
+        if ($new_image === false) {
+            $_SESSION['error_message'] = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
+            header("Location: " . $_SERVER['REQUEST_URI']);
+            exit;
+        }
+    }
+
+    $result = update_anime_series($data, $series_id, [
+        'name'               => trim($_POST['anime_name'] ?? ''),
+        'mature'             => !empty($_POST['anime_mature']),
+        'favorite'           => !empty($_POST['anime_favorite']),
+        'watching_abandoned' => !empty($_POST['anime_watching_abandoned']),
+        'rating'             => $_POST['anime_rating'] ?? '',
+        // Cocher « Éditions physiques » sans rien saisir revient à n'en déclarer
+        // aucune : le tableau vide efface alors les commentaires existants.
+        'editions'           => !empty($_POST['anime_has_editions'])
+                                    ? ($_POST['anime_editions'] ?? [])
+                                    : [],
+        'new_image'          => $new_image,
+        'remove_image'       => !empty($_POST['anime_remove_image']),
+    ]);
+
+    if ($result['success']) {
+        save_data($result['data']);
+        if (trim($result['message']) !== '') {
+            $_SESSION['error_message'] = $result['message'];
+        }
+    } else {
+        $_SESSION['error_message'] = $result['message'];
+    }
+
+    header("Location: " . $_SERVER['REQUEST_URI']);
+    exit;
+}
+
 // Gestion des actions pour les tomes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_multiple_volumes'])) {
     $series_id = $_POST['series_id'] ?? '';
@@ -98,6 +225,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_multiple_volumes'
     $status = $_POST['status'] ?? 'à lire';
     $is_collector = isset($_POST['is_collector']) ? (bool)$_POST['is_collector'] : false;
     $is_last = isset($_POST['is_last']) ? (bool)$_POST['is_last'] : false;
+
+    // Les épisodes d'un animé viennent d'Anilist et de nulle part ailleurs :
+    // ni ajout ni suppression manuels, où que ce soit dans le site.
+    $target = find_series_by_id($data, $series_id);
+    if ($target && is_anime($target['data'])) {
+        $_SESSION['error_message'] = "Les épisodes d'une série animée sont gérés par Anilist : ils ne s'ajoutent pas à la main.";
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit;
+    }
 
     if ($volumes_count > 0) {
         $result = add_multiple_volumes_to_series($data, $series_id, $volumes_count, $status, $is_collector, $is_last);
@@ -385,24 +521,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 $status = $series['status'];
             }
 
-            // Calcule le statut de lecture
-            $reading_status = 'not_started';
-            if (!empty($series['reading_abandoned'])) {
-                $reading_status = 'abandoned';
+            // Calcule le statut de lecture — ou de visionnage pour un animé :
+            // même jeu de valeurs, badges et filtres restent communs.
+            if (is_anime($series)) {
+                $reading_status = anime_watching_status($series);
             } else {
-                $read_count = 0;
-                $total_count = 0;
-                foreach ($series['volumes'] ?? [] as $volume) {
-                    $total_count++;
-                    if ($volume['status'] === 'terminé') $read_count++;
-                }
-                if ($total_count > 0 && $read_count === $total_count && $has_last) {
-                    $reading_status = 'completed';
-                } elseif ($read_count > 0 && !$has_last) {
-                    $reading_status = 'in_progress';
-                } elseif ($read_count > 0) {
-                    // Des tomes lus mais publication terminée sans tous avoir lu
-                    $reading_status = 'in_progress';
+                $reading_status = 'not_started';
+                if (!empty($series['reading_abandoned'])) {
+                    $reading_status = 'abandoned';
+                } else {
+                    $read_count = 0;
+                    $total_count = 0;
+                    foreach ($series['volumes'] ?? [] as $volume) {
+                        $total_count++;
+                        if ($volume['status'] === 'terminé') $read_count++;
+                    }
+                    if ($total_count > 0 && $read_count === $total_count && $has_last) {
+                        $reading_status = 'completed';
+                    } elseif ($read_count > 0 && !$has_last) {
+                        $reading_status = 'in_progress';
+                    } elseif ($read_count > 0) {
+                        // Des tomes lus mais publication terminée sans tous avoir lu
+                        $reading_status = 'in_progress';
+                    }
                 }
             }
 
@@ -415,7 +556,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 'other_contributors' => $series['other_contributors'] ?? [],
                 'categories' => $series['categories'] ?? [],
                 'genres' => $series['genres'] ?? [],
-                'image' => $series['image'] ?? 'logo.png',
+                // Vignette déjà résolue par la cascade perso → Anilist → défaut :
+                // le front affiche ce qu'on lui donne, il n'arbitre rien.
+                'image' => series_thumbnail($series),
                 'volumes_count' => count($series['volumes']),
                 'favorite' => $series['favorite'] ?? false,
                 'mature' => $series['mature'] ?? false,
@@ -427,6 +570,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 'reading_abandoned'          => (bool)($series['reading_abandoned'] ?? false),
                 'rating'                     => $series['rating'] ?? '',
                 'has_review'                 => isset($review_series_ids[$series['id']]),
+                // ── Champs animé (vides ou nuls sur un manga) ────────────────
+                'anilist_id'                 => $series['anilist_id'] ?? '',
+                'anilist_url'                => $series['anilist_url'] ?? '',
+                'studios'                    => $series['studios'] ?? [],
+                'studios_text'               => series_studios_text($series),
+                'anime_format'               => $series['anime_format'] ?? '',
+                'format_label'               => is_anime($series)
+                                                    ? anilist_format_label($series['anime_format'] ?? '')
+                                                    : '',
+                'alt_titles'                 => series_alt_titles($series),
+                'watching_abandoned'         => (bool)($series['watching_abandoned'] ?? false),
+                'rewatch_count'              => (int)($series['rewatch_count'] ?? 0),
+                'editions'                   => series_edition_comments($series),
+                // Vignette personnalisée seule : la modale d'édition doit savoir
+                // s'il y en a une à proposer de supprimer, indépendamment de la
+                // vignette Anilist qui, elle, ne s'efface jamais à la main.
+                'custom_image'               => $series['image'] ?? '',
+                'anilist_image'              => $series['anilist_image'] ?? '',
             ];
         }, $paginated_data);
 
@@ -458,29 +619,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
         exit;
     }
 
-    // Notifications via MangaUpdates
-    $ref_volumes = null;
-    if (!empty($series['mangaupdates_url'])) {
-        $mu_id = mangaupdates_get_id_from_url($series['mangaupdates_url']);
-        if ($mu_id !== null) {
-            $mu = mangaupdates_get_volumes($mu_id);
-            if ($mu !== null && $mu['volumes'] !== null && (int)$mu['volumes'] > 0) {
-                $ref_volumes = (int)$mu['volumes'];
+    // Vocabulaire de la collection : « tome » ou « épisode », « lecture » ou
+    // « visionnage ». Rien n'est écrit en dur, tout vient du registre des types.
+    $series_is_anime = is_anime($series);
+    $vocab           = type_vocab($series);
+
+    // Notifications via MangaUpdates — mangas uniquement : le décompte d'un
+    // animé vient d'Anilist, et rien ne manque jamais à une liste d'épisodes
+    // qu'on ne remplit pas à la main.
+    $notifications = [];
+    if (!$series_is_anime) {
+        $ref_volumes = null;
+        if (!empty($series['mangaupdates_url'])) {
+            $mu_id = mangaupdates_get_id_from_url($series['mangaupdates_url']);
+            if ($mu_id !== null) {
+                $mu = mangaupdates_get_volumes($mu_id);
+                if ($mu !== null && $mu['volumes'] !== null && (int)$mu['volumes'] > 0) {
+                    $ref_volumes = (int)$mu['volumes'];
+                }
+            }
+        }
+        $notifications = generate_notifications($series['volumes'], $ref_volumes);
+    }
+
+    // Charger les prêts pour cette série — jamais pour un animé, même possédé
+    // en édition physique : on ne prête pas un épisode.
+    $loaned_volumes = [];
+    if (!$series_is_anime) {
+        $all_loans = load_loans();
+        foreach ($all_loans as $loan) {
+            if ($loan['series_id'] === $series_id) {
+                $loaned_volumes[$loan['volume_number']] = $loan['borrower_name'];
             }
         }
     }
-    $notifications = generate_notifications($series['volumes'], $ref_volumes);
 
-    // Charger les prêts pour cette série
-    $all_loans = load_loans();
-    $loaned_volumes = [];
-    foreach ($all_loans as $loan) {
-        if ($loan['series_id'] === $series_id) {
-            $loaned_volumes[$loan['volume_number']] = $loan['borrower_name'];
-        }
-    }
-
-    // Générer le HTML des tomes
+    // Générer le HTML des tomes (ou des épisodes)
     $volumes_html = '<ul class="volumes-list">';
     foreach ($series['volumes'] as $volume_index => $volume) {
         $is_loaned = isset($loaned_volumes[$volume['number']]);
@@ -495,23 +669,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
         };
 
         $added_at = $format_date($volume['added_at'] ?? '');
-        if ($added_at !== '') {
+        if ($added_at !== '' && !$series_is_anime) {
             $tooltip_lines[] = "Date d'ajout à la collection : $added_at";
         }
 
         if (($volume['status'] ?? '') === 'terminé') {
             $read_at = $format_date($volume['read_at'] ?? '');
             if ($read_at !== '') {
-                $tooltip_lines[] = "Date de lecture : $read_at";
+                // « Date de lecture » ou « Date de visionnage »
+                $tooltip_lines[] = 'Date de ' . $vocab['activity'] . " : $read_at";
             }
         }
 
-        if (!empty($volume['collector'])) {
+        // Le collector n'a pas de sens pour un épisode : c'est l'édition
+        // physique de la série entière qui est collector, pas l'épisode.
+        if (!empty($volume['collector']) && !$series_is_anime) {
             $tooltip_lines[] = 'Tome collector !';
         }
 
         if (!empty($volume['last'])) {
-            $tooltip_lines[] = 'Dernier tome de la série !';
+            $tooltip_lines[] = 'Dernier ' . $vocab['item'] . ' de la série !';
         }
 
         if ($is_loaned) {
@@ -538,10 +715,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
     // Bouton d'ajout rapide : ouvre la modale « Ajouter des tomes » avec la série
     // pré-sélectionnée. On le masque si le dernier tome de la liste est marqué comme
     // « dernier tome de la série » (collection réputée complète).
+    //
+    // Absent des séries animées : leurs épisodes viennent d'Anilist et ne
+    // s'ajoutent pas à la main. Le bouton « + » y prendra un tout autre sens au
+    // bloc 4 — faire passer le premier épisode non terminé en « terminé ».
     $volumes = $series['volumes'];
     $last_volume = !empty($volumes) ? end($volumes) : null;
     $series_is_complete = $last_volume !== null && !empty($last_volume['last']);
-    if (!$series_is_complete) {
+    if (!$series_is_complete && !$series_is_anime) {
         $volumes_html .= sprintf(
             '<li class="volume-add-btn" data-series-id="%s" title="Ajouter des tomes à cette série" aria-label="Ajouter des tomes">+</li>',
             htmlspecialchars($series_id, ENT_QUOTES)
@@ -721,9 +902,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <option value="author" <?= $sort_by === 'author' ? 'selected' : '' ?>>Trier par auteur</option>
                         <option value="publisher" <?= $sort_by === 'publisher' ? 'selected' : '' ?>>Trier par éditeur</option>
                         <option value="categories" <?= $sort_by === 'categories' ? 'selected' : '' ?>>Trier par catégories</option>
-                        <option value="volumes" <?= $sort_by === 'volumes' ? 'selected' : '' ?>>Trier par nombre de tomes</option>
+                        <option value="volumes" <?= $sort_by === 'volumes' ? 'selected' : '' ?>>Trier par nombre de <?= htmlspecialchars(type_vocab($current_type, 'items')) ?></option>
                         <option value="added_at" <?= $sort_by === 'added_at' ? 'selected' : '' ?>>Trier par date d'ajout</option>
-                        <option value="read_at" <?= $sort_by === 'read_at' ? 'selected' : '' ?>>Trier par date de lecture</option>
+                        <option value="read_at" <?= $sort_by === 'read_at' ? 'selected' : '' ?>>Trier par date de <?= htmlspecialchars(type_vocab($current_type, 'activity')) ?></option>
                     </select>
                     <select name="sort_order" id="sort-order">
                         <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Ascendant</option>
@@ -738,6 +919,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
         <div id="modal-triggers" style="display:none">
             <button id="open-add-series-modal"></button>
             <button id="open-add-multiple-volumes-modal"></button>
+            <button id="open-add-anime-modal"></button>
         </div>
 
         <!-- Modales -->
@@ -823,7 +1005,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                     <p>Choisir une série :</p>
                     <input type="text" id="multiple-series-search" class="series-search" placeholder="Rechercher une série..." autocomplete="off">
                     <div class="series-results" id="multiple-series-results">
-                        <?php foreach (series_of_type($data, $current_type) as $series): ?>
+                        <?php // Mangas uniquement : les épisodes d'un animé ne s'ajoutent pas à la main. ?>
+                        <?php foreach (series_of_type($data, 'manga') as $series): ?>
                             <div data-id="<?= $series['id'] ?>"><?= $series['name'] ?></div>
                         <?php endforeach; ?>
                     </div>
@@ -960,6 +1143,135 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
             </div>
         </div>
 
+        <!-- ────────────────────────────────────────────────────────────────
+             Modale : ajouter une série animée
+             Recherche Anilist → 10 résultats maximum → sélection → import
+             complet et automatique. Aucun champ à remplir : tout ce qui est
+             factuel vient d'Anilist, qui fait autorité.
+             ──────────────────────────────────────────────────────────────── -->
+        <div class="modal" id="add-anime-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-add-anime-modal">&times;</span>
+                <h2>Ajouter une série animée</h2>
+                <p class="hint">
+                    Cherchez la série sur Anilist, puis choisissez-la : sa fiche est importée
+                    telle quelle. Studios, format, genres et statut de diffusion ne sont pas
+                    modifiables dans Lengas — une erreur se corrige sur Anilist.
+                </p>
+                <div class="anime-search-row">
+                    <input type="text" id="anime-search-input" placeholder="Titre de la série animée…" autocomplete="off">
+                    <button type="button" id="anime-search-btn" class="button">Rechercher</button>
+                </div>
+                <div id="anime-search-feedback" class="anime-search-feedback"></div>
+                <div id="anime-search-results" class="anime-search-results"></div>
+            </div>
+        </div>
+
+        <!-- ────────────────────────────────────────────────────────────────
+             Modale : modifier une série animée
+             Seuls y figurent les champs qui appartiennent à l'utilisateur. Les
+             données d'Anilist sont affichées en lecture seule, jamais en champ
+             de saisie : ce qui n'est pas éditable ne doit pas en avoir l'air.
+             ──────────────────────────────────────────────────────────────── -->
+        <div class="modal" id="edit-anime-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-edit-anime-modal">&times;</span>
+                <h2>Modifier la série animée</h2>
+                <form method="post" enctype="multipart/form-data" id="edit-anime-form">
+                    <input type="hidden" name="series_id" id="edit-anime-id">
+
+                    <p>Titre :</p>
+                    <select name="anime_name" id="edit-anime-name"></select>
+                    <p class="hint">
+                        Au choix parmi les titres connus d'Anilist (romaji, anglais, natif,
+                        synonymes). Le titre ne se saisit pas librement.
+                    </p>
+
+                    <div class="anime-readonly-block">
+                        <p class="anime-readonly-title">Données Anilist <span>(non modifiables)</span></p>
+                        <div class="anime-readonly-grid">
+                            <div class="anime-readonly-item">
+                                <span class="anime-readonly-label">Studios</span>
+                                <span class="anime-readonly-value" id="edit-anime-studios"></span>
+                            </div>
+                            <div class="anime-readonly-item">
+                                <span class="anime-readonly-label">Catégorie / format</span>
+                                <span class="anime-readonly-value" id="edit-anime-format"></span>
+                            </div>
+                            <div class="anime-readonly-item">
+                                <span class="anime-readonly-label">Genres</span>
+                                <span class="anime-readonly-value" id="edit-anime-genres"></span>
+                            </div>
+                            <div class="anime-readonly-item">
+                                <span class="anime-readonly-label">Statut de diffusion</span>
+                                <span class="anime-readonly-value" id="edit-anime-status"></span>
+                            </div>
+                            <div class="anime-readonly-item">
+                                <span class="anime-readonly-label">Nombre de visionnages</span>
+                                <span class="anime-readonly-value" id="edit-anime-rewatch"></span>
+                            </div>
+                            <div class="anime-readonly-item">
+                                <span class="anime-readonly-label">Fiche Anilist</span>
+                                <span class="anime-readonly-value">
+                                    <a id="edit-anime-link" href="#" target="_blank" rel="noopener">Ouvrir la fiche ↗</a>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <label>
+                        <input type="checkbox" name="anime_mature" id="edit-anime-mature"> Contenu mature 🔞
+                    </label>
+                    <p class="hint">Cochée automatiquement à l'import si Anilist signale la série comme adulte. Une fois décochée, elle ne sera jamais recochée.</p>
+                    <label>
+                        <input type="checkbox" name="anime_favorite" id="edit-anime-favorite"> Série favorite ❤️
+                    </label>
+                    <label>
+                        <input type="checkbox" name="anime_watching_abandoned" id="edit-anime-watching-abandoned"> Visionnage abandonné 📕
+                    </label>
+                    <p class="hint">Cochez si vous avez arrêté de regarder cette série.</p>
+
+                    <p>Notation (facultatif) :</p>
+                    <select name="anime_rating" id="edit-anime-rating">
+                        <option value="">Aucune note ➖</option>
+                        <option value="apprecie">J'ai apprécié ☺️</option>
+                        <option value="mitige">Mi-figue mi-raisin 😑</option>
+                        <option value="deteste">Je n'ai pas aimé 😠</option>
+                    </select>
+
+                    <label>
+                        <input type="checkbox" name="anime_has_editions" id="edit-anime-has-editions"> Éditions physiques 📀
+                    </label>
+                    <p class="hint">Cochez si vous possédez cette série en physique. Un commentaire = une édition, <?= series_editions_max() ?> au maximum, <?= series_edition_comment_max() ?> caractères chacun.</p>
+                    <div id="edit-anime-editions" class="anime-editions" hidden>
+                        <?php for ($__i = 0; $__i < series_editions_max(); $__i++): ?>
+                            <input type="text"
+                                   name="anime_editions[]"
+                                   class="anime-edition-input"
+                                   maxlength="<?= series_edition_comment_max() ?>"
+                                   placeholder="Édition <?= $__i + 1 ?> (ex. coffret Blu-ray collector)"
+                                   autocomplete="off">
+                        <?php endfor; ?>
+                    </div>
+
+                    <div class="current-image-container">
+                        <p>Vignette actuelle :</p>
+                        <img id="edit-anime-image-preview" src="" alt="Vignette de la série" style="max-width: 100px; margin-bottom: 10px;">
+                        <div id="edit-anime-remove-image-row">
+                            <input type="checkbox" name="anime_remove_image" id="edit-anime-remove-image">
+                            <label for="edit-anime-remove-image">Supprimer la vignette personnalisée</label>
+                            <p class="hint">La vignette d'Anilist reprend alors sa place, sans rien à retélécharger.</p>
+                        </div>
+                        <p class="hint" id="edit-anime-image-origin"></p>
+                    </div>
+                    <input type="file" name="anime_image" id="edit-anime-image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp">
+                    <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
+
+                    <button type="submit" name="update_anime_series">Mettre à jour</button>
+                </form>
+            </div>
+        </div>
+
         <!-- Modale pour les alertes personnalisées -->
         <div class="modal" id="custom-alert-modal">
             <div class="modal-content">
@@ -1009,6 +1321,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
             }
             $series['status'] = $status;
             $series['has_review'] = isset($review_series_ids[$series['id']]);
+            // Vignette résolue par la cascade perso → Anilist → défaut, et
+            // origine de celle-ci, dont la modale d'édition a besoin.
+            $series['thumbnail']    = series_thumbnail($series);
+            $series['custom_image'] = $series['image'] ?? '';
+            $series['studios_text'] = series_studios_text($series);
+            $series['format_label'] = is_anime($series)
+                ? anilist_format_label($series['anime_format'] ?? '')
+                : '';
+            $series['editions']     = series_edition_comments($series);
+            $series['alt_titles']   = series_alt_titles($series);
             return $series;
         }, array_values($filtered_data));
     ?>
@@ -1018,10 +1340,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
         // couleur de chaque type), pour les badges de l'autocomplétion.
         window.currentSeriesType = <?= json_encode($current_type) ?>;
         window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
+        // Plafonds des éditions physiques, lus depuis le PHP pour qu'ils ne
+        // soient définis qu'à un seul endroit (includes/helpers.php).
+        window.animeEditionsMax = <?= json_encode(series_editions_max()) ?>;
+        window.animeEditionCommentMax = <?= json_encode(series_edition_comment_max()) ?>;
     </script>
     <script src="assets/js/admin/modals.js"></script>
     <script src="assets/js/admin/autocomplete.js"></script>
     <script src="assets/js/admin/series.js"></script>
+    <script src="assets/js/admin/anime.js"></script>
     <script src="assets/js/admin/volumes.js"></script>
     <script src="assets/js/admin/pagination.js"></script>
     <script src="assets/js/admin/main.js"></script>

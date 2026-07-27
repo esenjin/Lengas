@@ -7,6 +7,12 @@
 require_once 'includes/custom_icons.php';
 
 $current_page = basename($_SERVER['PHP_SELF']);
+
+// Collection affichée. ⚠️ PROVISOIRE : la refonte du menu public (sections,
+// libellés, « Accueil » renommé « Mangathèque ») est l'objet du bloc 5.
+$__sidebar_type = function_exists('sanitize_series_type')
+    ? sanitize_series_type($_GET['type'] ?? '')
+    : 'manga';
 ?>
 <nav class="sidebar" id="sidebar" aria-label="Navigation principale">
 
@@ -17,12 +23,21 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <ul class="sidebar-nav" role="list">
 
-        <!-- Accueil (bibliothèque publique) -->
+        <!-- Mangathèque (accueil public) -->
         <li>
-            <a href="index.php"
-               class="sidebar-link <?= $current_page === 'index.php' ? 'is-active' : '' ?>"
-               data-tooltip="Accueil">
-                <img src="https://api.iconify.design/mdi/bookshelf.svg?color=%23c084fc" width="22" height="22" alt="">
+            <a href="index.php?type=manga"
+               class="sidebar-link <?= ($current_page === 'index.php' && $__sidebar_type === 'manga') ? 'is-active' : '' ?>"
+               data-tooltip="Mangathèque">
+                <img src="https://api.iconify.design/mdi/bookshelf.svg?color=%23c94e93" width="22" height="22" alt="">
+            </a>
+        </li>
+
+        <!-- Animethèque -->
+        <li>
+            <a href="index.php?type=anime"
+               class="sidebar-link <?= ($current_page === 'index.php' && $__sidebar_type === 'anime') ? 'is-active' : '' ?>"
+               data-tooltip="Animethèque">
+                <img src="https://api.iconify.design/mdi/television-classic.svg?color=%2338bdf8" width="22" height="22" alt="">
             </a>
         </li>
 
