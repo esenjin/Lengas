@@ -105,14 +105,6 @@ function init_db(PDO $pdo): void {
     ");
 
     $pdo->exec("
-        CREATE TABLE IF NOT EXISTS anilist_cache (
-            cache_key   TEXT PRIMARY KEY,
-            volumes     INTEGER,
-            timestamp   INTEGER NOT NULL
-        )
-    ");
-
-    $pdo->exec("
         CREATE TABLE IF NOT EXISTS password (
             id      INTEGER PRIMARY KEY CHECK (id = 1),
             hash    TEXT NOT NULL
@@ -192,6 +184,32 @@ function init_db(PDO $pdo): void {
             incertain    INTEGER NOT NULL DEFAULT 0,
             erreur       TEXT,
             timestamp    INTEGER NOT NULL
+        )
+    ");
+
+    // ── Cache des fiches Anilist (clé = anilist_id) ───────────────────────────
+    // Refonte V4 : une table `anilist_cache` existait déjà (colonnes cache_key /
+    // volumes), vestige de l'intégration Anilist abandonnée en 3.1. Son schéma ne
+    // convient pas au connecteur d'animés, et son contenu n'a plus aucune valeur :
+    // on la remplace purement et simplement. Un cache se reconstruit tout seul,
+    // la suppression est donc sans conséquence.
+    //
+    // `payload` contient la fiche NORMALISÉE (JSON) telle que produite par
+    // includes/anilist.php, et non la réponse brute de l'API.
+    try {
+        $cols  = $pdo->query("PRAGMA table_info(anilist_cache)")->fetchAll();
+        $names = [];
+        foreach ($cols as $col) { $names[] = $col['name']; }
+        if (!empty($names) && !in_array('anilist_id', $names, true)) {
+            $pdo->exec("DROP TABLE anilist_cache");
+        }
+    } catch (Exception $e) { /* table absente : rien à migrer */ }
+
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS anilist_cache (
+            anilist_id  INTEGER PRIMARY KEY,
+            payload     TEXT NOT NULL DEFAULT '',
+            timestamp   INTEGER NOT NULL DEFAULT 0
         )
     ");
 
