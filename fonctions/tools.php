@@ -10,11 +10,12 @@
 //   integrity.php          → Vérification d'intégrité du site
 //   cleanup.php            → Nettoyages proposés par la vérification
 //   mangaupdates_assoc.php → Association des fiches et des genres MangaUpdates
-//   incomplete.php         → Séries incomplètes (tomes manquants)
+//   incomplete.php          → Séries incomplètes (tomes manquants)
 //   babengas-helpers.php   → Vérification du décompte VF via Babelio (Babengas)
 //   coherence.php          → Incohérences de la collection
 //   anilist_import.php     → Import de masse de la liste Anilist (V4 bloc 8)
 //   anilist_sync.php       → Synchronisation automatique Anilist (V4 bloc 9)
+//   anilist_recheck.php    → Vérification manuelle des animés (V4 bloc 10)
 // ────────────────────────────────────────────────────────────────────────────
 
 require_once __DIR__ . '/tools/backups.php';
@@ -26,3 +27,4 @@ require_once __DIR__ . '/tools/babengas-helpers.php';
 require_once __DIR__ . '/tools/coherence.php';
 require_once __DIR__ . '/tools/anilist_import.php';
 require_once __DIR__ . '/tools/anilist_sync.php';
+require_once __DIR__ . '/tools/anilist_recheck.php';

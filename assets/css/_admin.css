@@ -633,3 +633,125 @@
 .anilist-import-launch-row {
     margin-top: 22px;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   Outil « Vérification des animés » (V4 bloc 10) — pages/page-outils.php
+   Réutilise .tools-section, .analysis-progress, .analysis-summary,
+   .summary-group, .summary-badge, .incomplete-empty-msg et les compteurs
+   .anilist-import-dest-count déjà définis plus haut ; ce qui suit ne couvre
+   que le rapport ligne par ligne (avant → après) propre à cet outil.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.anilist-recheck-apply-row {
+    margin-top: 18px;
+}
+
+.anilist-recheck-series-list {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.anilist-recheck-series {
+    background: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius);
+    padding: 4px 16px 12px;
+}
+
+.anilist-recheck-series > summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    font-weight: 600;
+    color: var(--text-white);
+}
+.anilist-recheck-series > summary::-webkit-details-marker { display: none; }
+
+.anilist-recheck-series-name {
+    flex: 1;
+    min-width: 0;
+}
+
+.anilist-recheck-link {
+    margin-left: auto;
+    flex-shrink: 0;
+    color: var(--primary-color);
+    font-size: 0.8em;
+    text-decoration: none;
+    opacity: 0.85;
+}
+.anilist-recheck-link:hover {
+    text-decoration: underline;
+    opacity: 1;
+}
+
+.anilist-recheck-diff-list {
+    list-style: none;
+    margin: 0;
+    padding: 4px 0 0;
+}
+
+.anilist-recheck-diff {
+    padding: 7px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.anilist-recheck-diff:first-child { border-top: none; }
+
+.anilist-recheck-diff label {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    cursor: pointer;
+}
+
+.anilist-recheck-diff input[type="checkbox"] {
+    accent-color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.anilist-recheck-diff-label {
+    font-size: 0.88rem;
+    color: var(--text-white);
+    font-weight: 600;
+    min-width: 160px;
+}
+
+.anilist-recheck-diff-values {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 0.86rem;
+}
+
+.anilist-recheck-diff-before {
+    color: var(--text-muted);
+    text-decoration: line-through;
+}
+
+.anilist-recheck-diff-arrow {
+    color: var(--text-gray);
+}
+
+.anilist-recheck-diff-after {
+    color: var(--success-color);
+}
+
+.anilist-recheck-diff-note {
+    display: block;
+    margin-top: 2px;
+    margin-left: 26px;
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.anilist-recheck-diff--info {
+    opacity: 0.85;
+}
