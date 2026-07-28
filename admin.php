@@ -10,7 +10,6 @@ require 'fonctions/series.php';
 require 'fonctions/anime.php';
 require 'fonctions/volumes.php';
 require 'fonctions/episodes.php';
-require 'fonctions/wishlist.php';
 require 'fonctions/loans.php';
 require 'fonctions/read.php';
 require 'fonctions/options.php';
@@ -94,9 +93,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     exit;
 }
 
-// ── Endpoint : recherche Anilist (modale d'ajout d'une série animée) ────────
-// Renvoie au plus 10 fiches normalisées. Aucune écriture : la sélection d'un
-// résultat déclenche ensuite un POST add_anime_series.
+// ── Fabrique une fiche allégée pour le front, à partir d'une fiche Anilist ──
+// normalisée. Format PARTAGÉ par les deux endpoints de recherche (par titre
+// et par identifiant), en admin comme depuis la page de liste d'envies.
+function anilist_result_payload(array $media, array $known): array {
+    return [
+        'anilist_id'       => $media['anilist_id'],
+        'title'            => $media['title'],
+        'title_english'    => $media['title_english'],
+        'title_native'     => $media['title_native'],
+        'cover'            => $media['cover'],
+        'year'             => $media['start_year'] ?: $media['season_year'],
+        'format_label'     => $media['format_label'],
+        'status_label'     => $media['status_label'],
+        'episodes'         => $media['episodes'],
+        'studios_text'     => $media['studios_text'],
+        'is_adult'         => $media['is_adult'],
+        'not_yet_released' => $media['not_yet_released'],
+        'already_present'  => isset($known[$media['anilist_id']]),
+        'present_as'       => $known[$media['anilist_id']] ?? '',
+    ];
+}
+
+// Identifiants déjà présents dans la vidéothèque : les résultats de recherche
+// grisent les fiches correspondantes plutôt que de laisser cliquer pour rien.
+// Fabriqué une fois, réutilisé par les deux endpoints ci-dessous.
+function anilist_known_ids(array $data): array {
+    $known = [];
+    foreach ($data as $series) {
+        $aid = (int)($series['anilist_id'] ?? 0);
+        if ($aid > 0) $known[$aid] = $series['name'];
+    }
+    return $known;
+}
+
+// ── Endpoint : recherche Anilist par titre (modale d'ajout d'une série
+// animée, et panneau d'ajout animé de la liste d'envies). Renvoie au plus 10
+// fiches normalisées. Aucune écriture : la sélection d'un résultat déclenche
+// ensuite un POST add_anime_series (vidéothèque) ou add_to_wishlist (wishlist).
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['anilist_search'])) {
     header('Content-Type: application/json');
 
@@ -112,35 +146,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['anilist_search'])) {
         exit;
     }
 
-    // Identifiants déjà présents dans la vidéothèque : la modale grise les
-    // résultats correspondants plutôt que de laisser cliquer pour rien.
-    $known = [];
-    foreach ($data as $series) {
-        $aid = (int)($series['anilist_id'] ?? 0);
-        if ($aid > 0) $known[$aid] = $series['name'];
-    }
-
+    $known   = anilist_known_ids($data);
     $results = [];
     foreach ($res['results'] as $media) {
-        $results[] = [
-            'anilist_id'       => $media['anilist_id'],
-            'title'            => $media['title'],
-            'title_english'    => $media['title_english'],
-            'title_native'     => $media['title_native'],
-            'cover'            => $media['cover'],
-            'year'             => $media['start_year'] ?: $media['season_year'],
-            'format_label'     => $media['format_label'],
-            'status_label'     => $media['status_label'],
-            'episodes'         => $media['episodes'],
-            'studios_text'     => $media['studios_text'],
-            'is_adult'         => $media['is_adult'],
-            'not_yet_released' => $media['not_yet_released'],
-            'already_present'  => isset($known[$media['anilist_id']]),
-            'present_as'       => $known[$media['anilist_id']] ?? '',
-        ];
+        $results[] = anilist_result_payload($media, $known);
     }
 
     echo json_encode(['success' => true, 'results' => $results]);
+    exit;
+}
+
+// ── Endpoint : recherche Anilist par identifiant direct ─────────────────────
+// Pour l'utilisateur qui connaît déjà l'anilist_id de la série visée, ou ne la
+// retrouve pas par titre. Même format de sortie que la recherche par titre, un
+// seul résultat au maximum, pour que le front réutilise exactement le même
+// gabarit d'affichage et le même bouton « Ajouter ».
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['anilist_lookup'])) {
+    header('Content-Type: application/json');
+
+    $id = (int)($_GET['id'] ?? 0);
+    if ($id <= 0) {
+        echo json_encode(['success' => false, 'message' => "Identifiant Anilist invalide.", 'results' => []]);
+        exit;
+    }
+
+    $fetch = anilist_fetch_media($id);
+    if (!$fetch['ok']) {
+        echo json_encode(['success' => false, 'message' => $fetch['error'], 'results' => []]);
+        exit;
+    }
+
+    $known = anilist_known_ids($data);
+    echo json_encode(['success' => true, 'results' => [anilist_result_payload($fetch['media'], $known)]]);
     exit;
 }
 
@@ -437,51 +474,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_series'])) {
 // Note : la mise à jour des options du site est désormais gérée par la page
 // dédiée « Options » (page-options.php), à l'image de la page « Outils ».
 
-// Gestion des actions pour la liste d'envies
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_wishlist'])) {
-    $name = trim($_POST['wishlist_name'] ?? '');
-    $author = trim($_POST['wishlist_author'] ?? '');
-    $publisher = trim($_POST['wishlist_publisher'] ?? '');
-
-    $wishlist = load_wishlist();
-    $result = add_to_wishlist($wishlist, $name, $author, $publisher);
-    if ($result['success']) {
-        save_wishlist($result['wishlist']);
-    }
-
-    header('Content-Type: application/json');
-    echo json_encode($result);
-    exit;
-}
-
-// Supprimer une série de la liste d'envies
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_from_wishlist'])) {
-    $index = $_POST['index'] ?? 0;
-    $wishlist = load_wishlist();
-    $result = remove_from_wishlist($wishlist, $index);
-    if ($result['success']) {
-        save_wishlist($result['wishlist']);
-    }
-
-    header('Content-Type: application/json');
-    echo json_encode($result);
-    exit;
-}
-
-// Ajouter une série à la collection principale depuis la liste d'envies
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_from_wishlist'])) {
-    $index = $_POST['index'] ?? 0;
-    $wishlist = load_wishlist();
-    $result = add_from_wishlist($data, $wishlist, $index);
-    if ($result['success']) {
-        save_data($result['data']);
-        save_wishlist($result['wishlist']);
-    }
-
-    header('Content-Type: application/json');
-    echo json_encode($result);
-    exit;
-}
+// La gestion complète de la liste d'envies (ajout, édition, suppression,
+// passage en collection) vit exclusivement dans pages/page-wishlist.php
+// depuis la V4 : ce fichier a sa propre logique AJAX autonome, admin.php n'a
+// plus à en dupliquer les handlers.
 
 // Gestion des actions pour les prêts
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_action'])) {
@@ -926,24 +922,8 @@ if ($search_term) {
     });
 }
 
-// Éditer une série de la liste d'envies
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
-    $index = (int)($_POST['index'] ?? 0);
-    $name = trim($_POST['name'] ?? '');
-    $author = trim($_POST['author'] ?? '');
-    $publisher = trim($_POST['publisher'] ?? '');
-
-    $wishlist = load_wishlist();
-    $result = edit_wishlist_item($wishlist, $index, $name, $author, $publisher);
-    if ($result['success']) {
-        save_wishlist($result['wishlist']);
-    }
-
-    header('Content-Type: application/json');
-    echo json_encode($result);
-    exit;
-}
-
+// (Édition d'une entrée de la liste d'envies : gérée par
+// pages/page-wishlist.php, cf. commentaire plus haut.)
 
 ?>
 
@@ -1296,6 +1276,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                 <div class="anime-search-row">
                     <input type="text" id="anime-search-input" placeholder="Titre de la série animée…" autocomplete="off">
                     <button type="button" id="anime-search-btn" class="button">Rechercher</button>
+                </div>
+                <p class="hint anime-search-or">— ou, si la recherche par titre ne trouve pas la série —</p>
+                <div class="anime-search-row">
+                    <input type="text" id="anime-lookup-input" placeholder="Identifiant Anilist (ex. 21519)…" autocomplete="off" inputmode="numeric">
+                    <button type="button" id="anime-lookup-btn" class="button">Chercher par ID</button>
                 </div>
                 <div id="anime-search-feedback" class="anime-search-feedback"></div>
                 <div id="anime-search-results" class="anime-search-results"></div>

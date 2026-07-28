@@ -225,6 +225,32 @@ function init_db(PDO $pdo): void {
         ");
     } catch (Exception $e) { /* doublons préexistants : index non créé */ }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // V4 bloc 7 — Typage de la liste d'envies
+    // ──────────────────────────────────────────────────────────────────────────
+    // Une entrée de wishlist peut désormais être un manga (comportement inchangé,
+    // saisie libre) ou un animé (recherche Anilist, anilist_id mémorisé). Le
+    // défaut 'manga' assure la rétro-compatibilité des entrées existantes.
+
+    // ── Colonne type (manga / anime, registre défini dans includes/helpers.php) ─
+    try {
+        $pdo->exec("ALTER TABLE wishlist ADD COLUMN type TEXT NOT NULL DEFAULT 'manga'");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
+    // ── Identifiant Anilist mémorisé pour un animé en projet ───────────────────
+    // Vide pour un manga. Permet un import immédiat et sans nouvelle recherche
+    // au passage en collection (cf. fonctions/wishlist.php::add_from_wishlist).
+    try {
+        $pdo->exec("ALTER TABLE wishlist ADD COLUMN anilist_id TEXT NOT NULL DEFAULT ''");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
+    // ── Studio(s) d'un animé en projet (pendant d'`author` pour les mangas) ────
+    // Champ dédié plutôt que recyclage d'`author` : la colonne existante reste
+    // strictement réservée aux mangas, sans condition supplémentaire à lire.
+    try {
+        $pdo->exec("ALTER TABLE wishlist ADD COLUMN studio TEXT NOT NULL DEFAULT ''");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
     // ── Éditions physiques d'une série animée (coffret DVD, Blu-ray…) ─────────
     // Un commentaire libre = une édition, 100 caractères maximum, 5 éditions au
     // plus par série (plafond appliqué côté PHP, cf. series_editions_max()).

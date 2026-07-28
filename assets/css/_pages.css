@@ -238,7 +238,67 @@ body.with-sidebar .logout-container {
     gap: 10px;
 }
 
+/* [hidden] a une spécificité plus faible que .wishlist-add-form : sans cette
+   règle, le display:flex ci-dessus l'emporterait et l'attribut hidden
+   n'aurait plus aucun effet (bascule Manga/Animé qui affiche les deux
+   formulaires en même temps). */
+.wishlist-add-form[hidden] {
+    display: none;
+}
+
 .wishlist-add-form input { margin-bottom: 0; }
+
+/* ── Bascule de type (Manga / Animé) — formulaire d'ajout wishlist ────────── */
+.wishlist-type-toggle {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.wishlist-type-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.wishlist-type-btn:hover {
+    background: var(--background-lighter);
+    color: var(--text-white);
+}
+
+.wishlist-type-btn.is-active {
+    background: var(--background-lighter);
+    border-color: currentColor;
+    color: var(--text-white);
+}
+
+.wishlist-type-btn[data-type="manga"].is-active { color: #c94e93; }
+.wishlist-type-btn[data-type="anime"].is-active { color: #38bdf8; }
+
+/* Badge de type sur chaque entrée de la liste (réutilise .suggestion-type-badge,
+   déjà défini dans _forms.css pour l'autocomplétion — même apparence). */
+.wishlist-type-badge {
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+/* Bouton de confirmation du formulaire d'ajout animé, sous les résultats de
+   recherche Anilist. */
+.wishlist-add-anime-confirm {
+    margin-top: 10px;
+    width: 100%;
+}
 
 .wishlist-list-panel {
     background: var(--background-card);

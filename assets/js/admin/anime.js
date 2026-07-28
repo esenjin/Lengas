@@ -91,16 +91,77 @@ function createAnimeSeriesCard(series) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Rendu d'un résultat de recherche Anilist (fiche normalisée allégée) — commun
+// à la modale d'ajout d'admin.php et au panneau d'ajout animé de la liste
+// d'envies (pages/page-wishlist.php). Exposé sur window pour être réutilisé
+// tel quel, sans dupliquer le gabarit.
+// ─────────────────────────────────────────────────────────────────────────────
+// $context vaut 'library' (défaut, vidéothèque — modale d'ajout d'admin.php)
+// ou 'wishlist' (panneau d'ajout animé de pages/page-wishlist.php).
+//
+// En contexte vidéothèque, une série non encore diffusée ne rejoint jamais la
+// vidéothèque : elle relève de la liste d'envies, et le résultat est bloqué
+// (pas de bouton) pour éviter un clic qui échouerait de toute façon côté
+// serveur. En contexte wishlist, c'est l'inverse : « pas encore diffusée » est
+// justement le cas d'usage attendu — le bouton reste actif, seule une série
+// déjà présente (vidéothèque OU wishlist) bloque réellement l'ajout.
+function animeResultHtml(media, context) {
+    context = context || 'library';
+    const blocked = context === 'wishlist'
+        ? !!media.already_present
+        : (media.already_present || media.not_yet_released);
+
+    let notice = '';
+    if (media.already_present) {
+        notice = `<p class="anime-result-notice">Déjà dans la vidéothèque : « ${animeEscape(media.present_as)} »</p>`;
+    } else if (media.not_yet_released) {
+        notice = context === 'wishlist'
+            ? `<p class="anime-result-notice">Pas encore diffusée : elle sera importée le jour de sa diffusion.</p>`
+            : `<p class="anime-result-notice">Pas encore diffusée : cette série relève de la liste d'envies.</p>`;
+    }
+
+    const meta = [
+        media.year ? String(media.year) : '',
+        media.format_label || '',
+        media.status_label || '',
+        media.episodes ? media.episodes + ' épisode' + (media.episodes > 1 ? 's' : '') : ''
+    ].filter(Boolean).join(' • ');
+
+    const alt = [media.title_english, media.title_native]
+        .filter(t => t && t !== media.title)
+        .join(' — ');
+
+    const addLabel = context === 'wishlist' ? 'Sélectionner' : 'Ajouter';
+
+    return `
+        <div class="anime-result${blocked ? ' is-blocked' : ''}" data-anilist-id="${media.anilist_id}" data-title="${animeEscape(media.title)}" data-studios-text="${animeEscape(media.studios_text || '')}">
+            <img class="anime-result-cover" src="${animeEscape(media.cover || 'assets/img/logo.png')}" alt="" loading="lazy">
+            <div class="anime-result-body">
+                <p class="anime-result-title">${animeEscape(media.title)}${media.is_adult ? ' <span class="mature-badge">🔞</span>' : ''}</p>
+                ${alt ? `<p class="anime-result-alt">${animeEscape(alt)}</p>` : ''}
+                <p class="anime-result-meta">${animeEscape(meta)}</p>
+                ${media.studios_text ? `<p class="anime-result-meta">${animeEscape(media.studios_text)}</p>` : ''}
+                ${notice}
+            </div>
+            ${blocked ? '' : `<button type="button" class="button anime-result-add">${addLabel}</button>`}
+        </div>
+    `;
+}
+window.animeResultHtml = animeResultHtml;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Modale « Ajouter une série animée »
 // ─────────────────────────────────────────────────────────────────────────────
 (function setupAnimeSearch() {
-    const modal    = document.getElementById('add-anime-modal');
+    const modal        = document.getElementById('add-anime-modal');
     if (!modal) return;
 
-    const input    = document.getElementById('anime-search-input');
-    const button   = document.getElementById('anime-search-btn');
-    const results  = document.getElementById('anime-search-results');
-    const feedback = document.getElementById('anime-search-feedback');
+    const input         = document.getElementById('anime-search-input');
+    const button        = document.getElementById('anime-search-btn');
+    const lookupInput   = document.getElementById('anime-lookup-input');
+    const lookupButton  = document.getElementById('anime-lookup-btn');
+    const results       = document.getElementById('anime-search-results');
+    const feedback      = document.getElementById('anime-search-feedback');
 
     let searching = false;
     let importing = false;
@@ -108,45 +169,6 @@ function createAnimeSeriesCard(series) {
     function setFeedback(text, kind) {
         feedback.textContent = text || '';
         feedback.className = 'anime-search-feedback' + (kind ? ' is-' + kind : '');
-    }
-
-    function resultHtml(media) {
-        // Une série non encore diffusée ne rejoint jamais la vidéothèque : elle
-        // relève de la liste d'envies. Le refus est expliqué sur place plutôt
-        // que découvert après le clic.
-        const blocked = media.already_present || media.not_yet_released;
-
-        let notice = '';
-        if (media.already_present) {
-            notice = `<p class="anime-result-notice">Déjà dans la vidéothèque : « ${animeEscape(media.present_as)} »</p>`;
-        } else if (media.not_yet_released) {
-            notice = `<p class="anime-result-notice">Pas encore diffusée : cette série relève de la liste d'envies.</p>`;
-        }
-
-        const meta = [
-            media.year ? String(media.year) : '',
-            media.format_label || '',
-            media.status_label || '',
-            media.episodes ? media.episodes + ' épisode' + (media.episodes > 1 ? 's' : '') : ''
-        ].filter(Boolean).join(' • ');
-
-        const alt = [media.title_english, media.title_native]
-            .filter(t => t && t !== media.title)
-            .join(' — ');
-
-        return `
-            <div class="anime-result${blocked ? ' is-blocked' : ''}" data-anilist-id="${media.anilist_id}">
-                <img class="anime-result-cover" src="${animeEscape(media.cover || 'assets/img/logo.png')}" alt="" loading="lazy">
-                <div class="anime-result-body">
-                    <p class="anime-result-title">${animeEscape(media.title)}${media.is_adult ? ' <span class="mature-badge">🔞</span>' : ''}</p>
-                    ${alt ? `<p class="anime-result-alt">${animeEscape(alt)}</p>` : ''}
-                    <p class="anime-result-meta">${animeEscape(meta)}</p>
-                    ${media.studios_text ? `<p class="anime-result-meta">${animeEscape(media.studios_text)}</p>` : ''}
-                    ${notice}
-                </div>
-                ${blocked ? '' : '<button type="button" class="button anime-result-add">Ajouter</button>'}
-            </div>
-        `;
     }
 
     async function runSearch() {
@@ -170,7 +192,39 @@ function createAnimeSeriesCard(series) {
                 return;
             }
             setFeedback('');
-            results.innerHTML = data.results.map(resultHtml).join('');
+            results.innerHTML = data.results.map(m => animeResultHtml(m)).join('');
+        } catch (error) {
+            console.error('Erreur:', error);
+            setFeedback('Anilist est injoignable pour le moment.', 'error');
+        } finally {
+            searching = false;
+        }
+    }
+
+    // Recherche par identifiant Anilist direct : même feedback, même liste de
+    // résultats (un seul ici), même bouton « Ajouter ».
+    async function runLookup() {
+        const raw = (lookupInput.value || '').trim();
+        const id  = parseInt(raw, 10);
+        if (!raw || !Number.isInteger(id) || id <= 0 || searching) {
+            if (raw) setFeedback("L'identifiant Anilist doit être un nombre entier positif.", 'error');
+            return;
+        }
+
+        searching = true;
+        results.innerHTML = '';
+        setFeedback('Interrogation d\u2019Anilist…', 'loading');
+
+        try {
+            const response = await fetch('admin.php?anilist_lookup=1&id=' + encodeURIComponent(id));
+            const data = await response.json();
+
+            if (!data.success || !data.results.length) {
+                setFeedback(data.message || 'Aucune série ne correspond à cet identifiant.', 'error');
+                return;
+            }
+            setFeedback('');
+            results.innerHTML = data.results.map(m => animeResultHtml(m)).join('');
         } catch (error) {
             console.error('Erreur:', error);
             setFeedback('Anilist est injoignable pour le moment.', 'error');
@@ -184,6 +238,14 @@ function createAnimeSeriesCard(series) {
         if (e.key === 'Enter') {
             e.preventDefault();
             runSearch();
+        }
+    });
+
+    lookupButton?.addEventListener('click', runLookup);
+    lookupInput?.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            runLookup();
         }
     });
 
@@ -229,6 +291,7 @@ function createAnimeSeriesCard(series) {
     // pas rouvrir sur les résultats de la précédente.
     document.getElementById('open-add-anime-modal')?.addEventListener('click', function () {
         input.value = '';
+        if (lookupInput) lookupInput.value = '';
         results.innerHTML = '';
         setFeedback('');
         modal.classList.add('modal-active');

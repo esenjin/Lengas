@@ -77,6 +77,14 @@
     white-space: nowrap;
 }
 
+/* Séparateur entre la recherche par titre et la recherche par identifiant
+   Anilist direct (modale d'ajout et panneau wishlist). */
+.anime-search-or {
+    text-align: center;
+    margin: 4px 0 10px;
+    font-size: 0.82rem;
+}
+
 .anime-search-feedback {
     min-height: 1.3em;
     margin-bottom: 8px;
@@ -118,6 +126,14 @@
 
 .anime-result.is-blocked:hover {
     border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Résultat retenu dans le panneau d'ajout animé de la liste d'envies : la
+   sélection n'ajoute rien tant qu'on n'a pas cliqué sur le bouton "Ajouter à
+   la liste" commun — ce surlignage confirme quelle fiche est en attente. */
+.anime-result.is-selected {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
 }
 
 .anime-result-cover {
@@ -263,4 +279,35 @@
     background-color: rgba(56, 189, 248, 0.12);
     border-color: var(--anime-title-color, #38bdf8);
     color: var(--text-white, #fff);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Résultats de recherche Anilist dans le panneau de la liste d'envies
+   ══════════════════════════════════════════════════════════════════════
+   Dans la modale d'ajout d'admin.php, .anime-result dispose toujours d'au
+   moins 500px (max-width de .modal-content) : la disposition en ligne tient
+   sans effort, et reste inchangée ci-dessus. Le panneau de la liste d'envies
+   (pages/page-wishlist.php) est bien plus étroit — la largeur d'un des trois
+   panneaux latéraux de la page, pas celle d'une modale plein écran — et ce,
+   même sur grand écran : ce n'est pas une question de largeur de FENÊTRE
+   (d'où l'inutilité d'une media query ici), mais de largeur du CONTENEUR.
+   On donne donc à #wishlist-anime-results ses propres règles, scopées par id
+   pour l'emporter sans conditionner à une taille d'écran : vignette au-dessus
+   du texte, texte en pleine largeur, bouton en pleine largeur. */
+#wishlist-anime-results .anime-result {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+#wishlist-anime-results .anime-result-cover {
+    width: 100%;
+    height: 160px;
+}
+
+#wishlist-anime-results .anime-result-body {
+    width: 100%;
+}
+
+#wishlist-anime-results .anime-result-add {
+    width: 100%;
 }
