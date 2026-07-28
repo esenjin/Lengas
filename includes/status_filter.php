@@ -2,16 +2,27 @@
 // includes/status_filter.php
 // Filtre de statuts multi-critères (cases à cocher regroupées par catégorie),
 // partagé entre index.php (public) et admin.php.
-// Catégories : publication, âge, favoris, lecture, lues ailleurs, critique.
+// Catégories : publication/diffusion, âge, favoris, lecture/visionnage,
+// lues ailleurs (mangas uniquement), critique.
 // OU à l'intérieur d'une catégorie ; entre catégories, OU ou ET selon le mode.
 // Aucun critère coché => tout afficher.
+//
+// ⚠️ Typage (bloc 6) : le panneau est construit pour un type de série donné.
+// Les libellés viennent exclusivement du registre de types (includes/helpers.php,
+// type_vocab()) — aucun mot en dur ici. Le bloc « Lues ailleurs » n'a pas
+// d'équivalent côté animé (aucune notion de lecture externe) et est retiré du
+// panneau pour ce type ; le reste des catégories est transverse aux deux types.
 
 if (!function_exists('status_filter_categories')) {
 
-function status_filter_categories() {
-    return [
+function status_filter_categories($type = null) {
+    $type = sanitize_series_type($type ?? default_series_type());
+    $is_anime = is_anime($type);
+    $vocab = type_vocab($type);
+
+    $categories = [
         'pub' => [
-            'label' => 'Statut de publication',
+            'label' => $vocab['status_label'],
             'multi' => true,
             'items' => [
                 'en cours'   => 'En cours ▶️',
@@ -37,13 +48,13 @@ function status_filter_categories() {
             ],
         ],
         'reading' => [
-            'label' => 'Statut de lecture',
+            'label' => $vocab['progress_label'],
             'multi' => true,
             'items' => [
-                'reading_not_started' => 'À débuter 📖',
-                'reading_in_progress' => 'En cours 📘',
-                'reading_completed'   => 'Terminée 📗',
-                'reading_abandoned'   => 'Abandonnée 📕',
+                'reading_not_started' => $vocab['filter_not_started'],
+                'reading_in_progress' => $vocab['filter_in_progress'],
+                'reading_completed'   => $vocab['filter_completed'],
+                'reading_abandoned'   => $vocab['filter_abandoned'],
             ],
         ],
         'read_elsewhere' => [
@@ -74,6 +85,13 @@ function status_filter_categories() {
             ],
         ],
     ];
+
+    // Bloc sans objet pour les animés : aucune notion de « lue ailleurs ».
+    if ($is_anime) {
+        unset($categories['read_elsewhere']);
+    }
+
+    return $categories;
 }
 
 // Teste si UN critère unique correspond à une série.
@@ -82,9 +100,7 @@ function status_filter_categories() {
 // tomes ET sur les épisodes. Pour un animé, l'abandon se lit sur
 // `watching_abandoned` et non sur `reading_abandoned`, et le calcul complet est
 // déjà fait par anime_watching_status() : on s'y branche plutôt que de le
-// refaire. Le chemin manga, lui, est laissé rigoureusement intact — la refonte
-// du panneau (libellés « diffusion » / « visionnage », blocs sans objet) est
-// l'objet du bloc 6.
+// refaire. Le chemin manga, lui, est laissé rigoureusement intact.
 function series_matches_status_token($series, $token, $has_review) {
     $is_anime = function_exists('is_anime') && is_anime($series);
     if ($is_anime && in_array($token, ['reading_not_started', 'reading_in_progress',
@@ -150,26 +166,26 @@ function series_matches_status_token($series, $token, $has_review) {
         case 'rating_none':
             return empty($series['rating']);
         default:
-            // Statut de publication — de DIFFUSION pour un animé, auquel cas il
-            // vient d'Anilist et ne se déduit jamais des épisodes.
-            if ($is_anime) {
-                return (($series['status'] ?? 'en cours') === $token);
-            }
-            $status = 'en cours';
-            if (!empty($series['volumes'])) {
-                foreach ($series['volumes'] as $volume) {
-                    if (!empty($volume['last'])) { $status = 'terminée'; break; }
-                }
-            }
-            if ($status === 'en cours' && !empty($series['status'])) {
-                $status = $series['status'];
-            }
-            return $status === $token;
+            // Statut de publication / diffusion : toujours le statut RÉEL stocké
+            // sur la série (`$series['status']`), jamais déduit de la présence
+            // d'un tome ou épisode tagué « dernier ». Un tel tag ne dit rien du
+            // statut réel : une série abandonnée ou en pause peut très bien
+            // avoir son dernier tome/épisode paru tagué comme tel sans que la
+            // série soit « terminée » pour autant — la confondre avec la
+            // publication effectivement achevée masquait par exemple les séries
+            // abandonnées possédant ce tag. Vrai pour un animé comme pour un
+            // manga : même lecture directe du champ, sans recalcul.
+            return (($series['status'] ?? 'en cours') === $token);
     }
 }
 
 // Applique le filtre multi-critères à un tableau de séries.
-function apply_status_filter($data, $raw, $mode, callable $has_review_fn) {
+//
+// $type détermine l'ensemble de catégories valides (voir status_filter_categories) :
+// un token envoyé pour une catégorie absente du type courant (ex. "read_elsewhere"
+// pour un animé, ou un jeton d'une ancienne sélection manga réutilisé sur un lien
+// d'animé) est simplement ignoré plutôt que provoquer une correspondance fausse.
+function apply_status_filter($data, $raw, $mode, callable $has_review_fn, $type = null) {
     $tokens = array_filter(array_map('trim', explode(',', (string)$raw)), 'strlen');
     if (empty($tokens)) return $data;
 
@@ -177,7 +193,7 @@ function apply_status_filter($data, $raw, $mode, callable $has_review_fn) {
 
     // token => clé de catégorie
     $token_to_cat = [];
-    foreach (status_filter_categories() as $cat => $def) {
+    foreach (status_filter_categories($type) as $cat => $def) {
         foreach (array_keys($def['items']) as $tok) {
             $token_to_cat[$tok] = $cat;
         }
@@ -210,12 +226,13 @@ function apply_status_filter($data, $raw, $mode, callable $has_review_fn) {
 
 // Rendu du widget de filtre (cases à cocher regroupées + bascule OU/ET).
 // $raw : "a,b,c" (cases initialement cochées) ; vide => TOUT coché par défaut.
-function render_status_filter($raw, $mode, $reviews_public) {
+// $type : type de série affiché (conditionne les catégories proposées).
+function render_status_filter($raw, $mode, $reviews_public, $type = null) {
     $tokens = array_filter(array_map('trim', explode(',', (string)$raw)), 'strlen');
     $all_default = empty($tokens); // rien fourni => tout coché
     $checked = array_fill_keys($tokens, true);
     $mode = ($mode === 'and') ? 'and' : 'or';
-    $cats = status_filter_categories();
+    $cats = status_filter_categories($type);
     ?>
     <div class="status-filter" id="status-filter" data-status-mode="<?= $mode ?>">
         <button type="button" class="status-filter-toggle" aria-expanded="false">

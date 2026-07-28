@@ -21,6 +21,9 @@
 //   progress_label                       → « Statut de lecture|visionnage »
 //   backlog_label                        → « Séries à lire » / « À finaliser »
 //   collection                           → Mangathèque / Animethèque
+//   filter_not_started / filter_in_progress / filter_completed / filter_abandoned
+//                                         → libellés des cases du filtre de statut
+//                                           de lecture/visionnage (status_filter.php)
 // ──────────────────────────────────────────────────────────────────────────────
 if (!function_exists('series_type_registry')) {
 
@@ -55,6 +58,12 @@ function series_type_registry(): array {
                 'progress_label' => 'Statut de lecture',
                 'backlog_label'  => 'Séries à lire',
                 'collection'     => 'Mangathèque',
+                // Libellés des cases du filtre de statut de lecture/visionnage
+                // (includes/status_filter.php).
+                'filter_not_started' => 'À débuter 📖',
+                'filter_in_progress' => 'En cours 📘',
+                'filter_completed'   => 'Terminée 📗',
+                'filter_abandoned'   => 'Abandonnée 📕',
             ],
         ],
         'anime' => [
@@ -81,6 +90,12 @@ function series_type_registry(): array {
                 'progress_label' => 'Statut de visionnage',
                 'backlog_label'  => 'À finaliser',
                 'collection'     => 'Animethèque',
+                // Libellés des cases du filtre de statut de lecture/visionnage
+                // (includes/status_filter.php).
+                'filter_not_started' => 'À voir 📖',
+                'filter_in_progress' => 'En cours 📘',
+                'filter_completed'   => 'Terminée 📗',
+                'filter_abandoned'   => 'Abandonnée 📕',
             ],
         ],
     ];

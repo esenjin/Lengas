@@ -115,7 +115,8 @@ if (isset($_GET['get_paginated_series'])) {
         $status_mode,
         function($series) use ($public_review_ids, $reviews_public) {
             return $reviews_public && isset($public_review_ids[$series['id']]);
-        }
+        },
+        $type_filter
     );
 
     // Trie les résultats filtrés
@@ -377,7 +378,7 @@ if (!empty($search_term)) {
                         <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Ascendant</option>
                         <option value="desc" <?= $sort_order === 'desc' ? 'selected' : '' ?>>Descendant</option>
                     </select>
-                    <?php render_status_filter($status_filter, $status_mode ?? 'or', $reviews_public); ?>
+                    <?php render_status_filter($status_filter, $status_mode ?? 'or', $reviews_public, $current_type); ?>
                 </div>
 
                 <?php if ($options['hide_mature']): ?>

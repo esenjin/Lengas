@@ -572,7 +572,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
         $status_mode,
         function($series) use ($review_series_ids) {
             return isset($review_series_ids[$series['id']]);
-        }
+        },
+        $type_filter
     );
     sort_series($filtered_data, $sort_by, $sort_order);
 
@@ -1006,7 +1007,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_wishlist'])) {
                         <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Ascendant</option>
                         <option value="desc" <?= $sort_order === 'desc' ? 'selected' : '' ?>>Descendant</option>
                     </select>
-                    <?php render_status_filter($status_filter, $status_mode, true); ?>
+                    <?php render_status_filter($status_filter, $status_mode, true, $current_type); ?>
                 </div>
             </form>
         </div>
