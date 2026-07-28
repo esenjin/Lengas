@@ -177,41 +177,56 @@ function formatList(list) {
 }
 
 // Charge les tomes d'une série (ou les masque si déjà affichés)
+// Libellé pluriel de l'unité d'une série (« tomes » ou « épisodes »), lu dans
+// le registre de types exposé par le PHP (window.seriesTypes) — jamais écrit
+// en dur, pour qu'un type futur n'ait rien à changer ici. episodes.js définit
+// déjà animeVocab() pour le type `anime` ; on généralise ici à N'IMPORTE quel
+// type via son propre vocabulaire, avec repli sur "tomes" si le registre ou le
+// type sont absents (bases antérieures à la V4, script chargé isolément).
+function seriesItemsLabel(seriesId) {
+    const series = (typeof findSeriesById === 'function') ? findSeriesById(seriesId) : null;
+    const type   = series ? (series.type || 'manga') : 'manga';
+    const def    = window.seriesTypes && window.seriesTypes[type];
+    return (def && def.vocab && def.vocab.items) ? def.vocab.items : 'tomes';
+}
+
 function loadSeriesVolumes(seriesId) {
     const container = document.querySelector(`.volumes-container[data-series-id="${seriesId}"]`);
     const btn = document.querySelector(`.load-volumes-btn[data-series-id="${seriesId}"]`);
     const volumesCount = btn ? btn.dataset.volumesCount : '';
+    const itemsLabel = seriesItemsLabel(seriesId);
 
     // Toggle : si les tomes sont visibles, on les masque
     if (container.dataset.loaded === 'true') {
         if (container.style.display === 'none') {
             container.style.display = '';
-            if (btn) btn.textContent = `Cacher les tomes (${volumesCount})`;
+            if (btn) btn.textContent = `Cacher les ${itemsLabel} (${volumesCount})`;
         } else {
             container.style.display = 'none';
-            if (btn) btn.textContent = `Voir les tomes (${volumesCount})`;
+            if (btn) btn.textContent = `Voir les ${itemsLabel} (${volumesCount})`;
         }
         return;
     }
 
     // Premier chargement
-    container.innerHTML = '<p class="loading-text">Chargement des tomes...</p>';
+    container.innerHTML = `<p class="loading-text">Chargement des ${itemsLabel}...</p>`;
     fetch(`admin.php?get_series_volumes=true&series_id=${encodeURIComponent(seriesId)}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 container.innerHTML = data.volumes_html;
                 container.dataset.loaded = 'true';
-                if (btn) btn.textContent = `Cacher les tomes (${volumesCount})`;
+                if (btn) btn.textContent = `Cacher les ${itemsLabel} (${volumesCount})`;
             } else {
                 container.innerHTML = `<p class="error">Erreur : ${data.message}</p>`;
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
-            container.innerHTML = '<p class="error">Erreur de chargement des tomes.</p>';
+            container.innerHTML = `<p class="error">Erreur de chargement des ${itemsLabel}.</p>`;
         });
 }
+
 
 // Ouvre la modale « Ajouter des tomes » avec une série déjà sélectionnée.
 function openAddVolumesForSeries(seriesId) {

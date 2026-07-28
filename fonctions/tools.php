@@ -14,6 +14,7 @@
 //   babengas-helpers.php   → Vérification du décompte VF via Babelio (Babengas)
 //   coherence.php          → Incohérences de la collection
 //   anilist_import.php     → Import de masse de la liste Anilist (V4 bloc 8)
+//   anilist_sync.php       → Synchronisation automatique Anilist (V4 bloc 9)
 // ────────────────────────────────────────────────────────────────────────────
 
 require_once __DIR__ . '/tools/backups.php';
@@ -24,3 +25,4 @@ require_once __DIR__ . '/tools/incomplete.php';
 require_once __DIR__ . '/tools/babengas-helpers.php';
 require_once __DIR__ . '/tools/coherence.php';
 require_once __DIR__ . '/tools/anilist_import.php';
+require_once __DIR__ . '/tools/anilist_sync.php';

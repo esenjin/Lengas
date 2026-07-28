@@ -382,6 +382,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_next_episode']))
     exit;
 }
 
+// ── Endpoint AJAX : synchronisation automatique d'une carte animée ──────────
+// Déclenché par le front à l'affichage d'une carte éligible (diffusion ET
+// visionnage « en cours »), une par une. La page s'affiche donc immédiatement,
+// la synchro part ensuite en arrière-plan : voir assets/js/admin/anime.js.
+//
+// Verrou de 24h par série (sauf contournement déjà écoulé), respecté ici même
+// si le front ne rappelle que des cartes qu'il croit dues : la vérité reste
+// celle du serveur. Échec API : report du verrou à 1h, jamais de fatale.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sync_anime_series'])) {
+    header('Content-Type: application/json');
+
+    $series_id = $_POST['series_id'] ?? '';
+    $target    = find_series_by_id($data, $series_id);
+
+    if (!$target || !is_anime($target['data'])) {
+        echo json_encode(['success' => false, 'status' => 'error', 'message' => "Série animée introuvable."]);
+        exit;
+    }
+
+    // Quota de séries synchronisées par visite (protection SERVEUR : le
+    // plafond côté front n'est qu'un confort, celui-ci est la vraie limite).
+    // Un dépassement n'est pas une erreur : la carte concernée sera reprise
+    // à la prochaine visite, ou au sous-onglet « Vérification via Anilist »
+    // de la page Outils, qui n'a lui aucun plafond (action explicite).
+    if (!anilist_sync_visit_quota_available()) {
+        echo json_encode([
+            'success'   => false,
+            'status'    => 'skipped',
+            'message'   => "Quota de synchronisations automatiques atteint pour cette visite.",
+            'series_id' => $series_id,
+        ]);
+        exit;
+    }
+
+    $result = anilist_sync_series_now($data, $series_id, false);
+    $data   = $result['data'];
+
+    // Le quota n'est consommé QUE pour une tentative réelle (synced/unchanged/
+    // error) : un 'skipped' renvoyé par le moteur (verrou non écoulu, série
+    // devenue inéligible entre-temps) ne coûte rien, il n'y a pas eu d'appel
+    // à Anilist.
+    if (in_array($result['status'], ['synced', 'unchanged', 'error'], true)) {
+        anilist_sync_visit_quota_consume();
+    }
+
+    if ($result['status'] === 'error' && !empty($result['retry_lock'])) {
+        $data = anilist_sync_apply_retry_lock($data, $series_id);
+    }
+    if (in_array($result['status'], ['synced', 'unchanged', 'error'], true)) {
+        save_data($data);
+    }
+
+    // Relue APRÈS le report de verrou éventuel : anilist_synced_at doit
+    // refléter ce qui vient d'être écrit, pas l'état d'avant l'échec.
+    $refetched = find_series_by_id($data, $series_id);
+    $series    = $refetched ? $refetched['data'] : ($result['series'] ?? $target['data']);
+
+    echo json_encode([
+        'success'            => in_array($result['status'], ['synced', 'unchanged'], true),
+        'status'             => $result['status'], // 'synced' | 'unchanged' | 'error' | 'skipped'
+        'message'            => $result['message'],
+        'series_id'          => $series_id,
+        'anime_status'       => $series['status'] ?? '',
+        'volumes_count'      => count($series['volumes'] ?? []),
+        'anilist_synced_at'  => (int)($series['anilist_synced_at'] ?? 0),
+    ]);
+    exit;
+}
+
 // Supprimer un tome
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_volume'])) {
     $series_id = $_POST['series_id'] ?? '';
@@ -662,6 +731,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 // vignette Anilist qui, elle, ne s'efface jamais à la main.
                 'custom_image'               => $series['image'] ?? '',
                 'anilist_image'              => $series['anilist_image'] ?? '',
+                // ── Synchronisation automatique (V4 bloc 9) ──────────────────
+                // Le front décide lui-même s'il doit déclencher une synchro à
+                // l'affichage de la carte : sync_due lui épargne un aller-retour
+                // pour rien sur une série déjà à jour ou hors verrou.
+                'anilist_synced_at'          => (int)($series['anilist_synced_at'] ?? 0),
+                'sync_due'                   => is_anime($series) && anilist_sync_is_due($series, false),
             ];
         }, $paginated_data);
 

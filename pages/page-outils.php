@@ -505,6 +505,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
+// ── Sous-onglet « Vérification via Anilist » (page « Complétude des séries »,
+// V4 bloc 9) : synchronisation en flux (SSE), sur le modèle des deux autres
+// sous-onglets de cet onglet. Réutilise intégralement le moteur du bloc 9
+// (fonctions/tools/anilist_sync.php) : ni l'éligibilité, ni le verrou, ni la
+// mise à jour des épisodes ne sont redéfinis ici.
+//
+// $_GET['force'] = '1' → bouton de forçage : synchronise TOUTES les séries
+// animées éligibles, verrous de 24h ignorés (sur le modèle du bouton « Forcer
+// la recherche (non analysées) » de l'outil MangaUpdates).
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'anilist_sync_stream') {
+    @ini_set('output_buffering', 'off');
+    @ini_set('zlib.output_compression', false);
+    @set_time_limit(0);
+    while (ob_get_level()) ob_end_flush();
+
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('X-Accel-Buffering: no');
+
+    $sse = function (string $event, array $payload): void {
+        echo 'event: ' . $event . "\n";
+        echo 'data: ' . json_encode($payload) . "\n\n";
+        flush();
+    };
+
+    $force = isset($_GET['force']) && $_GET['force'] === '1';
+
+    // Périmètre : toutes les séries éligibles si $force (le bouton de forçage
+    // ignore les verrous), seulement celles dont le verrou est écoulé sinon.
+    // Pas de plafond « par visite » ici, contrairement à l'endpoint AJAX
+    // d'admin.php : cet outil est une action explicite de l'administrateur,
+    // pas un déclenchement automatique à l'affichage d'une page.
+    $series_ids = $force
+        ? anilist_sync_eligible_series_ids($data)
+        : anilist_sync_due_series_ids($data);
+
+    if (empty($series_ids)) {
+        $sse('done', [
+            'success'   => true,
+            'synced'    => [], 'unchanged' => [], 'skipped' => [], 'errors' => [],
+            'processed' => 0,
+            'message'   => $force
+                ? "Aucune série animée éligible (diffusion et visionnage « en cours »)."
+                : "Aucune série à synchroniser pour le moment (verrous de 24h non écoulés).",
+        ]);
+        exit;
+    }
+
+    $result = anilist_sync_run_batch(
+        $series_ids,
+        count($series_ids), // pas de plafond de visite dans cet outil : action explicite
+        $force,
+        function ($current, $total, $title) use ($sse) {
+            $sse('progress', ['current' => $current, 'total' => $total, 'title' => $title]);
+        }
+    );
+
+    $sse('done', array_merge(['success' => true], $result));
+    exit;
+}
+
 // ── Outil « Sauvegardes » : téléchargement d'une archive ─────────────────────
 // Les fichiers .zip du dossier saves/ sont volontairement bloqués par le
 // .htaccess (accès direct interdit). Le téléchargement passe donc par ce
@@ -717,6 +778,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
 <?php if (function_exists('babengas_enabled') && babengas_enabled()): ?>
                 <button type="button" class="tools-subtab" data-subtab="babengas">Vérification avec Babengas (via Babelio)</button>
 <?php endif; ?>
+<?php if (!empty(series_of_type($data, 'anime'))): ?>
+                <button type="button" class="tools-subtab" data-subtab="anilist-sync">Vérification via Anilist</button>
+<?php endif; ?>
             </div>
 
             <!-- ── Sous-onglet : Vérification via MangaUpdates ─────────────── -->
@@ -784,6 +848,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
                 <div id="babengas-results"></div>
             </div>
             </div><!-- /sous-onglet babengas -->
+            <?php endif; ?>
+
+            <!-- ── Sous-onglet : Vérification via Anilist (V4 bloc 9) ───────── -->
+            <?php if (!empty(series_of_type($data, 'anime'))): ?>
+            <div class="tools-subtab-panel" data-subtab-panel="anilist-sync">
+            <div class="tools-section">
+                <h2>Synchronisation via Anilist</h2>
+                <p>Tient à jour les séries animées dont la diffusion <strong>et</strong> le visionnage sont tous les deux « en cours » : nouveaux épisodes diffusés et statut de diffusion. C'est la même synchronisation qui se déclenche automatiquement, en arrière-plan, à l'affichage de l'Animethèque — cet outil permet de la lancer à la demande, ou de la forcer en ignorant le verrou habituel.</p>
+                <p class="hint">⚠️ Limitations : seuls les épisodes et le statut de diffusion sont concernés. Les studios, genres, format, titres alternatifs ou la vignette Anilist ne sont vérifiés que par l'outil de revérification (onglet « Outils » dédié), qui demande une validation avant toute écriture. Les personnalisations (titre choisi, vignette personnelle, note, coches, éditions physiques) ne sont jamais affectées, ici comme ailleurs.</p>
+                <p class="hint">Un verrou de 24 h protège chaque série contre des vérifications trop rapprochées ; en cas d'échec de l'API pour une série, ce délai est ramené à 1 h avant une nouvelle tentative.</p>
+
+                <div class="tools-actions">
+                    <button id="anilist-sync-launch" class="button">Synchroniser les séries éligibles</button>
+                    <button id="anilist-sync-launch-force" class="button button-opt" title="Synchronise toutes les séries animées éligibles (diffusion et visionnage « en cours »), en ignorant le verrou de 24 h">Forcer toutes les séries éligibles</button>
+                </div>
+
+                <div id="anilist-sync-progress"></div>
+                <div id="anilist-sync-results"></div>
+            </div>
+            </div><!-- /sous-onglet anilist-sync -->
             <?php endif; ?>
 
         </div><!-- /onglet completude -->
@@ -1147,6 +1231,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
     <script src="../assets/js/admin/tools/anilist-import.js"></script>
     <?php if (function_exists('babengas_enabled') && babengas_enabled()): ?>
         <script src="../assets/js/admin/tools/babengas.js"></script>
+    <?php endif; ?>
+    <?php if (!empty(series_of_type($data, 'anime'))): ?>
+        <script src="../assets/js/admin/tools/anilist-sync.js"></script>
     <?php endif; ?>
     <script src="../assets/js/admin/tools/coherence.js"></script>
     <script src="../assets/js/admin/tools/backups.js"></script>
