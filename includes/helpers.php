@@ -221,6 +221,17 @@ function series_type_counts(array $data): array {
     return $counts;
 }
 
+// ── Clé de doublon nom+type (collection / liste d'envies) ─────────────────────────
+// Un manga et un animé du même nom (ex. « One Piece » des deux côtés) ne sont
+// PAS un doublon : ce sont deux œuvres différentes qui partagent un titre.
+// Cette clé combine nom normalisé et type pour que la détection de doublons
+// (integrity.php, cleanup.php) ne les confonde plus. $item accepte aussi bien
+// une entrée de $data (table series) qu'une entrée de load_wishlist().
+function series_wishlist_duplicate_key(array $item): string {
+    $name = strtolower(trim((string)($item['name'] ?? '')));
+    return $name . '|' . series_type($item);
+}
+
 // Registre allégé destiné au JavaScript (window.seriesTypes) : de quoi afficher
 // un badge de type, et le vocabulaire du type pour que le front n'écrive lui non
 // plus aucun libellé en dur (« Épisode 3 » vient d'ici, pas d'une chaîne perdue

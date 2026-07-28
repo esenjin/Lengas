@@ -405,7 +405,8 @@ function check_site_integrity(array $data): array {
         'external_access' => [],
         'version'         => null,
         'site_info'       => [],
-        'db_structure'    => [],
+        'db_structure'         => [],
+        'db_structure_anilist' => [],   // V4 : colonnes/tables propres aux animés
     ];
 
     // ── 0. Thèmes personnalisés (sert aussi pour la détection d'intrus) ────────
@@ -536,13 +537,25 @@ function check_site_integrity(array $data): array {
     }
 
     // ── 6. Doublons ────────────────────────────────────────────────────────────
+    // La clé nom+type (series_wishlist_duplicate_key(), includes/helpers.php)
+    // évite de confondre un manga et un animé du même nom (ex. « One Piece »
+    // présent des deux côtés sous les deux types n'est pas un doublon).
     $wishlist        = load_wishlist();
     $loans           = load_loans();
-    $series_names    = array_map(fn($s) => strtolower($s['name']), $data);
-    $wishlist_names  = array_map(fn($s) => strtolower($s['name']), $wishlist);
+    $series_keys     = array_map('series_wishlist_duplicate_key', $data);
+    $wishlist_keys   = array_map('series_wishlist_duplicate_key', $wishlist);
     $loan_series_ids = array_unique(array_column($loans, 'series_id'));
 
-    $results['duplicates']['collection_wishlist'] = array_values(array_intersect($series_names, $wishlist_names));
+    // Le rapport affiche des noms, pas des clés techniques : on retrouve le nom
+    // d'affichage à partir de la clé retenue par l'intersection.
+    $duplicate_keys = array_intersect($series_keys, $wishlist_keys);
+    $duplicate_names = [];
+    foreach ($data as $i => $series) {
+        if (in_array($series_keys[$i], $duplicate_keys, true)) {
+            $duplicate_names[] = $series['name'];
+        }
+    }
+    $results['duplicates']['collection_wishlist'] = array_values(array_unique($duplicate_names));
     $results['duplicates']['deleted_loans'] = [];
     foreach ($loan_series_ids as $id) {
         $found = false;
@@ -564,6 +577,10 @@ function check_site_integrity(array $data): array {
     }
     foreach ($data as $series) {
         if (!empty($series['image'])) $used_images[] = $series['image'];
+        // V4 : la vignette Anilist d'une série existante n'est pas orpheline,
+        // même quand une vignette personnalisée la masque (cf. la même règle
+        // dans clean_orphaned_images(), fonctions/tools/cleanup.php).
+        if (!empty($series['anilist_image'])) $used_images[] = $series['anilist_image'];
     }
     // Ne jamais considérer la photo de profil de l'admin comme orpheline.
     if ($admin_avatar !== '') $used_images[] = $admin_avatar;
@@ -605,11 +622,58 @@ function check_site_integrity(array $data): array {
         $results['db_structure']['Lecture impossible'] = false;
     }
 
+    // ── 11bis. Structure de la base de données (intégration Anilist, V4) ───────
+    // Colonnes et tables introduites par la V4 pour les séries animées :
+    // typage, champs Anilist, éditions physiques, cache des fiches. Une
+    // absence signale une migration incomplète (config.php non exécuté, base
+    // restaurée depuis une version antérieure à la V4…).
+    $anilist_cache_count = 0;
+    try {
+        $db = get_db();
+        $col_names = array_column($db->query("PRAGMA table_info(series)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+        $anilist_columns = [
+            'type', 'anilist_id', 'anilist_url', 'studios', 'anime_format',
+            'alt_titles', 'anilist_image', 'watching_abandoned', 'rewatch_count',
+            'anilist_synced_at', 'rating',
+        ];
+        foreach ($anilist_columns as $col) {
+            $results['db_structure_anilist']['Colonne series.' . $col] = in_array($col, $col_names, true);
+        }
+
+        $wishlist_cols = array_column($db->query("PRAGMA table_info(wishlist)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+        $results['db_structure_anilist']['Colonne wishlist.type']       = in_array('type', $wishlist_cols, true);
+        $results['db_structure_anilist']['Colonne wishlist.anilist_id'] = in_array('anilist_id', $wishlist_cols, true);
+        $results['db_structure_anilist']['Colonne wishlist.studio']     = in_array('studio', $wishlist_cols, true);
+
+        $tables = ['series_editions', 'anilist_cache'];
+        foreach ($tables as $table) {
+            $tbl = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='" . $table . "'")->fetchColumn();
+            $results['db_structure_anilist']['Table ' . $table] = ($tbl !== false);
+        }
+
+        $cache_tbl = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='anilist_cache'")->fetchColumn();
+        if ($cache_tbl !== false) {
+            $anilist_cache_count = (int)$db->query("SELECT COUNT(*) FROM anilist_cache")->fetchColumn();
+        }
+    } catch (Exception $e) {
+        $results['db_structure_anilist']['Lecture impossible'] = false;
+    }
+
     // ── 12. Connectivité de l'API MangaUpdates ─────────────────────────────────
     if (function_exists('mangaupdates_check_api')) {
         $api = mangaupdates_check_api();
         $api['cache_count'] = $cache_count;
         $results['mangaupdates_api'] = $api;
+    }
+
+    // ── 12bis. Connectivité de l'API Anilist (V4) ───────────────────────────────
+    // Ne sonde le réseau que si la collection contient au moins une série
+    // animée : sans quoi le connecteur n'est d'aucune utilité, inutile de
+    // solliciter Anilist à chaque vérification d'intégrité.
+    if (function_exists('anilist_check_api') && !empty(array_filter($data, 'is_anime'))) {
+        $api = anilist_check_api();
+        $api['cache_count'] = $anilist_cache_count;
+        $results['anilist_api'] = $api;
     }
 
     return $results;

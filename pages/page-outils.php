@@ -807,6 +807,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
         case 'coherence_quick_edit':
             $response = coherence_quick_edit($data, $_POST);
             break;
+
+        case 'coherence_quick_edit_anime':
+            $response = coherence_quick_edit_anime($data, $_POST);
+            break;
     }
 
     header('Content-Type: application/json');
@@ -1106,6 +1110,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
             <div class="tools-section">
                 <h2>Incohérences de la collection</h2>
                 <p>Vérification des incohérences internes de vos séries (doublons, numéros manquants, mauvais tag « dernier tome », prêts orphelins…). Cet outil exploite aussi le statut de publication MangaUpdates mis en cache.</p>
+                <?php if (!empty(series_of_type($data, 'anime'))): ?>
+                <p class="hint">Couvre aussi l'Animethèque : épisodes manquants ou en double, mauvais tag « dernier épisode », épisode terminé sans date, vignette Anilist introuvable, série sans identifiant Anilist. Les anomalies qui viennent d'Anilist (statut de diffusion, fiche incomplète…) ne se corrigent pas ici : le rapport renvoie vers la fiche Anilist. Seules celles qui sont purement locales (statut et date de visionnage) proposent un bouton « Corriger ».</p>
+                <?php endif; ?>
                 <div class="tools-actions">
                     <button id="reload-coherences-btn" class="button button-opt">Relancer l'analyse</button>
                 </div>
@@ -1175,7 +1182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
         <div class="tools-tab-panel" data-tab-panel="integrity">
             <div class="tools-section">
                 <h2>Vérification d'intégrité</h2>
-                <p>Vérifie l'intégrité de votre site et de vos données (fichiers, permissions, structure de la base, thèmes personnalisés, fichiers Vestikan, API MangaUpdates…).</p>
+                <p>Vérifie l'intégrité de votre site et de vos données (fichiers, permissions, structure de la base, thèmes personnalisés, fichiers Vestikan, API MangaUpdates, API Anilist…).</p>
                 <button id="check-integrity-btn" class="button button-oas">
                     <span id="check-integrity-text">Vérifier l'intégrité</span>
                     <span id="check-integrity-spinner" class="spinner" style="display: none;"></span>
@@ -1258,6 +1265,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
         </div>
     </div>
 
+    <!-- Édition rapide d'une série animée depuis l'outil « Incohérences » (V4 bloc 11) -->
+    <!-- Volontairement plus étroite que la modale manga ci-dessus : seuls le statut de
+         visionnage et sa date sont modifiables (pas d'ajout/suppression d'épisode, pas de
+         case « dernier épisode » — Anilist est la seule source, le tag se réévalue seul). -->
+    <?php if (!empty(series_of_type($data, 'anime'))): ?>
+    <div class="modal" id="anime-coherence-edit-modal">
+        <div class="modal-content modal-content--wide">
+            <span class="close-modal" id="close-anime-coherence-edit-modal">&times;</span>
+            <h2>Corriger le visionnage</h2>
+
+            <input type="hidden" id="acedit-series-id">
+
+            <div class="cedit-info-grid">
+                <div class="cedit-info-item">
+                    <span class="cedit-info-label">Titre</span>
+                    <span class="cedit-info-value" id="acedit-name"></span>
+                </div>
+                <div class="cedit-info-item">
+                    <span class="cedit-info-label">Statut de diffusion</span>
+                    <span class="cedit-info-value" id="acedit-status"></span>
+                </div>
+            </div>
+
+            <p class="hint">Seuls le statut de visionnage et sa date se corrigent ici. Le titre, les studios, le format, les genres et le statut de diffusion viennent d'Anilist : une erreur constatée sur ces champs se corrige à la source, via le lien Anilist de la fiche.</p>
+
+            <hr class="cedit-divider">
+
+            <div class="cedit-volumes-header">
+                <span class="cedit-label">Épisodes</span>
+            </div>
+            <div id="acedit-episodes-list" class="cedit-volumes-list">
+                <!-- Épisodes injectés dynamiquement -->
+            </div>
+
+            <div class="modal-actions cedit-actions">
+                <button type="button" class="button button-ats" id="acedit-save-btn">
+                    <span id="acedit-save-text">Enregistrer</span>
+                    <span id="acedit-save-spinner" class="spinner" style="display:none;"></span>
+                </button>
+            </div>
+            <p id="acedit-feedback" class="cedit-feedback"></p>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Ajouter une URL MangaUpdates (depuis l'outil des tomes manquants) -->
     <div class="modal" id="add-mu-url-modal">
         <div class="modal-content modal-content--narrow">
@@ -1331,7 +1383,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
         }, array_values($data));
     ?>
     <script>
-        window.seriesData = <?= json_encode($series_with_status) ?>;
+        window.seriesData  = <?= json_encode($series_with_status) ?>;
+        window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
     </script>
     <script src="../assets/js/admin/tools/page.js"></script>
     <script src="../assets/js/admin/tools/incomplete.js"></script>

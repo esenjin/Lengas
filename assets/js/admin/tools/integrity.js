@@ -384,6 +384,35 @@ function displayIntegrityResults(results) {
         `;
     }
 
+    // ── 11bis. Structure de la base de données (Anilist, V4) ──────────────────
+    if (results.db_structure_anilist && Object.keys(results.db_structure_anilist).length > 0) {
+        html += `
+            <div class="integrity-section">
+                <h3>Base de données (Anilist)</h3>
+                <p class="hint">Colonnes et tables introduites par la V4 pour l'intégration des animés. Une entrée manquante signale une migration incomplète.</p>
+                <ul>
+        `;
+        for (const [label, ok] of Object.entries(results.db_structure_anilist)) {
+            html += `<li>${escHtml(label)} : <span class="${ok ? 'ok' : 'error'}">${ok ? 'OK' : 'Manquant'}</span></li>`;
+        }
+        html += `</ul></div>`;
+    }
+
+    // ── 12bis. Connectivité de l'API Anilist (V4) ─────────────────────────────
+    if (results.anilist_api) {
+        const api = results.anilist_api;
+        html += `
+            <div class="integrity-section">
+                <h3>API Anilist</h3>
+                <ul>
+                    <li>Accès à l'API : <span class="${api.ok ? 'ok' : 'error'}">${api.ok ? 'OK' : 'Échec'}</span>${(!api.ok && api.http) ? ` (HTTP ${api.http})` : ''}</li>
+                    ${(!api.ok && api.error) ? `<li class="error">Erreur : ${escHtml(api.error)}</li>` : ''}
+                    <li>Fiches en cache : ${api.cache_count ?? 0}</li>
+                </ul>
+            </div>
+        `;
+    }
+
     // ── 12. Version ───────────────────────────────────────────────────────────
     html += `
         <div class="integrity-section">

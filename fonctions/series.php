@@ -25,9 +25,13 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
     $categories = clean_comma_separated($categories);
     $genres = clean_comma_separated($genres);
 
-    // Vérifie si une série du même nom existe déjà
+    // Vérifie si une série du même nom ET du même type existe déjà. Un manga et
+    // un animé homonymes (ex. « One Piece » des deux côtés) ne sont pas un
+    // doublon : ce sont deux œuvres différentes qui partagent un titre. Cette
+    // fonction ne crée que des mangas (voir le commentaire de tête), donc la
+    // comparaison se limite explicitement au type 'manga'.
     $existing_series = array_filter($data, function($s) use ($name) {
-        return strtolower(trim($s['name'])) === strtolower(trim($name));
+        return strtolower(trim($s['name'])) === strtolower(trim($name)) && series_type($s) === 'manga';
     });
 
     $message = "Série ajoutée avec succès.";

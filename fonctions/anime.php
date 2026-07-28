@@ -48,7 +48,15 @@ function anime_download_cover(string $url): array {
         return $fail("L'extension cURL de PHP est absente : téléchargement impossible.");
     }
 
-    $target_dir = rtrim(UPLOAD_DIR, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+    // Le chemin stocké en base sert de source à des balises <img> et de clé de
+    // comparaison ailleurs dans le site (cascade d'affichage, détection des
+    // images orphelines) : toujours un slash "/", jamais DIRECTORY_SEPARATOR.
+    // Sur un serveur Windows, ce dernier vaut "\" et produirait un chemin
+    // bâtard ("uploads/\xxxx.jpg") qui reste affichable (Windows accepte les
+    // deux séparateurs) mais ne correspond plus jamais au format "uploads/xxxx.jpg"
+    // produit par scandir() ailleurs dans le site — d'où des vignettes Anilist
+    // pourtant actives signalées à tort comme orphelines.
+    $target_dir = rtrim(UPLOAD_DIR, '/') . '/';
     if (!is_dir($target_dir) || !is_writable($target_dir)) {
         return $fail("Le dossier des vignettes est inaccessible en écriture.");
     }

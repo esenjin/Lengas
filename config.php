@@ -324,6 +324,27 @@ function init_db(PDO $pdo): void {
         )
     ");
 
+    // ── Migration corrective : chemins d'image bâtards sur serveur Windows ─────
+    // upload_image() (ce fichier) et anime_download_cover() (fonctions/anime.php)
+    // construisaient jusqu'ici leur chemin avec DIRECTORY_SEPARATOR, qui vaut
+    // "\" sur un serveur Windows. Résultat : un chemin enregistré du type
+    // "uploads/\abcd1234.jpg" (mélange slash + backslash) — affichable tel quel
+    // (Windows accepte les deux séparateurs) mais qui ne correspond plus au
+    // format "uploads/abcd1234.jpg" attendu ailleurs dans le site (vérification
+    // d'intégrité, nettoyage des images orphelines), d'où des vignettes
+    // pourtant actives signalées à tort comme orphelines. Corrigé à la source
+    // dans le code ; cette migration nettoie les valeurs déjà enregistrées.
+    // Non destructive : un simple remplacement de texte, rejouable sans risque.
+    try {
+        // chr(92) = le caractère backslash, exprimé ainsi pour éviter toute
+        // ambiguïté d'échappement PHP/SQL imbriqués sur ce caractère.
+        $bslash = chr(92);
+        $pdo->prepare("UPDATE series SET image = REPLACE(image, ?, '/') WHERE image LIKE ?")
+            ->execute(['/' . $bslash, '%/' . $bslash . '%']);
+        $pdo->prepare("UPDATE series SET anilist_image = REPLACE(anilist_image, ?, '/') WHERE anilist_image LIKE ?")
+            ->execute(['/' . $bslash, '%/' . $bslash . '%']);
+    } catch (Exception $e) { /* migration non bloquante */ }
+
     // Options par défaut si la table est vide
     $count = $pdo->query("SELECT COUNT(*) FROM options")->fetchColumn();
     if ((int)$count === 0) {
@@ -826,7 +847,14 @@ function upload_image(array $file, &$error_message = null) {
         return false;
     }
 
-    $target_dir = rtrim(UPLOAD_DIR, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+    // Toujours un slash "/" ici, jamais DIRECTORY_SEPARATOR : ce chemin sert de
+    // source à des balises <img> et de clé de comparaison ailleurs dans le site
+    // (vérification d'intégrité, nettoyage des images orphelines...). Sur un
+    // serveur Windows, DIRECTORY_SEPARATOR vaut "\" et produirait un chemin
+    // bâtard qui reste affichable mais ne correspond plus au format généré par
+    // scandir() ("uploads/xxxx.ext") — la vignette serait alors signalée à tort
+    // comme orpheline.
+    $target_dir = rtrim(UPLOAD_DIR, '/') . '/';
     if (!is_dir($target_dir) || !is_writable($target_dir)) {
         $error_message = "Le dossier de destination est invalide ou non accessible.";
         return false;

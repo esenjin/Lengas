@@ -57,6 +57,13 @@ const modals = {
         modal:    document.getElementById('coherence-edit-modal'),
         closeBtn: document.getElementById('close-coherence-edit-modal')
     },
+    // Absente de la page si la collection ne contient aucun animé (cf. le
+    // <?php if (...) ?> de page-outils.php) : les deux valent alors null, sans
+    // que cela ne gêne Object.values(modals).forEach ci-dessous.
+    'anime-coherence-edit': {
+        modal:    document.getElementById('anime-coherence-edit-modal'),
+        closeBtn: document.getElementById('close-anime-coherence-edit-modal')
+    },
     'add-mu-url': {
         modal:    document.getElementById('add-mu-url-modal'),
         closeBtn: document.getElementById('close-add-mu-url-modal')
@@ -72,7 +79,8 @@ const modals = {
 function closeToolModal(modal) {
     modal.classList.remove('modal-active');
 
-    if (modal.id === 'coherence-edit-modal' && window.coherenceEditDirty) {
+    const isCoherenceModal = (modal.id === 'coherence-edit-modal' || modal.id === 'anime-coherence-edit-modal');
+    if (isCoherenceModal && window.coherenceEditDirty) {
         window.coherenceEditDirty = false;
         if (typeof loadCoherences === 'function') loadCoherences();
     }

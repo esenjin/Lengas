@@ -7,18 +7,20 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 // Nettoyer les doublons
+// La clé nom+type (series_wishlist_duplicate_key(), includes/helpers.php)
+// évite de retirer à tort de la wishlist un animé homonyme d'un manga déjà en
+// collection (ou inversement) : seul un doublon de MÊME type est nettoyé.
 function clean_duplicates(): array {
     global $data;
     $wishlist = load_wishlist();
     $loans    = load_loans();
     $messages = [];
 
-    $series_names   = array_map(fn($s) => strtolower($s['name']), $data);
-    $wishlist_names = array_map(fn($s) => strtolower($s['name']), $wishlist);
-    $duplicates     = array_intersect($series_names, $wishlist_names);
+    $series_keys = array_map('series_wishlist_duplicate_key', $data);
+    $duplicates  = array_intersect(array_map('series_wishlist_duplicate_key', $wishlist), $series_keys);
 
     if (!empty($duplicates)) {
-        $new_wishlist = array_values(array_filter($wishlist, fn($item) => !in_array(strtolower($item['name']), $series_names)));
+        $new_wishlist = array_values(array_filter($wishlist, fn($item) => !in_array(series_wishlist_duplicate_key($item), $series_keys, true)));
         save_wishlist($new_wishlist);
         $messages[] = "Doublons collection/envies nettoyés.";
     }

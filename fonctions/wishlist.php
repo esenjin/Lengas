@@ -100,7 +100,10 @@ function add_to_wishlist(
         if ($anilist_id !== '' && (int)($item['anilist_id'] ?? 0) === (int)$anilist_id) {
             return ['success' => false, 'message' => "Cette série est déjà dans la liste d'envies."];
         }
-        if ($anilist_id === '' && strcasecmp($item['name'], $name) === 0) {
+        // Comparaison par nom : un manga et un animé homonymes ne sont pas un
+        // doublon (ex. « One Piece » côté manga ET côté animé) — on exige donc
+        // aussi le même type.
+        if ($anilist_id === '' && strcasecmp($item['name'], $name) === 0 && sanitize_series_type($item['type'] ?? '') === $type) {
             return ['success' => false, 'message' => "La série est déjà présente dans la liste d'envies."];
         }
     }
@@ -220,9 +223,13 @@ function add_from_wishlist(array $data, array $wishlist, int $index): array {
     $author    = $item['author'];
     $publisher = $item['publisher'];
 
+    // Un animé homonyme (ou l'inverse) n'est pas un doublon : ce sont deux
+    // œuvres différentes qui partagent un titre. Cette branche ne traite que
+    // le type 'manga' (voir plus haut), la comparaison se limite donc aux
+    // séries mangas déjà en collection.
     $series_exists = false;
     foreach ($data as $existing_series) {
-        if (strcasecmp($existing_series['name'], $name) === 0) {
+        if (strcasecmp($existing_series['name'], $name) === 0 && series_type($existing_series) === 'manga') {
             $series_exists = true;
             break;
         }
