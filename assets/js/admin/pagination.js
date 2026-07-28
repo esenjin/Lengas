@@ -367,8 +367,139 @@ window.addEventListener('scroll', throttle(() => {
     }
 }, 300));
 
-// Initialisation au chargement de la page
+// Initialisation au chargement de la page.
+//
+// ⚠️ Ordre important : le widget de filtre de statuts (juste en dessous) DOIT
+// être initialisé avant le tout premier appel à loadMoreSeries(), sans quoi
+// celui-ci lit le filtre via readStatusFilter() → root.__sfRead(), qui n'existe
+// pas encore et retombe sur le repli { filter: '', mode: 'or' } : un
+// status_filter fourni dans l'URL (ex. depuis un lien de la sidebar) serait
+// alors silencieusement ignoré au premier chargement. D'où un seul et même
+// bloc DOMContentLoaded, dans cet ordre précis.
 document.addEventListener('DOMContentLoaded', () => {
+    // ── Widget de filtre de statuts (cases à cocher regroupées + bascule OU/ET) ──
+    // Fournit root.__sfRead() => { filter: "a,b,c", mode: "or"|"and" }
+    // et déclenche un événement 'statusfilter:change' quand la sélection change.
+    (function () {
+        const root = document.getElementById('status-filter');
+        if (!root || root.__sfInit) return;
+        root.__sfInit = true;
+
+        const panel   = root.querySelector('.status-filter-panel');
+        const toggle  = root.querySelector('.status-filter-toggle');
+        const modeSel = root.querySelector('.status-filter-mode');
+        const toggleAllBtn = root.querySelector('.status-filter-toggle-all');
+        const checkboxes = () => Array.from(root.querySelectorAll('.status-filter-cb'));
+        const groups = () => Array.from(root.querySelectorAll('.status-filter-group'));
+
+        function mode() { return modeSel && modeSel.value === 'and' ? 'and' : 'or'; }
+
+        // En mode ET, on interdit plusieurs cases dans une même catégorie multi :
+        // dès qu'une case est cochée dans le groupe, les autres sont grisées.
+        function applyAndConstraints() {
+            const isAnd = mode() === 'and';
+            groups().forEach(group => {
+                const multi = group.dataset.multi === '1';
+                const cbs = Array.from(group.querySelectorAll('.status-filter-cb'));
+                const anyChecked = cbs.some(cb => cb.checked);
+                cbs.forEach(cb => {
+                    const disable = isAnd && multi && anyChecked && !cb.checked;
+                    cb.disabled = disable;
+                    cb.closest('.status-filter-option')?.classList.toggle('disabled', disable);
+                });
+            });
+        }
+
+        // Le libellé du bouton reflète l'état (nombre de cases cochées).
+        function refreshLabel() {
+            const label = root.querySelector('.status-filter-label');
+            if (!label) return;
+            const cbs = checkboxes();
+            const total = cbs.length;
+            const checked = cbs.filter(cb => cb.checked).length;
+            if (checked === 0 || checked === total) {
+                label.textContent = 'Statuts';
+            } else {
+                label.textContent = 'Statuts (' + checked + ')';
+            }
+        }
+
+        // Lecture de l'état -> chaîne pour l'URL.
+        // Tout coché OU rien coché => filtre vide (= tout afficher).
+        root.__sfRead = function () {
+            const cbs = checkboxes();
+            const total = cbs.length;
+            const checkedVals = cbs.filter(cb => cb.checked).map(cb => cb.value);
+            let filter = checkedVals.join(',');
+            if (checkedVals.length === 0 || checkedVals.length === total) {
+                filter = '';
+            }
+            return { filter: filter, mode: mode() };
+        };
+
+        function emitChange() {
+            applyAndConstraints();
+            refreshLabel();
+            root.dispatchEvent(new CustomEvent('statusfilter:change', { bubbles: true }));
+        }
+
+        // Ouverture / fermeture du panneau.
+        toggle?.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const open = panel.hasAttribute('hidden');
+            if (open) { panel.removeAttribute('hidden'); toggle.setAttribute('aria-expanded', 'true'); }
+            else      { panel.setAttribute('hidden', '');  toggle.setAttribute('aria-expanded', 'false'); }
+        });
+        document.addEventListener('click', function (e) {
+            if (!root.contains(e.target)) {
+                panel.setAttribute('hidden', '');
+                toggle?.setAttribute('aria-expanded', 'false');
+            }
+        });
+        panel?.addEventListener('click', e => e.stopPropagation());
+
+        // Cases à cocher.
+        checkboxes().forEach(cb => cb.addEventListener('change', emitChange));
+
+        // Bascule OU/ET : en repassant en ET, on garde au plus une case par
+        // catégorie multi (on décoche les surplus pour éviter un état incohérent).
+        modeSel?.addEventListener('change', function () {
+            root.dataset.statusMode = mode();
+            if (mode() === 'and') {
+                groups().forEach(group => {
+                    if (group.dataset.multi !== '1') return;
+                    let seen = false;
+                    Array.from(group.querySelectorAll('.status-filter-cb')).forEach(cb => {
+                        if (cb.checked) {
+                            if (seen) cb.checked = false;
+                            else seen = true;
+                        }
+                    });
+                });
+            }
+            emitChange();
+        });
+
+        // Tout cocher / tout décocher.
+        toggleAllBtn?.addEventListener('click', function () {
+            const cbs = checkboxes();
+            const shouldCheck = cbs.some(cb => !cb.checked); // s'il en reste des décochées -> tout cocher
+            if (shouldCheck && mode() === 'and') {
+                // En mode ET, "tout cocher" n'a pas de sens (une seule par catégorie).
+                // On repasse en OU pour cocher réellement tout.
+                if (modeSel) { modeSel.value = 'or'; root.dataset.statusMode = 'or'; }
+            }
+            cbs.forEach(cb => { cb.checked = shouldCheck; cb.disabled = false; cb.closest('.status-filter-option')?.classList.remove('disabled'); });
+            toggleAllBtn.textContent = shouldCheck ? 'Tout décocher' : 'Tout cocher';
+            toggleAllBtn.dataset.state = shouldCheck ? 'uncheck' : 'check';
+            emitChange();
+        });
+
+        // État initial.
+        applyAndConstraints();
+        refreshLabel();
+    })();
+
     // Synchronise l'état JS avec les contrôles / l'URL.
     const urlParams = new URLSearchParams(window.location.search);
     currentSearchTerm = urlParams.get('search') || document.getElementById('search-all')?.value || '';
@@ -392,130 +523,4 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('series-list').innerHTML = '';
     currentPage = 0;
     loadMoreSeries();
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function () {
-// ── Widget de filtre de statuts (cases à cocher regroupées + bascule OU/ET) ──
-// Fournit window.StatusFilter.read() => { filter: "a,b,c", mode: "or"|"and" }
-// et déclenche un événement 'statusfilter:change' quand la sélection change.
-(function () {
-    const root = document.getElementById('status-filter');
-    if (!root || root.__sfInit) return;
-    root.__sfInit = true;
-
-    const panel   = root.querySelector('.status-filter-panel');
-    const toggle  = root.querySelector('.status-filter-toggle');
-    const modeSel = root.querySelector('.status-filter-mode');
-    const toggleAllBtn = root.querySelector('.status-filter-toggle-all');
-    const checkboxes = () => Array.from(root.querySelectorAll('.status-filter-cb'));
-    const groups = () => Array.from(root.querySelectorAll('.status-filter-group'));
-
-    function mode() { return modeSel && modeSel.value === 'and' ? 'and' : 'or'; }
-
-    // En mode ET, on interdit plusieurs cases dans une même catégorie multi :
-    // dès qu'une case est cochée dans le groupe, les autres sont grisées.
-    function applyAndConstraints() {
-        const isAnd = mode() === 'and';
-        groups().forEach(group => {
-            const multi = group.dataset.multi === '1';
-            const cbs = Array.from(group.querySelectorAll('.status-filter-cb'));
-            const anyChecked = cbs.some(cb => cb.checked);
-            cbs.forEach(cb => {
-                const disable = isAnd && multi && anyChecked && !cb.checked;
-                cb.disabled = disable;
-                cb.closest('.status-filter-option')?.classList.toggle('disabled', disable);
-            });
-        });
-    }
-
-    // Le libellé du bouton reflète l'état (nombre de cases cochées).
-    function refreshLabel() {
-        const label = root.querySelector('.status-filter-label');
-        if (!label) return;
-        const cbs = checkboxes();
-        const total = cbs.length;
-        const checked = cbs.filter(cb => cb.checked).length;
-        if (checked === 0 || checked === total) {
-            label.textContent = 'Statuts';
-        } else {
-            label.textContent = 'Statuts (' + checked + ')';
-        }
-    }
-
-    // Lecture de l'état -> chaîne pour l'URL.
-    // Tout coché OU rien coché => filtre vide (= tout afficher).
-    root.__sfRead = function () {
-        const cbs = checkboxes();
-        const total = cbs.length;
-        const checkedVals = cbs.filter(cb => cb.checked).map(cb => cb.value);
-        let filter = checkedVals.join(',');
-        if (checkedVals.length === 0 || checkedVals.length === total) {
-            filter = '';
-        }
-        return { filter: filter, mode: mode() };
-    };
-
-    function emitChange() {
-        applyAndConstraints();
-        refreshLabel();
-        root.dispatchEvent(new CustomEvent('statusfilter:change', { bubbles: true }));
-    }
-
-    // Ouverture / fermeture du panneau.
-    toggle?.addEventListener('click', function (e) {
-        e.stopPropagation();
-        const open = panel.hasAttribute('hidden');
-        if (open) { panel.removeAttribute('hidden'); toggle.setAttribute('aria-expanded', 'true'); }
-        else      { panel.setAttribute('hidden', '');  toggle.setAttribute('aria-expanded', 'false'); }
-    });
-    document.addEventListener('click', function (e) {
-        if (!root.contains(e.target)) {
-            panel.setAttribute('hidden', '');
-            toggle?.setAttribute('aria-expanded', 'false');
-        }
-    });
-    panel?.addEventListener('click', e => e.stopPropagation());
-
-    // Cases à cocher.
-    checkboxes().forEach(cb => cb.addEventListener('change', emitChange));
-
-    // Bascule OU/ET : en repassant en ET, on garde au plus une case par
-    // catégorie multi (on décoche les surplus pour éviter un état incohérent).
-    modeSel?.addEventListener('change', function () {
-        root.dataset.statusMode = mode();
-        if (mode() === 'and') {
-            groups().forEach(group => {
-                if (group.dataset.multi !== '1') return;
-                let seen = false;
-                Array.from(group.querySelectorAll('.status-filter-cb')).forEach(cb => {
-                    if (cb.checked) {
-                        if (seen) cb.checked = false;
-                        else seen = true;
-                    }
-                });
-            });
-        }
-        emitChange();
-    });
-
-    // Tout cocher / tout décocher.
-    toggleAllBtn?.addEventListener('click', function () {
-        const cbs = checkboxes();
-        const shouldCheck = cbs.some(cb => !cb.checked); // s'il en reste des décochées -> tout cocher
-        if (shouldCheck && mode() === 'and') {
-            // En mode ET, "tout cocher" n'a pas de sens (une seule par catégorie).
-            // On repasse en OU pour cocher réellement tout.
-            if (modeSel) { modeSel.value = 'or'; root.dataset.statusMode = 'or'; }
-        }
-        cbs.forEach(cb => { cb.checked = shouldCheck; cb.disabled = false; cb.closest('.status-filter-option')?.classList.remove('disabled'); });
-        toggleAllBtn.textContent = shouldCheck ? 'Tout décocher' : 'Tout cocher';
-        toggleAllBtn.dataset.state = shouldCheck ? 'uncheck' : 'check';
-        emitChange();
-    });
-
-    // État initial.
-    applyAndConstraints();
-    refreshLabel();
-})();
 });

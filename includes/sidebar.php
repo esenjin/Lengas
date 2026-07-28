@@ -9,12 +9,26 @@ $pages = $base . 'pages/';
 
 // Collection actuellement affichée. Sert à marquer la bonne entrée comme active
 // et à n'exposer l'ajout d'un animé que dans l'Animethèque.
-// ⚠️ PROVISOIRE : la refonte complète du menu (sections, libellés au-dessus des
-// icônes, couleurs par collection) est l'objet du bloc 5. Ce qui suit est le
-// strict nécessaire pour atteindre l'Animethèque et y ajouter une série.
 $__sidebar_type = function_exists('sanitize_series_type')
     ? sanitize_series_type($_GET['type'] ?? '')
     : 'manga';
+
+// Filtre de statuts actuellement appliqué (utilisé pour « Mangas à lire » et
+// « Animés à visionner », et pour détecter quand l'une des deux est active).
+// Un seul jeton : une série DÉBUTÉE mais pas encore terminée (ni « à débuter »,
+// ni « terminée », ni « abandonnée »).
+$__sidebar_status_filter = trim((string)($_GET['status_filter'] ?? ''));
+$__sidebar_backlog_tokens = 'reading_in_progress';
+$__sidebar_is_backlog = ($__sidebar_status_filter === $__sidebar_backlog_tokens);
+
+// Couleurs des sections, centralisées dans includes/helpers.php (elles-mêmes
+// le pendant des variables CSS --sidebar-section-* de assets/css/_variables.css).
+$__c_manga  = rawurlencode(sidebar_section_color('manga'));
+$__c_anime  = rawurlencode(sidebar_section_color('anime'));
+$__c_green  = rawurlencode(sidebar_section_color('green'));
+$__c_brown  = rawurlencode(sidebar_section_color('brown'));
+$__c_gray   = rawurlencode(sidebar_section_color('gray'));
+$__c_orange = rawurlencode(sidebar_section_color('orange'));
 ?>
 <nav class="sidebar" id="sidebar" aria-label="Navigation principale">
 
@@ -25,143 +39,201 @@ $__sidebar_type = function_exists('sanitize_series_type')
 
     <ul class="sidebar-nav" role="list">
 
-        <!-- Mangathèque -->
-        <li>
-            <a href="<?= $base ?>admin.php?type=manga"
-               class="sidebar-link <?= ($current_page === 'admin.php' && $__sidebar_type === 'manga') ? 'is-active' : '' ?>"
-               data-tooltip="Mangathèque">
-                <img src="https://api.iconify.design/mdi/bookshelf.svg?color=%23c94e93" width="22" height="22" alt="">
-            </a>
-        </li>
+        <!-- ═══════════════════ Section Mangathèque ═══════════════════ -->
+        <li class="sidebar-section">
+            <span class="sidebar-section-title">Mangathèque</span>
+            <ul class="sidebar-section-items" role="list">
+
+                <li>
+                    <a href="<?= $base ?>admin.php?type=manga"
+                       class="sidebar-link <?= ($current_page === 'admin.php' && $__sidebar_type === 'manga' && !$__sidebar_is_backlog) ? 'is-active is-active--pink' : '' ?>"
+                       data-tooltip="Mangathèque">
+                        <img src="https://api.iconify.design/mdi/bookshelf.svg?color=<?= $__c_manga ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
 
 <?php if ($current_page === 'admin.php' && $__sidebar_type === 'manga'): ?>
-        <!-- Ajouter une série (uniquement sur la page admin : les modales
-             correspondantes n'existent que là) -->
-        <li>
-            <button type="button"
-                    class="sidebar-link"
-                    id="sidebar-add-series-btn"
-                    data-tooltip="Ajouter une série"
-                    data-modal-trigger="open-add-series-modal"
-                    data-admin-redirect="<?= $base ?>admin.php">
-                <img src="https://api.iconify.design/mdi/book-plus.svg?color=%234ade80" width="22" height="22" alt="">
-            </button>
-        </li>
+                <!-- Ajouter une série (uniquement sur la page admin : les modales
+                     correspondantes n'existent que là) -->
+                <li>
+                    <button type="button"
+                            class="sidebar-link"
+                            id="sidebar-add-series-btn"
+                            data-tooltip="Ajouter une série"
+                            data-modal-trigger="open-add-series-modal"
+                            data-admin-redirect="<?= $base ?>admin.php">
+                        <img src="https://api.iconify.design/mdi/book-plus.svg?color=<?= $__c_manga ?>" width="22" height="22" alt="">
+                    </button>
+                </li>
 
-        <!-- Ajouter des tomes -->
-        <li>
-            <button type="button"
-                    class="sidebar-link"
-                    id="sidebar-add-volumes-btn"
-                    data-tooltip="Ajouter des tomes"
-                    data-modal-trigger="open-add-multiple-volumes-modal"
-                    data-admin-redirect="<?= $base ?>admin.php">
-                <img src="https://api.iconify.design/mdi/book-plus-multiple.svg?color=%234ade80" width="22" height="22" alt="">
-            </button>
-        </li>
+                <!-- Ajouter des tomes -->
+                <li>
+                    <button type="button"
+                            class="sidebar-link"
+                            id="sidebar-add-volumes-btn"
+                            data-tooltip="Ajouter des tomes"
+                            data-modal-trigger="open-add-multiple-volumes-modal"
+                            data-admin-redirect="<?= $base ?>admin.php">
+                        <img src="https://api.iconify.design/mdi/book-plus-multiple.svg?color=<?= $__c_manga ?>" width="22" height="22" alt="">
+                    </button>
+                </li>
 <?php endif; ?>
 
-        <!-- Animethèque -->
-        <li>
-            <a href="<?= $base ?>admin.php?type=anime"
-               class="sidebar-link <?= ($current_page === 'admin.php' && $__sidebar_type === 'anime') ? 'is-active' : '' ?>"
-               data-tooltip="Animethèque">
-                <img src="https://api.iconify.design/mdi/television-classic.svg?color=%2338bdf8" width="22" height="22" alt="">
-            </a>
+                <!-- Mangas à lire : lecture débutée, pas encore terminée -->
+                <li>
+                    <a href="<?= $base ?>admin.php?type=manga&status_filter=<?= urlencode($__sidebar_backlog_tokens) ?>"
+                       class="sidebar-link <?= ($current_page === 'admin.php' && $__sidebar_type === 'manga' && $__sidebar_is_backlog) ? 'is-active is-active--pink' : '' ?>"
+                       data-tooltip="Mangas à lire">
+                        <img src="https://api.iconify.design/mdi/book-clock.svg?color=<?= $__c_manga ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
+            </ul>
         </li>
+
+        <!-- ═══════════════════ Section Animethèque ═══════════════════ -->
+        <li class="sidebar-section">
+            <span class="sidebar-section-title">Animethèque</span>
+            <ul class="sidebar-section-items" role="list">
+
+                <li>
+                    <a href="<?= $base ?>admin.php?type=anime"
+                       class="sidebar-link <?= ($current_page === 'admin.php' && $__sidebar_type === 'anime' && !$__sidebar_is_backlog) ? 'is-active is-active--blue' : '' ?>"
+                       data-tooltip="Animethèque">
+                        <img src="https://api.iconify.design/mdi/television-classic.svg?color=<?= $__c_anime ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
 
 <?php if ($current_page === 'admin.php' && $__sidebar_type === 'anime'): ?>
-        <!-- Ajouter une série animée (recherche Anilist) -->
-        <li>
-            <button type="button"
-                    class="sidebar-link"
-                    id="sidebar-add-anime-btn"
-                    data-tooltip="Ajouter une série animée"
-                    data-modal-trigger="open-add-anime-modal"
-                    data-admin-redirect="<?= $base ?>admin.php?type=anime">
-                <img src="https://api.iconify.design/mdi/video-plus.svg?color=%2338bdf8" width="22" height="22" alt="">
-            </button>
-        </li>
+                <!-- Ajouter une série animée (recherche Anilist) -->
+                <li>
+                    <button type="button"
+                            class="sidebar-link"
+                            id="sidebar-add-anime-btn"
+                            data-tooltip="Ajouter une série animée"
+                            data-modal-trigger="open-add-anime-modal"
+                            data-admin-redirect="<?= $base ?>admin.php?type=anime">
+                        <img src="https://api.iconify.design/mdi/video-plus.svg?color=<?= $__c_anime ?>" width="22" height="22" alt="">
+                    </button>
+                </li>
 <?php endif; ?>
 
-        <!-- Critiques -->
-        <li>
-            <a href="<?= $pages ?>page-critiques.php"
-               class="sidebar-link <?= $current_page === 'page-critiques.php' ? 'is-active' : '' ?>"
-               data-tooltip="Critiques">
-                <img src="https://api.iconify.design/mdi/pencil.svg?color=%234ade80" width="22" height="22" alt="">
-            </a>
+                <!-- Animés à visionner : visionnage débuté, pas encore terminé -->
+                <li>
+                    <a href="<?= $base ?>admin.php?type=anime&status_filter=<?= urlencode($__sidebar_backlog_tokens) ?>"
+                       class="sidebar-link <?= ($current_page === 'admin.php' && $__sidebar_type === 'anime' && $__sidebar_is_backlog) ? 'is-active is-active--blue' : '' ?>"
+                       data-tooltip="Animés à visionner">
+                        <img src="https://api.iconify.design/mdi/television-play.svg?color=<?= $__c_anime ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
+            </ul>
         </li>
 
-        <li class="sidebar-separator"></li>
+        <!-- ═══════════════════ Section Hors collection ═══════════════════ -->
+        <li class="sidebar-section">
+            <span class="sidebar-section-title">Hors<br>collection</span>
+            <ul class="sidebar-section-items" role="list">
 
-        <!-- Prêts -->
-        <li>
-            <a href="<?= $pages ?>page-prets.php"
-               class="sidebar-link <?= $current_page === 'page-prets.php' ? 'is-active' : '' ?>"
-               data-tooltip="Livres prêtés">
-                <img src="https://api.iconify.design/mdi/book-arrow-right.svg?color=%2338bdf8" width="22" height="22" alt="">
-            </a>
+                <!-- Prêts -->
+                <li>
+                    <a href="<?= $pages ?>page-prets.php"
+                       class="sidebar-link <?= $current_page === 'page-prets.php' ? 'is-active is-active--green' : '' ?>"
+                       data-tooltip="Livres prêtés">
+                        <img src="https://api.iconify.design/mdi/book-arrow-right.svg?color=<?= $__c_green ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
+                <!-- Liste d'envies -->
+                <li>
+                    <a href="<?= $pages ?>page-wishlist.php"
+                       class="sidebar-link <?= $current_page === 'page-wishlist.php' ? 'is-active is-active--green' : '' ?>"
+                       data-tooltip="Liste d'envies">
+                        <img src="https://api.iconify.design/mdi/heart-multiple.svg?color=<?= $__c_green ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
+            </ul>
         </li>
 
-        <!-- Liste d'envies -->
-        <li>
-            <a href="<?= $pages ?>page-wishlist.php"
-               class="sidebar-link <?= $current_page === 'page-wishlist.php' ? 'is-active is-active--blue' : '' ?>"
-               data-tooltip="Liste d'envies">
-                <img src="https://api.iconify.design/mdi/heart-multiple.svg?color=%2338bdf8" width="22" height="22" alt="">
-            </a>
+        <!-- ═══════════════════ Section Mutualisé ═══════════════════ -->
+        <li class="sidebar-section">
+            <span class="sidebar-section-title">Mutualisé</span>
+            <ul class="sidebar-section-items" role="list">
+
+                <!-- Critiques -->
+                <li>
+                    <a href="<?= $pages ?>page-critiques.php"
+                       class="sidebar-link <?= $current_page === 'page-critiques.php' ? 'is-active is-active--brown' : '' ?>"
+                       data-tooltip="Critiques">
+                        <img src="https://api.iconify.design/mdi/pencil.svg?color=<?= $__c_brown ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
+            </ul>
         </li>
 
-        <li class="sidebar-separator"></li>
+        <!-- ═══════════════════ Section Divers ═══════════════════ -->
+        <li class="sidebar-section">
+            <span class="sidebar-section-title">Divers</span>
+            <ul class="sidebar-section-items" role="list">
 
-        <!-- Statistiques -->
-        <li>
-            <a href="<?= $base ?>stats.php"
-               class="sidebar-link <?= $current_page === 'stats.php' ? 'is-active' : '' ?>"
-               data-tooltip="Statistiques"
-               target="_blank">
-                <img src="https://api.iconify.design/mdi/chart-bar.svg?color=%23d4d4e8" width="22" height="22" alt="">
-            </a>
+                <!-- Statistiques -->
+                <li>
+                    <a href="<?= $base ?>stats.php"
+                       class="sidebar-link <?= $current_page === 'stats.php' ? 'is-active is-active--gray' : '' ?>"
+                       data-tooltip="Statistiques"
+                       target="_blank">
+                        <img src="https://api.iconify.design/mdi/chart-bar.svg?color=<?= $__c_gray ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
+                <!-- Accueil public -->
+                <li>
+                    <a href="<?= $base ?>index.php"
+                       class="sidebar-link"
+                       data-tooltip="Accueil public"
+                       target="_blank">
+                        <img src="https://api.iconify.design/mdi/home.svg?color=<?= $__c_gray ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
+            </ul>
         </li>
 
-        <!-- Accueil public -->
-        <li>
-            <a href="<?= $base ?>index.php"
-               class="sidebar-link"
-               data-tooltip="Accueil public"
-               target="_blank">
-                <img src="https://api.iconify.design/mdi/home.svg?color=%23d4d4e8" width="22" height="22" alt="">
-            </a>
-        </li>
+        <!-- ═══════════════════ Section Gestion ═══════════════════ -->
+        <li class="sidebar-section">
+            <span class="sidebar-section-title">Gestion</span>
+            <ul class="sidebar-section-items" role="list">
 
-        <li class="sidebar-separator"></li>
+                <!-- Profil -->
+                <li>
+                    <a href="<?= $pages ?>page-profil.php"
+                       class="sidebar-link <?= $current_page === 'page-profil.php' ? 'is-active is-active--orange' : '' ?>"
+                       data-tooltip="Profil">
+                        <img src="https://api.iconify.design/mdi/account-circle.svg?color=<?= $__c_orange ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
 
-        <!-- Profil -->
-        <li>
-            <a href="<?= $pages ?>page-profil.php"
-               class="sidebar-link <?= $current_page === 'page-profil.php' ? 'is-active' : '' ?>"
-               data-tooltip="Profil">
-                <img src="https://api.iconify.design/mdi/account-circle.svg?color=%23fb923c" width="22" height="22" alt="">
-            </a>
-        </li>
+                <!-- Options -->
+                <li>
+                    <a href="<?= $pages ?>page-options.php"
+                       class="sidebar-link <?= $current_page === 'page-options.php' ? 'is-active is-active--orange' : '' ?>"
+                       data-tooltip="Options">
+                        <img src="https://api.iconify.design/mdi/cog.svg?color=<?= $__c_orange ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
 
-        <!-- Options -->
-        <li>
-            <a href="<?= $pages ?>page-options.php"
-               class="sidebar-link <?= $current_page === 'page-options.php' ? 'is-active' : '' ?>"
-               data-tooltip="Options">
-                <img src="https://api.iconify.design/mdi/cog.svg?color=%23fb923c" width="22" height="22" alt="">
-            </a>
-        </li>
+                <!-- Outils -->
+                <li>
+                    <a href="<?= $pages ?>page-outils.php"
+                       class="sidebar-link <?= $current_page === 'page-outils.php' ? 'is-active is-active--orange' : '' ?>"
+                       data-tooltip="Outils">
+                        <img src="https://api.iconify.design/mdi/wrench.svg?color=<?= $__c_orange ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
 
-        <!-- Outils -->
-        <li>
-            <a href="<?= $pages ?>page-outils.php"
-               class="sidebar-link <?= $current_page === 'page-outils.php' ? 'is-active' : '' ?>"
-               data-tooltip="Outils">
-                <img src="https://api.iconify.design/mdi/wrench.svg?color=%23fb923c" width="22" height="22" alt="">
-            </a>
+            </ul>
         </li>
 
     </ul>

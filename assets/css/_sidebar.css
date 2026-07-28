@@ -13,7 +13,7 @@
 body.with-sidebar {
     min-height: 100vh;
     padding: 0;
-    padding-left: 58px;
+    padding-left: 88px;
     background: var(--background-dark);
 }
 
@@ -25,7 +25,7 @@ body.with-sidebar {
 
 /* ── Sidebar ───────────────────────────────────────────────────────────── */
 .sidebar {
-    width: 58px;
+    width: 88px;
     flex-shrink: 0;
     background: var(--background-card);
     border-right: 1px solid rgba(255, 255, 255, 0.05);
@@ -96,18 +96,82 @@ li.sidebar-separator {
     display: block;
 }
 
+/* ── Sections de la sidebar ────────────────────────────────────────────────
+   Chaque section regroupe un titre discret, ses liens, puis un trait fin en
+   guise de séparateur — sur le modèle de .sidebar-version-text (même échelle
+   typographique), pour tenir sur les 88px de la sidebar sans déborder. ── */
+.sidebar-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.sidebar-section-title {
+    width: 100%;
+    text-align: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    padding: 0 4px;
+    margin-bottom: 6px;
+    /* Autorise le retour à la ligne pour les titres à deux mots (« Hors
+       collection ») sans jamais déborder de la sidebar. */
+    word-break: normal;
+    overflow-wrap: break-word;
+}
+
+.sidebar-section-items {
+    width: 100%;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    /* 2 icônes par ligne sur desktop, pour limiter la hauteur totale de la
+       sidebar (voir aussi .sidebar-link ci-dessous, réduit à 36px pour que 2
+       colonnes tiennent dans les 88px de large). Une section à nombre impair
+       d'icônes laisse naturellement la dernière seule sur sa ligne, alignée à
+       gauche : comportement par défaut d'une grille qui remplit ligne par
+       ligne sans jamais réordonner les éléments. */
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3px 2px;
+}
+
+.sidebar-section-items li {
+    display: flex;
+    justify-content: center;
+}
+
 /* ── Liens / boutons de la sidebar ────────────────────────────────────── */
 .sidebar-link {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: var(--border-radius-sm);
     border: none;
     background: transparent;
     cursor: pointer;
     position: relative;
+    /* Contexte d'empilement propre à chaque bouton : nécessaire pour que le
+       tooltip (position: absolute, ::after) du bouton survolé passe bien
+       au-dessus du bouton voisin de la grille 2 colonnes, et non derrière —
+       sans z-index ici, deux boutons frères sans z-index déclaré se
+       chevauchent selon l'ordre du DOM plutôt que selon qui est survolé. */
+    z-index: 1;
     text-decoration: none;
     transition: background 0.15s ease, transform 0.15s ease;
     color: var(--text-gray);
@@ -115,8 +179,8 @@ li.sidebar-separator {
 }
 
 .sidebar-link img {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     flex-shrink: 0;
     opacity: 0.65;
     transition: opacity 0.15s ease;
@@ -128,13 +192,26 @@ li.sidebar-separator {
 .sidebar-link:hover {
     background: rgba(255, 255, 255, 0.06);
     transform: translateY(-1px);
+    /* Passe au-dessus de tous ses voisins de la grille (et de la sidebar
+       elle-même, z-index: 200) : c'est ce qui permet au tooltip de
+       recouvrir entièrement l'icône voisine plutôt que de se faire
+       recouvrir par elle. */
+    z-index: 10;
 }
 
 .sidebar-link:hover img { opacity: 1; }
 
-/* ── État actif (violet par défaut) ───────────────────────────────────── */
+
+/* ── État actif (violet par défaut) ─────────────────────────────────────
+   Un contour interne (box-shadow inset) plutôt qu'une barre latérale externe :
+   fonctionne identiquement quelle que soit la colonne de la grille 2 colonnes
+   desktop (une barre collée au bord gauche du bouton tomberait au milieu de
+   la sidebar pour une icône en 2ᵉ colonne). Libère aussi complètement ::after
+   pour le tooltip, sans le mécanisme de bascule qu'il fallait avant pour
+   réafficher le texte du tooltip par-dessus la barre au survol. ── */
 .sidebar-link.is-active {
     background: rgba(192, 132, 252, 0.12);
+    box-shadow: inset 0 0 0 1.5px rgba(192, 132, 252, 0.55);
 }
 
 .sidebar-link.is-active img {
@@ -142,38 +219,64 @@ li.sidebar-separator {
     filter: drop-shadow(0 0 4px rgba(192, 132, 252, 0.4));
 }
 
-a.sidebar-link.is-active::after {
-    content: '' !important;
-    position: absolute !important;
-    left: -9px !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    width: 3px !important;
-    height: 20px !important;
-    background: var(--primary-color) !important;
-    border-radius: 0 2px 2px 0 !important;
-    opacity: 1 !important;
-    pointer-events: none !important;
-    z-index: 0 !important;
-    white-space: normal !important;
-    padding: 0 !important;
-    color: transparent !important;
-    font-size: 0 !important;
-    box-shadow: none !important;
-    border: none !important;
-}
-
-/* ── Variante active bleue (liste d'envies) ────────────────────────────── */
+/* ── Variante active bleue (Animethèque, prêts, liste d'envies) ─────────── */
 .sidebar-link.is-active--blue {
-    background: rgba(56, 189, 248, 0.1);
+    background: rgba(var(--sidebar-section-anime-rgb), 0.1);
+    box-shadow: inset 0 0 0 1.5px rgba(var(--sidebar-section-anime-rgb), 0.55);
 }
 
 .sidebar-link.is-active--blue img {
-    filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.35));
+    filter: drop-shadow(0 0 4px rgba(var(--sidebar-section-anime-rgb), 0.35));
 }
 
-a.sidebar-link.is-active--blue::after {
-    background: #38bdf8 !important;
+/* ── Variante active rose (Mangathèque) ─────────────────────────────────── */
+.sidebar-link.is-active--pink {
+    background: rgba(var(--sidebar-section-manga-rgb), 0.12);
+    box-shadow: inset 0 0 0 1.5px rgba(var(--sidebar-section-manga-rgb), 0.55);
+}
+
+.sidebar-link.is-active--pink img {
+    filter: drop-shadow(0 0 4px rgba(var(--sidebar-section-manga-rgb), 0.4));
+}
+
+/* ── Variante active verte (hors collection) ────────────────────────────── */
+.sidebar-link.is-active--green {
+    background: rgba(var(--sidebar-section-green-rgb), 0.1);
+    box-shadow: inset 0 0 0 1.5px rgba(var(--sidebar-section-green-rgb), 0.55);
+}
+
+.sidebar-link.is-active--green img {
+    filter: drop-shadow(0 0 4px rgba(var(--sidebar-section-green-rgb), 0.35));
+}
+
+/* ── Variante active brune (mutualisé) ──────────────────────────────────── */
+.sidebar-link.is-active--brown {
+    background: rgba(var(--sidebar-section-brown-rgb), 0.12);
+    box-shadow: inset 0 0 0 1.5px rgba(var(--sidebar-section-brown-rgb), 0.55);
+}
+
+.sidebar-link.is-active--brown img {
+    filter: drop-shadow(0 0 4px rgba(var(--sidebar-section-brown-rgb), 0.4));
+}
+
+/* ── Variante active grise (divers) ─────────────────────────────────────── */
+.sidebar-link.is-active--gray {
+    background: rgba(var(--sidebar-section-gray-rgb), 0.1);
+    box-shadow: inset 0 0 0 1.5px rgba(var(--sidebar-section-gray-rgb), 0.55);
+}
+
+.sidebar-link.is-active--gray img {
+    filter: drop-shadow(0 0 4px rgba(var(--sidebar-section-gray-rgb), 0.35));
+}
+
+/* ── Variante active orange (gestion) ───────────────────────────────────── */
+.sidebar-link.is-active--orange {
+    background: rgba(var(--sidebar-section-orange-rgb), 0.1);
+    box-shadow: inset 0 0 0 1.5px rgba(var(--sidebar-section-orange-rgb), 0.55);
+}
+
+.sidebar-link.is-active--orange img {
+    filter: drop-shadow(0 0 4px rgba(var(--sidebar-section-orange-rgb), 0.35));
 }
 
 /* ── Variante danger (déconnexion) ─────────────────────────────────────── */
@@ -226,27 +329,6 @@ a.sidebar-link.is-active--blue::after {
 .sidebar-link[data-tooltip]:hover::after {
     opacity: 1;
     transform: translateY(-50%) translateX(0);
-}
-
-a.sidebar-link.is-active:hover::after {
-    content: attr(data-tooltip) !important;
-    left: calc(100% + 12px) !important;
-    top: 50% !important;
-    transform: translateY(-50%) translateX(0) !important;
-    width: auto !important;
-    height: auto !important;
-    background: var(--background-darker) !important;
-    color: var(--text-white) !important;
-    font-size: 0.78rem !important;
-    font-weight: 500 !important;
-    padding: 5px 10px !important;
-    border-radius: var(--border-radius-sm) !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    box-shadow: var(--box-shadow-sm) !important;
-    opacity: 1 !important;
-    pointer-events: none !important;
-    white-space: nowrap !important;
-    z-index: 9999 !important;
 }
 
 /* ── Hamburger (caché sur desktop) ────────────────────────────────────── */
@@ -406,7 +488,10 @@ a.sidebar-link.is-active:hover::after {
         padding-left: 17px; /* compense le border-left */
     }
 
-    /* Écraser la barre active absolue — afficher le label coloré à la place */
+    /* Le drawer affiche le libellé complet en ::after (texte), là où le
+       desktop se contente d'un contour sur l'icône (cf. .sidebar-link.is-active
+       plus haut dans le fichier, hors media query) : deux affichages différents
+       pour le même état actif, chacun adapté à son contexte. */
     a.sidebar-link.is-active::after {
         content: attr(data-tooltip) !important;
         position: static !important;
@@ -454,18 +539,96 @@ a.sidebar-link.is-active:hover::after {
 
     /* Active bleue dans le drawer */
     .sidebar-link.is-active--blue {
-        background: rgba(56, 189, 248, 0.08);
-        border-left-color: #38bdf8;
+        background: rgba(var(--sidebar-section-anime-rgb), 0.08);
+        border-left-color: var(--sidebar-section-anime);
     }
 
     a.sidebar-link.is-active--blue::after {
-        color: #38bdf8 !important;
+        color: var(--sidebar-section-anime) !important;
+    }
+
+    /* Active rose dans le drawer (Mangathèque) */
+    .sidebar-link.is-active--pink {
+        background: rgba(var(--sidebar-section-manga-rgb), 0.1);
+        border-left-color: var(--sidebar-section-manga);
+    }
+
+    a.sidebar-link.is-active--pink::after {
+        color: var(--sidebar-section-manga) !important;
+    }
+
+    /* Active verte dans le drawer (hors collection) */
+    .sidebar-link.is-active--green {
+        background: rgba(var(--sidebar-section-green-rgb), 0.08);
+        border-left-color: var(--sidebar-section-green);
+    }
+
+    a.sidebar-link.is-active--green::after {
+        color: var(--sidebar-section-green) !important;
+    }
+
+    /* Active brune dans le drawer (mutualisé) */
+    .sidebar-link.is-active--brown {
+        background: rgba(var(--sidebar-section-brown-rgb), 0.1);
+        border-left-color: var(--sidebar-section-brown);
+    }
+
+    a.sidebar-link.is-active--brown::after {
+        color: var(--sidebar-section-brown) !important;
+    }
+
+    /* Active grise dans le drawer (divers) */
+    .sidebar-link.is-active--gray {
+        background: rgba(var(--sidebar-section-gray-rgb), 0.08);
+        border-left-color: var(--sidebar-section-gray);
+    }
+
+    a.sidebar-link.is-active--gray::after {
+        color: var(--sidebar-section-gray) !important;
+    }
+
+    /* Active orange dans le drawer (gestion) */
+    .sidebar-link.is-active--orange {
+        background: rgba(var(--sidebar-section-orange-rgb), 0.08);
+        border-left-color: var(--sidebar-section-orange);
+    }
+
+    a.sidebar-link.is-active--orange::after {
+        color: var(--sidebar-section-orange) !important;
     }
 
     /* Séparateurs dans le drawer */
     li.sidebar-separator {
         width: calc(100% - 40px) !important;
         margin: 4px 20px !important;
+    }
+
+    /* ── Sections dans le drawer : titre pleine largeur, aligné à gauche ── */
+    .sidebar-section {
+        padding: 0 0 8px;
+        margin: 0 0 8px;
+        align-items: stretch;
+    }
+
+    .sidebar-section-title {
+        text-align: left;
+        padding: 0 20px;
+        font-size: 0.72rem;
+        margin-bottom: 4px;
+    }
+
+    .sidebar-section-items {
+        /* Le drawer mobile repasse en 1 colonne pleine largeur (icône +
+           libellé côte à côte) : la grille 2 colonnes est un aménagement
+           desktop uniquement, pour limiter la hauteur de la sidebar repliée. */
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 2px;
+    }
+
+    .sidebar-section-items li {
+        justify-content: flex-start;
     }
 
     /* ── Bouton hamburger : fixe en haut à gauche ── */

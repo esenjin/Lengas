@@ -101,4 +101,27 @@
 
     /* Bordure subtile globale */
     --border-subtle: 1px solid rgba(0, 0, 0, 0.08);
+
+    /* ── Couleurs des sections de la sidebar (admin + public) ──────────────
+       Mangathèque et Animethèque réutilisent respectivement
+       --series-title-color et --anime-title-color, déjà définies plus haut :
+       même rose, même bleu, une seule source de vérité. Les quatre suivantes
+       sont propres à la sidebar, assombries/saturées pour rester lisibles sur
+       fond clair (même logique que --success-color, --warning-color, etc.).
+       Chacune est déclinée en triplet RGB (suffixe -rgb) pour les rgba(). */
+    --sidebar-section-manga:  var(--series-title-color);
+    --sidebar-section-anime:  var(--anime-title-color);
+    --sidebar-section-green:  #15803d;
+    --sidebar-section-brown:  #8a6642;
+    --sidebar-section-gray:   #5c5c72;
+    --sidebar-section-orange: var(--button-opt);
+
+    --sidebar-section-manga-rgb:  190, 61, 132;
+    --sidebar-section-anime-rgb:  2, 132, 199;
+    --sidebar-section-green-rgb:  21, 128, 61;
+    --sidebar-section-brown-rgb:  138, 102, 66;
+    --sidebar-section-gray-rgb:   92, 92, 114;
+    --sidebar-section-orange-rgb: 234, 88, 12;
 }
+
+

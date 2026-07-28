@@ -8,11 +8,29 @@ require_once 'includes/custom_icons.php';
 
 $current_page = basename($_SERVER['PHP_SELF']);
 
-// Collection affichée. ⚠️ PROVISOIRE : la refonte du menu public (sections,
-// libellés, « Accueil » renommé « Mangathèque ») est l'objet du bloc 5.
+// Collection affichée.
 $__sidebar_type = function_exists('sanitize_series_type')
     ? sanitize_series_type($_GET['type'] ?? '')
     : 'manga';
+
+// Liens personnalisés (section « Liens », affichée seulement si non vide).
+$custom_links = custom_link_get_links($options);
+
+// Profil de l'admin : bouton « Qui suis-je ? », affiché uniquement si au moins
+// un champ du profil est renseigné.
+$profil_avatar = trim($options['admin_avatar'] ?? '');
+$profil_pseudo = trim($options['admin_pseudo'] ?? '');
+$profil_bio    = trim($options['admin_bio'] ?? '');
+$profil_social = profil_get_social_links($options);
+$has_profil = ($profil_pseudo !== '' || $profil_bio !== '' ||
+               ($profil_avatar !== '' && file_exists($profil_avatar)) ||
+               !empty($profil_social));
+
+// Couleurs des sections, centralisées dans includes/helpers.php (elles-mêmes
+// le pendant des variables CSS --sidebar-section-* de assets/css/_variables.css).
+$__c_manga = rawurlencode(sidebar_section_color('manga'));
+$__c_anime = rawurlencode(sidebar_section_color('anime'));
+$__c_gray  = rawurlencode(sidebar_section_color('gray'));
 ?>
 <nav class="sidebar" id="sidebar" aria-label="Navigation principale">
 
@@ -23,92 +41,102 @@ $__sidebar_type = function_exists('sanitize_series_type')
 
     <ul class="sidebar-nav" role="list">
 
-        <!-- Mangathèque (accueil public) -->
-        <li>
-            <a href="index.php?type=manga"
-               class="sidebar-link <?= ($current_page === 'index.php' && $__sidebar_type === 'manga') ? 'is-active' : '' ?>"
-               data-tooltip="Mangathèque">
-                <img src="https://api.iconify.design/mdi/bookshelf.svg?color=%23c94e93" width="22" height="22" alt="">
-            </a>
+        <!-- ═══════════════════ Section Mangathèque ═══════════════════ -->
+        <li class="sidebar-section">
+            <span class="sidebar-section-title">Mangathèque</span>
+            <ul class="sidebar-section-items" role="list">
+
+                <li>
+                    <a href="index.php?type=manga"
+                       class="sidebar-link <?= ($current_page === 'index.php' && $__sidebar_type === 'manga') ? 'is-active is-active--pink' : '' ?>"
+                       data-tooltip="Mangathèque">
+                        <img src="https://api.iconify.design/mdi/bookshelf.svg?color=<?= $__c_manga ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
+            </ul>
         </li>
 
-        <!-- Animethèque -->
-        <li>
-            <a href="index.php?type=anime"
-               class="sidebar-link <?= ($current_page === 'index.php' && $__sidebar_type === 'anime') ? 'is-active' : '' ?>"
-               data-tooltip="Animethèque">
-                <img src="https://api.iconify.design/mdi/television-classic.svg?color=%2338bdf8" width="22" height="22" alt="">
-            </a>
+        <!-- ═══════════════════ Section Animethèque ═══════════════════ -->
+        <li class="sidebar-section">
+            <span class="sidebar-section-title">Animethèque</span>
+            <ul class="sidebar-section-items" role="list">
+
+                <li>
+                    <a href="index.php?type=anime"
+                       class="sidebar-link <?= ($current_page === 'index.php' && $__sidebar_type === 'anime') ? 'is-active is-active--blue' : '' ?>"
+                       data-tooltip="Animethèque">
+                        <img src="https://api.iconify.design/mdi/television-classic.svg?color=<?= $__c_anime ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
+            </ul>
         </li>
 
-        <!-- Statistiques -->
-        <li>
-            <a href="stats.php"
-               class="sidebar-link <?= $current_page === 'stats.php' ? 'is-active' : '' ?>"
-               data-tooltip="Statistiques">
-                <img src="https://api.iconify.design/mdi/chart-bar.svg?color=%2338bdf8" width="22" height="22" alt="">
-            </a>
-        </li>
+        <!-- ═══════════════════ Section Divers ═══════════════════ -->
+        <li class="sidebar-section">
+            <span class="sidebar-section-title">Divers</span>
+            <ul class="sidebar-section-items" role="list">
 
-        <?php
-        // ── Liens personnalisés (icône + couleur choisies) ────────────────────
-        $custom_links = custom_link_get_links($options);
-        ?>
+                <!-- Statistiques -->
+                <li>
+                    <a href="stats.php"
+                       class="sidebar-link <?= $current_page === 'stats.php' ? 'is-active is-active--gray' : '' ?>"
+                       data-tooltip="Statistiques">
+                        <img src="https://api.iconify.design/mdi/chart-bar.svg?color=<?= $__c_gray ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
+                <?php if ($current_page === 'index.php'): ?>
+                    <?php if ($has_profil): ?>
+                        <!-- Qui suis-je ? (profil de l'admin, modale disponible) -->
+                        <li>
+                            <button type="button"
+                                    class="sidebar-link"
+                                    id="open-profil-modal"
+                                    data-tooltip="Qui suis-je ?">
+                                <img src="https://api.iconify.design/mdi/account-circle.svg?color=<?= $__c_gray ?>" width="22" height="22" alt="">
+                            </button>
+                        </li>
+                    <?php endif; ?>
+
+                    <!-- Légende / infos (uniquement sur l'accueil : modale disponible) -->
+                    <li>
+                        <button type="button"
+                                class="sidebar-link"
+                                id="open-legend-modal"
+                                data-tooltip="Légende">
+                            <img src="https://api.iconify.design/mdi/information-outline.svg?color=<?= $__c_gray ?>" width="22" height="22" alt="">
+                        </button>
+                    </li>
+                <?php endif; ?>
+
+            </ul>
+        </li>
 
         <?php if (!empty($custom_links)): ?>
-            <li class="sidebar-separator"></li>
-        <?php endif; ?>
+        <!-- ═══════════════════ Section Liens ═══════════════════ -->
+        <li class="sidebar-section">
+            <span class="sidebar-section-title">Liens</span>
+            <ul class="sidebar-section-items" role="list">
 
-        <?php foreach ($custom_links as $link):
-            $icon_name = str_replace(':', '/', custom_link_icon_name($link['icon']));
-            $icon_hex  = custom_link_color_hex($link['color']);
-            $icon_col  = rawurlencode($icon_hex); // ex. %23f87171
-        ?>
-            <li>
-                <a href="<?= htmlspecialchars($link['url']) ?>"
-                   class="sidebar-link"
-                   data-tooltip="<?= htmlspecialchars($link['name']) ?>"
-                   target="_blank" rel="noopener">
-                    <img src="https://api.iconify.design/<?= $icon_name ?>.svg?color=<?= $icon_col ?>" width="22" height="22" alt="">
-                </a>
-            </li>
-        <?php endforeach; ?>
+                <?php foreach ($custom_links as $link):
+                    $icon_name = str_replace(':', '/', custom_link_icon_name($link['icon']));
+                    $icon_hex  = custom_link_color_hex($link['color']);
+                    $icon_col  = rawurlencode($icon_hex); // ex. %23f87171
+                ?>
+                    <li>
+                        <a href="<?= htmlspecialchars($link['url']) ?>"
+                           class="sidebar-link"
+                           data-tooltip="<?= htmlspecialchars($link['name']) ?>"
+                           target="_blank" rel="noopener">
+                            <img src="https://api.iconify.design/<?= $icon_name ?>.svg?color=<?= $icon_col ?>" width="22" height="22" alt="">
+                        </a>
+                    </li>
+                <?php endforeach; ?>
 
-        <?php if ($current_page === 'index.php'): ?>
-            <?php
-            // ── Profil de l'admin : bouton « Qui suis-je ? » ──────────────────
-            // Affiché uniquement si au moins un champ du profil est renseigné.
-            $profil_avatar = trim($options['admin_avatar'] ?? '');
-            $profil_pseudo = trim($options['admin_pseudo'] ?? '');
-            $profil_bio    = trim($options['admin_bio'] ?? '');
-            $profil_social = profil_get_social_links($options);
-            $has_profil = ($profil_pseudo !== '' || $profil_bio !== '' ||
-                           ($profil_avatar !== '' && file_exists($profil_avatar)) ||
-                           !empty($profil_social));
-            ?>
-            <li class="sidebar-separator"></li>
-
-            <?php if ($has_profil): ?>
-                <!-- Qui suis-je ? (profil de l'admin, modale disponible) -->
-                <li>
-                    <button type="button"
-                            class="sidebar-link"
-                            id="open-profil-modal"
-                            data-tooltip="Qui suis-je ?">
-                        <img src="https://api.iconify.design/mdi/account-circle.svg?color=%23c084fc" width="22" height="22" alt="">
-                    </button>
-                </li>
-            <?php endif; ?>
-
-            <!-- Légende / infos (uniquement sur l'accueil : modale disponible) -->
-            <li>
-                <button type="button"
-                        class="sidebar-link"
-                        id="open-legend-modal"
-                        data-tooltip="Légende">
-                    <img src="https://api.iconify.design/mdi/information-outline.svg?color=%23d4d4e8" width="22" height="22" alt="">
-                </button>
-            </li>
+            </ul>
+        </li>
         <?php endif; ?>
 
     </ul>

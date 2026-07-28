@@ -224,6 +224,42 @@ function series_types_for_js(): array {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Couleurs des sections de la sidebar (admin + public)
+// ──────────────────────────────────────────────────────────────────────────────
+// Seule source de vérité pour les couleurs d'icônes de la sidebar (utilisées
+// dans les URL Iconify, qui ont besoin d'une valeur hexadécimale résolue et non
+// d'une variable CSS). Ces couleurs sont le pendant PHP des variables CSS
+// --sidebar-section-* définies dans assets/css/_variables.css /
+// _variables-light.css : mangas et animés reprennent celles du registre de
+// types (déjà la même couleur que les titres de série), les quatre autres
+// sont propres à la sidebar.
+//
+// ⚠️ Ces valeurs sont pour l'instant fixes (thème sombre) : les URL Iconify ne
+// peuvent pas suivre le thème choisi par l'utilisateur comme le fait le CSS.
+// C'est un compromis assumé — l'essentiel (une seule couleur par section,
+// définie à un seul endroit) est respecté.
+function sidebar_section_colors(): array {
+    return [
+        // type_color() renvoie déjà une valeur préfixée par # (ex. "#c94e93") ;
+        // les quatre suivantes sont normalisées pareil, pour que
+        // sidebar_section_color() ait un format de sortie unique et prévisible.
+        'manga'  => type_color('manga'),
+        'anime'  => type_color('anime'),
+        'green'  => '#4ade80',
+        'brown'  => '#b08968',
+        'gray'   => '#9ca3af',
+        'orange' => '#fb923c',
+    ];
+}
+
+// Couleur hexadécimale (préfixée par #) d'une section de la sidebar (repli sur
+// le gris neutre si la clé est inconnue).
+function sidebar_section_color(string $key): string {
+    $colors = sidebar_section_colors();
+    return $colors[$key] ?? $colors['gray'];
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Vignette d'une série — cascade d'affichage
 // ──────────────────────────────────────────────────────────────────────────────
 // Ordre de priorité, sans exception :
