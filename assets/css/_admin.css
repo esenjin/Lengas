@@ -443,3 +443,193 @@
 #mu-genres-save-btn {
     margin-top: 16px;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   Outil « Import Anilist » (V4 bloc 8) — pages/page-outils.php
+   Réutilise au maximum les classes existantes (.tools-section,
+   .analysis-progress, .analysis-summary, .summary-badge, .incomplete-search-
+   input, .incomplete-empty-msg, .mature-badge…) ; ce qui suit ne couvre que
+   ce qui est propre à cet outil.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.anilist-import-step {
+    margin-top: 18px;
+}
+
+/* ── Saisie du pseudo ─────────────────────────────────────────────────── */
+.anilist-import-username-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.anilist-import-username-row input[type="text"] {
+    flex: 1;
+    min-width: 220px;
+    margin-bottom: 0;
+}
+.anilist-import-feedback {
+    margin-top: 10px;
+    min-height: 1.2em;
+    font-size: 0.9rem;
+}
+.anilist-import-feedback.is-error   { color: var(--error-color); }
+.anilist-import-feedback.is-success { color: var(--success-color); }
+
+/* ── Récapitulatif par destination ───────────────────────────────────── */
+.anilist-import-summary {
+    margin-top: 8px;
+}
+.anilist-import-dest-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 12px 0;
+}
+.anilist-import-dest-count {
+    flex: 1;
+    min-width: 130px;
+    padding: 12px 14px;
+    background: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius);
+    text-align: center;
+}
+.anilist-import-dest-count-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-white);
+}
+.anilist-import-dest-count-label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text-gray);
+    margin-top: 4px;
+}
+/* Couleurs alignées sur le registre de types (mangathèque/animethèque) et les
+   codes de statut déjà utilisés ailleurs sur le site. */
+.anilist-import-dest-count--library   .anilist-import-dest-count-value { color: #38bdf8; }
+.anilist-import-dest-count--wishlist  .anilist-import-dest-count-value { color: #34d399; }
+.anilist-import-dest-count--existing  .anilist-import-dest-count-value { color: var(--text-gray); }
+.anilist-import-dest-count--error     .anilist-import-dest-count-value { color: var(--error-color); }
+
+/* ── Blocs de réglages (favoris, statuts, formats, existantes, adultes) ─ */
+.anilist-import-settings-block {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.anilist-import-settings-block h3 {
+    font-size: 0.92rem;
+    color: var(--text-white);
+    margin: 0 0 8px;
+}
+.anilist-import-checkbox-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+}
+.anilist-import-checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    color: var(--text-gray);
+    cursor: pointer;
+}
+.anilist-import-checkbox-option input {
+    accent-color: var(--primary-color);
+    margin: 0;
+}
+.anilist-import-count-badge {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+.anilist-import-radio-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--text-gray);
+    cursor: pointer;
+    margin-bottom: 6px;
+}
+.anilist-import-radio-option input {
+    accent-color: var(--primary-color);
+    margin: 0;
+}
+
+/* ── Liste dépliable des séries ──────────────────────────────────────── */
+.anilist-import-details-block {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.anilist-import-details-block > summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-white);
+    margin-bottom: 12px;
+    list-style: none;
+}
+.anilist-import-details-block > summary::-webkit-details-marker { display: none; }
+
+.anilist-import-reset-notice {
+    margin: 8px 0 0;
+    font-size: 0.82rem;
+    color: var(--warning-color);
+}
+
+.anilist-import-group {
+    margin-bottom: 10px;
+}
+.anilist-import-group summary {
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: var(--text-gray);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    user-select: none;
+    list-style: none;
+}
+.anilist-import-group summary::-webkit-details-marker { display: none; }
+
+.anilist-import-entry-list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 10px;
+    max-height: 340px;
+    overflow-y: auto;
+}
+.anilist-import-entry {
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+.anilist-import-entry:last-child { border-bottom: none; }
+.anilist-import-entry label {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    cursor: pointer;
+}
+.anilist-import-entry input {
+    accent-color: var(--primary-color);
+    flex-shrink: 0;
+}
+.anilist-import-entry-title {
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+.anilist-import-entry-meta {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+/* ── Lancement de l'import ───────────────────────────────────────────── */
+.anilist-import-launch-row {
+    margin-top: 22px;
+}
