@@ -44,6 +44,12 @@ function create_backup(): array {
             $zip->addFile(DB_FILE, 'bdd/lengas.db');
         }
 
+        // Ajouter le fichier de configuration Vestikan, s'il existe (SSO facultatif)
+        $vestikan_config = 'vestikan/vestikan-config.php';
+        if (file_exists($vestikan_config)) {
+            $zip->addFile($vestikan_config, 'vestikan/vestikan-config.php');
+        }
+
         // Ajouter le dossier uploads/
         $uploads_dir = 'uploads/';
         if (file_exists($uploads_dir) && is_dir($uploads_dir)) {
