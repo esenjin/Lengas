@@ -39,7 +39,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         $message = "Série créée, attention, une autre du même nom existe déjà.";
     }
 
-    $data[] = [
+    $new_series = [
         'id' => generate_uuid(),
         'name' => $name,
         'type' => sanitize_series_type($type),
@@ -60,6 +60,16 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         'reread_count' => max(0, (int)$reread_count),
         'volumes' => $volumes
     ];
+
+    // Écriture ciblée (Bloc 2 de la migration save_data(), cf.
+    // MIGRATION_SAVE_DATA.md) : seule la nouvelle série est écrite en base,
+    // via un upsert sur `series` + un remplacement des tomes qui lui
+    // appartiennent. Plus de save_data($data) en aval — aucune autre série
+    // n'est lue ni réécrite.
+    upsert_series_row($new_series);
+    replace_series_volumes($new_series['id'], $new_series['volumes']);
+
+    $data[] = $new_series;
 
     return ['success' => true, 'data' => $data, 'message' => $message];
 }
@@ -178,6 +188,14 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
             $volume['last'] = false;
         }
     }
+    unset($volume); // referme la dernière boucle par référence ci-dessus
+
+    // Écriture ciblée (Bloc 2 de la migration save_data(), cf.
+    // MIGRATION_SAVE_DATA.md) : upsert sur la seule ligne `series` modifiée +
+    // remplacement des tomes qui lui appartiennent. Plus de
+    // save_data($data) en aval — aucune autre série n'est touchée.
+    upsert_series_row($data[$series_key]);
+    replace_series_volumes($series_id, $data[$series_key]['volumes']);
 
     return ['success' => true, 'data' => $data];
 }

@@ -27,8 +27,15 @@ $options = load_options();
 
 // ── Type affiché (Mangathèque / Animethèque) ─────────────────────────────────
 // $data reste la collection COMPLÈTE : c'est elle que reçoivent les handlers
-// d'écriture, save_data() supprimant toute série absente du tableau transmis.
-// Le cloisonnement par type se fait en aval, sur des copies d'affichage.
+// d'écriture. Migration en cours (cf. MIGRATION_SAVE_DATA.md) : delete_series()
+// (Bloc 1), add_series() et update_series() (Bloc 2) écrivent désormais
+// directement en base sur la seule série concernée et n'appellent plus
+// save_data() en aval. Les handlers pas encore migrés continuent, eux,
+// d'appeler save_data($data) avec la collection complète — save_data()
+// supprime toute série absente du tableau transmis, donc tant que des
+// appelants migrés cohabitent avec des appelants non migrés, ne passez
+// jamais un tableau filtré à save_data(). Le cloisonnement par type se fait
+// en aval, sur des copies d'affichage.
 $current_type = sanitize_series_type($_GET['type'] ?? '');
 
 // Ensemble des IDs de séries possédant une critique (pour badges / filtre)
@@ -76,10 +83,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
 
     // Appeler add_series avec $image (qui peut être null)
     // Cette modale ne crée que des mangas et light-novels (cf. registre de types).
+    //
+    // Bloc 2 de la migration save_data() → écritures ciblées (cf.
+    // MIGRATION_SAVE_DATA.md) : add_series() écrit désormais directement en
+    // base (upsert_series_row() + replace_series_volumes()) au moment de
+    // l'appel. Plus de save_data($result['data']) ici — $result['data'] ne
+    // sert plus qu'à réafficher la collection à jour côté admin.
     $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned, $rating, 'manga', $reread_count);
 
     if ($result['success']) {
-        save_data($result['data']);
         // Réchauffer le cache MangaUpdates pour la nouvelle série
         if ($mangaupdates_url !== '') {
             $mu_id = mangaupdates_get_id_from_url($mangaupdates_url);
@@ -514,9 +526,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         }
     }
 
+    // Bloc 2 de la migration save_data() → écritures ciblées (cf.
+    // MIGRATION_SAVE_DATA.md) : update_series() écrit désormais directement
+    // en base (upsert_series_row() + replace_series_volumes()) au moment de
+    // l'appel. Plus de save_data($result['data']) ici — $result['data'] ne
+    // sert plus qu'à réafficher la collection à jour côté admin.
     $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned, $edit_rating, $edit_reread_count);
     if ($result['success']) {
-        save_data($result['data']);
         // Réchauffer le cache MangaUpdates pour la série modifiée
         if ($mangaupdates_url !== '') {
             $mu_id = mangaupdates_get_id_from_url($mangaupdates_url);
