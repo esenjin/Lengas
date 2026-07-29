@@ -661,11 +661,21 @@ function setModalReviewBtn(series) {
 
     async function openReviewModal(series) {
         if (!series) return;
-        // Pré-remplit l'en-tête (titre, vignette, auteur, éditeur, catégories).
+        // Pré-remplit l'en-tête (titre, vignette). Le sous-titre dépend du type :
+        // auteur/éditeur pour un manga, studios pour un animé — même rôle
+        // d'affichage, source différente (le champ `author`/`publisher` reste
+        // vide côté serveur pour un animé, `studios_text` le remplace).
         document.getElementById('review-modal-title').textContent = series.name || '';
         document.getElementById('review-modal-thumb').src = series.image || 'assets/img/logo.png';
-        document.getElementById('review-modal-author').textContent = series.author ? ('Auteur : ' + series.author) : '';
-        document.getElementById('review-modal-publisher').textContent = series.publisher ? ('Éditeur : ' + series.publisher) : '';
+        const authorEl    = document.getElementById('review-modal-author');
+        const publisherEl = document.getElementById('review-modal-publisher');
+        if (series.type === 'anime') {
+            authorEl.textContent = series.studios_text ? ('Studios : ' + series.studios_text) : '';
+            publisherEl.textContent = '';
+        } else {
+            authorEl.textContent = series.author ? ('Auteur : ' + series.author) : '';
+            publisherEl.textContent = series.publisher ? ('Éditeur : ' + series.publisher) : '';
+        }
         const cats = (series.categories && series.categories.length) ? series.categories.join(', ') : '';
         document.getElementById('review-modal-categories').textContent = cats ? ('Catégories : ' + cats) : '';
         const creditReset = document.getElementById('review-modal-credit');

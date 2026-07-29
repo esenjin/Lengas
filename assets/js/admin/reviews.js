@@ -30,6 +30,11 @@
     const splitEl       = document.getElementById('review-split');
     const readingAlert  = document.getElementById('review-reading-alert');
 
+    // Filtre de type de la vue liste (Les deux / Mangas / Animés). Jamais
+    // mémorisé d'une visite à l'autre : toujours « Les deux » au chargement.
+    const typeToggle = document.getElementById('reviews-type-toggle');
+    let currentTypeFilter = '';
+
     // ── Utilitaires ──────────────────────────────────────────────────────────
     function htmlEscape(str) {
         return String(str)
@@ -123,6 +128,20 @@
         listView.style.display = '';
         loadList();
     }
+
+    // Remet le filtre de type sur « Les deux », jamais mémorisé (appelé au
+    // chargement initial de la page — pas à chaque retour depuis l'éditeur,
+    // pour ne pas surprendre l'utilisateur en pleine session de tri).
+    function resetTypeFilter() {
+        currentTypeFilter = '';
+        if (typeToggle) {
+            typeToggle.querySelectorAll('.reviews-type-btn').forEach(b => {
+                const active = (b.dataset.type || '') === '';
+                b.classList.toggle('is-active', active);
+                b.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+        }
+    }
     function showEditor() {
         listView.style.display = 'none';
         editorView.style.display = '';
@@ -146,14 +165,20 @@
         listContainer.innerHTML = '';
         reviews.forEach(r => {
             const card = document.createElement('div');
+            const type = r.type || 'manga';
             card.className = 'review-card';
             card.dataset.seriesId = r.series_id;
+            card.dataset.type = type;
             const img = '../' + ((r.image && r.image !== '') ? htmlEscape(r.image) : 'assets/img/logo.png');
+            const typeDef = (window.seriesTypes && window.seriesTypes[type]) || null;
+            const typeBadge = typeDef
+                ? `<span class="suggestion-type-badge review-card-type-badge" style="--type-color:${typeDef.color}">${htmlEscape(typeDef.label)}</span>`
+                : '';
             card.innerHTML = `
                 <button type="button" class="review-card-delete" title="Supprimer la critique" aria-label="Supprimer la critique">&times;</button>
                 <img class="review-card-thumb" src="${img}" alt="" loading="lazy">
                 <div class="review-card-body">
-                    <h3 class="review-card-title">${htmlEscape(r.name)}</h3>
+                    <h3 class="review-card-title">${htmlEscape(r.name)} ${typeBadge}</h3>
                     <p class="review-card-author">${htmlEscape(r.author || '')}</p>
                     <p class="review-card-excerpt">${htmlEscape(r.excerpt || '')}</p>
                     <p class="review-card-date">Modifiée le ${htmlEscape(formatDate(r.updated_at))}</p>
@@ -188,13 +213,33 @@
         return d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     }
 
+    // ── Filtre de type : recherche texte + toggle ────────────────────────────
+    function applyListFilters() {
+        const term = normalizeString(searchInput ? searchInput.value : '');
+        listContainer.querySelectorAll('.review-card').forEach(card => {
+            const title = normalizeString(card.querySelector('.review-card-title')?.textContent || '');
+            const auth  = normalizeString(card.querySelector('.review-card-author')?.textContent || '');
+            const matchesTerm = term === '' || title.includes(term) || auth.includes(term);
+            const matchesType = currentTypeFilter === '' || card.dataset.type === currentTypeFilter;
+            card.style.display = (matchesTerm && matchesType) ? '' : 'none';
+        });
+    }
+
     if (searchInput) {
-        searchInput.addEventListener('input', function () {
-            const term = normalizeString(this.value);
-            listContainer.querySelectorAll('.review-card').forEach(card => {
-                const title = normalizeString(card.querySelector('.review-card-title')?.textContent || '');
-                const auth  = normalizeString(card.querySelector('.review-card-author')?.textContent || '');
-                card.style.display = (title.includes(term) || auth.includes(term)) ? '' : 'none';
+        searchInput.addEventListener('input', applyListFilters);
+    }
+
+    if (typeToggle) {
+        typeToggle.querySelectorAll('.reviews-type-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                typeToggle.querySelectorAll('.reviews-type-btn').forEach(b => {
+                    b.classList.remove('is-active');
+                    b.setAttribute('aria-selected', 'false');
+                });
+                this.classList.add('is-active');
+                this.setAttribute('aria-selected', 'true');
+                currentTypeFilter = this.dataset.type || '';
+                applyListFilters();
             });
         });
     }
@@ -236,16 +281,27 @@
 
     async function onSeriesChosen(seriesId) {
         const data = await api('reading_state', { series_id: seriesId });
-        if (data.success) updateReadingAlert(data.reading_state);
+        if (data.success) updateReadingAlert(data.reading_state, seriesTypeOf(seriesId));
     }
 
-    function updateReadingAlert(state) {
+    // Type de la série choisie, lu depuis les data-attributes du sélecteur
+    // (posés par page-critiques.php à partir du registre central des types).
+    function seriesTypeOf(seriesId) {
+        const opt = seriesResults.querySelector(`div[data-id="${cssEscape(seriesId)}"]`);
+        return (opt && opt.dataset.type) || 'manga';
+    }
+
+    function updateReadingAlert(state, type) {
+        const vocab = (window.seriesTypes && window.seriesTypes[type || 'manga'] && window.seriesTypes[type || 'manga'].vocab) || {};
+        const items      = vocab.items      || 'tomes';
+        const doneLong    = vocab.done_long   || 'lue';
+        const activityVerb = vocab.activity_verb || 'lire';
         if (state === 'none') {
-            readingAlert.textContent = '⚠️ Aucun tome de cette série n\'est encore marqué comme lu. Êtes-vous sûr de vouloir écrire une critique ?';
+            readingAlert.textContent = `⚠️ Aucun ${vocab.item || 'tome'} de cette série n'est encore marqué comme ${vocab.done_short || 'lu'}. Êtes-vous sûr de vouloir écrire une critique ?`;
             readingAlert.className = 'review-reading-alert review-reading-alert--danger';
             readingAlert.style.display = '';
         } else if (state === 'partial') {
-            readingAlert.textContent = '⚠️ Tous les tomes de cette série ne sont pas encore lus.';
+            readingAlert.textContent = `⚠️ Tous les ${items} de cette série ne sont pas encore ${doneLong === 'vue' ? 'vus' : 'lus'}.`;
             readingAlert.className = 'review-reading-alert review-reading-alert--warning';
             readingAlert.style.display = '';
         } else {
@@ -271,7 +327,7 @@
         textarea.value = data.content || '';
         historyReset(textarea.value);
         deleteBtn.style.display = (data.content && data.content.trim() !== '') ? '' : 'none';
-        updateReadingAlert(data.reading_state || 'none');
+        updateReadingAlert(data.reading_state || 'none', seriesTypeOf(seriesId));
         schedulePreview();
     }
 
@@ -555,6 +611,7 @@
     });
 
     // ── Init ─────────────────────────────────────────────────────────────────
+    resetTypeFilter();
     setupSeriesSearch();
     if (window.reviewPrefillSeriesId) {
         openEditor(window.reviewPrefillSeriesId);

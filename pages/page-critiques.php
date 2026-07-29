@@ -14,11 +14,11 @@ require 'fonctions/reviews.php';
 
 $data    = load_data();
 $options = load_options();
-// ── Périmètre V4 : Mangathèque uniquement ────────────────────────────────────
-// Cette page ne traite pas encore les séries animées. Le filtrage est sans
-// danger ici : aucune écriture sur la table `series` n'a lieu, $data ne sert
-// qu'à la lecture et à l'affichage (voir l'avertissement de save_data()).
-$data = series_of_type($data, 'manga');
+// ── Mangas ET animés (bloc 12) ───────────────────────────────────────────────
+// Cette page couvre les deux types : $data reste le tableau complet, tel que
+// renvoyé par load_data(). Aucune écriture sur la table `series` n'a lieu ici,
+// $data ne sert qu'à la lecture et à l'affichage (voir l'avertissement de
+// save_data()) — pas de risque à le laisser non cloisonné par type.
 
 
 // ── Actions AJAX ─────────────────────────────────────────────────────────────
@@ -83,10 +83,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['review_action'])) {
 // Série pré-sélectionnée via l'URL (?series_id=…) depuis la carte "Critique".
 $prefill_series_id = $_GET['series_id'] ?? '';
 
-// Liste des séries éligibles : collection + lues ailleurs (toutes les séries
-// présentes dans $data conviennent, y compris read_elsewhere).
+// Liste des séries éligibles : mangas et animés, collection + lues ailleurs
+// (toutes les séries présentes dans $data conviennent, y compris
+// read_elsewhere). Le sous-titre affiché dans le sélecteur est l'auteur pour
+// un manga, les studios pour un animé — même rôle, source différente.
 $eligible = array_map(function ($s) {
-    return ['id' => $s['id'], 'name' => $s['name'], 'author' => $s['author']];
+    return [
+        'id'     => $s['id'],
+        'name'   => $s['name'],
+        'author' => is_anime($s) ? series_studios_text($s) : ($s['author'] ?? ''),
+        'type'   => series_type($s),
+    ];
 }, $data);
 ?>
 <!DOCTYPE html>
@@ -112,9 +119,22 @@ $eligible = array_map(function ($s) {
 
         <!-- ══ VUE LISTE ══════════════════════════════════════════════════════ -->
         <section id="reviews-list-view" class="reviews-view">
+            <!-- Filtre de type : réinitialisé à « Les deux » à chaque visite,
+                 jamais mémorisé (cohérent avec le reste de la page critiques). -->
+            <div class="reviews-type-toggle" id="reviews-type-toggle" role="tablist">
+                <button type="button" class="reviews-type-btn is-active" data-type="" role="tab" aria-selected="true">Les deux</button>
+                <button type="button" class="reviews-type-btn" data-type="manga" role="tab" aria-selected="false">
+                    <img src="https://api.iconify.design/mdi/bookshelf.svg?color=%23c94e93" width="15" height="15" alt="">
+                    Mangas
+                </button>
+                <button type="button" class="reviews-type-btn" data-type="anime" role="tab" aria-selected="false">
+                    <img src="https://api.iconify.design/mdi/television-classic.svg?color=%2338bdf8" width="15" height="15" alt="">
+                    Animés
+                </button>
+            </div>
             <div class="reviews-list-toolbar">
                 <input type="text" id="reviews-search" class="reviews-search-input"
-                       placeholder="Filtrer par titre ou auteur…" autocomplete="off">
+                       placeholder="Filtrer par titre, auteur ou studio…" autocomplete="off">
                 <button type="button" id="new-review-btn" class="button button-aos">
                     <img src="https://api.iconify.design/mdi/pencil-plus.svg?color=%23ffffff" width="18" height="18" alt="">
                     Nouvelle critique
@@ -140,9 +160,10 @@ $eligible = array_map(function ($s) {
                            placeholder="Choisir une série…" autocomplete="off">
                     <div class="series-results" id="review-series-results">
                         <?php foreach ($eligible as $s): ?>
-                            <div data-id="<?= htmlspecialchars($s['id']) ?>">
+                            <div data-id="<?= htmlspecialchars($s['id']) ?>" data-type="<?= htmlspecialchars($s['type']) ?>">
                                 <?= htmlspecialchars($s['name']) ?>
                                 <span class="review-series-author"><?= htmlspecialchars($s['author']) ?></span>
+                                <span class="suggestion-type-badge review-series-type-badge" style="--type-color: <?= htmlspecialchars(type_color($s['type'])) ?>"><?= htmlspecialchars(type_label($s['type'])) ?></span>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -249,6 +270,9 @@ $eligible = array_map(function ($s) {
 
     <script>
         window.reviewPrefillSeriesId = <?= json_encode($prefill_series_id) ?>;
+        // Registre allégé des types (badges + vocabulaire visionnage/lecture),
+        // seule source de vérité pour ce JS — aucun libellé n'est écrit en dur.
+        window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
     </script>
     <script src="../assets/js/admin/main.js"></script>
     <script src="../assets/js/admin/reviews.js"></script>

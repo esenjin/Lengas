@@ -46,12 +46,16 @@ function get_review_series_ids(): array {
 
 // ── Liste des critiques (métadonnées + série associée) ───────────────────────
 // Renvoie uniquement les critiques dont la série existe toujours dans $data.
+// $data doit contenir TOUTES les séries (mangas + animés) : le filtrage par
+// type se fait côté client (page-critiques.php propose « les deux »), cette
+// fonction ne doit donc jamais recevoir un tableau déjà cloisonné par
+// series_of_type().
 function list_reviews(array $data): array {
     reviews_init_table();
     $db   = get_db();
     $rows = $db->query("SELECT series_id, content, updated_at FROM reviews WHERE content <> '' ORDER BY updated_at DESC")->fetchAll();
 
-    // Index des séries par id pour retrouver nom / auteur / image
+    // Index des séries par id pour retrouver nom / auteur / image / type
     $by_id = [];
     foreach ($data as $s) {
         $by_id[$s['id']] = $s;
@@ -61,11 +65,15 @@ function list_reviews(array $data): array {
     foreach ($rows as $r) {
         if (!isset($by_id[$r['series_id']])) continue; // série supprimée : ignorée
         $s = $by_id[$r['series_id']];
+        // Sous-titre de carte : auteur pour un manga, studios pour un animé —
+        // même rôle d'affichage, source différente selon le type.
+        $subtitle = is_anime($s) ? series_studios_text($s) : (string)($s['author'] ?? '');
         $result[] = [
             'series_id'  => $r['series_id'],
             'name'       => $s['name'],
-            'author'     => $s['author'],
-            'image'      => $s['image'] ?? '',
+            'type'       => series_type($s),
+            'author'     => $subtitle,
+            'image'      => series_thumbnail($s),
             'updated_at' => $r['updated_at'],
             'excerpt'    => review_excerpt($r['content'], 160),
         ];
@@ -127,9 +135,27 @@ function delete_review(string $series_id): array {
     return ['success' => true, 'message' => 'Critique supprimée.'];
 }
 
-// ── État de lecture d'une série (pour les alertes de l'éditeur) ──────────────
-// Renvoie 'none' (aucun tome lu), 'partial' (certains lus), 'complete' (tous lus).
+// ── État de lecture/visionnage d'une série (pour les alertes de l'éditeur) ───
+// Renvoie 'none' (rien de lu/vu), 'partial' (une partie), 'complete' (tout).
+// Un animé au visionnage abandonné compte comme 'partial' : il est cohérent
+// d'alerter, exactement comme un manga jamais terminé, plutôt que de laisser
+// croire que la série a été vue en intégralité.
 function review_reading_state(array $series): string {
+    if (is_anime($series)) {
+        if (!empty($series['watching_abandoned'])) {
+            $episodes = $series['volumes'] ?? [];
+            foreach ($episodes as $e) {
+                if (($e['status'] ?? '') === 'terminé') return 'partial';
+            }
+            return 'none';
+        }
+        switch (anime_watching_status($series)) {
+            case 'completed':   return 'complete';
+            case 'in_progress': return 'partial';
+            default:            return 'none';
+        }
+    }
+
     $volumes = $series['volumes'] ?? [];
     if (empty($volumes)) return 'none';
     $total = 0; $read = 0;

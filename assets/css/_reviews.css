@@ -2,6 +2,52 @@
    Critiques de séries — page admin, rendu Markdown, badges et modale publique
    ══════════════════════════════════════════════════════════════════════════ */
 
+/* ── Filtre de type (Les deux / Mangas / Animés) ────────────────────────── */
+.reviews-type-toggle {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+.reviews-type-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-gray);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+.reviews-type-btn:hover {
+    background: var(--background-lighter);
+    color: var(--text-white);
+}
+.reviews-type-btn.is-active {
+    background: var(--background-lighter);
+    border-color: currentColor;
+    color: var(--text-white);
+}
+.reviews-type-btn[data-type=""].is-active { color: var(--primary-color); }
+.reviews-type-btn[data-type="manga"].is-active { color: #c94e93; }
+.reviews-type-btn[data-type="anime"].is-active { color: #38bdf8; }
+
+/* Badge de type sur les cartes de la liste et les options du sélecteur de
+   série (réutilise .suggestion-type-badge, déjà défini dans _forms.css). */
+.review-card-type-badge {
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.review-series-type-badge {
+    margin-left: 8px;
+    float: right;
+}
+
 /* ── Barre d'outils de la vue liste ─────────────────────────────────────── */
 .reviews-list-toolbar {
     display: flex;
