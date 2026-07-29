@@ -771,6 +771,165 @@ function save_data(array $data): void {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Écritures ciblées (Bloc 0 de la migration hors de save_data())
+// ──────────────────────────────────────────────────────────────────────────────
+// Ces fonctions isolent, pour UNE SEULE série à la fois, exactement les
+// requêtes déjà utilisées par save_data() (mêmes colonnes, mêmes conversions,
+// même comportement pour `editions`/`volumes`). Elles ne suppriment jamais
+// autre chose que ce qui est explicitement demandé : aucune ne fait de diff
+// globale ni de resynchronisation de la collection.
+//
+// À ce stade (Bloc 0), rien ne les appelle encore : save_data() reste seule
+// aux commandes. Elles ne font que coexister, prêtes à être branchées bloc par
+// bloc dans la suite de la migration (cf. MIGRATION_SAVE_DATA.md).
+
+/**
+ * Insère ou met à jour une seule ligne de la table `series`.
+ *
+ * Reprend exactement les colonnes et conversions de l'upsert de save_data() :
+ * mêmes valeurs par défaut, mêmes règles pour `type`, `studios`, `alt_titles`.
+ * Ne touche ni aux tomes, ni aux éditions, ni à aucune autre série.
+ *
+ * $series est un tableau au même format que ceux renvoyés par load_data()
+ * (voir la boucle `foreach ($series as $s)` de cette fonction pour la forme
+ * exacte attendue).
+ */
+function upsert_series_row(array $series): void {
+    $db = get_db();
+    $stmt = $db->prepare("
+        INSERT INTO series (id, name, type, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, anilist_synced_at, episode_duration, reread_count)
+        VALUES (:id,:name,:type,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:anilist_synced_at,:episode_duration,:reread_count)
+        ON CONFLICT(id) DO UPDATE SET
+            name=excluded.name, type=excluded.type,
+            author=excluded.author, publisher=excluded.publisher,
+            other_contributors=excluded.other_contributors, categories=excluded.categories,
+            genres=excluded.genres, image=excluded.image, anilist_id=excluded.anilist_id,
+            mature=excluded.mature, favorite=excluded.favorite, status=excluded.status,
+            mangaupdates_url=excluded.mangaupdates_url, babelio_url=excluded.babelio_url,
+            read_elsewhere=excluded.read_elsewhere,
+            reading_abandoned=excluded.reading_abandoned,
+            rating=excluded.rating,
+            anilist_url=excluded.anilist_url, studios=excluded.studios,
+            anime_format=excluded.anime_format, alt_titles=excluded.alt_titles,
+            anilist_image=excluded.anilist_image,
+            watching_abandoned=excluded.watching_abandoned,
+            rewatch_count=excluded.rewatch_count,
+            anilist_synced_at=excluded.anilist_synced_at,
+            episode_duration=excluded.episode_duration,
+            reread_count=excluded.reread_count
+    ");
+
+    $s = $series;
+    $stmt->execute([
+        ':id'                  => $s['id'],
+        ':name'                => $s['name'],
+        ':type'                => (isset($s['type']) && trim($s['type']) !== '') ? $s['type'] : 'manga',
+        ':author'              => $s['author'] ?? '',
+        ':publisher'           => $s['publisher'] ?? '',
+        ':other_contributors'  => implode(',', $s['other_contributors'] ?? ['']),
+        ':categories'          => implode(',', $s['categories'] ?? ['']),
+        ':genres'              => implode(',', $s['genres'] ?? ['']),
+        ':image'               => $s['image'] ?? '',
+        ':anilist_id'          => $s['anilist_id'] ?? '',
+        ':mature'              => (int)($s['mature'] ?? false),
+        ':favorite'            => (int)($s['favorite'] ?? false),
+        ':status'              => $s['status'] ?? 'en cours',
+        ':mangaupdates_url'    => $s['mangaupdates_url'] ?? '',
+        ':babelio_url'         => $s['babelio_url'] ?? '',
+        ':read_elsewhere'     => (int)($s['read_elsewhere'] ?? false),
+        ':reading_abandoned'  => (int)($s['reading_abandoned'] ?? false),
+        ':rating'             => $s['rating'] ?? '',
+        ':anilist_url'        => $s['anilist_url'] ?? '',
+        ':studios'            => is_array($s['studios'] ?? null)
+                                  ? implode(',', $s['studios'])
+                                  : (string)($s['studios'] ?? ''),
+        ':anime_format'       => $s['anime_format'] ?? '',
+        ':alt_titles'         => is_array($s['alt_titles'] ?? null)
+                                  ? json_encode(array_values($s['alt_titles']), JSON_UNESCAPED_UNICODE)
+                                  : (string)($s['alt_titles'] ?? ''),
+        ':anilist_image'      => $s['anilist_image'] ?? '',
+        ':watching_abandoned' => (int)($s['watching_abandoned'] ?? false),
+        ':rewatch_count'      => max(0, (int)($s['rewatch_count'] ?? 0)),
+        ':anilist_synced_at'  => max(0, (int)($s['anilist_synced_at'] ?? 0)),
+        ':episode_duration'   => max(0, (int)($s['episode_duration'] ?? 0)),
+        ':reread_count'       => max(0, (int)($s['reread_count'] ?? 0)),
+    ]);
+}
+
+/**
+ * Supprime UNE SEULE série et tout ce qui en dépend.
+ *
+ * Le `ON DELETE CASCADE` déclaré sur `volumes` et `series_editions` (voir
+ * init_db()) fait le reste : pas besoin de DELETE séparés sur ces tables.
+ * Ne touche à aucune autre ligne de `series`.
+ */
+function delete_series_row(string $series_id): void {
+    $db = get_db();
+    $db->prepare("DELETE FROM series WHERE id = ?")->execute([$series_id]);
+}
+
+/**
+ * Remplace intégralement les tomes d'UNE SEULE série (delete + reinsert).
+ *
+ * Acceptable en l'état : le nombre de tomes d'une série reste modeste, et ils
+ * sont par nature réécrits ensemble (renumérotation, statuts en masse...).
+ * N'affecte que $series_id — les tomes des autres séries ne sont pas lus.
+ *
+ * $volumes attend le même format que la clé `volumes` de load_data() :
+ * ['number' => int, 'status' => string, 'collector' => bool, 'last' => bool,
+ *  'added_at' => string, 'read_at' => string]
+ */
+function replace_series_volumes(string $series_id, array $volumes): void {
+    $db = get_db();
+    $db->prepare("DELETE FROM volumes WHERE series_id = ?")->execute([$series_id]);
+
+    $insertVol = $db->prepare("
+        INSERT OR IGNORE INTO volumes (series_id, number, status, collector, last, added_at, read_at)
+        VALUES (?,?,?,?,?,?,?)
+    ");
+    foreach ($volumes as $v) {
+        $insertVol->execute([
+            $series_id,
+            (int)$v['number'],
+            $v['status'] ?? 'à lire',
+            (int)($v['collector'] ?? false),
+            (int)($v['last'] ?? false),
+            $v['added_at'] ?? date('Y-m-d'),
+            $v['read_at'] ?? '',
+        ]);
+    }
+}
+
+/**
+ * Remplace intégralement les éditions physiques d'UNE SEULE série.
+ *
+ * Contrairement à save_data(), qui ne touche aux éditions que si la clé
+ * `editions` est présente dans le tableau série, cette fonction est toujours
+ * explicite : c'est à l'appelant de décider s'il doit l'invoquer ou non
+ * (ne pas l'appeler du tout revient au comportement « clé absente »).
+ *
+ * $editions attend le même format que la clé `editions` de load_data() —
+ * un tableau de chaînes (commentaire brut) ou de tableaux ['comment' => ...].
+ * Reprend le même plafond (5 éditions, 100 caractères, commentaires vides
+ * ignorés) que save_data().
+ */
+function replace_series_editions(string $series_id, array $editions): void {
+    $db = get_db();
+    $db->prepare("DELETE FROM series_editions WHERE series_id = ?")->execute([$series_id]);
+
+    $insertEdition = $db->prepare("
+        INSERT INTO series_editions (series_id, comment, position) VALUES (?,?,?)
+    ");
+    $position = 0;
+    foreach (array_slice($editions, 0, 5) as $edition) {
+        $comment = is_array($edition) ? ($edition['comment'] ?? '') : $edition;
+        $comment = mb_substr(trim((string)$comment), 0, 100);
+        if ($comment === '') continue;
+        $insertEdition->execute([$series_id, $comment, $position++]);
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Options
 // ──────────────────────────────────────────────────────────────────────────────
 function load_options(): array {
