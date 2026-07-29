@@ -210,8 +210,10 @@ function type_vocab($type, ?string $key = null) {
 // ── Filtrage par type ─────────────────────────────────────────────────────────
 // ⚠️ À N'UTILISER QUE POUR L'AFFICHAGE (liste, recherche, tri, pagination,
 // compteurs) ou dans une fonction d'analyse en lecture seule. Le tableau rendu
-// est INCOMPLET : ne jamais le passer à save_data(), qui supprime de la base
-// toute série absente du tableau reçu. Voir l'avertissement de save_data().
+// est INCOMPLET : ne jamais le confondre avec la collection complète pour une
+// écriture en base — toute écriture doit passer par les fonctions ciblées de
+// config.php (upsert_series_row(), delete_series_row(), etc.), jamais par une
+// resynchronisation globale à partir d'un tableau filtré.
 function series_of_type(array $data, $type): array {
     $type = sanitize_series_type($type);
     return array_values(array_filter($data, function ($series) use ($type) {

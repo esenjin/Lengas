@@ -19,7 +19,8 @@
 // Dépendances : includes/anilist.php (connecteur), includes/helpers.php
 // (registre des types, vignettes, éditions, statut de visionnage),
 // fonctions/episodes.php (création et tenue de la liste des épisodes),
-// config.php (load_data/save_data).
+// config.php (load_data(), upsert_series_row(), replace_series_volumes(),
+// replace_series_editions()).
 // ────────────────────────────────────────────────────────────────────────────
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -204,10 +205,9 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
     // diffusion est terminée et le compte complet.
     $episodes = anime_episodes_from_media($media);
 
-    // Écriture ciblée (Bloc 4 de la migration save_data() → écritures
-    // ciblées, cf. MIGRATION_SAVE_DATA.md) : la nouvelle série est construite
-    // dans $new_series, upsertée (upsert_series_row()) puis ses épisodes
-    // écrits (replace_series_volumes()) avant d'être ajoutée à $data pour
+    // Écriture ciblée : la nouvelle série est construite dans $new_series,
+    // upsertée (upsert_series_row()) puis ses épisodes écrits
+    // (replace_series_volumes()) avant d'être ajoutée à $data pour
     // l'affichage. Pas de replace_series_editions() ici : une série animée
     // fraîchement importée n'a jamais d'éditions à ce stade (elles se
     // saisissent ensuite depuis update_anime_series()).
@@ -302,11 +302,10 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
 //
 // Retour : ['success', 'data', 'message']
 //
-// Écriture ciblée (Bloc 4 de la migration save_data() → écritures ciblées,
-// cf. MIGRATION_SAVE_DATA.md) : upsert_series_row() systématique en fin de
-// fonction ; replace_series_editions() seulement si la clé 'editions' est
-// présente dans $fields, à l'identique du comportement conditionnel qu'avait
-// save_data() sur la clé 'editions' du tableau série.
+// Écriture ciblée : upsert_series_row() systématique en fin de fonction ;
+// replace_series_editions() seulement si la clé 'editions' est présente
+// dans $fields — une clé absente laisse les éditions déjà en base
+// inchangées.
 function update_anime_series(array $data, string $series_id, array $fields): array {
     $found = find_series_by_id($data, $series_id);
     if (!$found) {

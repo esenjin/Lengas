@@ -61,11 +61,9 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         'volumes' => $volumes
     ];
 
-    // Écriture ciblée (Bloc 2 de la migration save_data(), cf.
-    // MIGRATION_SAVE_DATA.md) : seule la nouvelle série est écrite en base,
-    // via un upsert sur `series` + un remplacement des tomes qui lui
-    // appartiennent. Plus de save_data($data) en aval — aucune autre série
-    // n'est lue ni réécrite.
+    // Écriture ciblée : seule la nouvelle série est écrite en base, via un
+    // upsert sur `series` + un remplacement des tomes qui lui appartiennent.
+    // Aucune autre série n'est lue ni réécrite.
     upsert_series_row($new_series);
     replace_series_volumes($new_series['id'], $new_series['volumes']);
 
@@ -190,10 +188,9 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
     }
     unset($volume); // referme la dernière boucle par référence ci-dessus
 
-    // Écriture ciblée (Bloc 2 de la migration save_data(), cf.
-    // MIGRATION_SAVE_DATA.md) : upsert sur la seule ligne `series` modifiée +
-    // remplacement des tomes qui lui appartiennent. Plus de
-    // save_data($data) en aval — aucune autre série n'est touchée.
+    // Écriture ciblée : upsert sur la seule ligne `series` modifiée +
+    // remplacement des tomes qui lui appartiennent. Aucune autre série
+    // n'est touchée.
     upsert_series_row($data[$series_key]);
     replace_series_volumes($series_id, $data[$series_key]['volumes']);
 
@@ -202,12 +199,11 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
 
 // Supprimer une série
 //
-// Bloc 1 de la migration save_data() → écritures ciblées (cf.
+// Bloc 1 (historique) de la migration des écritures ciblées (cf.
 // MIGRATION_SAVE_DATA.md) : la suppression est effective en base dès cet
 // appel, via delete_series_row() (DELETE ciblé + ON DELETE CASCADE sur
-// volumes/series_editions). L'appelant n'a plus besoin d'appeler save_data()
-// derrière — $data n'est renvoyé que pour permettre de réafficher la
-// collection à jour côté admin, il ne sert plus à répercuter la suppression.
+// volumes/series_editions). $data n'est renvoyé que pour permettre de
+// réafficher la collection à jour côté admin, il ne sert à aucune écriture.
 function delete_series($data, $series_id) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
@@ -232,7 +228,7 @@ function delete_series($data, $series_id) {
     }
 
     // Écriture ciblée : supprime UNIQUEMENT cette série (+ cascade tomes/
-    // éditions) en base. Plus de transit par un save_data($data_sans_la_série).
+    // éditions) en base. Aucune autre série n'est lue ni réécrite.
     delete_series_row($series_id);
 
     unset($data[$series_key]);

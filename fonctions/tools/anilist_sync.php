@@ -28,7 +28,8 @@
 // (find_series_by_anilist_id), fonctions/episodes.php
 // (anime_episodes_from_media, anime_refresh_last_episode,
 // anime_airing_finished), includes/helpers.php (is_anime, find_series_by_id,
-// anime_watching_status), config.php (load_data/save_data).
+// anime_watching_status), config.php (load_data(), upsert_series_row(),
+// replace_series_volumes()).
 // ────────────────────────────────────────────────────────────────────────────
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -149,20 +150,18 @@ function anilist_sync_is_due(array $series, bool $ignore_lock = false): bool {
 // courante) : nouveaux épisodes diffusés, tag « dernier épisode », statut de
 // diffusion.
 //
-// Écriture ciblée (Bloc 5 de la migration save_data(), cf.
-// MIGRATION_SAVE_DATA.md) : dès qu'une synchronisation modifie réellement la
-// série (statut ou épisodes) ou avance seulement anilist_synced_at (cas
+// Écriture ciblée : dès qu'une synchronisation modifie réellement la série
+// (statut ou épisodes) ou avance seulement anilist_synced_at (cas
 // 'unchanged'), la fonction écrit elle-même en base — upsert_series_row()
 // pour les champs série (status, anilist_synced_at) et
-// replace_series_volumes() pour les épisodes — au lieu de renvoyer $data
-// pour un save_data() global en fin de lot. En cas d'erreur ou de skip, rien
-// n'est écrit ici : c'est à l'appelant de décider (voir
+// replace_series_volumes() pour les épisodes. En cas d'erreur ou de skip,
+// rien n'est écrit ici : c'est à l'appelant de décider (voir
 // anilist_sync_apply_retry_lock()).
 //
 // Retour :
 //   ['status' => 'synced'|'unchanged'|'error'|'skipped',
 //    'data'   => collection éventuellement modifiée (en mémoire, pour
-//                l'affichage — ne sert plus à un save_data() en aval),
+//                l'affichage uniquement — déjà persistée ci-dessus),
 //    'message'=> string,
 //    'series' => la série à jour (ou telle quelle en cas d'échec/skip),
 //    'retry_lock' => bool (true si un échec doit reporter le verrou d'1h)]
@@ -271,11 +270,11 @@ function anilist_sync_apply_retry_lock(array $data, string $series_id): array {
 // Synchronise jusqu'à $limit séries parmi $series_ids (dans l'ordre donné),
 // en respectant l'éligibilité et le verrou (sauf $force).
 //
-// Écriture ciblée (Bloc 5) : chaque série traitée est déjà écrite en base au
-// fil du lot, par anilist_sync_series_now() ('synced'/'unchanged') ou
-// anilist_sync_apply_retry_lock() ('error') — plus de save_data() final ici.
-// $data ne sert plus qu'à l'affichage de la progression (titres) et à la
-// lecture de l'état courant série par série.
+// Écriture ciblée : chaque série traitée est déjà écrite en base au fil du
+// lot, par anilist_sync_series_now() ('synced'/'unchanged') ou
+// anilist_sync_apply_retry_lock() ('error'). $data ne sert plus qu'à
+// l'affichage de la progression (titres) et à la lecture de l'état courant
+// série par série.
 //
 // $on_progress : callable(int $current, int $total, string $title) — facultatif,
 // pour une utilisation SSE (sous-onglet outils).

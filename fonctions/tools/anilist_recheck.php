@@ -23,7 +23,7 @@
 // Dépendances : includes/anilist.php (connecteur, anilist_fetch_media_batch),
 // fonctions/anime.php (anime_download_cover, anime_purge_cover, is_anime),
 // includes/helpers.php (find_series_by_id, series_alt_titles), config.php
-// (load_data/save_data).
+// (load_data(), upsert_series_row()).
 // ────────────────────────────────────────────────────────────────────────────
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -318,9 +318,8 @@ function anilist_recheck_build_report(array $data, bool $force = false, $on_prog
 // c'est la même fenêtre que celle utilisée pour construire le rapport, la
 // revalidation ne re-sollicite donc quasiment jamais le réseau).
 //
-// Écriture ciblée (Bloc 5 de la migration save_data(), cf.
-// MIGRATION_SAVE_DATA.md) : dès qu'au moins un champ est réellement appliqué
-// (ou qu'un nouveau titre alternatif est accepté), la fonction upserte
+// Écriture ciblée : dès qu'au moins un champ est réellement appliqué (ou
+// qu'un nouveau titre alternatif est accepté), la fonction upserte
 // elle-même la ligne série concernée (upsert_series_row()). Cette fonction ne
 // touche jamais aux tomes/épisodes (voir en-tête du fichier) : pas besoin de
 // replace_series_volumes() ici.
@@ -463,10 +462,10 @@ function anilist_recheck_apply_series(array $data, string $series_id, array $fie
 // sélectionnées » du rapport). $selections : [series_id => ['fields' => [...],
 // 'accept_new_titles' => bool]].
 //
-// Écriture ciblée (Bloc 5) : chaque série traitée est déjà upsertée par
-// anilist_recheck_apply_series() en cas de succès — plus de save_data()
-// final ici. $data ne sert plus qu'à faire progresser le lot en mémoire
-// (retrouver le titre d'une série en erreur, notamment).
+// Écriture ciblée : chaque série traitée est déjà upsertée par
+// anilist_recheck_apply_series() en cas de succès. $data ne sert plus qu'à
+// faire progresser le lot en mémoire (retrouver le titre d'une série en
+// erreur, notamment).
 //
 // Retour : ['success', 'applied' => [messages], 'errors' => [['title','message']]]
 function anilist_recheck_apply_batch(array $selections): array {

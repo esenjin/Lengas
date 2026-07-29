@@ -35,7 +35,7 @@ $options  = load_options();
 // catégories pour la section Statistiques) et reste filtré comme avant. On y
 // ajoute $anime_data, propre au bloc 14, pour lister les formats d'animé
 // réellement présents en collection. Aucune écriture sur la table `series`
-// n'a lieu ici : ces tableaux ne servent qu'à la lecture (cf. save_data()).
+// n'a lieu ici : ces tableaux ne servent qu'à la lecture.
 $data       = series_of_type($all_data, 'manga');
 $anime_data = series_of_type($all_data, 'anime');
 

@@ -12,7 +12,7 @@ $options  = load_options();
 // Deux collections cloisonnées, comme partout ailleurs sur le site (admin,
 // index, filtres…). Le filtrage est sans danger ici : aucune écriture sur la
 // table `series` n'a lieu, ces tableaux ne servent qu'à la lecture et à
-// l'affichage (voir l'avertissement de save_data()).
+// l'affichage.
 $data       = series_of_type($all_data, 'manga');
 $anime_data = series_of_type($all_data, 'anime');
 $has_anime  = count($anime_data) > 0;

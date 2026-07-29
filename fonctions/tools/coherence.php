@@ -134,8 +134,9 @@ function check_collection_coherence(array $data): array {
 function check_manga_coherence(array $data): array {
     // Périmètre : ces vérifications ne concernent que la Mangathèque.
     // $data est reçu PAR VALEUR : le filtrage ne touche que cette copie locale,
-    // le tableau de l'appelant reste complet pour les écritures ultérieures
-    // (voir l'avertissement de save_data() dans config.php).
+    // le tableau de l'appelant reste intact pour d'éventuelles écritures
+    // ultérieures, qui passent toujours par les fonctions ciblées de
+    // config.php sur les seules séries concernées.
     $data = series_of_type($data, 'manga');
 
     $issues = [];
@@ -524,11 +525,9 @@ function anime_coherence_has_fixable(array $problems): bool {
 // Format attendu : $input['series_id'], $input['episodes_updates'] (JSON :
 // [{ "index": int, "status": "à voir"|"en cours"|"terminé", "watched_at": "" }]).
 //
-// Écriture ciblée (Bloc 5 de la migration save_data(), cf.
-// MIGRATION_SAVE_DATA.md) : update_episode() (déjà migrée au Bloc 4) écrit
-// elle-même les épisodes de la série en base via replace_series_volumes() à
-// chaque itération — plus de save_data($data) en aval, qui aurait réécrit
-// inutilement toute la collection.
+// Écriture ciblée : update_episode() écrit elle-même les épisodes de la
+// série en base via replace_series_volumes() à chaque itération — aucune
+// réécriture supplémentaire n'est nécessaire ici.
 function coherence_quick_edit_anime(array &$data, array $input): array {
     $series_id = trim($input['series_id'] ?? '');
     $found     = find_series_by_id($data, $series_id);
@@ -563,10 +562,9 @@ function coherence_quick_edit_anime(array &$data, array $input): array {
 // de tomes (par index), mises à jour de tomes existants et ajouts de tomes.
 // Retourne la série mise à jour pour permettre un rafraîchissement sans rechargement.
 //
-// Écriture ciblée (Bloc 5 de la migration save_data(), cf.
-// MIGRATION_SAVE_DATA.md) : upsert_series_row() sur la seule ligne série
-// modifiée (statut, lue ailleurs) et replace_series_volumes() sur les seuls
-// tomes de cette série — plus de save_data() sur la collection complète.
+// Écriture ciblée : upsert_series_row() sur la seule ligne série modifiée
+// (statut, lue ailleurs) et replace_series_volumes() sur les seuls tomes de
+// cette série — jamais de resynchronisation de la collection complète.
 function coherence_quick_edit(array &$data, array $input): array {
     $series_id      = trim($input['series_id'] ?? '');
     $new_status     = trim($input['series_status'] ?? '');

@@ -484,9 +484,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $sse('progress', ['current' => $current, 'total' => $entry_total, 'title' => $title]);
     });
 
-    // Écriture unique, une fois la campagne entièrement traitée : un aller-
-    // retour SQLite pour toute la campagne plutôt qu'un par série.
-    save_data($result['data']);
+    // Écriture ciblée : anilist_import_run() upserte chaque série créée ou
+    // mise à jour au fil de la boucle (via add_anime_series() et les
+    // écritures ciblées propres aux fonctions de anilist_import.php).
+    // $result['data'] ne sert plus qu'à l'éventuel usage en mémoire de cette
+    // requête, jamais à une resynchronisation globale de la collection.
     save_wishlist($result['wishlist']);
 
     // La campagne est intégralement traitée (avec ou sans erreurs partielles) :

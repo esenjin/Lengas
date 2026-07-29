@@ -79,14 +79,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (sanitize_series_type($item['type'] ?? '') === 'anime') {
-            // Bloc 6 de la migration save_data() → écritures ciblées (cf.
-            // README.md) : add_anime_from_wishlist() délègue à
-            // add_anime_series() (déjà migrée au Bloc 4), qui upserte
-            // elle-même la série (+ ses épisodes, + ses éditions si la clé
-            // est fournie) en base au moment de l'appel. Plus de
-            // save_data($result['data']) ici — $result['data'] ne sert plus
-            // qu'à renvoyer 'series_id' pour la redirection front, jamais à
-            // une resynchronisation globale.
+            // Écriture ciblée : add_anime_from_wishlist() délègue à
+            // add_anime_series(), qui upserte elle-même la série (+ ses
+            // épisodes, + ses éditions si la clé est fournie) en base au
+            // moment de l'appel. $result['data'] ne sert plus qu'à renvoyer
+            // 'series_id' pour la redirection front, jamais à une
+            // resynchronisation globale.
             $result = add_anime_from_wishlist($data, $wishlist, $index);
             if ($result['success']) {
                 save_wishlist($result['wishlist']);

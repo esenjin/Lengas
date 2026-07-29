@@ -17,8 +17,8 @@ $options = load_options();
 // ── Mangas ET animés ──────────────────────────────────────────────────────────
 // Cette page couvre les deux types : $data reste le tableau complet, tel que
 // renvoyé par load_data(). Aucune écriture sur la table `series` n'a lieu ici,
-// $data ne sert qu'à la lecture et à l'affichage (voir l'avertissement de
-// save_data()) — pas de risque à le laisser non cloisonné par type.
+// $data ne sert qu'à la lecture et à l'affichage — pas de risque à le laisser
+// non cloisonné par type.
 
 
 // ── Actions AJAX ─────────────────────────────────────────────────────────────

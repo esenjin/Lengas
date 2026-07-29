@@ -631,168 +631,28 @@ function load_data(): array {
     return $result;
 }
 
-/**
- * Enregistre la collection.
- *
- * ⚠️ SYNCHRONISATION INTÉGRALE — À LIRE AVANT TOUT APPEL ⚠️
- * Cette fonction ne fait pas qu'écrire : elle SUPPRIME de la base toute série
- * absente de $data. Elle attend donc TOUJOURS la collection COMPLÈTE, tous
- * types confondus.
- *
- * Ne lui passez jamais un tableau filtré — ni par type (series_of_type()), ni par
- * recherche, ni par statut. En vue Mangathèque, un tableau filtré ne contient
- * aucun animé : le premier enregistrement effacerait toute l'Animethèque et ses
- * épisodes, sans le moindre message.
- *
- * Règle pratique : $data reste intact pour l'écriture, le filtrage par type se
- * fait en aval sur une COPIE dédiée à l'affichage ($filtered_data), exactement
- * comme le filtre de statuts.
- *
- * Migration en cours (cf. MIGRATION_SAVE_DATA.md) : delete_series() (Bloc 1)
- * n'appelle plus save_data() — elle écrit directement via delete_series_row().
- * Les appelants restants seront migrés bloc par bloc jusqu'à la suppression
- * de cette fonction (Bloc 7).
- */
-function save_data(array $data): void {
-    $db = get_db();
-    $db->beginTransaction();
-    try {
-        // Reconstruire entièrement : supprimer puis ré-insérer
-        $existing_ids = array_column(
-            $db->query("SELECT id FROM series")->fetchAll(),
-            'id'
-        );
-        $new_ids = array_column($data, 'id');
-
-        // Supprimer les séries retirées (CASCADE supprime aussi leurs volumes)
-        foreach (array_diff($existing_ids, $new_ids) as $del_id) {
-            $db->prepare("DELETE FROM series WHERE id = ?")->execute([$del_id]);
-        }
-
-        $upsertSeries = $db->prepare("
-            INSERT INTO series (id, name, type, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, anilist_synced_at, episode_duration, reread_count)
-            VALUES (:id,:name,:type,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:anilist_synced_at,:episode_duration,:reread_count)
-            ON CONFLICT(id) DO UPDATE SET
-                name=excluded.name, type=excluded.type,
-                author=excluded.author, publisher=excluded.publisher,
-                other_contributors=excluded.other_contributors, categories=excluded.categories,
-                genres=excluded.genres, image=excluded.image, anilist_id=excluded.anilist_id,
-                mature=excluded.mature, favorite=excluded.favorite, status=excluded.status,
-                mangaupdates_url=excluded.mangaupdates_url, babelio_url=excluded.babelio_url,
-                read_elsewhere=excluded.read_elsewhere,
-                reading_abandoned=excluded.reading_abandoned,
-                rating=excluded.rating,
-                anilist_url=excluded.anilist_url, studios=excluded.studios,
-                anime_format=excluded.anime_format, alt_titles=excluded.alt_titles,
-                anilist_image=excluded.anilist_image,
-                watching_abandoned=excluded.watching_abandoned,
-                rewatch_count=excluded.rewatch_count,
-                anilist_synced_at=excluded.anilist_synced_at,
-                episode_duration=excluded.episode_duration,
-                reread_count=excluded.reread_count
-        ");
-
-        $deleteVols  = $db->prepare("DELETE FROM volumes WHERE series_id = ?");
-        $insertVol   = $db->prepare("
-            INSERT OR IGNORE INTO volumes (series_id, number, status, collector, last, added_at, read_at)
-            VALUES (?,?,?,?,?,?,?)
-        ");
-
-        // Éditions physiques : réécrites en bloc, à l'image des tomes. Contrairement
-        // aux tomes, elles ne sont réécrites que si la clé `editions` est présente :
-        // un tableau venu d'un import JSON antérieur à la V4 n'en a pas, et ne doit
-        // surtout pas effacer celles déjà en base.
-        $deleteEditions = $db->prepare("DELETE FROM series_editions WHERE series_id = ?");
-        $insertEdition  = $db->prepare("
-            INSERT INTO series_editions (series_id, comment, position) VALUES (?,?,?)
-        ");
-
-        foreach ($data as $s) {
-            $upsertSeries->execute([
-                ':id'                  => $s['id'],
-                ':name'                => $s['name'],
-                ':type'                => (isset($s['type']) && trim($s['type']) !== '') ? $s['type'] : 'manga',
-                ':author'              => $s['author'] ?? '',
-                ':publisher'           => $s['publisher'] ?? '',
-                ':other_contributors'  => implode(',', $s['other_contributors'] ?? ['']),
-                ':categories'          => implode(',', $s['categories'] ?? ['']),
-                ':genres'              => implode(',', $s['genres'] ?? ['']),
-                ':image'               => $s['image'] ?? '',
-                ':anilist_id'          => $s['anilist_id'] ?? '',
-                ':mature'              => (int)($s['mature'] ?? false),
-                ':favorite'            => (int)($s['favorite'] ?? false),
-                ':status'              => $s['status'] ?? 'en cours',
-                ':mangaupdates_url'    => $s['mangaupdates_url'] ?? '',
-                ':babelio_url'         => $s['babelio_url'] ?? '',
-                ':read_elsewhere'     => (int)($s['read_elsewhere'] ?? false),
-                ':reading_abandoned'  => (int)($s['reading_abandoned'] ?? false),
-                ':rating'             => $s['rating'] ?? '',
-                ':anilist_url'        => $s['anilist_url'] ?? '',
-                ':studios'            => is_array($s['studios'] ?? null)
-                                          ? implode(',', $s['studios'])
-                                          : (string)($s['studios'] ?? ''),
-                ':anime_format'       => $s['anime_format'] ?? '',
-                ':alt_titles'         => is_array($s['alt_titles'] ?? null)
-                                          ? json_encode(array_values($s['alt_titles']), JSON_UNESCAPED_UNICODE)
-                                          : (string)($s['alt_titles'] ?? ''),
-                ':anilist_image'      => $s['anilist_image'] ?? '',
-                ':watching_abandoned' => (int)($s['watching_abandoned'] ?? false),
-                ':rewatch_count'      => max(0, (int)($s['rewatch_count'] ?? 0)),
-                ':anilist_synced_at'  => max(0, (int)($s['anilist_synced_at'] ?? 0)),
-                ':episode_duration'   => max(0, (int)($s['episode_duration'] ?? 0)),
-                ':reread_count'       => max(0, (int)($s['reread_count'] ?? 0)),
-            ]);
-
-            if (array_key_exists('editions', $s)) {
-                $deleteEditions->execute([$s['id']]);
-                $position = 0;
-                foreach (array_slice((array)$s['editions'], 0, 5) as $edition) {
-                    $comment = is_array($edition) ? ($edition['comment'] ?? '') : $edition;
-                    $comment = mb_substr(trim((string)$comment), 0, 100);
-                    if ($comment === '') continue;
-                    $insertEdition->execute([$s['id'], $comment, $position++]);
-                }
-            }
-
-            $deleteVols->execute([$s['id']]);
-            foreach ($s['volumes'] ?? [] as $v) {
-                $insertVol->execute([
-                    $s['id'],
-                    (int)$v['number'],
-                    $v['status'] ?? 'à lire',
-                    (int)($v['collector'] ?? false),
-                    (int)($v['last'] ?? false),
-                    $v['added_at'] ?? date('Y-m-d'),
-                    $v['read_at'] ?? '',
-                ]);
-            }
-        }
-
-        $db->commit();
-    } catch (Exception $e) {
-        $db->rollBack();
-        throw $e;
-    }
-}
-
 // ──────────────────────────────────────────────────────────────────────────────
-// Écritures ciblées (Bloc 0 de la migration hors de save_data())
+// Écritures ciblées
 // ──────────────────────────────────────────────────────────────────────────────
-// Ces fonctions isolent, pour UNE SEULE série à la fois, exactement les
-// requêtes déjà utilisées par save_data() (mêmes colonnes, mêmes conversions,
-// même comportement pour `editions`/`volumes`). Elles ne suppriment jamais
-// autre chose que ce qui est explicitement demandé : aucune ne fait de diff
-// globale ni de resynchronisation de la collection.
+// Ces fonctions isolent, pour UNE SEULE série à la fois, les requêtes
+// d'écriture en base (mêmes colonnes, mêmes conversions, même comportement
+// pour `editions`/`volumes` qu'avant la migration). Elles ne suppriment
+// jamais autre chose que ce qui est explicitement demandé : aucune ne fait de
+// diff globale ni de resynchronisation de la collection.
 //
-// À ce stade (Bloc 0), rien ne les appelle encore : save_data() reste seule
-// aux commandes. Elles ne font que coexister, prêtes à être branchées bloc par
-// bloc dans la suite de la migration (cf. MIGRATION_SAVE_DATA.md).
+// Ce sont désormais les SEULES fonctions d'écriture sur la table `series` (et
+// les tables qui en dépendent) : la migration décrite dans
+// MIGRATION_SAVE_DATA.md est achevée (Bloc 7). L'ancienne save_data(), qui
+// resynchronisait la collection complète à chaque appel (et supprimait donc
+// silencieusement toute série absente du tableau reçu), a été retirée —
+// chaque appelant upserte désormais explicitement la ou les séries qu'il a
+// réellement modifiées.
 
 /**
  * Insère ou met à jour une seule ligne de la table `series`.
  *
- * Reprend exactement les colonnes et conversions de l'upsert de save_data() :
- * mêmes valeurs par défaut, mêmes règles pour `type`, `studios`, `alt_titles`.
+ * Mêmes valeurs par défaut, mêmes règles pour `type`, `studios`, `alt_titles`
+ * que le reste de la couche de persistance.
  * Ne touche ni aux tomes, ni aux éditions, ni à aucune autre série.
  *
  * $series est un tableau au même format que ceux renvoyés par load_data()
@@ -908,15 +768,14 @@ function replace_series_volumes(string $series_id, array $volumes): void {
 /**
  * Remplace intégralement les éditions physiques d'UNE SEULE série.
  *
- * Contrairement à save_data(), qui ne touche aux éditions que si la clé
- * `editions` est présente dans le tableau série, cette fonction est toujours
- * explicite : c'est à l'appelant de décider s'il doit l'invoquer ou non
- * (ne pas l'appeler du tout revient au comportement « clé absente »).
+ * Toujours explicite : c'est à l'appelant de décider s'il doit l'invoquer ou
+ * non pour une série donnée (ne pas l'appeler du tout revient à laisser les
+ * éditions déjà en base inchangées).
  *
  * $editions attend le même format que la clé `editions` de load_data() —
  * un tableau de chaînes (commentaire brut) ou de tableaux ['comment' => ...].
- * Reprend le même plafond (5 éditions, 100 caractères, commentaires vides
- * ignorés) que save_data().
+ * Plafond de 5 éditions, 100 caractères chacune ; les commentaires vides sont
+ * ignorés.
  */
 function replace_series_editions(string $series_id, array $editions): void {
     $db = get_db();

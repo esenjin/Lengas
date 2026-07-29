@@ -27,20 +27,13 @@ $options = load_options();
 
 // ── Type affiché (Mangathèque / Animethèque) ─────────────────────────────────
 // $data reste la collection COMPLÈTE : c'est elle que reçoivent les handlers
-// d'écriture. Migration en cours (cf. MIGRATION_SAVE_DATA.md) : delete_series()
-// (Bloc 1), add_series() et update_series() (Bloc 2), les fonctions de
-// fonctions/volumes.php — add_volume_to_series(), add_multiple_volumes_to_series(),
-// update_volume(), apply_status_to_all_volumes(), delete_volume() (Bloc 3) —,
-// les fonctions de fonctions/anime.php et fonctions/episodes.php (Bloc 4), et
-// désormais le moteur de synchronisation Anilist — anilist_sync_series_now(),
-// anilist_sync_apply_retry_lock() (Bloc 5, handler sync_anime_series) —
-// écrivent directement en base sur la seule série concernée et n'appellent
-// plus save_data() en aval. Les handlers pas encore migrés continuent, eux,
-// d'appeler save_data($data) avec la collection complète — save_data()
-// supprime toute série absente du tableau transmis, donc tant que des
-// appelants migrés cohabitent avec des appelants non migrés, ne passez
-// jamais un tableau filtré à save_data(). Le cloisonnement par type se fait
-// en aval, sur des copies d'affichage.
+// d'écriture, mais chaque handler n'écrit désormais en base que sur la ou les
+// séries qu'il a réellement modifiées (upsert_series_row(),
+// replace_series_volumes(), replace_series_editions(), delete_series_row()) —
+// plus aucune resynchronisation globale de la collection. Le cloisonnement
+// par type (Mangathèque / Animethèque) se fait en aval, sur des copies
+// d'affichage dédiées ($filtered_data et consorts) : $data lui-même n'est
+// jamais filtré avant d'être transmis à un handler.
 $current_type = sanitize_series_type($_GET['type'] ?? '');
 
 // Ensemble des IDs de séries possédant une critique (pour badges / filtre)
@@ -89,11 +82,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     // Appeler add_series avec $image (qui peut être null)
     // Cette modale ne crée que des mangas et light-novels (cf. registre de types).
     //
-    // Bloc 2 de la migration save_data() → écritures ciblées (cf.
-    // MIGRATION_SAVE_DATA.md) : add_series() écrit désormais directement en
-    // base (upsert_series_row() + replace_series_volumes()) au moment de
-    // l'appel. Plus de save_data($result['data']) ici — $result['data'] ne
-    // sert plus qu'à réafficher la collection à jour côté admin.
+    // Écriture ciblée : add_series() écrit directement en base
+    // (upsert_series_row() + replace_series_volumes()) au moment de
+    // l'appel. $result['data'] ne sert qu'à réafficher la collection à
+    // jour côté admin.
     $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned, $rating, 'manga', $reread_count);
 
     if ($result['success']) {
@@ -220,11 +212,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_anime_series'])) 
 
     $result = add_anime_series($data, $fetch['media']);
     if ($result['success']) {
-        // Reliquat du Bloc 4 de la migration save_data() → écritures ciblées
-        // (cf. MIGRATION_SAVE_DATA.md) corrigé ici : add_anime_series() upserte
-        // déjà la série (+ ses épisodes) en base. Ce save_data($result['data'])
-        // était redondant et a été retiré — $result['data'] ne sert plus qu'à
-        // l'affichage.
+        // Écriture ciblée : add_anime_series() upserte déjà la série
+        // (+ ses épisodes) en base au moment de l'appel. $result['data']
+        // ne sert plus qu'à l'affichage.
         $_SESSION['success_message'] = $result['message'];
     }
 
@@ -267,11 +257,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_anime_series']
     ]);
 
     if ($result['success']) {
-        // Reliquat du Bloc 4 de la migration save_data() → écritures ciblées
-        // (cf. MIGRATION_SAVE_DATA.md) corrigé ici : update_anime_series()
-        // upserte désormais elle-même la série (+ ses éditions si la clé est
-        // fournie) en base. Ce save_data($result['data']) était redondant et
-        // a été retiré.
+        // Écriture ciblée : update_anime_series() upserte elle-même la
+        // série (+ ses éditions si la clé est fournie) en base au moment de
+        // l'appel.
         if (trim($result['message']) !== '') {
             $_SESSION['error_message'] = $result['message'];
         }
@@ -301,11 +289,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_multiple_volumes'
     }
 
     if ($volumes_count > 0) {
-        // Bloc 3 de la migration save_data() → écritures ciblées (cf.
-        // MIGRATION_SAVE_DATA.md) : add_multiple_volumes_to_series() écrit
-        // désormais directement en base (replace_series_volumes()) au moment
-        // de l'appel. Plus de save_data($result['data']) ici — $result['data']
-        // ne sert plus qu'à réafficher la collection à jour côté admin.
+        // Écriture ciblée : add_multiple_volumes_to_series() écrit
+        // directement en base (replace_series_volumes()) au moment de
+        // l'appel. $result['data'] ne sert qu'à réafficher la collection à
+        // jour côté admin.
         $result = add_multiple_volumes_to_series($data, $series_id, $volumes_count, $status, $is_collector, $is_last);
         if (!$result['success']) {
             $_SESSION['error_message'] = $result['message'];
@@ -342,13 +329,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
         $read_at = null;
     }
 
-    // Bloc 3 de la migration save_data() → écritures ciblées (cf.
-    // MIGRATION_SAVE_DATA.md) : update_volume() (et, le cas échéant,
-    // apply_status_to_all_volumes()) écrivent désormais directement en base
+    // Écriture ciblée : update_volume() (et, le cas échéant,
+    // apply_status_to_all_volumes()) écrivent directement en base
     // (replace_series_volumes() + upsert_series_row() pour le statut de la
-    // série) au moment de l'appel. Plus de save_data($result['data']) ici —
-    // $result['data'] ne sert plus qu'à réafficher la collection à jour côté
-    // admin.
+    // série) au moment de l'appel. $result['data'] ne sert qu'à réafficher
+    // la collection à jour côté admin.
     $result = update_volume($data, $series_id, $volume_index, $status, $is_collector, $is_last, $read_at);
     if ($result['success']) {
         // Option : propager le statut de lecture à tous les tomes de la série.
@@ -388,11 +373,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_episode'])) {
                 $result['data'] = $batch['data'];
             }
         }
-        // Reliquat du Bloc 4 de la migration save_data() → écritures ciblées
-        // (cf. MIGRATION_SAVE_DATA.md) corrigé ici : update_episode() et
-        // apply_status_to_all_episodes() écrivent désormais elles-mêmes les
-        // épisodes de la série en base (replace_series_volumes()). Ce
-        // save_data($result['data']) était redondant et a été retiré.
+        // Écriture ciblée : update_episode() et apply_status_to_all_episodes()
+        // écrivent elles-mêmes les épisodes de la série en base
+        // (replace_series_volumes()), aucune écriture supplémentaire n'est
+        // donc nécessaire ici.
     } else {
         $_SESSION['error_message'] = $result['message'];
     }
@@ -408,10 +392,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_next_episode']))
     header('Content-Type: application/json');
 
     $result = anime_mark_next_episode($data, $_POST['series_id'] ?? '');
-    // Reliquat du Bloc 4 de la migration save_data() → écritures ciblées (cf.
-    // MIGRATION_SAVE_DATA.md) corrigé ici : anime_mark_next_episode() délègue
-    // à update_episode(), qui écrit déjà l'épisode concerné en base. Ce
-    // save_data($result['data']) était redondant et a été retiré.
+    // Écriture ciblée : anime_mark_next_episode() délègue à update_episode(),
+    // qui écrit déjà l'épisode concerné en base.
 
     echo json_encode([
         'success'       => $result['success'],
@@ -471,12 +453,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sync_anime_series']))
     if ($result['status'] === 'error' && !empty($result['retry_lock'])) {
         $data = anilist_sync_apply_retry_lock($data, $series_id);
     }
-    // Bloc 5 de la migration save_data() → écritures ciblées (cf.
-    // MIGRATION_SAVE_DATA.md) : anilist_sync_series_now() ('synced'/
-    // 'unchanged') et anilist_sync_apply_retry_lock() ('error') écrivent déjà
-    // directement en base (upsert_series_row() + replace_series_volumes()).
-    // Plus de save_data($data) ici — $data ne sert plus qu'à relire l'état à
-    // jour pour la réponse JSON ci-dessous.
+    // Écriture ciblée : anilist_sync_series_now() ('synced'/'unchanged') et
+    // anilist_sync_apply_retry_lock() ('error') écrivent déjà directement en
+    // base (upsert_series_row() + replace_series_volumes()). $data ne sert
+    // plus qu'à relire l'état à jour pour la réponse JSON ci-dessous.
 
     // Relue APRÈS le report de verrou éventuel : anilist_synced_at doit
     // refléter ce qui vient d'être écrit, pas l'état d'avant l'échec.
@@ -509,10 +489,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_volume'])) {
         exit;
     }
 
-    // Bloc 3 de la migration save_data() → écritures ciblées (cf.
-    // MIGRATION_SAVE_DATA.md) : delete_volume() écrit désormais directement
-    // en base (replace_series_volumes()) au moment de l'appel. Plus de
-    // save_data($result['data']) ici.
+    // Écriture ciblée : delete_volume() écrit directement en base
+    // (replace_series_volumes()) au moment de l'appel.
     $result = delete_volume($data, $series_id, $volume_index);
     if ($result['success']) {
         $_SESSION['success_message'] = "Tome supprimé avec succès";
@@ -559,11 +537,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         }
     }
 
-    // Bloc 2 de la migration save_data() → écritures ciblées (cf.
-    // MIGRATION_SAVE_DATA.md) : update_series() écrit désormais directement
-    // en base (upsert_series_row() + replace_series_volumes()) au moment de
-    // l'appel. Plus de save_data($result['data']) ici — $result['data'] ne
-    // sert plus qu'à réafficher la collection à jour côté admin.
+    // Écriture ciblée : update_series() écrit directement en base
+    // (upsert_series_row() + replace_series_volumes()) au moment de
+    // l'appel. $result['data'] ne sert qu'à réafficher la collection à
+    // jour côté admin.
     $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned, $edit_rating, $edit_reread_count);
     if ($result['success']) {
         // Réchauffer le cache MangaUpdates pour la série modifiée
@@ -579,9 +556,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
 
 // Supprimer une série
 //
-// Bloc 1 de la migration save_data() → écritures ciblées : delete_series()
-// écrit désormais directement en base (delete_series_row()) au moment de
-// l'appel. Plus de save_data($result['data']) ici — la suppression est déjà
+// Écriture ciblée : delete_series() écrit directement en base
+// (delete_series_row()) au moment de l'appel — la suppression est déjà
 // effective, et $result['data'] n'est plus qu'une collection d'affichage.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_series'])) {
     $series_id = $_POST['series_id'] ?? '';
@@ -948,8 +924,8 @@ $search_term = $_GET['search'] ?? '';
 $status_filter = $_GET['status_filter'] ?? '';
 $status_mode = $_GET['status_mode'] ?? 'or';
 
-// Copie d'affichage : jamais transmise à save_data() (cf. avertissement dans
-// config.php), uniquement au rendu et à window.seriesData.
+// Copie d'affichage : jamais transmise à une fonction d'écriture, uniquement
+// au rendu et à window.seriesData.
 $filtered_data = series_of_type($data, $current_type);
 
 sort_series($filtered_data, $sort_by, $sort_order);

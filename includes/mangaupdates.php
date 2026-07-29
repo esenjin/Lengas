@@ -317,8 +317,9 @@ function mangaupdates_check_api(): array {
 function get_incomplete_series(array $data): array {
     // Périmètre V4 : ces vérifications ne concernent que la Mangathèque.
     // $data est reçu PAR VALEUR : le filtrage ne touche que cette copie locale,
-    // le tableau de l'appelant reste complet pour les écritures ultérieures
-    // (voir l'avertissement de save_data() dans config.php).
+    // le tableau de l'appelant reste intact pour d'éventuelles écritures
+    // ultérieures, qui passent toujours par les fonctions ciblées de
+    // config.php sur les seules séries concernées.
     $data = series_of_type($data, 'manga');
 
     $incomplete_series        = [];

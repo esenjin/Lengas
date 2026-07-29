@@ -154,10 +154,9 @@ function loans_by_series(array $all_loans): array {
 
 // Ajouter un tome
 //
-// Écriture ciblée (Bloc 3 de la migration save_data(), cf.
-// MIGRATION_SAVE_DATA.md) : seuls les tomes de la série concernée sont
-// réécrits en base, via replace_series_volumes(). Plus de save_data($data)
-// en aval — aucune autre série n'est lue ni réécrite.
+// Écriture ciblée : seuls les tomes de la série concernée sont réécrits
+// en base, via replace_series_volumes(). Aucune autre série n'est lue ni
+// réécrite.
 function add_volume_to_series($data, $series_id, $volume_number, $status, $is_collector, $is_last) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
@@ -191,10 +190,9 @@ function add_volume_to_series($data, $series_id, $volume_number, $status, $is_co
 
 // Ajouter plusieurs tomes
 //
-// Écriture ciblée (Bloc 3 de la migration save_data(), cf.
-// MIGRATION_SAVE_DATA.md) : seuls les tomes de la série concernée sont
-// réécrits en base, via replace_series_volumes(). Plus de save_data($data)
-// en aval — aucune autre série n'est lue ni réécrite.
+// Écriture ciblée : seuls les tomes de la série concernée sont réécrits
+// en base, via replace_series_volumes(). Aucune autre série n'est lue ni
+// réécrite.
 function add_multiple_volumes_to_series($data, $series_id, $volumes_count, $status, $is_collector, $is_last) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
@@ -245,14 +243,13 @@ function add_multiple_volumes_to_series($data, $series_id, $volumes_count, $stat
 
 // Mettre à jour un tome
 //
-// Écriture ciblée (Bloc 3 de la migration save_data(), cf.
-// MIGRATION_SAVE_DATA.md) : les tomes de la série concernée sont réécrits via
+// Écriture ciblée : les tomes de la série concernée sont réécrits via
 // replace_series_volumes(). Attention particulière ici : cette fonction peut
 // aussi faire basculer le statut de la SÉRIE (passage auto en « terminée » /
 // « en cours » selon le tag « dernier tome ») — un upsert_series_row() est
 // donc systématiquement fait en plus des tomes, même si $data[$idx]['status']
 // n'a en réalité pas changé (upsert idempotent, sans coût de correction
-// supplémentaire). Plus de save_data($data) en aval.
+// supplémentaire).
 function update_volume($data, $series_id, $volume_index, $status, $is_collector, $is_last, $read_at = null) {
     $series = find_series_by_id($data, $series_id);
     if (!$series || !isset($data[$series['index']]['volumes'][$volume_index])) {
@@ -323,11 +320,10 @@ function update_volume($data, $series_id, $volume_index, $status, $is_collector,
 // Applique un statut de lecture (et sa date le cas échéant) à TOUS les tomes d'une série.
 // Ne touche pas aux tags collector / dernier tome ni aux numéros.
 //
-// Écriture ciblée (Bloc 3 de la migration save_data(), cf.
-// MIGRATION_SAVE_DATA.md) : seuls les tomes de la série concernée sont
-// réécrits en base, via replace_series_volumes(). Cette fonction ne touche
-// jamais au statut de la série elle-même (contrairement à update_volume()),
-// donc pas d'upsert_series_row() nécessaire ici.
+// Écriture ciblée : seuls les tomes de la série concernée sont réécrits en
+// base, via replace_series_volumes(). Cette fonction ne touche jamais au
+// statut de la série elle-même (contrairement à update_volume()), donc pas
+// d'upsert_series_row() nécessaire ici.
 function apply_status_to_all_volumes($data, $series_id, $status, $read_at = null) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
@@ -368,10 +364,9 @@ function apply_status_to_all_volumes($data, $series_id, $status, $read_at = null
 
 // Supprimer un tome
 //
-// Écriture ciblée (Bloc 3 de la migration save_data(), cf.
-// MIGRATION_SAVE_DATA.md) : seuls les tomes de la série concernée sont
-// réécrits en base, via replace_series_volumes(). Plus de save_data($data)
-// en aval — aucune autre série n'est lue ni réécrite.
+// Écriture ciblée : seuls les tomes de la série concernée sont réécrits en
+// base, via replace_series_volumes(). Aucune autre série n'est lue ni
+// réécrite.
 function delete_volume($data, $series_id, $volume_index) {
     $series = find_series_by_id($data, $series_id);
     if (!$series || !isset($data[$series['index']]['volumes'][$volume_index])) {

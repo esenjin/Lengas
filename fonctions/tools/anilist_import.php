@@ -25,7 +25,8 @@
 // Dépendances : includes/anilist.php (connecteur), fonctions/anime.php
 // (add_anime_series), fonctions/episodes.php (anime_episodes_from_media),
 // fonctions/wishlist.php (add_to_wishlist), includes/helpers.php,
-// config.php (load_data/save_data, get_db).
+// config.php (load_data(), upsert_series_row(), replace_series_volumes(),
+// get_db).
 // ────────────────────────────────────────────────────────────────────────────
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -393,6 +394,14 @@ function anilist_import_create_library_entry(array $data, array $media, array $e
     // l'import, quel que soit le format de notation du compte.
     $data[$key]['rating'] = sanitize_rating($entry['rating'] ?? '');
 
+    // Écriture ciblée : add_anime_series() a déjà upserté la fiche factuelle
+    // et les épisodes fraîchement créés, mais la progression de visionnage,
+    // la coche favorite et la note posées ci-dessus ne sont encore qu'en
+    // mémoire — ce second upsert ciblé sur la seule série de cette entrée
+    // les persiste à leur tour.
+    upsert_series_row($data[$key]);
+    replace_series_volumes($data[$key]['id'], $data[$key]['volumes'] ?? []);
+
     return ['status' => 'created', 'message' => $entry['title'] . ' ajoutée.', 'data' => $data];
 }
 
@@ -426,6 +435,14 @@ function anilist_import_update_library_entry(array $data, array $existing, array
     $data[$key] = anilist_import_apply_watch_progress($data[$key], $entry, $media);
 
     // La coche favorite n'est JAMAIS posée NI retirée par une mise à jour.
+
+    // Écriture ciblée : contrairement à la création, rien ici n'appelle
+    // add_anime_series() — toute la fonction ne modifiait $data qu'en
+    // mémoire jusqu'ici. Upsert de la ligne série et réécriture des
+    // épisodes, ciblés sur la seule série de cette entrée, persistent la
+    // mise à jour en base.
+    upsert_series_row($data[$key]);
+    replace_series_volumes($data[$key]['id'], $data[$key]['volumes'] ?? []);
 
     return ['status' => 'updated', 'message' => $entry['title'] . ' mise à jour.', 'data' => $data];
 }
@@ -543,16 +560,20 @@ function anilist_import_process_wishlist_entry(array $wishlist, array $entry): a
 
 // Traite l'intégralité des entrées retenues (déjà filtrées par
 // anilist_import_apply_settings()), en appelant $on_progress après chaque
-// entrée pour alimenter une progression SSE. N'écrit PAS elle-même en base :
-// c'est l'appelant (endpoint de page-outils.php) qui fait le save_data() /
-// save_wishlist() final, une fois la boucle terminée — un seul aller-retour
-// SQLite pour toute la campagne plutôt qu'un par série.
+// entrée pour alimenter une progression SSE. Écrit en base au fil de la
+// boucle : chaque entrée « library » (création ou mise à jour) upserte
+// elle-même sa série et ses tomes/épisodes via anilist_import_create_
+// library_entry() / anilist_import_update_library_entry().
+// $data ne sert donc plus, en sortie, qu'à retrouver l'état à jour pour
+// l'affichage — l'appelant (endpoint de page-outils.php) n'a plus qu'à
+// appeler save_wishlist() pour la liste d'envies.
 //
 // $on_progress : callable(int $current, int $total, string $title) — facultatif.
 //
 // Retour :
 //   [
-//     'data'          => collection mise à jour (à passer à save_data()),
+//     'data'          => collection mise à jour (pour l'affichage — déjà
+//                        persistée série par série au fil du traitement),
 //     'wishlist'      => liste d'envies mise à jour (à passer à save_wishlist()),
 //     'created'       => [titres…], 'updated' => [titres…],
 //     'wishlisted'    => [titres…], 'skipped' => [titres…],

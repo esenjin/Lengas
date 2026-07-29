@@ -18,7 +18,8 @@ $options = load_options();
 // ── Périmètre V4 : Mangathèque uniquement ────────────────────────────────────
 // Cette page ne traite pas encore les séries animées. Le filtrage est sans
 // danger ici : aucune écriture sur la table `series` n'a lieu, $data ne sert
-// qu'à la lecture et à l'affichage (voir l'avertissement de save_data()).
+// qu'à la lecture et à l'affichage (toute écriture réelle passe par les
+// fonctions ciblées de config.php, jamais par ce tableau filtré).
 $data = series_of_type($data, 'manga');
 
 

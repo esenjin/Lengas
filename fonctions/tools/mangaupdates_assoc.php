@@ -52,10 +52,9 @@ function mu_genres_targets(array $data): array {
 // Enregistre les URL validées. Format attendu : $associations[series_id] = url
 // Réchauffe au passage le cache des séries nouvellement associées.
 //
-// Écriture ciblée (Bloc 5 de la migration save_data(), cf.
-// MIGRATION_SAVE_DATA.md) : seule la ligne série de chaque série réellement
-// associée est upsertée (upsert_series_row()), au fil de la boucle — plus de
-// save_data() global sur toute la collection en fin de traitement.
+// Écriture ciblée : seule la ligne série de chaque série réellement associée
+// est upsertée (upsert_series_row()), au fil de la boucle — jamais de
+// resynchronisation de la collection complète.
 function mu_save_associations(array &$data, array $associations): array {
     $saved    = 0;
     $warm_ids = [];

@@ -246,8 +246,9 @@ function babengas_cancel_current(): array {
 function babengas_series_without_url(array $data): array {
     // Périmètre V4 : ces vérifications ne concernent que la Mangathèque.
     // $data est reçu PAR VALEUR : le filtrage ne touche que cette copie locale,
-    // le tableau de l'appelant reste complet pour les écritures ultérieures
-    // (voir l'avertissement de save_data() dans config.php).
+    // le tableau de l'appelant reste intact pour d'éventuelles écritures
+    // ultérieures, qui passent toujours par les fonctions ciblées de
+    // config.php sur les seules séries concernées.
     $data = series_of_type($data, 'manga');
 
     $out = [];
@@ -269,13 +270,12 @@ function babengas_series_without_url(array $data): array {
 // ── Enregistrement d'URL Babelio validées ───────────────────────────────────
 // Format attendu : $associations[series_id] = url  (même contrat que MangaUpdates)
 //
-// Écriture ciblée (Bloc 5 de la migration save_data(), cf.
-// MIGRATION_SAVE_DATA.md) : upsert_series_row() sur chaque série dont l'URL
-// Babelio a effectivement changé (association ou retrait), au fil de la
-// boucle — plus de save_data() sur la collection complète. Le nombre de
-// tomes VF lui-même (babelio_cache) reste dans son propre cache, distinct de
-// la table `series` : il n'a jamais transité par save_data() ni par cette
-// fonction.
+// Écriture ciblée : upsert_series_row() sur chaque série dont l'URL Babelio a
+// effectivement changé (association ou retrait), au fil de la boucle — jamais
+// de resynchronisation de la collection complète. Le nombre de tomes VF
+// lui-même (babelio_cache) reste dans son propre cache, distinct de la table
+// `series` : il ne transite ni par cette fonction ni par aucune écriture sur
+// `series`.
 function babelio_save_associations(array &$data, array $associations): array {
     $saved = 0;
 
