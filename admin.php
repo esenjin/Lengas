@@ -28,12 +28,14 @@ $options = load_options();
 // ── Type affiché (Mangathèque / Animethèque) ─────────────────────────────────
 // $data reste la collection COMPLÈTE : c'est elle que reçoivent les handlers
 // d'écriture. Migration en cours (cf. MIGRATION_SAVE_DATA.md) : delete_series()
-// (Bloc 1), add_series() et update_series() (Bloc 2) écrivent désormais
-// directement en base sur la seule série concernée et n'appellent plus
-// save_data() en aval. Les handlers pas encore migrés continuent, eux,
-// d'appeler save_data($data) avec la collection complète — save_data()
-// supprime toute série absente du tableau transmis, donc tant que des
-// appelants migrés cohabitent avec des appelants non migrés, ne passez
+// (Bloc 1), add_series() et update_series() (Bloc 2), ainsi que les fonctions
+// de fonctions/volumes.php — add_volume_to_series(), add_multiple_volumes_to_series(),
+// update_volume(), apply_status_to_all_volumes(), delete_volume() (Bloc 3) —
+// écrivent désormais directement en base sur la seule série concernée et
+// n'appellent plus save_data() en aval. Les handlers pas encore migrés
+// continuent, eux, d'appeler save_data($data) avec la collection complète —
+// save_data() supprime toute série absente du tableau transmis, donc tant que
+// des appelants migrés cohabitent avec des appelants non migrés, ne passez
 // jamais un tableau filtré à save_data(). Le cloisonnement par type se fait
 // en aval, sur des copies d'affichage.
 $current_type = sanitize_series_type($_GET['type'] ?? '');
@@ -288,10 +290,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_multiple_volumes'
     }
 
     if ($volumes_count > 0) {
+        // Bloc 3 de la migration save_data() → écritures ciblées (cf.
+        // MIGRATION_SAVE_DATA.md) : add_multiple_volumes_to_series() écrit
+        // désormais directement en base (replace_series_volumes()) au moment
+        // de l'appel. Plus de save_data($result['data']) ici — $result['data']
+        // ne sert plus qu'à réafficher la collection à jour côté admin.
         $result = add_multiple_volumes_to_series($data, $series_id, $volumes_count, $status, $is_collector, $is_last);
-        if ($result['success']) {
-            save_data($result['data']);
-        } else {
+        if (!$result['success']) {
             $_SESSION['error_message'] = $result['message'];
         }
     }
@@ -326,6 +331,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
         $read_at = null;
     }
 
+    // Bloc 3 de la migration save_data() → écritures ciblées (cf.
+    // MIGRATION_SAVE_DATA.md) : update_volume() (et, le cas échéant,
+    // apply_status_to_all_volumes()) écrivent désormais directement en base
+    // (replace_series_volumes() + upsert_series_row() pour le statut de la
+    // série) au moment de l'appel. Plus de save_data($result['data']) ici —
+    // $result['data'] ne sert plus qu'à réafficher la collection à jour côté
+    // admin.
     $result = update_volume($data, $series_id, $volume_index, $status, $is_collector, $is_last, $read_at);
     if ($result['success']) {
         // Option : propager le statut de lecture à tous les tomes de la série.
@@ -335,7 +347,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
                 $result['data'] = $batch['data'];
             }
         }
-        save_data($result['data']);
     }
 
     header("Location: " . $_SERVER['REQUEST_URI']);
@@ -479,9 +490,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_volume'])) {
         exit;
     }
 
+    // Bloc 3 de la migration save_data() → écritures ciblées (cf.
+    // MIGRATION_SAVE_DATA.md) : delete_volume() écrit désormais directement
+    // en base (replace_series_volumes()) au moment de l'appel. Plus de
+    // save_data($result['data']) ici.
     $result = delete_volume($data, $series_id, $volume_index);
     if ($result['success']) {
-        save_data($result['data']);
         $_SESSION['success_message'] = "Tome supprimé avec succès";
     } else {
         $_SESSION['error_message'] = $result['message'];

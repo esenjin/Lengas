@@ -153,6 +153,11 @@ function loans_by_series(array $all_loans): array {
 }
 
 // Ajouter un tome
+//
+// Écriture ciblée (Bloc 3 de la migration save_data(), cf.
+// MIGRATION_SAVE_DATA.md) : seuls les tomes de la série concernée sont
+// réécrits en base, via replace_series_volumes(). Plus de save_data($data)
+// en aval — aucune autre série n'est lue ni réécrite.
 function add_volume_to_series($data, $series_id, $volume_number, $status, $is_collector, $is_last) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
@@ -177,6 +182,7 @@ function add_volume_to_series($data, $series_id, $volume_number, $status, $is_co
             'added_at' => date('Y-m-d'),
             'read_at' => ($status === 'terminé') ? date('Y-m-d') : ''
         ];
+        replace_series_volumes($series_id, $data[$series_index]['volumes']);
         return ['success' => true, 'data' => $data];
     } else {
         return ['success' => false, 'message' => "Le tome $volume_number existe déjà."];
@@ -184,6 +190,11 @@ function add_volume_to_series($data, $series_id, $volume_number, $status, $is_co
 }
 
 // Ajouter plusieurs tomes
+//
+// Écriture ciblée (Bloc 3 de la migration save_data(), cf.
+// MIGRATION_SAVE_DATA.md) : seuls les tomes de la série concernée sont
+// réécrits en base, via replace_series_volumes(). Plus de save_data($data)
+// en aval — aucune autre série n'est lue ni réécrite.
 function add_multiple_volumes_to_series($data, $series_id, $volumes_count, $status, $is_collector, $is_last) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
@@ -227,10 +238,21 @@ function add_multiple_volumes_to_series($data, $series_id, $volumes_count, $stat
         return ['success' => false, 'message' => "Les tomes " . implode(', ', $existing_volumes) . " existent déjà."];
     }
 
+    replace_series_volumes($series_id, $data[$series_index]['volumes']);
+
     return ['success' => true, 'data' => $data];
 }
 
 // Mettre à jour un tome
+//
+// Écriture ciblée (Bloc 3 de la migration save_data(), cf.
+// MIGRATION_SAVE_DATA.md) : les tomes de la série concernée sont réécrits via
+// replace_series_volumes(). Attention particulière ici : cette fonction peut
+// aussi faire basculer le statut de la SÉRIE (passage auto en « terminée » /
+// « en cours » selon le tag « dernier tome ») — un upsert_series_row() est
+// donc systématiquement fait en plus des tomes, même si $data[$idx]['status']
+// n'a en réalité pas changé (upsert idempotent, sans coût de correction
+// supplémentaire). Plus de save_data($data) en aval.
 function update_volume($data, $series_id, $volume_index, $status, $is_collector, $is_last, $read_at = null) {
     $series = find_series_by_id($data, $series_id);
     if (!$series || !isset($data[$series['index']]['volumes'][$volume_index])) {
@@ -289,11 +311,23 @@ function update_volume($data, $series_id, $volume_index, $status, $is_collector,
         $data[$idx]['status'] = 'en cours';
     }
 
+    // Écriture ciblée : les tomes de la série concernée + la ligne `series`
+    // elle-même (son `status` peut avoir changé ci-dessus). Aucune autre
+    // série n'est lue ni réécrite.
+    replace_series_volumes($series_id, $data[$idx]['volumes']);
+    upsert_series_row($data[$idx]);
+
     return ['success' => true, 'data' => $data];
 }
 
 // Applique un statut de lecture (et sa date le cas échéant) à TOUS les tomes d'une série.
 // Ne touche pas aux tags collector / dernier tome ni aux numéros.
+//
+// Écriture ciblée (Bloc 3 de la migration save_data(), cf.
+// MIGRATION_SAVE_DATA.md) : seuls les tomes de la série concernée sont
+// réécrits en base, via replace_series_volumes(). Cette fonction ne touche
+// jamais au statut de la série elle-même (contrairement à update_volume()),
+// donc pas d'upsert_series_row() nécessaire ici.
 function apply_status_to_all_volumes($data, $series_id, $status, $read_at = null) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
@@ -327,10 +361,17 @@ function apply_status_to_all_volumes($data, $series_id, $status, $read_at = null
         }
     }
 
+    replace_series_volumes($series_id, $data[$idx]['volumes']);
+
     return ['success' => true, 'data' => $data];
 }
 
 // Supprimer un tome
+//
+// Écriture ciblée (Bloc 3 de la migration save_data(), cf.
+// MIGRATION_SAVE_DATA.md) : seuls les tomes de la série concernée sont
+// réécrits en base, via replace_series_volumes(). Plus de save_data($data)
+// en aval — aucune autre série n'est lue ni réécrite.
 function delete_volume($data, $series_id, $volume_index) {
     $series = find_series_by_id($data, $series_id);
     if (!$series || !isset($data[$series['index']]['volumes'][$volume_index])) {
@@ -338,5 +379,6 @@ function delete_volume($data, $series_id, $volume_index) {
     }
 
     array_splice($data[$series['index']]['volumes'], $volume_index, 1);
+    replace_series_volumes($series_id, $data[$series['index']]['volumes']);
     return ['success' => true, 'data' => $data];
 }
