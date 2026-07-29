@@ -369,7 +369,13 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                 history.replaceState(null, '', window.location.pathname + window.location.search);
             }
 
-            /* Pré-remplissage depuis page-wishlist.php → ajouter une série */
+            /* Pré-remplissage depuis page-wishlist.php → ajouter une série.
+               La query string est retirée de l'URL (history.replaceState) une
+               fois consommée : sans ça, le rechargement de page déclenché par
+               le submit natif du formulaire d'ajout (header("Location: " .
+               $_SERVER['REQUEST_URI']) dans admin.php, qui inclut cette même
+               query string) referait tourner ce bloc et rouvrirait la modale
+               juste après l'enregistrement. */
             var params = new URLSearchParams(window.location.search);
             if (params.get('open_add_series') === '1') {
                 var nameEl      = document.getElementById('add-series-name');
@@ -379,16 +385,31 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                 if (authorEl)    authorEl.value    = params.get('prefill_author')    || '';
                 if (publisherEl) publisherEl.value = params.get('prefill_publisher') || '';
                 document.getElementById('open-add-series-modal')?.click();
+
+                params.delete('open_add_series');
+                params.delete('prefill_name');
+                params.delete('prefill_author');
+                params.delete('prefill_publisher');
+                var cleanedQuery = params.toString();
+                history.replaceState(null, '', window.location.pathname + (cleanedQuery ? '?' + cleanedQuery : ''));
             }
 
             /* Retour de page-wishlist.php après import d'un animé → modale
                d'édition de la série fraîchement importée déjà ouverte (tag
                favori, note, revisionnages, etc. à compléter). window.seriesData
                (défini par admin.php, cf. assets/js/admin/anime.js) doit déjà
-               être en mémoire à ce stade : ce bloc s'exécute après lui. */
+               être en mémoire à ce stade : ce bloc s'exécute après lui.
+               Même nettoyage d'URL qu'au-dessus, et pour la même raison : le
+               formulaire d'édition de série fait lui aussi un submit natif qui
+               recharge la page sur son REQUEST_URI courant. */
             var editAnimeId = params.get('open_edit_anime');
             if (editAnimeId && typeof window.openAnimeEditModalById === 'function') {
                 window.openAnimeEditModalById(editAnimeId);
+
+                params.delete('type');
+                params.delete('open_edit_anime');
+                var cleanedQuery2 = params.toString();
+                history.replaceState(null, '', window.location.pathname + (cleanedQuery2 ? '?' + cleanedQuery2 : ''));
             }
         });
     }
