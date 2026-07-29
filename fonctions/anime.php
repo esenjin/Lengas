@@ -242,6 +242,11 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
         'watching_abandoned' => false,
         'rewatch_count'      => 0,
         'anilist_synced_at'  => 0,
+        // Durée d'un épisode en minutes, telle que fournie par Anilist (0 si
+        // inconnue — le calcul des statistiques retombe alors sur le réglage
+        // par format). Champ factuel : mis à jour par le connecteur, jamais
+        // saisi à la main.
+        'episode_duration'   => max(0, (int)($media['duration'] ?? 0)),
         'editions'           => [],
         // Épisodes déjà diffusés, numérotés 1..N (cf. fonctions/episodes.php).
         'volumes'            => $episodes,

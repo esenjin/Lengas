@@ -403,6 +403,7 @@ function anilist_import_update_library_entry(array $data, array $existing, array
     $data[$key]['categories']    = [$media['format_label'] ?? ''];
     $data[$key]['genres']        = $media['genres_fr'] ?? [];
     $data[$key]['status']        = $media['status_tag'] ?? $data[$key]['status'];
+    $data[$key]['episode_duration'] = max(0, (int)($media['duration'] ?? 0));
 
     // Épisodes : reconstruits à partir de l'existant (aucune perte de
     // visionnage), puis la progression de la campagne s'applique par-dessus.

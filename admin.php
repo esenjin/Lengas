@@ -623,12 +623,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
     if ($search_term) {
         $normalized_search = normalize_string($search_term);
         $filtered_data = array_filter($filtered_data, function($series) use ($normalized_search) {
-            return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
-                strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
-                strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
-                (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
-                (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
-                (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
+            return series_matches_search($series, $normalized_search);
         });
     }
     $filtered_data = apply_status_filter(
@@ -935,14 +930,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
     // valeur => liste des types où elle apparaît (ordre de première rencontre)
     $suggestions = [];
 
-    if (in_array($field, ['name', 'author', 'publisher', 'other_contributors', 'categories', 'genres'])) {
+    if (in_array($field, ['name', 'author', 'publisher', 'other_contributors', 'categories', 'genres', 'studios', 'alt_titles'], true)) {
         foreach ($pool as $series) {
-            if (!isset($series[$field])) continue;
             $series_type = series_type($series);
 
-            // Le champ est soit un tableau (contributeurs, genres, catégories),
-            // soit une chaîne (nom, auteur, éditeur).
-            $values = is_array($series[$field]) ? $series[$field] : [$series[$field]];
+            // Studios et titres alternatifs sont propres aux animés : pas une
+            // colonne directement lisible comme les autres champs (le premier
+            // passe par une fonction de mise en forme, le second peut être
+            // stocké en JSON), d'où ces deux cas à part plutôt qu'un simple
+            // accès à $series[$field].
+            if ($field === 'studios') {
+                if (!is_anime($series)) continue;
+                $values = (array)($series['studios'] ?? []);
+            } elseif ($field === 'alt_titles') {
+                if (!is_anime($series)) continue;
+                $values = series_alt_titles($series);
+            } else {
+                if (!isset($series[$field])) continue;
+                // Le champ est soit un tableau (contributeurs, genres, catégories),
+                // soit une chaîne (nom, auteur, éditeur).
+                $values = is_array($series[$field]) ? $series[$field] : [$series[$field]];
+            }
+
             foreach ($values as $value) {
                 $value = (string)$value;
                 if (trim($value) === '') continue;
@@ -988,12 +997,7 @@ sort_series($filtered_data, $sort_by, $sort_order);
 if ($search_term) {
     $normalized_search = normalize_string($search_term);
     $filtered_data = array_filter($filtered_data, function($series) use ($normalized_search) {
-        return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
-               strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
-               strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
-               (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
-               (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
-               (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
+        return series_matches_search($series, $normalized_search);
     });
 }
 

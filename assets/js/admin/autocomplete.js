@@ -403,4 +403,7 @@ setupMultiAutocomplete('edit-series-categories', ['categories']);
 setupMultiAutocomplete('edit-series-genres', ['genres']);
 setupMultiAutocomplete('add-series-other-contributors', ['author', 'other_contributors']);
 setupMultiAutocomplete('edit-series-other-contributors', ['author', 'other_contributors']);
-setupMultiAutocomplete('search-all', ['name', 'author', 'other_contributors', 'publisher', 'categories', 'genres']);
+// La barre de recherche principale traverse les deux collections : elle
+// interroge aussi les champs propres aux animés (studios, titres alternatifs),
+// sans effet côté mangas (endpoint get_suggestions les ignore pour ce type).
+setupMultiAutocomplete('search-all', ['name', 'author', 'other_contributors', 'publisher', 'categories', 'genres', 'studios', 'alt_titles']);

@@ -101,12 +101,7 @@ if (isset($_GET['get_paginated_series'])) {
     if (!empty($search_term)) {
         $normalized_search = normalize_string($search_term);
         $filtered_data = array_filter($filtered_data, function($series) use ($normalized_search) {
-            return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
-                   strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
-                   strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
-                   (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
-                   (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
-                   (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
+            return series_matches_search($series, $normalized_search);
         });
     }
     $filtered_data = apply_status_filter(
@@ -173,11 +168,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
     // valeur => types où elle apparaît
     $suggestions = [];
 
-    if (in_array($field, ['name', 'author', 'publisher', 'other_contributors', 'categories', 'genres'])) {
+    if (in_array($field, ['name', 'author', 'publisher', 'other_contributors', 'categories', 'genres', 'studios', 'alt_titles'], true)) {
         foreach ($all_data as $series) {
-            if (!isset($series[$field])) continue;
             $series_type = series_type($series);
-            $values = is_array($series[$field]) ? $series[$field] : [$series[$field]];
+
+            // Studios et titres alternatifs sont propres aux animés : pas une
+            // colonne directement lisible comme les autres champs (cf. le
+            // même correctif dans admin.php).
+            if ($field === 'studios') {
+                if (!is_anime($series)) continue;
+                $values = (array)($series['studios'] ?? []);
+            } elseif ($field === 'alt_titles') {
+                if (!is_anime($series)) continue;
+                $values = series_alt_titles($series);
+            } else {
+                if (!isset($series[$field])) continue;
+                $values = is_array($series[$field]) ? $series[$field] : [$series[$field]];
+            }
+
             foreach ($values as $value) {
                 $value = trim((string)$value);
                 if ($value === '') continue;
@@ -316,12 +324,7 @@ sort_series($data, $sort_by, $sort_order);
 if (!empty($search_term)) {
     $normalized_search = normalize_string($search_term);
     $data = array_filter($data, function($series) use ($normalized_search) {
-        return strpos(normalize_string($series['name'] ?? ''), $normalized_search) !== false ||
-               strpos(normalize_string($series['author'] ?? ''), $normalized_search) !== false ||
-               strpos(normalize_string($series['publisher'] ?? ''), $normalized_search) !== false ||
-               (isset($series['other_contributors']) && strpos(normalize_string(implode(', ', $series['other_contributors'])), $normalized_search) !== false) ||
-               (isset($series['categories']) && strpos(normalize_string(implode(', ', $series['categories'])), $normalized_search) !== false) ||
-               (isset($series['genres']) && strpos(normalize_string(implode(', ', $series['genres'])), $normalized_search) !== false);
+        return series_matches_search($series, $normalized_search);
     });
 }
 ?>

@@ -395,6 +395,53 @@ function decorate_series_for_display(array $series): array {
     return $series;
 }
 
+// ── Recherche texte transverse (admin.php + index.php) ────────────────────────
+// Unique définition de « une série correspond-elle à ce terme de recherche ? »,
+// pour que les quatre points de recherche du site (liste admin, endpoint AJAX
+// de pagination admin, page publique, endpoint AJAX de pagination publique)
+// se comportent EXACTEMENT pareil. Avant le bloc 13, ces quatre endroits
+// dupliquaient la même liste de champs en dur (name/author/publisher/
+// other_contributors/categories/genres) — une liste pensée pour les mangas
+// uniquement, qui ratait donc silencieusement les champs propres aux animés
+// (studios, titres alternatifs) : une recherche par studio ne trouvait rien
+// puisque ce champ n'était jamais consulté.
+//
+// $normalized_search doit déjà être passé par normalize_string() par
+// l'appelant (évite de le refaire à chaque série sur les 4 sites d'appel).
+function series_matches_search(array $series, string $normalized_search): bool {
+    if ($normalized_search === '') return true;
+
+    $haystacks = [
+        $series['name']      ?? '',
+        $series['author']    ?? '',
+        $series['publisher'] ?? '',
+    ];
+    foreach (['other_contributors', 'categories', 'genres'] as $field) {
+        if (!empty($series[$field])) {
+            $haystacks[] = implode(', ', (array)$series[$field]);
+        }
+    }
+
+    // Champs propres aux animés : studios et titres alternatifs (romaji,
+    // anglais, natif, synonymes). Vides sur un manga, donc sans effet là où
+    // la recherche fonctionnait déjà.
+    if (is_anime($series)) {
+        if (!empty($series['studios'])) {
+            $haystacks[] = series_studios_text($series);
+        }
+        if (!empty($series['alt_titles'])) {
+            $haystacks[] = implode(', ', series_alt_titles($series));
+        }
+    }
+
+    foreach ($haystacks as $haystack) {
+        if ($haystack !== '' && strpos(normalize_string($haystack), $normalized_search) !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Liste des commentaires d'éditions d'une série, sous forme de simples chaînes.
 function series_edition_comments($series): array {
     $out = [];

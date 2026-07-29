@@ -76,6 +76,39 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ── 0c. Onglets Mangathèque / Animethèque ─────────────────────────────────
+    // Mémorisés dans l'URL (#manga / #anime), sur le même principe que les
+    // onglets de la page Outils (cf. assets/js/page.js) : survit à un
+    // rechargement, se partage en lien direct. Non memorisé au-delà (pas de
+    // localStorage) : cohérent avec le reste du site, qui ne mémorise jamais
+    // ces choix de vue d'une visite à l'autre.
+    (function initStatsTabs() {
+        const tabs   = document.querySelectorAll('.stats-tab');
+        const panels = document.querySelectorAll('.stats-tab-panel');
+        if (!tabs.length) return; // Animethèque vide : les onglets ne sont pas rendus
+
+        function activate(name) {
+            const known = Array.from(tabs).some(t => t.dataset.statsTab === name);
+            if (!known) return;
+            tabs.forEach(t => {
+                const active = t.dataset.statsTab === name;
+                t.classList.toggle('stats-tab--active', active);
+                t.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            panels.forEach(p => p.classList.toggle('stats-tab-panel--active', p.dataset.statsTabPanel === name));
+        }
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                activate(tab.dataset.statsTab);
+                history.replaceState(null, '', '#' + tab.dataset.statsTab);
+            });
+        });
+
+        const hash = (window.location.hash || '').replace('#', '');
+        if (hash === 'anime' || hash === 'manga') activate(hash);
+    })();
+
     // ══════════════════════════════════════════════════════════════════════════
     //  CHART.JS — Donuts
     // ══════════════════════════════════════════════════════════════════════════
@@ -150,6 +183,99 @@ document.addEventListener('DOMContentLoaded', function () {
                 datasets: [{
                     data: S.completion.values,
                     backgroundColor: [C.teal, C.primary, C.amber, C.red],
+                    borderColor: C.card, borderWidth: 2
+                }]
+            },
+            options: {
+                ...donutDefaults.options,
+                plugins: {
+                    ...donutDefaults.options.plugins,
+                    tooltip: { callbacks: { label: ctx => `${ctx.label}: ${fmtInt(ctx.raw)} séries` } }
+                }
+            }
+        });
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  CHART.JS — Donuts (Animethèque, bloc 13)
+    // ══════════════════════════════════════════════════════════════════════════
+    const A = window.ANIME_STATS || {};
+
+    // Statut des épisodes
+    if (A.status && document.getElementById('anime-chart-status')) {
+        new Chart(document.getElementById('anime-chart-status'), {
+            ...donutDefaults,
+            data: {
+                labels: A.status.labels,
+                datasets: [{
+                    data: A.status.values,
+                    backgroundColor: [C.teal, C.primary, C.red],
+                    borderColor: C.card, borderWidth: 2
+                }]
+            },
+            options: {
+                ...donutDefaults.options,
+                plugins: {
+                    ...donutDefaults.options.plugins,
+                    tooltip: { callbacks: { label: ctx => `${ctx.label}: ${fmtInt(ctx.raw)} épisodes` } }
+                }
+            }
+        });
+    }
+
+    // Temps de visionnage
+    if (A.time && document.getElementById('anime-chart-time')) {
+        new Chart(document.getElementById('anime-chart-time'), {
+            ...donutDefaults,
+            data: {
+                labels: A.time.labels,
+                datasets: [{
+                    data: A.time.values,
+                    backgroundColor: [C.teal, C.primary, C.red],
+                    borderColor: C.card, borderWidth: 2
+                }]
+            },
+            options: {
+                ...donutDefaults.options,
+                plugins: {
+                    ...donutDefaults.options.plugins,
+                    tooltip: { callbacks: { label: ctx => `${ctx.label}: ${minutesToText(ctx.raw)}` } }
+                }
+            }
+        });
+    }
+
+    // Statut de diffusion
+    if (A.airing && document.getElementById('anime-chart-completion')) {
+        new Chart(document.getElementById('anime-chart-completion'), {
+            ...donutDefaults,
+            data: {
+                labels: A.airing.labels,
+                datasets: [{
+                    data: A.airing.values,
+                    backgroundColor: [C.teal, C.primary, C.amber, C.red],
+                    borderColor: C.card, borderWidth: 2
+                }]
+            },
+            options: {
+                ...donutDefaults.options,
+                plugins: {
+                    ...donutDefaults.options.plugins,
+                    tooltip: { callbacks: { label: ctx => `${ctx.label}: ${fmtInt(ctx.raw)} séries` } }
+                }
+            }
+        });
+    }
+
+    // Statut de visionnage
+    if (A.watch_status && document.getElementById('anime-chart-watch-status')) {
+        new Chart(document.getElementById('anime-chart-watch-status'), {
+            ...donutDefaults,
+            data: {
+                labels: A.watch_status.labels,
+                datasets: [{
+                    data: A.watch_status.values,
+                    backgroundColor: [C.textGray, C.primary, C.teal, C.red],
                     borderColor: C.card, borderWidth: 2
                 }]
             },
@@ -469,6 +595,209 @@ document.addEventListener('DOMContentLoaded', function () {
     lineChart('line-reading-growth', S.reading_growth || [], 'Total lu cumulé', C.sky, false);
 
     // ══════════════════════════════════════════════════════════════════════════
+    //  APEXCHARTS — Animethèque (bloc 13)
+    // ══════════════════════════════════════════════════════════════════════════
+    const animeCharts = {}; // registre pour les toggles (même principe que `charts` ci-dessus)
+
+    // ── Genres (toggle épisodes / séries) ─────────────────────────────────────
+    if (((A.genres && A.genres.length) || A.genres_none > 0) && document.getElementById('anime-genres-chart')) {
+        const NONE_COLOR = C.textGray;
+        const el = document.getElementById('anime-genres-chart');
+
+        function buildAnimeGenres(metric) {
+            const valOf = g => metric === 'series' ? (g.series || 0) : g.volumes;
+            const noneVal = metric === 'series' ? (A.genres_none_series || 0) : (A.genres_none || 0);
+            const unit = metric === 'series' ? 'séries' : 'épisodes';
+
+            const genreList = (A.genres || []).slice()
+                .map(g => ({ name: g.name, volumes: g.volumes, series: g.series || 0 }))
+                .sort((a, b) => valOf(b) - valOf(a));
+            if (noneVal > 0) {
+                genreList.push({ name: 'Sans genre', volumes: A.genres_none || 0, series: A.genres_none_series || 0, _none: true });
+            }
+            const colorFor = (g, i) => g._none ? NONE_COLOR : rampColor(i);
+            const useDonut = genreList.length <= 6;
+
+            if (useDonut) {
+                return {
+                    ...apexBase,
+                    chart: { ...apexBase.chart, type: 'donut', height: 340 },
+                    series: genreList.map(valOf),
+                    labels: genreList.map(g => g.name),
+                    colors: genreList.map((g, i) => colorFor(g, i)),
+                    legend: { position: 'bottom', labels: { colors: C.text } },
+                    plotOptions: { pie: { donut: { size: '60%' } } },
+                    dataLabels: { enabled: true, formatter: (v) => Math.round(v) + '%' },
+                    tooltip: { theme: 'dark', y: { formatter: v => `${fmtInt(v)} ${unit}` } }
+                };
+            }
+            const named = genreList.filter(g => !g._none).slice(0, 14);
+            const noneSlice = genreList.filter(g => g._none);
+            const top = named.concat(noneSlice);
+            return {
+                ...apexBase,
+                chart: { ...apexBase.chart, type: 'bar', height: Math.max(260, top.length * 30) },
+                series: [{ name: metric === 'series' ? 'Séries' : 'Épisodes', data: top.map(valOf) }],
+                xaxis: { categories: top.map(g => g.name), labels: { style: { colors: C.textGray } } },
+                yaxis: { labels: { style: { colors: C.text }, maxWidth: yAxisMaxWidth(200) } },
+                colors: top.map((g, i) => colorFor(g, i)),
+                plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '70%', distributed: true } },
+                dataLabels: { enabled: true, textAnchor: 'start', offsetX: 4, style: { colors: ['#fff'] } },
+                legend: { show: false },
+                tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
+                    const g = top[dataPointIndex];
+                    return `<div class="apex-tip"><b>${g.name}</b><br>${fmtInt(g.volumes)} épisode(s) · ${fmtInt(g.series)} série(s)</div>`;
+                } }
+            };
+        }
+
+        animeCharts.genres = new ApexCharts(el, buildAnimeGenres('volumes'));
+        animeCharts.genres.render();
+        animeCharts._buildGenres = buildAnimeGenres;
+    }
+
+    // ── Formats (toggle épisodes / séries) ────────────────────────────────────
+    if (A.formats && A.formats.length && document.getElementById('anime-formats-chart')) {
+        const el = document.getElementById('anime-formats-chart');
+
+        function buildAnimeFormats(metric) {
+            const valOf = f => metric === 'series' ? (f.series || 0) : f.volumes;
+            const unit = metric === 'series' ? 'séries' : 'épisodes';
+            const fmts = A.formats.slice().sort((a, b) => valOf(b) - valOf(a));
+
+            if (fmts.length <= 6) {
+                return {
+                    ...apexBase,
+                    chart: { ...apexBase.chart, type: 'donut', height: 340 },
+                    series: fmts.map(valOf),
+                    labels: fmts.map(f => f.name),
+                    colors: fmts.map((f, i) => rampColor(i)),
+                    legend: { position: 'bottom', labels: { colors: C.text } },
+                    plotOptions: { pie: { donut: { size: '60%' } } },
+                    dataLabels: { enabled: true, formatter: v => Math.round(v) + '%' },
+                    tooltip: { theme: 'dark', y: { formatter: v => `${fmtInt(v)} ${unit}` } }
+                };
+            }
+            return {
+                ...apexBase,
+                chart: { ...apexBase.chart, type: 'bar', height: Math.max(220, fmts.length * 32) },
+                series: [{ name: metric === 'series' ? 'Séries' : 'Épisodes', data: fmts.map(valOf) }],
+                xaxis: { categories: fmts.map(f => f.name), labels: { style: { colors: C.textGray } } },
+                yaxis: { labels: { style: { colors: C.text }, maxWidth: yAxisMaxWidth(200) } },
+                colors: [C.sky],
+                plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '68%' } },
+                dataLabels: { enabled: true, textAnchor: 'start', offsetX: 4, style: { colors: ['#fff'] } },
+                legend: { show: false },
+                tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
+                    const f = fmts[dataPointIndex];
+                    return `<div class="apex-tip"><b>${f.name}</b><br>${fmtInt(f.volumes)} épisode(s) · ${fmtInt(f.series)} série(s)</div>`;
+                } }
+            };
+        }
+
+        animeCharts.formats = new ApexCharts(el, buildAnimeFormats('volumes'));
+        animeCharts.formats.render();
+        animeCharts._buildFormats = buildAnimeFormats;
+    }
+
+    // ── Top studios (toggle épisodes / séries) ────────────────────────────────
+    if (A.studios && A.studios.length && document.getElementById('anime-bar-studios')) {
+        function studiosOpts(metric) {
+            const valOf = s => metric === 'series' ? s.series : s.volumes;
+            const list = A.studios.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 10);
+            return {
+                ...apexBase,
+                chart: { ...apexBase.chart, type: 'bar', height: Math.max(220, list.length * 34) },
+                series: [{ name: metric === 'series' ? 'Séries' : 'Épisodes', data: list.map(valOf) }],
+                xaxis: { categories: list.map(s => s.name), labels: { style: { colors: C.textGray } } },
+                yaxis: { labels: { style: { colors: C.text }, maxWidth: yAxisMaxWidth(220) } },
+                colors: [C.sky],
+                plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '68%' } },
+                dataLabels: { enabled: true, textAnchor: 'start', offsetX: 4, style: { colors: ['#fff'] } },
+                legend: { show: false },
+                tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
+                    const s = list[dataPointIndex];
+                    return `<div class="apex-tip"><b>${s.name}</b><br>${fmtInt(s.volumes)} épisode(s) · ${fmtInt(s.series)} série(s)</div>`;
+                } }
+            };
+        }
+        animeCharts.studios = new ApexCharts(document.getElementById('anime-bar-studios'), studiosOpts('volumes'));
+        animeCharts.studios.render();
+        animeCharts._studiosOpts = studiosOpts;
+    }
+
+    // ── Notation ────────────────────────────────────────────────────────────
+    if (A.rating && A.rating.values.some(v => v > 0) && document.getElementById('anime-rating-chart')) {
+        new ApexCharts(document.getElementById('anime-rating-chart'), {
+            ...apexBase,
+            chart: { ...apexBase.chart, type: 'donut', height: 300 },
+            series: A.rating.values,
+            labels: A.rating.labels,
+            colors: [C.teal, C.amber, C.red, C.textGray],
+            legend: { position: 'bottom', labels: { colors: C.text } },
+            plotOptions: { pie: { donut: { size: '58%' } } },
+            dataLabels: { enabled: true, formatter: v => Math.round(v) + '%' },
+            tooltip: { theme: 'dark', y: { formatter: v => `${fmtInt(v)} série(s)` } }
+        }).render();
+    }
+
+    // ── Courbes temporelles ────────────────────────────────────────────────────
+    lineChart('anime-line-added', A.added || [], 'Épisodes ajoutés', C.sky);
+    lineChart('anime-line-growth', A.growth || [], 'Total cumulé', C.teal);
+    lineChart('anime-line-watched', A.watched || [], 'Épisodes vus', C.pink, false);
+    lineChart('anime-line-watched-growth', A.watched_growth || [], 'Total vu cumulé', C.primary, false);
+
+    // ── Toggles Animethèque ────────────────────────────────────────────────────
+    document.querySelectorAll('.toggle-group[data-target="anime-genres"] .toggle-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.toggle-group[data-target="anime-genres"] .toggle-btn').forEach(b => b.classList.remove('is-active'));
+            this.classList.add('is-active');
+            const metric = this.dataset.metric;
+            const el = document.getElementById('anime-genres-chart');
+            if (animeCharts.genres && animeCharts._buildGenres && el) {
+                animeCharts.genres.destroy();
+                animeCharts.genres = new ApexCharts(el, animeCharts._buildGenres(metric));
+                animeCharts.genres.render();
+            }
+        });
+    });
+
+    document.querySelectorAll('.toggle-group[data-target="anime-formats"] .toggle-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.toggle-group[data-target="anime-formats"] .toggle-btn').forEach(b => b.classList.remove('is-active'));
+            this.classList.add('is-active');
+            const metric = this.dataset.metric;
+            const el = document.getElementById('anime-formats-chart');
+            if (animeCharts.formats && animeCharts._buildFormats && el) {
+                animeCharts.formats.destroy();
+                animeCharts.formats = new ApexCharts(el, animeCharts._buildFormats(metric));
+                animeCharts.formats.render();
+            }
+        });
+    });
+
+    document.querySelectorAll('.toggle-group[data-target="anime-studios"] .toggle-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.toggle-group[data-target="anime-studios"] .toggle-btn').forEach(b => b.classList.remove('is-active'));
+            this.classList.add('is-active');
+            const metric = this.dataset.metric;
+            if (animeCharts.studios && animeCharts._studiosOpts) {
+                const valOf = s => metric === 'series' ? s.series : s.volumes;
+                const list = A.studios.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 10);
+                animeCharts.studios.updateOptions({
+                    chart: { height: Math.max(220, list.length * 34) },
+                    xaxis: { categories: list.map(s => s.name) },
+                    series: [{ name: metric === 'series' ? 'Séries' : 'Épisodes', data: list.map(valOf) }],
+                    tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
+                        const s = list[dataPointIndex];
+                        return `<div class="apex-tip"><b>${s.name}</b><br>${fmtInt(s.volumes)} épisode(s) · ${fmtInt(s.series)} série(s)</div>`;
+                    } }
+                });
+            }
+        });
+    });
+
+    // ══════════════════════════════════════════════════════════════════════════
     //  TOGGLES
     // ══════════════════════════════════════════════════════════════════════════
     // Auteurs : tomes / séries
@@ -628,10 +957,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const n = norm(term);
             const set = new Set();
             searchData.forEach(s => {
+                // `author` porte déjà les studios pour un animé (cf. stats.php,
+                // construction de window.SEARCH_DATA) : rien de spécifique à
+                // faire ici pour que les deux collections remontent ensemble.
                 [s.name, s.author, s.publisher].forEach(v => { if (norm(v).includes(n)) set.add(v); });
                 (s.categories || []).forEach(v => { if (norm(v).includes(n)) set.add(v); });
                 (s.genres || []).forEach(v => { if (norm(v).includes(n)) set.add(v); });
                 (s.other_contributors || []).forEach(v => { if (norm(v).includes(n)) set.add(v); });
+                // Titres alternatifs (romaji/anglais/natif/synonymes, animés
+                // uniquement) : suggérés comme des noms de série à part entière,
+                // pour que taper un titre anglais propose bien la série même si
+                // son nom affiché est resté en romaji.
+                (s.alt_titles || []).forEach(v => { if (norm(v).includes(n)) set.add(v); });
             });
             return [...set].slice(0, 30);
         }
@@ -680,11 +1017,26 @@ document.addEventListener('DOMContentLoaded', function () {
             const term = input.value.trim();
             if (term.length < 2) return;
             const n = norm(term);
-            const r = { series: [], authors: new Set(), publishers: new Set(), categories: new Set(), genres: new Set(), contributors: new Set() };
+            const r = {
+                series: [], authors: new Set(), publishers: new Set(), studios: new Set(),
+                categories: new Set(), genres: new Set(), contributors: new Set()
+            };
             searchData.forEach(s => {
-                if (norm(s.name).includes(n)) r.series.push(s);
-                if (norm(s.author).includes(n)) r.authors.add(s.author);
-                if (norm(s.publisher).includes(n)) r.publishers.add(s.publisher);
+                // Le nom affiché OU un titre alternatif (romaji/anglais/natif/
+                // synonymes, animés uniquement) suffit à faire remonter la
+                // série dans les résultats.
+                const altMatch = (s.alt_titles || []).find(t => norm(t).includes(n));
+                if (norm(s.name).includes(n) || altMatch) {
+                    r.series.push(altMatch && !norm(s.name).includes(n) ? { ...s, _matchedAltTitle: altMatch } : s);
+                }
+                // Auteurs/éditeurs : notion propre aux mangas (les animés ont
+                // author/publisher vides, cf. construction de SEARCH_DATA).
+                if (s.type !== 'anime' && norm(s.author).includes(n)) r.authors.add(s.author);
+                if (s.type !== 'anime' && norm(s.publisher).includes(n)) r.publishers.add(s.publisher);
+                // Studios : le champ `author` d'une entrée animé porte déjà les
+                // studios (cf. stats.php). Dimension distincte à l'affichage,
+                // pour ne pas mélanger auteurs et studios dans la même liste.
+                if (s.type === 'anime' && norm(s.author).includes(n)) r.studios.add(s.author);
                 (s.categories || []).forEach(c => { if (norm(c).includes(n)) r.categories.add(c); });
                 (s.genres || []).forEach(g => { if (norm(g).includes(n)) r.genres.add(g); });
                 (s.other_contributors || []).forEach(c => { if (norm(c).includes(n)) r.contributors.add(c); });
@@ -692,9 +1044,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             let html = '';
             const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-            const link = q => `index.php?search=${encodeURIComponent(q)}`;
+            // index.php retombe sur la vue Mangathèque (type=manga) si aucun
+            // type n'est précisé (cf. sanitize_series_type() côté PHP) : un
+            // résultat animé sans `type=anime` explicite pointe donc vers une
+            // vue où la série n'apparaît jamais. Le type est obligatoire ici.
+            const link = (q, type) => `index.php?search=${encodeURIComponent(q)}&type=${type === 'anime' ? 'anime' : 'manga'}`;
 
-            // Libellé du statut de publication d'une série
+            // Libellé du statut de publication/diffusion d'une série
             const statusLabel = st => ({
                 'terminée': '✅ Terminée',
                 'en cours': '⏳ En cours',
@@ -702,49 +1058,88 @@ document.addEventListener('DOMContentLoaded', function () {
                 'abandonnée': '⛔ Abandonnée'
             }[st] || '⏳ En cours');
 
+            // Badge de type (même registre que partout ailleurs sur le site :
+            // window.seriesTypes, alimenté par includes/helpers.php,
+            // series_types_for_js() — cf. reviews.js / page-wishlist.php).
+            const typeBadge = s => {
+                const def = (window.seriesTypes && window.seriesTypes[s.type || 'manga']) || null;
+                return def
+                    ? `<span class="suggestion-type-badge result-type-badge" style="--type-color:${def.color}">${esc(def.label)}</span>`
+                    : '';
+            };
+            const itemWord = (s, n) => (s.type === 'anime' ? 'épisode' : 'tome') + (n > 1 ? 's' : '');
+            const doneWord = s => s.type === 'anime' ? 'vus' : 'lus';
+
             if (r.series.length) {
                 html += `<h4>Séries (${r.series.length})</h4>`;
                 r.series.forEach(s => {
-                    // Avancement de lecture
+                    // Avancement de lecture/visionnage
                     const pct = s.volumes_count > 0 ? Math.round((s.read_count / s.volumes_count) * 100) : 0;
                     const tags = [];
-                    tags.push(`${s.read_count}/${s.volumes_count} lus (${pct}%)`);
+                    tags.push(`${s.read_count}/${s.volumes_count} ${doneWord(s)} (${pct}%)`);
                     if (s.collector_count > 0) tags.push(`${s.collector_count} collector${s.collector_count > 1 ? 's' : ''}`);
                     tags.push(statusLabel(s.status));
                     if (s.complete) tags.push('série complète');
                     if (s.read_elsewhere) tags.push('lue ailleurs');
                     if (s.mature) tags.push('mature');
-                    html += `<div class="result-item"><strong>${esc(s.name)}</strong>
-                        <span class="result-meta">${esc(s.author)} · ${esc(s.publisher)} · ${s.volumes_count} tome${s.volumes_count > 1 ? 's' : ''}</span>
+                    // Trouvé par un titre alternatif plutôt que le nom affiché :
+                    // le préciser, sinon le résultat semble sorti de nulle part.
+                    if (s._matchedAltTitle) tags.push(`aussi connu comme « ${s._matchedAltTitle} »`);
+                    const meta = s.type === 'anime'
+                        ? [esc(s.author), `${s.volumes_count} ${itemWord(s, s.volumes_count)}`].filter(Boolean).join(' · ')
+                        : `${esc(s.author)} · ${esc(s.publisher)} · ${s.volumes_count} ${itemWord(s, s.volumes_count)}`;
+                    html += `<div class="result-item"><strong>${typeBadge(s)}${esc(s.name)}</strong>
+                        <span class="result-meta">${meta}</span>
                         <span class="result-sub">${tags.map(esc).join(' · ')}</span>
-                        <a class="result-link" href="${link(s.name)}">Voir →</a></div>`;
+                        <a class="result-link" href="${link(s.name, s.type)}">Voir →</a></div>`;
                 });
             }
+            // Regroupement générique par dimension (auteurs, éditeurs, studios,
+            // catégories, genres, contributeurs). Chaque ligne agrège séries et
+            // épisodes/tomes à travers les DEUX collections quand la dimension
+            // leur est commune (catégories, genres) ; les dimensions propres à
+            // un seul type (auteurs/éditeurs pour les mangas, studios pour les
+            // animés) ne peuvent de toute façon matcher que ce type-là.
             const dim = (title, set, role) => {
                 const arr = [...set];
                 if (!arr.length) return;
                 html += `<h4>${title} (${arr.length})</h4>`;
                 arr.forEach(name => {
                     const inSeries = searchData.filter(s =>
-                        (role === 'author'      && norm(s.author) === norm(name)) ||
-                        (role === 'publisher'   && norm(s.publisher) === norm(name)) ||
+                        (role === 'author'      && s.type !== 'anime' && norm(s.author) === norm(name)) ||
+                        (role === 'publisher'   && s.type !== 'anime' && norm(s.publisher) === norm(name)) ||
+                        (role === 'studio'      && s.type === 'anime' && norm(s.author) === norm(name)) ||
                         (role === 'category'    && (s.categories || []).some(c => norm(c) === norm(name))) ||
                         (role === 'genre'       && (s.genres || []).some(g => norm(g) === norm(name))) ||
                         (role === 'contributor' && (s.other_contributors || []).some(c => norm(c) === norm(name))));
                     const vols = inSeries.reduce((a, s) => a + s.volumes_count, 0);
                     const read = inSeries.reduce((a, s) => a + s.read_count, 0);
                     const pct = vols > 0 ? Math.round((read / vols) * 100) : 0;
-                    // Aperçu des séries concernées (max 3)
-                    const names = inSeries.map(s => s.name).slice(0, 3).join(', ');
+                    // Mélange manga/anime au sein d'une même dimension (catégories,
+                    // genres) : « élément » reste neutre plutôt que de choisir
+                    // arbitrairement tome ou épisode.
+                    const mixed = inSeries.some(s => s.type === 'anime') && inSeries.some(s => s.type !== 'anime');
+                    const unit  = mixed ? 'élément' + (vols > 1 ? 's' : '') : itemWord(inSeries[0], vols);
+                    // Aperçu des séries concernées (max 3), avec badge de type
+                    const names = inSeries.slice(0, 3).map(s => `${typeBadge(s)}${esc(s.name)}`).join(', ');
                     const more = inSeries.length > 3 ? `, +${inSeries.length - 3}` : '';
+                    // Type vers lequel pointer le lien "Voir" : celui du groupe
+                    // s'il est homogène (author/publisher/studio le sont déjà
+                    // par construction du filtre ci-dessus) ; en cas de mélange
+                    // (catégorie ou genre partagé par les deux collections), le
+                    // type le mieux représenté l'emporte plutôt que de risquer
+                    // un lien qui n'affiche aucun résultat.
+                    const animeCount = inSeries.filter(s => s.type === 'anime').length;
+                    const linkType = animeCount * 2 > inSeries.length ? 'anime' : 'manga';
                     html += `<div class="result-item"><strong>${esc(name)}</strong>
-                        <span class="result-meta">${inSeries.length} série${inSeries.length > 1 ? 's' : ''} · ${vols} tome${vols > 1 ? 's' : ''} · ${read}/${vols} lus (${pct}%)</span>
-                        <span class="result-sub">${esc(names)}${more}</span>
-                        <a class="result-link" href="${link(name)}">Voir →</a></div>`;
+                        <span class="result-meta">${inSeries.length} série${inSeries.length > 1 ? 's' : ''} · ${vols} ${unit} · ${read}/${vols} (${pct}%)</span>
+                        <span class="result-sub">${names}${more}</span>
+                        <a class="result-link" href="${link(name, linkType)}">Voir →</a></div>`;
                 });
             };
             dim('Auteurs', r.authors, 'author');
             dim('Éditeurs', r.publishers, 'publisher');
+            dim('Studios', r.studios, 'studio');
             dim('Catégories', r.categories, 'category');
             dim('Genres', r.genres, 'genre');
             dim('Contributeurs', r.contributors, 'contributor');

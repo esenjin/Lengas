@@ -34,6 +34,53 @@
     gap: 10px;
 }
 
+/* ── Onglets Mangathèque / Animethèque (bloc 13) ──
+   Distincts de .tools-tab (page Outils) : centrés, plus larges, pensés pour
+   être le premier élément visuel de la page plutôt qu'un simple sélecteur
+   d'écran secondaire. */
+.stats-tabs {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 32px;
+}
+
+.stats-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--background-card);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius-lg);
+    color: var(--text-gray);
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 0.92em;
+    font-weight: 600;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.stats-tab:hover {
+    color: var(--text-white);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.stats-tab--active {
+    color: var(--text-white);
+    border-color: var(--primary-color);
+    background: var(--primary-subtle);
+}
+
+.stats-tab-panel {
+    display: none;
+}
+
+.stats-tab-panel--active {
+    display: block;
+}
+
 /* ── Sections ── */
 .stats-section {
     margin-bottom: 40px;
@@ -95,6 +142,13 @@
 
 .kpi-accent::before { background: var(--success-color); }
 .kpi-accent-warm::before { background: var(--warning-color); }
+
+/* KPI cards de l'Animethèque : liseré bleu (--anime-title-color) plutôt que
+   violet, cohérent avec les titres de série et la sidebar (bloc 13). */
+.kpi-card--anime::before { background: var(--anime-title-color); opacity: 0.6; }
+.kpi-card--anime:hover::before { opacity: 1; }
+.kpi-card--anime:hover { border-color: rgba(56, 189, 248, 0.25); }
+.kpi-card--anime.kpi-accent::before { background: var(--success-color); opacity: 1; }
 
 .kpi-icon {
     margin-bottom: 4px;
@@ -455,6 +509,14 @@
 
 .stats-page .result-item strong { color: var(--text-white); }
 
+/* Badge de type (Manga/Animé) dans les résultats de recherche — bloc 13.
+   Réutilise .suggestion-type-badge (cf. _forms.css), juste une marge à
+   droite puisqu'il précède ici le nom plutôt que de le suivre. */
+.stats-page .result-type-badge {
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
 .stats-page .result-meta {
     color: var(--text-gray);
     font-size: 0.9em;
@@ -561,6 +623,8 @@
     .stats-page .container { padding: 16px 12px 40px; }
     .panel { padding: 18px 16px; border-radius: var(--border-radius-lg); overflow: hidden; }
     .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+    .stats-tabs { gap: 6px; margin-bottom: 24px; }
+    .stats-tab { flex: 1 1 auto; justify-content: center; padding: 9px 14px; font-size: 0.86em; }
     .kpi-value { font-size: 1.45em; }
     .panel-head { flex-direction: column; align-items: flex-start; }
     .stats-page .result-item { flex-direction: column; gap: 2px; }

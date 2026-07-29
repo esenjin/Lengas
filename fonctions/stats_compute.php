@@ -143,6 +143,63 @@ if (!function_exists('stats_series_averages')) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Réglages "Statistiques" de l'Animethèque (durée par format)
+// ─────────────────────────────────────────────────────────────────────────────
+// Pendant du bloc 13 à stats_get_settings() ci-dessus, mais pour les animés :
+// une durée moyenne d'épisode (en minutes) par FORMAT Anilist (TV, MOVIE,
+// OVA…) plutôt que par catégorie manga, plus un repli global. L'écran de
+// réglage correspondant (options.php) est du ressort du bloc 14 ; en son
+// absence, cette fonction retombe silencieusement sur des valeurs par défaut
+// raisonnables — aucune des deux valeurs stockées ci-dessous ne dépend donc de
+// l'avancement du bloc 14 pour fonctionner.
+//
+// Stockage attendu (option JSON `stats_anime_format_settings`) :
+//   { "TV": 24, "MOVIE": 100, ... }  → minutes par épisode, par format
+// Plus une valeur de repli globale : `stats_anime_default_minutes`.
+if (!function_exists('stats_get_anime_settings')) {
+    function stats_get_anime_settings(array $options): array {
+        $default_minutes = isset($options['stats_anime_default_minutes']) && $options['stats_anime_default_minutes'] !== ''
+            ? (float) $options['stats_anime_default_minutes']
+            : 24.0; // durée moyenne d'un épisode de série TV, valeur de repli raisonnable
+
+        $formats = [];
+        if (!empty($options['stats_anime_format_settings'])) {
+            $decoded = json_decode($options['stats_anime_format_settings'], true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $format => $minutes) {
+                    if ($minutes === '' || $minutes === null) continue;
+                    $formats[strtoupper(trim((string) $format))] = (float) $minutes;
+                }
+            }
+        }
+
+        return ['formats' => $formats, 'default' => $default_minutes];
+    }
+}
+
+if (!function_exists('stats_anime_episode_minutes')) {
+    /**
+     * Durée (en minutes) à retenir pour UN épisode d'une série animée donnée.
+     * Priorité stricte :
+     *   1. `episode_duration` propre à la série (valeur réelle fournie par
+     *      Anilist, cf. includes/anilist.php) si renseignée ;
+     *   2. réglage par format (stats_get_anime_settings()) ;
+     *   3. repli global.
+     */
+    function stats_anime_episode_minutes(array $series, array $anime_settings): float {
+        $own = (float) ($series['episode_duration'] ?? 0);
+        if ($own > 0) return $own;
+
+        $format = strtoupper(trim((string) ($series['anime_format'] ?? '')));
+        if ($format !== '' && isset($anime_settings['formats'][$format])) {
+            return $anime_settings['formats'][$format];
+        }
+
+        return $anime_settings['default'];
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Calcul principal
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -633,6 +690,293 @@ if (!function_exists('compute_stats')) {
             'avg_volumes_per_publisher'=> count($publishers) > 0 ? round($total_volumes / count($publishers), 2) : 0,
             'avg_series_per_contributor'  => count($contributors) > 0 ? round(array_sum(array_map(fn($c) => $c['series'], $contributors)) / count($contributors), 2) : 0,
             'avg_volumes_per_contributor' => count($contributors) > 0 ? round($total_volumes / count($contributors), 2) : 0,
+        ];
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Calcul — Animethèque (bloc 13)
+// ─────────────────────────────────────────────────────────────────────────────
+// Pendant de compute_stats() pour les séries de type 'anime'. Volontairement un
+// calcul À PART plutôt qu'une extension du précédent : les deux collections ne
+// partagent presque aucune notion (pas de prix, pas de tomes collectors, pas de
+// prêts, pas de "lu ailleurs" côté animé — cf. décisions structurantes de la
+// feuille de route). Dupliquer une poignée d'agrégats communs (genres, temps,
+// favoris) est plus lisible que de complexifier compute_stats() avec des
+// branches conditionnelles sur le type.
+//
+// Convention : $data est déjà filtré sur le type 'anime' par l'appelant
+// (series_of_type($all_data, 'anime')), à l'image de stats.php pour la
+// Mangathèque.
+if (!function_exists('compute_anime_stats')) {
+    function compute_anime_stats(array $data, array $options): array {
+        $anime_settings = stats_get_anime_settings($options);
+
+        $total_series  = count($data);
+        $total_episodes = 0;
+
+        // Statut de VISIONNAGE (calculé, cf. includes/helpers.php) : mêmes clés
+        // que côté manga (not_started / in_progress / completed / abandoned)
+        // pour que le vocabulaire reste géré par le registre de types.
+        $watch_status_counts = ['not_started' => 0, 'in_progress' => 0, 'completed' => 0, 'abandoned' => 0];
+
+        // Statut de DIFFUSION (champ `status` de la série, comme les mangas)
+        $airing_status_counts = ['terminée' => 0, 'en cours' => 0, 'en pause' => 0, 'abandonnée' => 0];
+
+        $episode_status_counts = ['à voir' => 0, 'en cours' => 0, 'terminé' => 0];
+        $time_by_episode_status = ['à voir' => 0.0, 'en cours' => 0.0, 'terminé' => 0.0];
+
+        $genres    = []; // name => ['series'=>n, 'episodes'=>n]
+        $genres_none = 0;
+        $genres_none_series = 0;
+        $formats   = []; // code => ['label'=>.., 'series'=>n, 'episodes'=>n]
+        $studios   = []; // name => ['series'=>n, 'episodes'=>n]
+
+        $favorite_count   = 0;
+        $mature_series    = 0;
+        $rewatch_total    = 0;
+        $rewatched_series = 0;
+
+        // Notation (mêmes clés que rating_definitions(), cf. includes/helpers.php)
+        $rating_counts = ['apprecie' => 0, 'mitige' => 0, 'deteste' => 0, '' => 0];
+
+        $complete_series  = 0; // épisode "dernier" présent (série entièrement récupérée)
+        $completed_series = 0; // entièrement visionnée
+        $started_not_done = 0;
+
+        $longest_series = ['name' => null, 'episodes' => 0];
+
+        // Time series (par mois), même logique que compute_stats()
+        $added_by_month = [];
+        $watched_by_month = [];
+
+        foreach ($data as $series) {
+            $episodes = $series['volumes'] ?? [];
+            $ecount   = count($episodes);
+            $total_episodes += $ecount;
+
+            if ($ecount > $longest_series['episodes']) {
+                $longest_series = ['name' => $series['name'], 'episodes' => $ecount];
+            }
+
+            // ── Statut de diffusion ──────────────────────────────────────────
+            $st = $series['status'] ?? '';
+            if (isset($airing_status_counts[$st])) {
+                $airing_status_counts[$st]++;
+            } else {
+                $airing_status_counts['en cours']++;
+            }
+
+            // ── Statut de visionnage (calculé) ───────────────────────────────
+            $watch_status = anime_watching_status($series);
+            if (!isset($watch_status_counts[$watch_status])) $watch_status_counts[$watch_status] = 0;
+            $watch_status_counts[$watch_status]++;
+
+            if (!empty($series['mature'])) $mature_series++;
+            if (!empty($series['favorite'])) $favorite_count++;
+
+            $rewatch = max(0, (int) ($series['rewatch_count'] ?? 0));
+            if ($rewatch > 0) {
+                $rewatch_total += $rewatch;
+                $rewatched_series++;
+            }
+
+            $rating = $series['rating'] ?? '';
+            if (!isset($rating_counts[$rating])) $rating = '';
+            $rating_counts[$rating]++;
+
+            // ── Genres ────────────────────────────────────────────────────────
+            $series_genres = stats_clean_list($series['genres'] ?? []);
+            if (count($series_genres) === 0) {
+                $genres_none += $ecount;
+                $genres_none_series += 1;
+            } else {
+                foreach ($series_genres as $g) {
+                    if (!isset($genres[$g])) $genres[$g] = ['series' => 0, 'episodes' => 0];
+                    $genres[$g]['series']   += 1;
+                    $genres[$g]['episodes'] += $ecount;
+                }
+            }
+
+            // ── Format ────────────────────────────────────────────────────────
+            $format = strtoupper(trim((string) ($series['anime_format'] ?? '')));
+            $format_key = $format !== '' ? $format : '__unknown__';
+            if (!isset($formats[$format_key])) {
+                $formats[$format_key] = [
+                    'label'    => $format !== '' && function_exists('anilist_format_label') ? anilist_format_label($format) : 'Format inconnu',
+                    'series'   => 0,
+                    'episodes' => 0,
+                ];
+            }
+            $formats[$format_key]['series']   += 1;
+            $formats[$format_key]['episodes'] += $ecount;
+
+            // ── Studios ───────────────────────────────────────────────────────
+            $series_studios = stats_clean_list($series['studios'] ?? []);
+            foreach ($series_studios as $st_name) {
+                if (!isset($studios[$st_name])) $studios[$st_name] = ['series' => 0, 'episodes' => 0];
+                $studios[$st_name]['series']   += 1;
+                $studios[$st_name]['episodes'] += $ecount;
+            }
+
+            // ── Progression / temps ──────────────────────────────────────────
+            $minutes_per_ep = stats_anime_episode_minutes($series, $anime_settings);
+            $has_last       = false;
+            $last_completed = false;
+            $has_watched    = false;
+            $has_unwatched  = false;
+
+            foreach ($episodes as $ep) {
+                $estatus = $ep['status'] ?? 'à voir';
+                if (!isset($episode_status_counts[$estatus])) $episode_status_counts[$estatus] = 0;
+                $episode_status_counts[$estatus] += 1;
+
+                if (!isset($time_by_episode_status[$estatus])) $time_by_episode_status[$estatus] = 0.0;
+                $time_by_episode_status[$estatus] += $minutes_per_ep;
+
+                if ($estatus === 'terminé') $has_watched = true;
+                else                         $has_unwatched = true;
+
+                if (!empty($ep['last'])) {
+                    $has_last = true;
+                    if ($estatus === 'terminé') $last_completed = true;
+                }
+
+                $added   = $ep['added_at'] ?? '';
+                $read_at = $ep['read_at']  ?? '';
+
+                if (is_string($added) && strlen($added) >= 7 && $added[4] === '-') {
+                    $month = substr($added, 0, 7);
+                    if (!isset($added_by_month[$month])) $added_by_month[$month] = 0;
+                    $added_by_month[$month] += 1;
+                }
+                if ($estatus === 'terminé' && is_string($read_at) && strlen($read_at) >= 7 && $read_at[4] === '-') {
+                    $rmonth = substr($read_at, 0, 7);
+                    if (!isset($watched_by_month[$rmonth])) $watched_by_month[$rmonth] = 0;
+                    $watched_by_month[$rmonth] += 1;
+                }
+            }
+
+            if ($has_last)                      $complete_series++;
+            if ($has_last && $last_completed)   $completed_series++;
+            if ($has_watched && $has_unwatched) $started_not_done++;
+        }
+
+        // ── Pourcentages ──────────────────────────────────────────────────────
+        $pct = function ($n) use ($total_episodes) {
+            return $total_episodes > 0 ? round(($n / $total_episodes) * 100, 1) : 0;
+        };
+        $episode_status_pct = [
+            'à voir'   => $pct($episode_status_counts['à voir']   ?? 0),
+            'en cours' => $pct($episode_status_counts['en cours'] ?? 0),
+            'terminé'  => $pct($episode_status_counts['terminé']  ?? 0),
+        ];
+        $completion_pct = $total_episodes > 0
+            ? round((($episode_status_counts['terminé'] ?? 0) / $total_episodes) * 100, 1)
+            : 0;
+        $series_done_pct = $total_series > 0
+            ? round(($completed_series / $total_series) * 100, 1)
+            : 0;
+
+        // ── Tri des dimensions ─────────────────────────────────────────────────
+        $to_sorted = function (array $assoc, string $count_key) {
+            $rows = [];
+            foreach ($assoc as $name => $vals) {
+                $rows[] = ['name' => $name, 'series' => $vals['series'] ?? 0, 'episodes' => $vals[$count_key] ?? 0];
+            }
+            usort($rows, fn($a, $b) => $b['episodes'] <=> $a['episodes']);
+            return $rows;
+        };
+        $genres_sorted  = $to_sorted($genres, 'episodes');
+        $studios_sorted = $to_sorted($studios, 'episodes');
+
+        $formats_sorted = [];
+        foreach ($formats as $key => $vals) {
+            $formats_sorted[] = [
+                'name'     => $vals['label'],
+                'series'   => $vals['series'],
+                'episodes' => $vals['episodes'],
+            ];
+        }
+        usort($formats_sorted, fn($a, $b) => $b['episodes'] <=> $a['episodes']);
+
+        // ── Temps de visionnage ─────────────────────────────────────────────────
+        $time_total = array_sum($time_by_episode_status);
+
+        // ── Évolution temporelle ────────────────────────────────────────────────
+        ksort($added_by_month);
+        $added_series = [];
+        $growth = [];
+        $running = 0;
+        foreach ($added_by_month as $month => $n) {
+            $running += $n;
+            $added_series[] = ['month' => $month, 'value' => $n];
+            $growth[]       = ['month' => $month, 'value' => $running];
+        }
+        ksort($watched_by_month);
+        $watched_series = [];
+        $watched_growth = [];
+        $running_w = 0;
+        foreach ($watched_by_month as $month => $n) {
+            $running_w += $n;
+            $watched_series[] = ['month' => $month, 'value' => $n];
+            $watched_growth[] = ['month' => $month, 'value' => $running_w];
+        }
+
+        return [
+            // KPI collection
+            'total_series'   => $total_series,
+            'total_episodes' => $total_episodes,
+            'total_genres'   => count($genres_sorted),
+            'total_formats'  => count($formats_sorted),
+            'total_studios'  => count($studios_sorted),
+            'favorite_count' => $favorite_count,
+            'mature_series'  => $mature_series,
+
+            // Visionnage
+            'watch_status_counts' => $watch_status_counts,
+            'episode_status_counts' => $episode_status_counts,
+            'episode_status_pct'    => $episode_status_pct,
+            'completion_pct'        => $completion_pct,
+
+            // Progression séries
+            'complete_series'  => $complete_series,
+            'completed_series' => $completed_series,
+            'started_not_done' => $started_not_done,
+            'series_done_pct'  => $series_done_pct,
+
+            // Statut de diffusion
+            'airing_status_counts' => $airing_status_counts,
+
+            // Temps
+            'time_by_episode_status' => $time_by_episode_status,
+            'time_total'             => $time_total,
+
+            // Revisionnages
+            'rewatch_total'    => $rewatch_total,
+            'rewatched_series' => $rewatched_series,
+
+            // Notation
+            'rating_counts' => $rating_counts,
+
+            // Dimensions
+            'genres'    => $genres_sorted,
+            'genres_none' => $genres_none,
+            'genres_none_series' => $genres_none_series,
+            'formats'   => $formats_sorted,
+            'studios'   => $studios_sorted,
+
+            // Séries
+            'longest_series' => $longest_series,
+
+            // Temporel
+            'added_by_month'   => $added_series,
+            'growth'           => $growth,
+            'watched_by_month' => $watched_series,
+            'watched_growth'   => $watched_growth,
+
+            // Réglages effectifs (pour l'affichage de la note explicative)
+            'settings' => $anime_settings,
         ];
     }
 }

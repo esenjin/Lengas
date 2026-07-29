@@ -505,7 +505,11 @@ document.addEventListener('DOMContentLoaded', function() {
     suggestionsList.style.display = 'none';
     wrapper.appendChild(suggestionsList);
 
-    const fields = ['name', 'author', 'publisher', 'categories', 'genres', 'other_contributors'];
+    // Studios et titres alternatifs (animés) inclus : la barre traverse les
+    // deux collections, elle doit pouvoir retrouver un animé par son studio
+    // ou par un titre autre que celui affiché sur sa carte, tout comme un
+    // manga se retrouve déjà par auteur ou éditeur.
+    const fields = ['name', 'author', 'publisher', 'categories', 'genres', 'other_contributors', 'studios', 'alt_titles'];
 
     // with_types=1 : la barre de recherche traverse les collections et chaque
     // suggestion indique celles où elle apparaît.

@@ -94,6 +94,18 @@ function anilist_recheck_diff_series(array $series, array $media): array {
         ];
     }
 
+    // ── Durée d'un épisode (bloc 13 : alimente le temps de visionnage) ───
+    $local_duration  = max(0, (int)($series['episode_duration'] ?? 0));
+    $remote_duration = max(0, (int)($media['duration'] ?? 0));
+    if ($remote_duration > 0 && $remote_duration !== $local_duration) {
+        $diffs[] = [
+            'field'  => 'episode_duration',
+            'label'  => 'Durée d\'un épisode',
+            'before' => $local_duration > 0 ? $local_duration . ' min' : '(inconnue)',
+            'after'  => $remote_duration . ' min',
+        ];
+    }
+
     // ── Genres ───────────────────────────────────────────────────────────
     $local_genres  = (array)($series['genres'] ?? []);
     $remote_genres = (array)($media['genres_fr'] ?? []);
@@ -348,6 +360,11 @@ function anilist_recheck_apply_series(array $data, string $series_id, array $fie
         // toujours ensemble.
         $data[$key]['categories'] = [$media['format_label'] ?? ''];
         $applied[] = 'format';
+    }
+
+    if (isset($wanted['episode_duration'])) {
+        $data[$key]['episode_duration'] = max(0, (int)($media['duration'] ?? 0));
+        $applied[] = 'episode_duration';
     }
 
     if (isset($wanted['genres'])) {

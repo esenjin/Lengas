@@ -213,6 +213,14 @@ function init_db(PDO $pdo): void {
         $pdo->exec("ALTER TABLE series ADD COLUMN anilist_synced_at INTEGER NOT NULL DEFAULT 0");
     } catch (Exception $e) { /* colonne déjà présente */ }
 
+    // ── Durée d'un épisode en minutes (champ `duration` d'Anilist, bloc 13) ────
+    // Alimente le temps de visionnage des statistiques Animethèque. Vide (0)
+    // quand Anilist ne la fournit pas : le calcul retombe alors sur le réglage
+    // par format (stats_get_anime_settings()).
+    try {
+        $pdo->exec("ALTER TABLE series ADD COLUMN episode_duration INTEGER NOT NULL DEFAULT 0");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
     // ── Garde-fou anti-doublon sur l'identifiant Anilist ───────────────────────
     // Index PARTIEL : la contrainte ne porte que sur les séries qui ont un
     // identifiant. Les mangas, tous à '', ne se gênent donc pas entre eux.
@@ -604,6 +612,7 @@ function load_data(): array {
             'watching_abandoned'     => (bool)($s['watching_abandoned'] ?? false),
             'rewatch_count'          => (int)($s['rewatch_count'] ?? 0),
             'anilist_synced_at'      => (int)($s['anilist_synced_at'] ?? 0),
+            'episode_duration'       => (int)($s['episode_duration'] ?? 0),
             'editions'               => $editions_by_series[$s['id']] ?? [],
             'volumes'                => $vols,
         ];
@@ -645,8 +654,8 @@ function save_data(array $data): void {
         }
 
         $upsertSeries = $db->prepare("
-            INSERT INTO series (id, name, type, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, anilist_synced_at)
-            VALUES (:id,:name,:type,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:anilist_synced_at)
+            INSERT INTO series (id, name, type, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, anilist_synced_at, episode_duration)
+            VALUES (:id,:name,:type,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:anilist_synced_at,:episode_duration)
             ON CONFLICT(id) DO UPDATE SET
                 name=excluded.name, type=excluded.type,
                 author=excluded.author, publisher=excluded.publisher,
@@ -662,7 +671,8 @@ function save_data(array $data): void {
                 anilist_image=excluded.anilist_image,
                 watching_abandoned=excluded.watching_abandoned,
                 rewatch_count=excluded.rewatch_count,
-                anilist_synced_at=excluded.anilist_synced_at
+                anilist_synced_at=excluded.anilist_synced_at,
+                episode_duration=excluded.episode_duration
         ");
 
         $deleteVols  = $db->prepare("DELETE FROM volumes WHERE series_id = ?");
@@ -712,6 +722,7 @@ function save_data(array $data): void {
                 ':watching_abandoned' => (int)($s['watching_abandoned'] ?? false),
                 ':rewatch_count'      => max(0, (int)($s['rewatch_count'] ?? 0)),
                 ':anilist_synced_at'  => max(0, (int)($s['anilist_synced_at'] ?? 0)),
+                ':episode_duration'   => max(0, (int)($s['episode_duration'] ?? 0)),
             ]);
 
             if (array_key_exists('editions', $s)) {
