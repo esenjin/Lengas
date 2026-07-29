@@ -524,15 +524,24 @@ document.addEventListener('DOMContentLoaded', function() {
         );
         const results = await Promise.all(promises);
 
-        // Une même valeur peut remonter de plusieurs champs : on cumule ses types.
+        // Une même valeur peut remonter de plusieurs champs pour un même type
+        // (ex. "Overlord" trouvé via "name" et "alt_titles" pour l'animé) : on
+        // déduplique par (valeur, type). On NE fusionne PAS les types entre eux :
+        // "Overlord" manga et "Overlord" animé restent deux entrées distinctes,
+        // chacune avec son propre badge, pour qu'on sache précisément laquelle
+        // on sélectionne.
         const merged = new Map();
         results.flat().forEach(item => {
             if (!item || typeof item.value !== 'string') return;
-            const types = merged.get(item.value) || [];
-            (item.types || []).forEach(t => { if (!types.includes(t)) types.push(t); });
-            merged.set(item.value, types);
+            const itemTypes = (item.types && item.types.length) ? item.types : [null];
+            itemTypes.forEach(type => {
+                const key = item.value + '\u0001' + (type || '');
+                if (!merged.has(key)) {
+                    merged.set(key, { value: item.value, types: type ? [type] : [] });
+                }
+            });
         });
-        return [...merged.entries()].map(([value, types]) => ({ value, types }));
+        return [...merged.values()];
     }
 
     // Si la suggestion n'existe que dans l'autre collection, on y bascule ;
