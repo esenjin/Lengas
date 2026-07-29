@@ -292,6 +292,15 @@ function update_episode(array $data, string $series_id, int $episode_index, stri
         anime_airing_finished($data[$key])
     );
 
+    // Écriture ciblée (Bloc 4 de la migration save_data(), cf.
+    // MIGRATION_SAVE_DATA.md) : seuls les épisodes (table `volumes`) de la
+    // série concernée sont réécrits en base, via replace_series_volumes().
+    // Contrairement à update_volume(), cette fonction ne touche jamais au
+    // statut de la SÉRIE (le statut de diffusion vient d'Anilist, jamais des
+    // épisodes vus) : pas d'upsert_series_row() nécessaire ici. Plus de
+    // save_data($data) en aval.
+    replace_series_volumes($series_id, $data[$key]['volumes']);
+
     return ['success' => true, 'data' => $data, 'message' => ''];
 }
 
@@ -318,6 +327,15 @@ function apply_status_to_all_episodes(array $data, string $series_id, string $st
         $data[$key]['volumes'],
         anime_airing_finished($data[$key])
     );
+
+    // Écriture ciblée (Bloc 4 de la migration save_data(), cf.
+    // MIGRATION_SAVE_DATA.md) : apply_status_to_all_volumes() a déjà réécrit
+    // les épisodes de la série une première fois ; anime_refresh_last_episode()
+    // est ensuite réappliqué ci-dessus pour le tag « dernier épisode », d'où
+    // cette seconde réécriture — sans elle, le tag recalculé resterait en
+    // mémoire sans jamais atteindre la base. Pas d'upsert_series_row() : le
+    // statut de la série n'est pas concerné (cf. update_episode()).
+    replace_series_volumes($series_id, $data[$key]['volumes']);
 
     return ['success' => true, 'data' => $data, 'message' => ''];
 }
@@ -351,6 +369,10 @@ function anime_mark_next_episode(array $data, string $series_id): array {
         ];
     }
 
+    // Bloc 4 de la migration save_data() → écritures ciblées (cf.
+    // MIGRATION_SAVE_DATA.md) : update_episode() écrit désormais directement
+    // en base (replace_series_volumes()) au moment de l'appel. Pas d'écriture
+    // supplémentaire nécessaire ici.
     $result = update_episode($data, $series_id, $index, episode_status_done(), null);
     if (empty($result['success'])) {
         return $result;

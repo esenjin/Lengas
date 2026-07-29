@@ -204,7 +204,7 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
     // diffusion est terminée et le compte complet.
     $episodes = anime_episodes_from_media($media);
 
-    $data[] = [
+    $new_series = [
         'id'   => $series_id,
         // Titre par défaut : romaji. Modifiable ensuite, mais uniquement par
         // sélection parmi les titres alternatifs.
@@ -251,6 +251,18 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
         // Épisodes déjà diffusés, numérotés 1..N (cf. fonctions/episodes.php).
         'volumes'            => $episodes,
     ];
+
+    // Écriture ciblée (Bloc 4 de la migration save_data(), cf.
+    // MIGRATION_SAVE_DATA.md) : seule la nouvelle série est écrite en base,
+    // via un upsert sur `series` + un remplacement des épisodes (table
+    // `volumes`) qui lui appartiennent. Une série animée fraîchement importée
+    // n'a jamais d'éditions physiques à ce stade (elles se saisissent ensuite
+    // depuis la fiche), donc pas de replace_series_editions() ici. Plus de
+    // save_data($data) en aval — aucune autre série n'est lue ni réécrite.
+    upsert_series_row($new_series);
+    replace_series_volumes($new_series['id'], $new_series['volumes']);
+
+    $data[] = $new_series;
 
     $count   = count($episodes);
     $created = $count > 0
@@ -358,6 +370,17 @@ function update_anime_series(array $data, string $series_id, array $fields): arr
             @unlink($current);
         }
         $data[$key]['image'] = $fields['new_image'];
+    }
+
+    // Écriture ciblée (Bloc 4 de la migration save_data(), cf.
+    // MIGRATION_SAVE_DATA.md) : upsert sur la seule ligne `series` modifiée.
+    // Les éditions physiques ne sont réécrites que si la clé `editions` a été
+    // fournie dans $fields — même comportement que l'ancien save_data(), qui
+    // ne touchait aux éditions que si le tableau série la contenait. Plus de
+    // save_data($data) en aval — aucune autre série n'est lue ni réécrite.
+    upsert_series_row($data[$key]);
+    if (array_key_exists('editions', $fields)) {
+        replace_series_editions($series_id, $data[$key]['editions']);
     }
 
     return [
