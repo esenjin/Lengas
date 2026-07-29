@@ -44,6 +44,8 @@ document.addEventListener('click', function(e) {
             document.getElementById('edit-series-reading-abandoned').checked = series.reading_abandoned || false;
             const editRating = document.getElementById('edit-series-rating');
             if (editRating) editRating.value = series.rating || '';
+            const editRereadCount = document.getElementById('edit-series-reread-count');
+            if (editRereadCount) editRereadCount.value = series.reread_count || 0;
             document.getElementById('current-series-image').src = series.image;
             const statusSelect = document.getElementById('edit-series-status');
             Array.from(statusSelect.options).forEach(option => {

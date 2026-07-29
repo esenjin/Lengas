@@ -221,6 +221,15 @@ function init_db(PDO $pdo): void {
         $pdo->exec("ALTER TABLE series ADD COLUMN episode_duration INTEGER NOT NULL DEFAULT 0");
     } catch (Exception $e) { /* colonne déjà présente */ }
 
+    // ── Nombre de relectures (pendant manga de rewatch_count) ──────────────────
+    // Contrairement à rewatch_count (alimenté par Anilist via le champ `repeat`
+    // d'une entrée de liste), reread_count n'a pas de source externe : c'est une
+    // saisie manuelle exclusivement, à l'ajout ou à la modification d'une série
+    // manga. Vaut 0 pour un animé (le revisionnage y suit rewatch_count).
+    try {
+        $pdo->exec("ALTER TABLE series ADD COLUMN reread_count INTEGER NOT NULL DEFAULT 0");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
     // ── Garde-fou anti-doublon sur l'identifiant Anilist ───────────────────────
     // Index PARTIEL : la contrainte ne porte que sur les séries qui ont un
     // identifiant. Les mangas, tous à '', ne se gênent donc pas entre eux.
@@ -613,6 +622,8 @@ function load_data(): array {
             'rewatch_count'          => (int)($s['rewatch_count'] ?? 0),
             'anilist_synced_at'      => (int)($s['anilist_synced_at'] ?? 0),
             'episode_duration'       => (int)($s['episode_duration'] ?? 0),
+            // ── Relectures (mangas) ───────────────────────────────────────────
+            'reread_count'           => (int)($s['reread_count'] ?? 0),
             'editions'               => $editions_by_series[$s['id']] ?? [],
             'volumes'                => $vols,
         ];
@@ -654,8 +665,8 @@ function save_data(array $data): void {
         }
 
         $upsertSeries = $db->prepare("
-            INSERT INTO series (id, name, type, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, anilist_synced_at, episode_duration)
-            VALUES (:id,:name,:type,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:anilist_synced_at,:episode_duration)
+            INSERT INTO series (id, name, type, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, anilist_synced_at, episode_duration, reread_count)
+            VALUES (:id,:name,:type,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:anilist_synced_at,:episode_duration,:reread_count)
             ON CONFLICT(id) DO UPDATE SET
                 name=excluded.name, type=excluded.type,
                 author=excluded.author, publisher=excluded.publisher,
@@ -672,7 +683,8 @@ function save_data(array $data): void {
                 watching_abandoned=excluded.watching_abandoned,
                 rewatch_count=excluded.rewatch_count,
                 anilist_synced_at=excluded.anilist_synced_at,
-                episode_duration=excluded.episode_duration
+                episode_duration=excluded.episode_duration,
+                reread_count=excluded.reread_count
         ");
 
         $deleteVols  = $db->prepare("DELETE FROM volumes WHERE series_id = ?");
@@ -723,6 +735,7 @@ function save_data(array $data): void {
                 ':rewatch_count'      => max(0, (int)($s['rewatch_count'] ?? 0)),
                 ':anilist_synced_at'  => max(0, (int)($s['anilist_synced_at'] ?? 0)),
                 ':episode_duration'   => max(0, (int)($s['episode_duration'] ?? 0)),
+                ':reread_count'       => max(0, (int)($s['reread_count'] ?? 0)),
             ]);
 
             if (array_key_exists('editions', $s)) {

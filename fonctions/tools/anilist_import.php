@@ -207,6 +207,13 @@ function anilist_import_build_preview(string $username, array $data, array $wish
             'episodes'          => $media['episodes'],
             'repeat'            => $entry['repeat'],
             'score'             => $entry['score'],
+            // Note déjà traduite par le connecteur (anilist_score_to_rating(),
+            // à partir de score(format: POINT_100) — fiable quel que soit le
+            // format d'affichage du compte). Sans cette ligne, seul le score
+            // BRUT ('score' ci-dessus) survit jusqu'à l'aperçu : 'rating'
+            // n'existait pas dans ce tableau, et la note ne pouvait jamais
+            // être reprise à l'écriture, quoi qu'applique la phase 2.
+            'rating'            => $entry['rating'],
             // Date de visionnage retenue par le site : completedAt, repli sur
             // updatedAt. Déjà calculée par le connecteur, simplement propagée
             // jusqu'à la phase d'import.
@@ -376,6 +383,15 @@ function anilist_import_create_library_entry(array $data, array $media, array $e
         // le cas ici. Un ré-import ne la coche ni ne la décoche jamais.
         $data[$key]['favorite'] = true;
     }
+
+    // Note : add_anime_series() pose toujours 'rating' => '' (aucun score à
+    // sa disposition, c'est un ajout unitaire hors contexte de liste). Ici, en
+    // revanche, $entry['rating'] a déjà été traduit par le connecteur
+    // (anilist_score_to_rating(), à partir de score(format: POINT_100) — donc
+    // fiable quel que soit le format d'affichage du compte, y compris les
+    // smileys). Sans cette ligne, la note Anilist n'est JAMAIS reprise à
+    // l'import, quel que soit le format de notation du compte.
+    $data[$key]['rating'] = sanitize_rating($entry['rating'] ?? '');
 
     return ['status' => 'created', 'message' => $entry['title'] . ' ajoutée.', 'data' => $data];
 }

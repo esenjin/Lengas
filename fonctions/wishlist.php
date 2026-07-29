@@ -329,9 +329,12 @@ function add_anime_from_wishlist(array $data, array $wishlist, int $index): arra
 
     $remove = remove_from_wishlist($wishlist, $index);
     return [
-        'success'  => true,
-        'data'     => $result['data'],
-        'wishlist' => $remove['success'] ? $remove['wishlist'] : $wishlist,
-        'message'  => $result['message'],
+        'success'   => true,
+        'data'      => $result['data'],
+        'wishlist'  => $remove['success'] ? $remove['wishlist'] : $wishlist,
+        'message'   => $result['message'],
+        // Propagé jusqu'à page-wishlist.php pour la redirection vers
+        // admin.php avec la modale d'édition de cette série déjà ouverte.
+        'series_id' => $result['series_id'] ?? '',
     ];
 }

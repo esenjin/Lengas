@@ -12,6 +12,19 @@ function ratingBadgeHtml(series) {
     return `<span class="rating-badge rating-${series.rating}" title="${def.label}" aria-label="${def.label}">${def.emoji}</span>`;
 }
 
+// Nombre de revisionnages (animés, rewatch_count) ou de relectures (mangas,
+// reread_count) → badge discret. Renvoie '' si le compteur est à 0 : ne pas
+// encombrer les cartes des séries jamais reprises, l'immense majorité.
+function rewatchBadgeHtml(series) {
+    if (!series) return '';
+    const isAnime = series.type === 'anime';
+    const count   = (isAnime ? series.rewatch_count : series.reread_count) || 0;
+    if (count <= 0) return '';
+    const noun  = isAnime ? 'revisionnage' : 'relecture';
+    const label = count + ' ' + noun + (count > 1 ? 's' : '');
+    return `<span class="rewatch-badge" title="${label}" aria-label="${label}">🔁 ×${count}</span>`;
+}
+
 // Fonction pour afficher une alerte personnalisée
 function showCustomAlert(title, message) {
     const modal = document.getElementById('custom-alert-modal');

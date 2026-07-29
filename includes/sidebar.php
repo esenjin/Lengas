@@ -371,6 +371,16 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                 if (publisherEl) publisherEl.value = params.get('prefill_publisher') || '';
                 document.getElementById('open-add-series-modal')?.click();
             }
+
+            /* Retour de page-wishlist.php après import d'un animé → modale
+               d'édition de la série fraîchement importée déjà ouverte (tag
+               favori, note, revisionnages, etc. à compléter). window.seriesData
+               (défini par admin.php, cf. assets/js/admin/anime.js) doit déjà
+               être en mémoire à ce stade : ce bloc s'exécute après lui. */
+            var editAnimeId = params.get('open_edit_anime');
+            if (editAnimeId && typeof window.openAnimeEditModalById === 'function') {
+                window.openAnimeEditModalById(editAnimeId);
+            }
         });
     }
 })();

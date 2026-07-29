@@ -184,6 +184,7 @@ function fillSeriesDetailModal(series) {
         `${(!isAnime && series.read_elsewhere) ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}` +
         `<span class="series-status-badge ${badge.cls}">${badge.icon}</span>` +
         ratingBadgeHtml(series) +
+        rewatchBadgeHtml(series) +
         reviewBadgeHtml(series) +
         (isAnime ? publicEditionsBadgeHtml(series) : '') +
         (isAnime ? publicAnilistBadgeHtml(series) : '') +

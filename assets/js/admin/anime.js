@@ -79,6 +79,7 @@ function createAnimeSeriesCard(series) {
                 ${series.watching_abandoned ? '<span class="watching-abandoned-badge">📕 visionnage abandonné</span>' : ''}
                 <span class="series-status-badge ${badge.cls}" data-anime-status-badge>${badge.icon}</span>
                 ${ratingBadgeHtml(series)}
+                ${rewatchBadgeHtml(series)}
                 ${series.has_review ? '<span class="review-badge">✏️ Critique</span>' : ''}
                 ${animeEditionsBadgeHtml(series)}
                 ${animeAnilistBadgeHtml(series)}
@@ -491,10 +492,6 @@ window.animeResultHtml = animeResultHtml;
         document.getElementById('edit-anime-format').textContent  = series.format_label || '—';
         document.getElementById('edit-anime-genres').textContent  = genres.length ? genres.join(', ') : 'aucun';
         document.getElementById('edit-anime-status').textContent  = animeStatusBadge(series.status).icon;
-        document.getElementById('edit-anime-rewatch').textContent =
-            (series.rewatch_count || 0) === 0
-                ? 'aucun revisionnage'
-                : series.rewatch_count + ' revisionnage' + (series.rewatch_count > 1 ? 's' : '');
 
         const link = document.getElementById('edit-anime-link');
         if (series.anilist_url) {
@@ -511,6 +508,7 @@ window.animeResultHtml = animeResultHtml;
         document.getElementById('edit-anime-favorite').checked  = !!series.favorite;
         document.getElementById('edit-anime-watching-abandoned').checked = !!series.watching_abandoned;
         document.getElementById('edit-anime-rating').value = series.rating || '';
+        document.getElementById('edit-anime-rewatch-count').value = series.rewatch_count || 0;
 
         // Éditions physiques.
         const editions = series.editions || [];
@@ -561,6 +559,17 @@ window.animeResultHtml = animeResultHtml;
         e.stopPropagation();
         fill(series);
     }, true /* capture : passe avant les gestionnaires des mangas */);
+
+    // Ouverture automatique par identifiant de série, depuis l'extérieur de ce
+    // fichier (includes/sidebar.php, retour de page-wishlist.php après import
+    // d'un animé) : ?open_edit_anime=<id>. window.seriesData couvre déjà toute
+    // la collection filtrée par type, pas seulement les cartes chargées à
+    // l'écran (pagination), donc la série s'y trouve dès le premier rendu.
+    window.openAnimeEditModalById = function (seriesId) {
+        const list = Array.isArray(window.seriesData) ? window.seriesData : Object.values(window.seriesData || {});
+        const series = list.find(s => s && s.id === seriesId && s.type === 'anime');
+        if (series) fill(series);
+    };
 
     // Garde-fou de taille, identique à celui des mangas.
     document.getElementById('edit-anime-form')?.addEventListener('submit', function (e) {

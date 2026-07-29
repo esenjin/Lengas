@@ -889,7 +889,7 @@ $anime_chart_payload = [
                 <div class="funfact">
                     <span class="funfact-label">Revisionnages cumulés</span>
                     <span class="funfact-value"><?= $anime_stats['rewatch_total'] ?><?php if ($anime_stats['rewatched_series'] > 0): ?> <em>(<?= $plural($anime_stats['rewatched_series'], 'série') ?> concernée<?= $anime_stats['rewatched_series'] > 1 ? 's' : '' ?>)</em><?php endif; ?></span>
-                    <span class="funfact-note">Nombre total de revisionnages déclarés sur Anilist, toutes séries confondues.</span>
+                    <span class="funfact-note">Nombre total de revisionnages déclarés, toutes séries confondues.</span>
                 </div>
                 <div class="funfact">
                     <span class="funfact-label">Studio dominant</span>

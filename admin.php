@@ -59,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $read_elsewhere = !empty($_POST['read_elsewhere']);
     $reading_abandoned = !empty($_POST['reading_abandoned']);
     $rating = sanitize_rating($_POST['rating'] ?? '');
+    $reread_count = max(0, (int)($_POST['reread_count'] ?? 0));
 
     // Initialiser $image à null par défaut
     $image = null;
@@ -75,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
 
     // Appeler add_series avec $image (qui peut être null)
     // Cette modale ne crée que des mangas et light-novels (cf. registre de types).
-    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned, $rating, 'manga');
+    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned, $rating, 'manga', $reread_count);
 
     if ($result['success']) {
         save_data($result['data']);
@@ -234,6 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_anime_series']
         'favorite'           => !empty($_POST['anime_favorite']),
         'watching_abandoned' => !empty($_POST['anime_watching_abandoned']),
         'rating'             => $_POST['anime_rating'] ?? '',
+        'rewatch_count'      => max(0, (int)($_POST['anime_rewatch_count'] ?? 0)),
         // Cocher « Éditions physiques » sans rien saisir revient à n'en déclarer
         // aucune : le tableau vide efface alors les commentaires existants.
         'editions'           => !empty($_POST['anime_has_editions'])
@@ -499,6 +501,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $edit_read_elsewhere = !empty($_POST['edit_read_elsewhere']);
     $edit_reading_abandoned = !empty($_POST['edit_reading_abandoned']);
     $edit_rating = sanitize_rating($_POST['edit_rating'] ?? '');
+    $edit_reread_count = max(0, (int)($_POST['edit_reread_count'] ?? 0));
 
     $new_image = null;
     if (!empty($_FILES['edit_image']['name'])) {
@@ -511,7 +514,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         }
     }
 
-    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned, $edit_rating);
+    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned, $edit_rating, $edit_reread_count);
     if ($result['success']) {
         save_data($result['data']);
         // Réchauffer le cache MangaUpdates pour la série modifiée
@@ -708,6 +711,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 'reading_abandoned'          => (bool)($series['reading_abandoned'] ?? false),
                 'rating'                     => $series['rating'] ?? '',
                 'has_review'                 => isset($review_series_ids[$series['id']]),
+                'reread_count'               => (int)($series['reread_count'] ?? 0),
                 // ── Champs animé (vides ou nuls sur un manga) ────────────────
                 'anilist_id'                 => $series['anilist_id'] ?? '',
                 'anilist_url'                => $series['anilist_url'] ?? '',
@@ -1142,6 +1146,8 @@ if ($search_term) {
                         <option value="mitige">Mi-figue mi-raisin 😑</option>
                         <option value="deteste">Je n'ai pas aimé 😠</option>
                     </select>
+                    <p>Nombre de relectures (facultatif) :</p>
+                    <input type="number" name="reread_count" id="add-series-reread-count" min="0" step="1" value="0" autocomplete="off">
                     <p>Vignette :</p>
                     <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp">
                     <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
@@ -1324,6 +1330,8 @@ if ($search_term) {
                         <option value="mitige">Mi-figue mi-raisin 😑</option>
                         <option value="deteste">Je n'ai pas aimé 😠</option>
                     </select>
+                    <p>Nombre de relectures (facultatif) :</p>
+                    <input type="number" name="edit_reread_count" id="edit-series-reread-count" min="0" step="1" value="0" autocomplete="off">
                     <div class="current-image-container">
                         <p>Vignette actuelle :</p>
                         <img id="current-series-image" src="" alt="Image actuelle" style="max-width: 100px; margin-bottom: 10px;">
@@ -1406,10 +1414,6 @@ if ($search_term) {
                                 <span class="anime-readonly-value" id="edit-anime-status"></span>
                             </div>
                             <div class="anime-readonly-item">
-                                <span class="anime-readonly-label">Nombre de visionnages</span>
-                                <span class="anime-readonly-value" id="edit-anime-rewatch"></span>
-                            </div>
-                            <div class="anime-readonly-item">
                                 <span class="anime-readonly-label">Fiche Anilist</span>
                                 <span class="anime-readonly-value">
                                     <a id="edit-anime-link" href="#" target="_blank" rel="noopener">Ouvrir la fiche ↗</a>
@@ -1437,6 +1441,10 @@ if ($search_term) {
                         <option value="mitige">Mi-figue mi-raisin 😑</option>
                         <option value="deteste">Je n'ai pas aimé 😠</option>
                     </select>
+
+                    <p>Nombre de revisionnages :</p>
+                    <input type="number" name="anime_rewatch_count" id="edit-anime-rewatch-count" min="0" step="1" value="0" autocomplete="off">
+                    <p class="hint">Normalement importé depuis Anilist (champ « revisionnages » d'une entrée de liste), mais corrigeable ici à la main.</p>
 
                     <label>
                         <input type="checkbox" name="anime_has_editions" id="edit-anime-has-editions"> Éditions physiques 📀

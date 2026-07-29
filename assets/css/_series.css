@@ -147,6 +147,23 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Nombre de revisionnages (animés) ou de relectures (mangas) : même famille
+   visuelle que .rating-badge, en plus discret (texte plutôt qu'emoji seul). */
+.rewatch-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.72em;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text-gray);
+    cursor: help;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .rating-apprecie {
     background: rgba(74, 222, 128, 0.12);
     border-color: rgba(74, 222, 128, 0.28);

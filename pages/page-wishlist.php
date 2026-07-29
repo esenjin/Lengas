@@ -90,6 +90,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'message'   => $result['message'] ?? '',
                 'wishlist'  => $result['wishlist'] ?? $wishlist,
                 'type'      => 'anime',
+                // Identifiant de la série fraîchement importée : permet au
+                // front de rediriger vers admin.php avec sa modale d'édition
+                // déjà ouverte (favoris, note, revisionnages… à compléter).
+                'series_id' => $result['series_id'] ?? '',
             ]);
             exit;
         }
@@ -217,7 +221,9 @@ $wishlist = load_wishlist();
 
         </div>
 
-        <!-- Modale édition entrée -->
+        <!-- Modale édition entrée (mangas uniquement : un animé n'a rien à y
+             faire, son studio étant fixé par Anilist et son titre également —
+             il n'a d'ailleurs plus de bouton « Modifier » du tout). -->
         <div class="modal" id="edit-wishlist-modal">
             <div class="modal-content modal-content--narrow">
                 <span class="close-modal" id="close-edit-wishlist-modal">&times;</span>
@@ -225,24 +231,12 @@ $wishlist = load_wishlist();
                 <form id="edit-wishlist-form" autocomplete="off">
                     <input type="hidden" id="edit-wishlist-index">
 
-                    <!-- Champs manga -->
-                    <div id="edit-wishlist-fields-manga">
-                        <p>Nom :</p>
-                        <input type="text" id="edit-wishlist-name"      placeholder="Nom de la série">
-                        <p>Auteur :</p>
-                        <input type="text" id="edit-wishlist-author"    placeholder="Auteur">
-                        <p>Éditeur :</p>
-                        <input type="text" id="edit-wishlist-publisher" placeholder="Éditeur">
-                    </div>
-
-                    <!-- Champs animé : titre et identifiant Anilist figés (Anilist fait
-                         autorité), seul le studio se corrige à la main. -->
-                    <div id="edit-wishlist-fields-anime" hidden>
-                        <p>Titre <span class="hint">(fixé par Anilist)</span> :</p>
-                        <p class="anime-readonly-value" id="edit-wishlist-anime-name"></p>
-                        <p>Studio :</p>
-                        <input type="text" id="edit-wishlist-studio" placeholder="Studio">
-                    </div>
+                    <p>Nom :</p>
+                    <input type="text" id="edit-wishlist-name"      placeholder="Nom de la série">
+                    <p>Auteur :</p>
+                    <input type="text" id="edit-wishlist-author"    placeholder="Auteur">
+                    <p>Éditeur :</p>
+                    <input type="text" id="edit-wishlist-publisher" placeholder="Éditeur">
 
                     <button type="submit" class="button">Mettre à jour</button>
                 </form>
@@ -482,22 +476,16 @@ $wishlist = load_wishlist();
                 });
             });
 
+            // Bouton absent pour les animés (cf. rendu ci-dessus) : ce
+            // gestionnaire ne concerne donc plus que des entrées manga.
             document.querySelectorAll('.edit-wishlist-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const index = parseInt(this.dataset.index);
                     const item  = wishlistData[index];
-                    const isAnime = item.type === 'anime';
                     document.getElementById('edit-wishlist-index').value = index;
-                    document.getElementById('edit-wishlist-fields-manga').hidden = isAnime;
-                    document.getElementById('edit-wishlist-fields-anime').hidden = !isAnime;
-                    if (isAnime) {
-                        document.getElementById('edit-wishlist-anime-name').textContent = item.name;
-                        document.getElementById('edit-wishlist-studio').value = item.studio || '';
-                    } else {
-                        document.getElementById('edit-wishlist-name').value      = item.name;
-                        document.getElementById('edit-wishlist-author').value    = item.author;
-                        document.getElementById('edit-wishlist-publisher').value = item.publisher;
-                    }
+                    document.getElementById('edit-wishlist-name').value      = item.name;
+                    document.getElementById('edit-wishlist-author').value    = item.author;
+                    document.getElementById('edit-wishlist-publisher').value = item.publisher;
                     document.getElementById('edit-wishlist-modal').classList.add('modal-active');
                 });
             });
@@ -576,19 +564,17 @@ $wishlist = load_wishlist();
             }
         });
 
-        // ── Modifier une entrée ───────────────────────────────────────────────
+        // ── Modifier une entrée (mangas uniquement) ───────────────────────────
         document.getElementById('edit-wishlist-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const index     = document.getElementById('edit-wishlist-index').value;
-            const isAnime   = !document.getElementById('edit-wishlist-fields-anime').hidden;
-            const name      = isAnime ? '' : document.getElementById('edit-wishlist-name').value;
-            const author    = isAnime ? '' : document.getElementById('edit-wishlist-author').value;
-            const publisher = isAnime ? '' : document.getElementById('edit-wishlist-publisher').value;
-            const studio    = isAnime ? document.getElementById('edit-wishlist-studio').value : '';
+            const name      = document.getElementById('edit-wishlist-name').value;
+            const author    = document.getElementById('edit-wishlist-author').value;
+            const publisher = document.getElementById('edit-wishlist-publisher').value;
             const res = await fetch('page-wishlist.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `edit_wishlist=true&index=${index}&name=${encodeURIComponent(name)}&author=${encodeURIComponent(author)}&publisher=${encodeURIComponent(publisher)}&studio=${encodeURIComponent(studio)}`
+                body: `edit_wishlist=true&index=${index}&name=${encodeURIComponent(name)}&author=${encodeURIComponent(author)}&publisher=${encodeURIComponent(publisher)}`
             });
             const data = await res.json();
             if (data.success) {
@@ -620,11 +606,14 @@ $wishlist = load_wishlist();
                 }
 
                 if (data.type === 'anime') {
-                    // Import déjà terminé côté serveur : on reste sur la page,
-                    // la wishlist se met simplement à jour. Aucun aller-retour
-                    // vers admin.php n'est nécessaire.
-                    renderWishlist(data.wishlist);
-                    showCustomAlert('Ajouté', (data.message || 'Série animée importée avec succès.'));
+                    // Import déjà terminé côté serveur : direction admin.php,
+                    // avec la modale d'édition de la série fraîchement importée
+                    // déjà ouverte (pour le tag favori, la note, les
+                    // revisionnages, etc.) — plutôt que de rester ici où il n'y
+                    // a plus rien à faire pour cette série.
+                    const params = new URLSearchParams({ type: 'anime' });
+                    if (data.series_id) params.set('open_edit_anime', data.series_id);
+                    window.location.href = '../admin.php?' + params.toString();
                 } else {
                     renderWishlist(data.wishlist);
                     const params = new URLSearchParams({
@@ -731,9 +720,10 @@ $wishlist = load_wishlist();
                         <button class="add-from-wishlist-btn button-icon" title="Ajouter à la collection" data-index="${index}">
                             <img src="https://api.iconify.design/mdi/plus-circle.svg?color=%234ade80" width="18" height="18" alt="">
                         </button>
+                        ${isAnime ? '' : `
                         <button class="edit-wishlist-btn button-icon" title="Modifier" data-index="${index}">
                             <img src="https://api.iconify.design/mdi/pencil.svg?color=%23c084fc" width="18" height="18" alt="">
-                        </button>
+                        </button>`}
                         <button class="remove-from-wishlist-btn button-icon" title="Supprimer" data-index="${index}">
                             <img src="https://api.iconify.design/mdi/trash-can.svg?color=%23f87171" width="18" height="18" alt="">
                         </button>

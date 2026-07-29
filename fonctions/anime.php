@@ -272,15 +272,18 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
 
 // Met à jour les SEULS champs personnalisables d'un animé.
 //
-// Tout le reste (studios, format, genres, statut de diffusion, lien Anilist,
-// nombre de visionnages) est délibérément absent de cette fonction : ces champs
-// ne sont pas éditables, et ne doivent pas pouvoir l'être par un POST forgé.
+// Tout le reste (studios, format, genres, statut de diffusion, lien Anilist)
+// est délibérément absent de cette fonction : ces champs ne sont pas
+// éditables, et ne doivent pas pouvoir l'être par un POST forgé.
 //
 // $fields accepte :
 //   name                 titre choisi — REFUSÉ s'il ne figure pas dans les
 //                        titres alternatifs connus de la série
 //   mature, favorite, watching_abandoned   booléens
 //   rating               note du site ('' = aucune)
+//   rewatch_count        nombre de revisionnages — normalement importé
+//                        d'Anilist (champ `repeat`), mais corrigeable ici à la
+//                        main (série revue hors suivi Anilist, oubli, etc.)
 //   editions             liste de commentaires d'éditions physiques
 //   new_image            chemin d'une vignette fraîchement téléversée
 //   remove_image         true pour effacer la vignette personnalisée
@@ -324,6 +327,9 @@ function update_anime_series(array $data, string $series_id, array $fields): arr
     }
     if (array_key_exists('rating', $fields)) {
         $data[$key]['rating'] = sanitize_rating($fields['rating']);
+    }
+    if (array_key_exists('rewatch_count', $fields)) {
+        $data[$key]['rewatch_count'] = max(0, (int)$fields['rewatch_count']);
     }
 
     // ── Éditions physiques ──────────────────────────────────────────────────

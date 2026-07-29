@@ -74,6 +74,14 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* [hidden] a la même spécificité que .anime-sync-badge : sans cette règle,
+   le display:inline-flex ci-dessus l'emporterait (dernier déclaré) et
+   l'attribut hidden posé par anime.js (animeSyncSetBadge) n'aurait plus
+   aucun effet — le badge resterait visible, vide, en permanence. */
+.anime-sync-badge[hidden] {
+    display: none;
+}
+
 .anime-sync-badge .spinner {
     margin-left: 0;
     width: 12px;
