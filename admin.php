@@ -529,11 +529,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
 }
 
 // Supprimer une série
+//
+// Bloc 1 de la migration save_data() → écritures ciblées : delete_series()
+// écrit désormais directement en base (delete_series_row()) au moment de
+// l'appel. Plus de save_data($result['data']) ici — la suppression est déjà
+// effective, et $result['data'] n'est plus qu'une collection d'affichage.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_series'])) {
     $series_id = $_POST['series_id'] ?? '';
     $result = delete_series($data, $series_id);
     if ($result['success']) {
-        save_data($result['data']);
         $_SESSION['success_message'] = $result['message'];
         echo "OK";
     } else {

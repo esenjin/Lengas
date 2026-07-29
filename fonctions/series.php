@@ -183,6 +183,13 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
 }
 
 // Supprimer une série
+//
+// Bloc 1 de la migration save_data() → écritures ciblées (cf.
+// MIGRATION_SAVE_DATA.md) : la suppression est effective en base dès cet
+// appel, via delete_series_row() (DELETE ciblé + ON DELETE CASCADE sur
+// volumes/series_editions). L'appelant n'a plus besoin d'appeler save_data()
+// derrière — $data n'est renvoyé que pour permettre de réafficher la
+// collection à jour côté admin, il ne sert plus à répercuter la suppression.
 function delete_series($data, $series_id) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
@@ -205,6 +212,10 @@ function delete_series($data, $series_id) {
     if ($anilist_image !== '' && file_exists($anilist_image)) {
         @unlink($anilist_image);
     }
+
+    // Écriture ciblée : supprime UNIQUEMENT cette série (+ cascade tomes/
+    // éditions) en base. Plus de transit par un save_data($data_sans_la_série).
+    delete_series_row($series_id);
 
     unset($data[$series_key]);
     return [

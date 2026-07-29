@@ -636,8 +636,8 @@ function load_data(): array {
  *
  * ⚠️ SYNCHRONISATION INTÉGRALE — À LIRE AVANT TOUT APPEL ⚠️
  * Cette fonction ne fait pas qu'écrire : elle SUPPRIME de la base toute série
- * absente de $data (c'est ce qui fait fonctionner delete_series()). Elle attend
- * donc TOUJOURS la collection COMPLÈTE, tous types confondus.
+ * absente de $data. Elle attend donc TOUJOURS la collection COMPLÈTE, tous
+ * types confondus.
  *
  * Ne lui passez jamais un tableau filtré — ni par type (series_of_type()), ni par
  * recherche, ni par statut. En vue Mangathèque, un tableau filtré ne contient
@@ -647,6 +647,11 @@ function load_data(): array {
  * Règle pratique : $data reste intact pour l'écriture, le filtrage par type se
  * fait en aval sur une COPIE dédiée à l'affichage ($filtered_data), exactement
  * comme le filtre de statuts.
+ *
+ * Migration en cours (cf. MIGRATION_SAVE_DATA.md) : delete_series() (Bloc 1)
+ * n'appelle plus save_data() — elle écrit directement via delete_series_row().
+ * Les appelants restants seront migrés bloc par bloc jusqu'à la suppression
+ * de cette fonction (Bloc 7).
  */
 function save_data(array $data): void {
     $db = get_db();
