@@ -318,6 +318,13 @@ function anilist_recheck_build_report(array $data, bool $force = false, $on_prog
 // c'est la même fenêtre que celle utilisée pour construire le rapport, la
 // revalidation ne re-sollicite donc quasiment jamais le réseau).
 //
+// Écriture ciblée (Bloc 5 de la migration save_data(), cf.
+// MIGRATION_SAVE_DATA.md) : dès qu'au moins un champ est réellement appliqué
+// (ou qu'un nouveau titre alternatif est accepté), la fonction upserte
+// elle-même la ligne série concernée (upsert_series_row()). Cette fonction ne
+// touche jamais aux tomes/épisodes (voir en-tête du fichier) : pas besoin de
+// replace_series_volumes() ici.
+//
 // Retour : ['success', 'data', 'message']
 function anilist_recheck_apply_series(array $data, string $series_id, array $fields_to_apply, bool $accept_new_titles): array {
     $found = find_series_by_id($data, $series_id);
@@ -426,7 +433,15 @@ function anilist_recheck_apply_series(array $data, string $series_id, array $fie
     if (empty($applied) && empty($failed)) {
         // Cas réel d'absence de sélection (aucun $fields_to_apply reconnu et
         // $accept_new_titles faux) : le seul cas où ce message est exact.
+        // Rien n'a été modifié en mémoire : aucune écriture en base non plus.
         return ['success' => true, 'data' => $data, 'message' => $series['name'] . ' — aucune case sélectionnée, rien appliqué.'];
+    }
+
+    // Au moins un champ a été appliqué (même si certains ont échoué à côté) :
+    // on écrit la ligne série mise à jour. Un échec seul (aucun $applied) ne
+    // modifie rien en mémoire, donc rien à upserter dans ce cas.
+    if (!empty($applied)) {
+        upsert_series_row($data[$key]);
     }
 
     $bits = [];
@@ -448,14 +463,16 @@ function anilist_recheck_apply_series(array $data, string $series_id, array $fie
 // sélectionnées » du rapport). $selections : [series_id => ['fields' => [...],
 // 'accept_new_titles' => bool]].
 //
-// Fait UN SEUL save_data() final, comme les autres outils par lot.
+// Écriture ciblée (Bloc 5) : chaque série traitée est déjà upsertée par
+// anilist_recheck_apply_series() en cas de succès — plus de save_data()
+// final ici. $data ne sert plus qu'à faire progresser le lot en mémoire
+// (retrouver le titre d'une série en erreur, notamment).
 //
 // Retour : ['success', 'applied' => [messages], 'errors' => [['title','message']]]
 function anilist_recheck_apply_batch(array $selections): array {
     $data    = load_data();
     $applied = [];
     $errors  = [];
-    $changed = false;
 
     foreach ($selections as $series_id => $selection) {
         $fields            = (array)($selection['fields'] ?? []);
@@ -469,15 +486,10 @@ function anilist_recheck_apply_batch(array $selections): array {
         if (!empty($result['success'])) {
             $data      = $result['data'];
             $applied[] = $result['message'];
-            $changed   = true;
         } else {
             $found     = find_series_by_id($data, (string)$series_id);
             $errors[] = ['title' => $found ? $found['data']['name'] : (string)$series_id, 'message' => $result['message']];
         }
-    }
-
-    if ($changed) {
-        save_data($data);
     }
 
     return ['success' => true, 'applied' => $applied, 'errors' => $errors];

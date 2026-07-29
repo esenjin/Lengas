@@ -268,6 +268,14 @@ function babengas_series_without_url(array $data): array {
 
 // ── Enregistrement d'URL Babelio validées ───────────────────────────────────
 // Format attendu : $associations[series_id] = url  (même contrat que MangaUpdates)
+//
+// Écriture ciblée (Bloc 5 de la migration save_data(), cf.
+// MIGRATION_SAVE_DATA.md) : upsert_series_row() sur chaque série dont l'URL
+// Babelio a effectivement changé (association ou retrait), au fil de la
+// boucle — plus de save_data() sur la collection complète. Le nombre de
+// tomes VF lui-même (babelio_cache) reste dans son propre cache, distinct de
+// la table `series` : il n'a jamais transité par save_data() ni par cette
+// fonction.
 function babelio_save_associations(array &$data, array $associations): array {
     $saved = 0;
 
@@ -279,20 +287,18 @@ function babelio_save_associations(array &$data, array $associations): array {
         // Chaîne vide : on autorise le retrait de l'association
         if ($url === '') {
             $series['babelio_url'] = '';
+            upsert_series_row($series);
             $saved++;
             continue;
         }
 
         if (babelio_url_is_valid($url)) {
             $series['babelio_url'] = $url;
+            upsert_series_row($series);
             $saved++;
         }
     }
     unset($series);
-
-    if ($saved > 0) {
-        save_data($data);
-    }
 
     return ['success' => true, 'saved' => $saved];
 }

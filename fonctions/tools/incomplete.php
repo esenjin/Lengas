@@ -29,6 +29,13 @@ function build_incomplete_report(array $data): array {
 }
 
 // Ajoute un tome manquant à une série (action « Ajouter » de l'outil).
+//
+// Écriture ciblée (Bloc 5 de la migration save_data(), cf.
+// MIGRATION_SAVE_DATA.md) : add_volume_to_series() (déjà migrée au Bloc 3)
+// écrit elle-même les tomes de la série en base via replace_series_volumes().
+// Le save_data($data) qui suivait ici était devenu redondant depuis le Bloc 3
+// (cf. note d'implémentation de ce bloc dans MIGRATION_SAVE_DATA.md) — il est
+// désormais supprimé.
 function add_missing_volume(array &$data, string $series_id, int $volume_number): array {
     if ($series_id === '' || $volume_number <= 0) {
         return ['success' => false, 'message' => 'Série ou numéro de tome invalide.'];
@@ -37,7 +44,6 @@ function add_missing_volume(array &$data, string $series_id, int $volume_number)
     $result = add_volume_to_series($data, $series_id, $volume_number, 'à lire', false, false);
     if (!empty($result['success'])) {
         $data = $result['data'];
-        save_data($data);
         return ['success' => true];
     }
 
@@ -45,6 +51,11 @@ function add_missing_volume(array &$data, string $series_id, int $volume_number)
 }
 
 // Ajoute d'un coup tous les tomes manquants d'une série.
+//
+// Écriture ciblée (Bloc 5) : chaque appel à add_volume_to_series() écrit déjà
+// les tomes de la série en base — plus de save_data() final ici (même
+// redondance que add_missing_volume() ci-dessus, supprimée pour la même
+// raison).
 function add_all_missing_volumes(array &$data, string $series_id, array $missing_volumes): array {
     $missing_volumes = array_values(array_filter(array_map('intval', $missing_volumes), fn($n) => $n > 0));
 
@@ -60,6 +71,5 @@ function add_all_missing_volumes(array &$data, string $series_id, array $missing
         $data = $result['data'];
     }
 
-    save_data($data);
     return ['success' => true];
 }

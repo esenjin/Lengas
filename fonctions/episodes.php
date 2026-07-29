@@ -250,6 +250,13 @@ function anime_next_episode_index($series): int {
 //   • passage à « terminé » sans date → date du jour
 //   • épisode déjà « terminé » qui le reste → date conservée
 //   • sortie du statut « terminé » → date effacée
+// Retour : ['success', 'data', 'message']
+//
+// Écriture ciblée (Bloc 4 de la migration save_data() → écritures ciblées,
+// cf. MIGRATION_SAVE_DATA.md) : ne touche jamais au `status` de la série
+// (contrairement à update_volume(), cf. Bloc 3) — le statut de diffusion
+// vient d'Anilist et ne se déduit pas des épisodes vus. Un seul
+// replace_series_volumes() suffit, pas d'upsert_series_row().
 function update_episode(array $data, string $series_id, int $episode_index, string $status, ?string $watched_at = null): array {
     $found = find_series_by_id($data, $series_id);
     if (!$found) {
@@ -292,13 +299,6 @@ function update_episode(array $data, string $series_id, int $episode_index, stri
         anime_airing_finished($data[$key])
     );
 
-    // Écriture ciblée (Bloc 4 de la migration save_data(), cf.
-    // MIGRATION_SAVE_DATA.md) : seuls les épisodes (table `volumes`) de la
-    // série concernée sont réécrits en base, via replace_series_volumes().
-    // Contrairement à update_volume(), cette fonction ne touche jamais au
-    // statut de la SÉRIE (le statut de diffusion vient d'Anilist, jamais des
-    // épisodes vus) : pas d'upsert_series_row() nécessaire ici. Plus de
-    // save_data($data) en aval.
     replace_series_volumes($series_id, $data[$key]['volumes']);
 
     return ['success' => true, 'data' => $data, 'message' => ''];
@@ -307,6 +307,16 @@ function update_episode(array $data, string $series_id, int $episode_index, stri
 // Applique un statut de visionnage (et sa date) à TOUS les épisodes d'une série.
 // C'est le pendant de l'action « tout marquer comme terminé » des tomes : la
 // mécanique est strictement la même, elle n'est donc pas réécrite ici.
+//
+// Écriture ciblée (Bloc 4 de la migration save_data() → écritures ciblées,
+// cf. MIGRATION_SAVE_DATA.md) : s'appuie sur apply_status_to_all_volumes()
+// (déjà migrée au Bloc 3, qui écrit déjà les épisodes une première fois),
+// mais réapplique ensuite anime_refresh_last_episode() en mémoire pour le
+// tag « dernier épisode ». Une SECONDE replace_series_volumes() est donc
+// nécessaire après ce recalcul — sans elle, le tag recalculé resterait en
+// mémoire sans jamais atteindre la base. Léger travail redondant (deux
+// réécritures des mêmes lignes `volumes` en un seul appel), sans conséquence
+// fonctionnelle.
 function apply_status_to_all_episodes(array $data, string $series_id, string $status, ?string $watched_at = null): array {
     $found = find_series_by_id($data, $series_id);
     if (!$found) {
@@ -328,13 +338,6 @@ function apply_status_to_all_episodes(array $data, string $series_id, string $st
         anime_airing_finished($data[$key])
     );
 
-    // Écriture ciblée (Bloc 4 de la migration save_data(), cf.
-    // MIGRATION_SAVE_DATA.md) : apply_status_to_all_volumes() a déjà réécrit
-    // les épisodes de la série une première fois ; anime_refresh_last_episode()
-    // est ensuite réappliqué ci-dessus pour le tag « dernier épisode », d'où
-    // cette seconde réécriture — sans elle, le tag recalculé resterait en
-    // mémoire sans jamais atteindre la base. Pas d'upsert_series_row() : le
-    // statut de la série n'est pas concerné (cf. update_episode()).
     replace_series_volumes($series_id, $data[$key]['volumes']);
 
     return ['success' => true, 'data' => $data, 'message' => ''];
@@ -346,6 +349,11 @@ function apply_status_to_all_episodes(array $data, string $series_id, string $st
 // là où le même bouton, sur un manga, ouvre la modale d'ajout de tomes. C'est le
 // même geste pour deux collections qui ne s'alimentent pas de la même façon :
 // on ajoute des tomes, on regarde des épisodes.
+//
+// Écriture ciblée (Bloc 4 de la migration save_data() → écritures ciblées,
+// cf. MIGRATION_SAVE_DATA.md) : ne fait qu'appeler update_episode() (déjà
+// migrée ci-dessus), donc aucune écriture supplémentaire nécessaire à son
+// propre niveau.
 //
 // Retour : ['success', 'data', 'message', 'episode_index', 'episode',
 //           'counts' => ['total','watched','remaining']]
@@ -369,10 +377,6 @@ function anime_mark_next_episode(array $data, string $series_id): array {
         ];
     }
 
-    // Bloc 4 de la migration save_data() → écritures ciblées (cf.
-    // MIGRATION_SAVE_DATA.md) : update_episode() écrit désormais directement
-    // en base (replace_series_volumes()) au moment de l'appel. Pas d'écriture
-    // supplémentaire nécessaire ici.
     $result = update_episode($data, $series_id, $index, episode_status_done(), null);
     if (empty($result['success'])) {
         return $result;

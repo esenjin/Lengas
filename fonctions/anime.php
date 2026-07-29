@@ -204,6 +204,13 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
     // diffusion est terminée et le compte complet.
     $episodes = anime_episodes_from_media($media);
 
+    // Écriture ciblée (Bloc 4 de la migration save_data() → écritures
+    // ciblées, cf. MIGRATION_SAVE_DATA.md) : la nouvelle série est construite
+    // dans $new_series, upsertée (upsert_series_row()) puis ses épisodes
+    // écrits (replace_series_volumes()) avant d'être ajoutée à $data pour
+    // l'affichage. Pas de replace_series_editions() ici : une série animée
+    // fraîchement importée n'a jamais d'éditions à ce stade (elles se
+    // saisissent ensuite depuis update_anime_series()).
     $new_series = [
         'id'   => $series_id,
         // Titre par défaut : romaji. Modifiable ensuite, mais uniquement par
@@ -252,15 +259,8 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
         'volumes'            => $episodes,
     ];
 
-    // Écriture ciblée (Bloc 4 de la migration save_data(), cf.
-    // MIGRATION_SAVE_DATA.md) : seule la nouvelle série est écrite en base,
-    // via un upsert sur `series` + un remplacement des épisodes (table
-    // `volumes`) qui lui appartiennent. Une série animée fraîchement importée
-    // n'a jamais d'éditions physiques à ce stade (elles se saisissent ensuite
-    // depuis la fiche), donc pas de replace_series_editions() ici. Plus de
-    // save_data($data) en aval — aucune autre série n'est lue ni réécrite.
     upsert_series_row($new_series);
-    replace_series_volumes($new_series['id'], $new_series['volumes']);
+    replace_series_volumes($series_id, $episodes);
 
     $data[] = $new_series;
 
@@ -301,6 +301,12 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
 //   remove_image         true pour effacer la vignette personnalisée
 //
 // Retour : ['success', 'data', 'message']
+//
+// Écriture ciblée (Bloc 4 de la migration save_data() → écritures ciblées,
+// cf. MIGRATION_SAVE_DATA.md) : upsert_series_row() systématique en fin de
+// fonction ; replace_series_editions() seulement si la clé 'editions' est
+// présente dans $fields, à l'identique du comportement conditionnel qu'avait
+// save_data() sur la clé 'editions' du tableau série.
 function update_anime_series(array $data, string $series_id, array $fields): array {
     $found = find_series_by_id($data, $series_id);
     if (!$found) {
@@ -372,12 +378,6 @@ function update_anime_series(array $data, string $series_id, array $fields): arr
         $data[$key]['image'] = $fields['new_image'];
     }
 
-    // Écriture ciblée (Bloc 4 de la migration save_data(), cf.
-    // MIGRATION_SAVE_DATA.md) : upsert sur la seule ligne `series` modifiée.
-    // Les éditions physiques ne sont réécrites que si la clé `editions` a été
-    // fournie dans $fields — même comportement que l'ancien save_data(), qui
-    // ne touchait aux éditions que si le tableau série la contenait. Plus de
-    // save_data($data) en aval — aucune autre série n'est lue ni réécrite.
     upsert_series_row($data[$key]);
     if (array_key_exists('editions', $fields)) {
         replace_series_editions($series_id, $data[$key]['editions']);

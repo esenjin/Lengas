@@ -51,6 +51,11 @@ function mu_genres_targets(array $data): array {
 
 // Enregistre les URL validées. Format attendu : $associations[series_id] = url
 // Réchauffe au passage le cache des séries nouvellement associées.
+//
+// Écriture ciblée (Bloc 5 de la migration save_data(), cf.
+// MIGRATION_SAVE_DATA.md) : seule la ligne série de chaque série réellement
+// associée est upsertée (upsert_series_row()), au fil de la boucle — plus de
+// save_data() global sur toute la collection en fin de traitement.
 function mu_save_associations(array &$data, array $associations): array {
     $saved    = 0;
     $warm_ids = [];
@@ -63,6 +68,7 @@ function mu_save_associations(array &$data, array $associations): array {
 
         if ($mu_id !== null) {
             $series['mangaupdates_url'] = $url;
+            upsert_series_row($series);
             $warm_ids[] = $mu_id;
             $saved++;
         }
@@ -70,7 +76,6 @@ function mu_save_associations(array &$data, array $associations): array {
     unset($series);
 
     if ($saved > 0) {
-        save_data($data);
         foreach ($warm_ids as $wid) {
             @mangaupdates_get_volumes($wid);
         }
@@ -80,6 +85,9 @@ function mu_save_associations(array &$data, array $associations): array {
 }
 
 // Enregistre les genres validés. Format attendu : $genres_in[series_id] = "G1, G2"
+//
+// Écriture ciblée (Bloc 5) : upsert_series_row() sur chaque série dont les
+// genres ont effectivement été renseignés, au fil de la boucle.
 function mu_save_genres(array &$data, array $genres_in): array {
     $saved = 0;
 
@@ -88,13 +96,10 @@ function mu_save_genres(array &$data, array $genres_in): array {
 
         $raw = clean_comma_separated((string)$genres_in[$series['id']]);
         $series['genres'] = $raw === '' ? [] : explode(',', $raw);
+        upsert_series_row($series);
         $saved++;
     }
     unset($series);
-
-    if ($saved > 0) {
-        save_data($data);
-    }
 
     return ['success' => true, 'saved' => $saved];
 }
