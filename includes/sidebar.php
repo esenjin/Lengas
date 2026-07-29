@@ -170,6 +170,15 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                     </a>
                 </li>
 
+                <!-- Licences -->
+                <li>
+                    <a href="<?= $pages ?>page-licences.php"
+                       class="sidebar-link <?= $current_page === 'page-licences.php' ? 'is-active is-active--brown' : '' ?>"
+                       data-tooltip="Licences">
+                        <img src="https://api.iconify.design/mdi/bookmark-multiple.svg?color=<?= $__c_brown ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
             </ul>
         </li>
 

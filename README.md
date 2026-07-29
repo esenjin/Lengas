@@ -101,6 +101,13 @@ Depuis la version 4.0, chaque série porte un **type** : `manga` (regroupant aus
 - Filtre par type (mangas / animés / les deux, réinitialisé à « les deux » à chaque visite) et filtre « Avec critique »
 - Badge ✏️ sur la page publique ; les visiteurs consultent la critique dans une modale dédiée
 
+### Licences
+- Regroupement libre de plusieurs séries (mangas et/ou animés) sous une même « licence » nommée par vous (page « Licences »), par exemple le manga, la saison 1 et la saison 2 animées d'une même œuvre
+- Une série ne peut appartenir qu'à une seule licence à la fois ; seules les séries déjà en collection peuvent être ajoutées
+- Vignette de la licence : celle de la première série membre qui en possède une (sinon la suivante, puis le logo par défaut), titre et nombre de séries
+- Modale de détail d'une licence : liste ordonnée des séries membres, réordonnable (boutons ↑/↓), avec ajout et retrait de séries
+- Bouton « 📚 Licence » dans la modale de détail publique d'une série (sous le bouton « Critique »), visible uniquement si la série appartient à une licence : ouvre la liste ordonnée des séries de la licence, chacune menant à sa propre fiche
+
 ### Notation
 - Note subjective facultative par série, au choix parmi trois valeurs : ☺️ « J'ai apprécié », 😑 « Mi-figue mi-raisin », 😠 « Je n'ai pas aimé »
 - Réglable à l'ajout et à la modification d'une série (menu déroulant « Notation »)
@@ -326,6 +333,7 @@ lengas/
 │   ├── page-prets.php     # Page de gestion des prêts
 │   ├── page-wishlist.php  # Page de la liste d'envies (mangas et animés)
 │   ├── page-critiques.php # Page de rédaction des critiques + rendu Markdown
+│   ├── page-licences.php  # Page de gestion des licences (regroupement de séries)
 │   ├── page-profil.php    # Page du profil de l'admin (photo, pseudo, bio, liens sociaux)
 │   ├── page-outils.php    # Page des outils (+ endpoints SSE/POST associés)
 │   └── page-options.php   # Page des options du site (configuration + mise à jour)
@@ -350,6 +358,7 @@ lengas/
 │   │   ├── _public.css
 │   │   ├── _responsive.css
 │   │   ├── _reviews.css
+│   │   ├── _licenses.css
 │   │   ├── _series.css
 │   │   ├── _sidebar.css
 │   │   ├── _stats.css
@@ -376,6 +385,7 @@ lengas/
 │       │   ├── pagination.js
 │       │   ├── profil.js
 │       │   ├── reviews.js
+│       │   ├── licenses.js
 │       │   ├── main.js
 │       │   └── tools/                    # Un fichier par outil
 │       │       ├── page.js
@@ -411,6 +421,7 @@ lengas/
 │   ├── read.php          # Fonctions de gestion des lues ailleurs
 │   ├── options.php       # Fonctions de gestion des options du site
 │   ├── reviews.php       # Fonctions de gestion des critiques (stockage + rendu Markdown)
+│   ├── licenses.php      # Fonctions de gestion des licences (regroupement de séries)
 │   ├── stats_compute.php # Moteur de calcul des statistiques de la bibliothèque
 │   ├── tools.php         # Chargeur des outils (inclut fonctions/tools/)
 │   └── tools/            # Un fichier de fonctions par outil

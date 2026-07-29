@@ -1,6 +1,7 @@
 <?php
 require 'config.php';
 require_once 'fonctions/reviews.php';
+require_once 'fonctions/licenses.php';
 require_once 'includes/themes.php';
 require_once 'includes/status_filter.php';
 require_once 'includes/custom_icons.php';
@@ -29,6 +30,38 @@ $hide_mature  = is_hide_mature($options, $current_type);
 $reviews_public = !$is_private && !is_hide_reviews($options, $current_type);
 $public_review_ids = $reviews_public ? array_flip(get_review_series_ids()) : [];
 $admin_pseudo = trim($options['admin_pseudo'] ?? '');
+
+// ── Licences (bouton « Licence » de la modale de détail) ─────────────────────
+// Contrairement aux critiques (un seul jeu d'ID, filtré une fois pour la
+// collection affichée), une licence peut mélanger manga et animé : la
+// visibilité ne peut donc pas se résumer au mode privé de $current_type. Le
+// filtrage se fait ici par SÉRIE (chacune avec son propre type), aussi bien
+// pour la décoration de $data que pour l'endpoint ci-dessous — jamais par
+// collection entière comme $is_private le ferait pour les critiques.
+$public_series_licenses = get_series_license_map();
+
+// Endpoint : détail d'une licence (séries membres, ordonnées). Interrogé par
+// la modale publique « Séries de la licence ».
+if (isset($_GET['get_license'])) {
+    header('Content-Type: application/json');
+    $license_id = $_GET['license_id'] ?? '';
+    $series     = get_public_license_series($data, $license_id);
+    // Un animé n'a pas de mode privé propre distinct : la collection dont
+    // relève CHAQUE série membre doit rester masquée si son mode privé (ou son
+    // masquage des séries matures) à elle est actif — une licence peut
+    // mélanger manga et animé, chacun avec son propre réglage de visibilité.
+    $series = array_values(array_filter($series, function ($s) use ($options, $data) {
+        if (is_private_mode($options, $s['type'])) return false;
+        if (is_hide_mature($options, $s['type'])) {
+            foreach ($data as $full) {
+                if ($full['id'] === $s['id']) return empty($full['mature']);
+            }
+        }
+        return true;
+    }));
+    echo json_encode(['success' => true, 'series' => $series]);
+    exit;
+}
 
 // ── Profil de l'administrateur (pour la modale « Qui suis-je ? ») ─────────────
 $profil_avatar = trim($options['admin_avatar'] ?? '');
@@ -121,9 +154,14 @@ if (isset($_GET['get_paginated_series'])) {
 
     // Marque les séries possédant une critique visible et ajoute les champs
     // d'affichage (vignette résolue, studios, format, éditions).
-    $paginated_data = array_map(function ($s) use ($ep_public_review_ids) {
+    $ep_public_series_licenses = get_series_license_map();
+    $paginated_data = array_map(function ($s) use ($ep_public_review_ids, $ep_public_series_licenses) {
         $s = decorate_series_for_display($s);
         $s['has_review'] = isset($ep_public_review_ids[$s['id']]);
+        $lic = $ep_public_series_licenses[$s['id']] ?? null;
+        $s['has_license']   = $lic !== null;
+        $s['license_id']    = $lic['license_id'] ?? '';
+        $s['license_name']  = $lic['license_name'] ?? '';
         return $s;
     }, array_values($paginated_data));
 
@@ -447,6 +485,7 @@ if (!empty($search_term)) {
                         <div class="modal-series-image-col">
                             <img id="modal-series-image" src="" alt="Image de la série" class="series-image">
                             <div id="modal-series-review-btn"></div>
+                            <div id="modal-series-license-btn"></div>
                         </div>
                         <div class="modal-series-info">
                             <?php // Lignes propres aux mangas : masquées pour un animé (cf. public.js). ?>
@@ -485,6 +524,20 @@ if (!empty($search_term)) {
                 </div>
                 <div id="review-modal-body" class="review-modal-body review-rendered"></div>
                 <p id="review-modal-credit" class="review-modal-credit"></p>
+            </div>
+        </div>
+
+        <!-- Modale licence : liste ordonnée des séries d'une même licence -->
+        <div class="modal" id="license-detail-public-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-license-detail-public-modal">&times;</span>
+                <div class="license-public-header">
+                    <span class="license-public-icon">📚</span>
+                    <h2 id="license-public-title"></h2>
+                </div>
+                <div id="license-public-list" class="license-public-list">
+                    <p class="reviews-empty">Chargement…</p>
+                </div>
             </div>
         </div>
     </div>
@@ -583,13 +636,58 @@ if (!empty($search_term)) {
     <button id="back-to-top" title="Retour en haut">↑</button>
 
     <script>
+        <?php
+        // ── Données complètes pour le bouton "Licence" ────────────────────────
+        // $data, à ce stade de la page, ne contient plus que la collection
+        // actuellement affichée (cf. series_of_type() plus haut) : une licence
+        // mélangeant manga et animé ne pourrait pas rouvrir la fiche d'une
+        // série de l'AUTRE collection depuis sa modale. On recharge donc ici
+        // une vue de toute la bibliothèque, spécifiquement pour ce besoin,
+        // filtrée exactement comme $data l'a été (mature/privé), mais par
+        // série et non par collection entière — une licence peut très bien
+        // combiner une collection publique et une collection privée.
+        $all_data_for_licenses = load_data();
+        $all_data_for_licenses = array_values(array_filter($all_data_for_licenses, function ($s) use ($options) {
+            if (is_private_mode($options, series_type($s))) return false;
+            if (is_hide_mature($options, series_type($s)) && !empty($s['mature'])) return false;
+            return true;
+        }));
+        ?>
         // Données des séries pour JavaScript
         let seriesData = <?= json_encode(array_values(array_map(function ($s) use ($public_review_ids) {
             $s = decorate_series_for_display($s);
             $s['has_review'] = isset($public_review_ids[$s['id']]);
             return $s;
         }, $data))) ?>;
+        // Toutes les séries visibles publiquement, tous types confondus : sert
+        // uniquement à la modale "Licence" (rouvrir la fiche d'une série qui
+        // n'est pas forcément dans la collection actuellement affichée).
+        // Décorée avec has_review/has_license comme seriesData, pour que les
+        // boutons Critique/Licence fonctionnent aussi sur une série ouverte
+        // depuis la modale licence.
+        window.allSeriesData = <?= json_encode(array_values(array_map(function ($s) use ($public_series_licenses, $public_review_ids) {
+            $s = decorate_series_for_display($s);
+            $s['has_review'] = isset($public_review_ids[$s['id']]);
+            $lic = $public_series_licenses[$s['id']] ?? null;
+            $s['has_license']  = $lic !== null;
+            $s['license_id']   = $lic['license_id'] ?? '';
+            $s['license_name'] = $lic['license_name'] ?? '';
+            return $s;
+        }, $all_data_for_licenses))) ?>;
+        // Décore aussi seriesData (collection affichée) avec les mêmes champs,
+        // pour le bouton "Licence" de la modale de détail sur CETTE collection.
+        (function () {
+            const byId = {};
+            window.allSeriesData.forEach(s => { byId[s.id] = s; });
+            seriesData.forEach(s => {
+                const full = byId[s.id];
+                s.has_license  = !!(full && full.has_license);
+                s.license_id   = full ? full.license_id   : '';
+                s.license_name = full ? full.license_name : '';
+            });
+        })();
         window.reviewsPublic = <?= json_encode($reviews_public) ?>;
+        window.licensesPublic = true;
         // Contexte de typage (collection affichée + registre allégé).
         window.currentSeriesType = <?= json_encode($current_type) ?>;
         window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;

@@ -215,6 +215,7 @@ function fillSeriesDetailModal(series) {
 
     window.__currentReviewSeries = series;
     setModalReviewBtn(series);
+    setModalLicenseBtn(series);
 }
 
 let currentSearchTerm = '';
@@ -652,6 +653,18 @@ function setModalReviewBtn(series) {
     }
 }
 
+// Bouton "Licence" affiché sous le bouton Critique, dans la modale de détail.
+// Visible uniquement si la série appartient à une licence.
+function setModalLicenseBtn(series) {
+    const container = document.getElementById('modal-series-license-btn');
+    if (!container) return;
+    if (window.licensesPublic && series && series.has_license) {
+        container.innerHTML = '<button type="button" class="license-card-btn">📚 Licence</button>';
+    } else {
+        container.innerHTML = '';
+    }
+}
+
 (function () {
     'use strict';
 
@@ -744,6 +757,100 @@ function setModalReviewBtn(series) {
     // Clic à l'extérieur ferme la modale critique.
     window.addEventListener('click', function (e) {
         if (e.target === reviewModal) closeAllModals();
+    });
+})();
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// Licences (côté public)
+// Bouton "📚 Licence" dans la modale de détail → ouvre la modale listant
+// toutes les séries de la même licence, dans l'ordre choisi par l'admin.
+// Cliquer sur une entrée ferme cette modale et rouvre la modale de détail de
+// la série choisie (déjà chargée dans seriesData, aucune requête nécessaire).
+// ══════════════════════════════════════════════════════════════════════════
+(function () {
+    'use strict';
+
+    const licenseModal = document.getElementById('license-detail-public-modal');
+    if (!licenseModal) return;
+
+    function htmlEscape(str) {
+        return String(str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    async function openLicenseModal(series) {
+        if (!series || !series.license_id) return;
+
+        document.getElementById('license-public-title').textContent = series.license_name || 'Licence';
+        const listEl = document.getElementById('license-public-list');
+        listEl.innerHTML = '<p class="reviews-empty">Chargement…</p>';
+
+        // Ferme la modale de détail, ouvre la modale licence.
+        openModal('license-detail-public-modal');
+
+        try {
+            const res = await fetch('index.php?get_license=1&license_id=' + encodeURIComponent(series.license_id));
+            const data = await res.json();
+            if (!data.success || !data.series || !data.series.length) {
+                listEl.innerHTML = '<p class="reviews-empty">Aucune série disponible.</p>';
+                return;
+            }
+            listEl.innerHTML = '';
+            data.series.forEach(s => {
+                const typeDef = (window.seriesTypes && window.seriesTypes[s.type || 'manga']) || null;
+                const typeBadge = typeDef
+                    ? `<span class="suggestion-type-badge license-public-row-type-badge" style="--type-color:${typeDef.color}">${htmlEscape(typeDef.label)}</span>`
+                    : '';
+                const meta = [s.author, s.category].filter(v => v && String(v).trim() !== '').join(' · ');
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'license-public-row';
+                btn.dataset.seriesId = s.id;
+                btn.innerHTML = `
+                    <img class="license-public-row-thumb" src="${htmlEscape(s.image || 'assets/img/logo.png')}" alt="" loading="lazy">
+                    <div class="license-public-row-info">
+                        <p class="license-public-row-name">${htmlEscape(s.name)}${typeBadge}</p>
+                        <p class="license-public-row-meta">${htmlEscape(meta)}</p>
+                    </div>
+                `;
+                btn.addEventListener('click', () => openSeriesFromLicense(s.id));
+                listEl.appendChild(btn);
+            });
+        } catch (err) {
+            listEl.innerHTML = '<p class="reviews-empty">Erreur de chargement.</p>';
+        }
+    }
+
+    // Rouvre la modale de détail pour une série de la licence, retrouvée dans
+    // seriesData (déjà en mémoire, chargée par index.php).
+    function openSeriesFromLicense(seriesId) {
+        // window.allSeriesData couvre les deux collections (une licence peut
+        // mélanger manga et animé) ; window.seriesData ne couvre que celle
+        // actuellement affichée. On préfère la première quand disponible.
+        const pool = Array.isArray(window.allSeriesData) ? window.allSeriesData
+                   : (Array.isArray(window.seriesData) ? window.seriesData : null);
+        if (!pool) return;
+        const series = pool.find(s => s.id === seriesId);
+        if (!series) return;
+        fillSeriesDetailModal(series);
+        openModal('series-detail-modal');
+    }
+
+    // Clic sur le bouton "Licence" sous la vignette de la modale de détail.
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('#modal-series-license-btn .license-card-btn')) {
+            openLicenseModal(window.__currentReviewSeries);
+        }
+    });
+
+    // Croix de fermeture de la modale licence.
+    document.getElementById('close-license-detail-public-modal')?.addEventListener('click', closeAllModals);
+
+    // Clic à l'extérieur ferme la modale licence.
+    window.addEventListener('click', function (e) {
+        if (e.target === licenseModal) closeAllModals();
     });
 })();
 
