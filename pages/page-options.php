@@ -22,14 +22,22 @@ require 'fonctions/options.php';
 require 'includes/custom_icons.php';
 require 'includes/themes.php';
 require_once 'vestikan/vestikan.php';
+// Formats Anilist (anilist_format_keys/anilist_format_label) et réglages de
+// statistiques Animethèque (stats_get_anime_settings) : nécessaires pour la
+// section « Statistiques » de l'Animethèque (bloc 14).
+require_once 'includes/anilist.php';
+require_once 'fonctions/stats_compute.php';
 
-$data    = load_data();
-$options = load_options();
-// ── Périmètre V4 : Mangathèque uniquement ────────────────────────────────────
-// Cette page ne traite pas encore les séries animées. Le filtrage est sans
-// danger ici : aucune écriture sur la table `series` n'a lieu, $data ne sert
-// qu'à la lecture et à l'affichage (voir l'avertissement de save_data()).
-$data = series_of_type($data, 'manga');
+$all_data = load_data();
+$options  = load_options();
+// ── Mangathèque / Animethèque ────────────────────────────────────────────────
+// $data (manga) sert à la fois d'affichage historique de cette page (liste des
+// catégories pour la section Statistiques) et reste filtré comme avant. On y
+// ajoute $anime_data, propre au bloc 14, pour lister les formats d'animé
+// réellement présents en collection. Aucune écriture sur la table `series`
+// n'a lieu ici : ces tableaux ne servent qu'à la lecture (cf. save_data()).
+$data       = series_of_type($all_data, 'manga');
+$anime_data = series_of_type($all_data, 'anime');
 
 
 // ============================================================================
@@ -42,9 +50,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $options['index_page_title'] = trim($_POST['index_page_title'] ?? '');
     $options['admin_page_title'] = trim($_POST['admin_page_title'] ?? '');
     $options['stats_page_title'] = trim($_POST['stats_page_title'] ?? '');
+    // ── Visibilité (bloc 14 : réglages scindés par collection) ──────────────
+    // Les clés sans suffixe pilotent la Mangathèque (rétro-compatibilité),
+    // les clés `_anime` pilotent l'Animethèque, indépendamment.
     $options['private_mode'] = !empty($_POST['private_mode']);
     $options['hide_mature'] = !empty($_POST['hide_mature']);
     $options['hide_reviews'] = !empty($_POST['hide_reviews']);
+    $options['private_mode_anime'] = !empty($_POST['private_mode_anime']);
+    $options['hide_mature_anime'] = !empty($_POST['hide_mature_anime']);
+    $options['hide_reviews_anime'] = !empty($_POST['hide_reviews_anime']);
 
     // ── Babengas (facultatif) ────────────────────────────────────────────────
     // L'URL est normalisée sans barre oblique finale, comme attendu par le
@@ -143,6 +157,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
         }
     }
     $options['stats_category_settings'] = json_encode($cat_settings, JSON_UNESCAPED_UNICODE);
+
+    // ── Section "Statistiques" de l'Animethèque : durée par format (bloc 14) ─
+    // Pendant de la section manga ci-dessus, mais une seule dimension (durée
+    // d'épisode en minutes) par FORMAT Anilist plutôt que temps + valeur x2
+    // par catégorie : les animés n'ont pas de notion de prix (cf. bloc 13).
+    $options['stats_anime_default_minutes'] = $norm_num($_POST['stats_anime_default_minutes'] ?? '');
+    if ($options['stats_anime_default_minutes'] === '') $options['stats_anime_default_minutes'] = '24';
+
+    $anime_format_settings = [];
+    if (!empty($_POST['stats_anime_format']) && is_array($_POST['stats_anime_format'])) {
+        foreach ($_POST['stats_anime_format'] as $format_key => $minutes_in) {
+            $format_key = strtoupper(trim((string) $format_key));
+            if ($format_key === '' || !in_array($format_key, anilist_format_keys(), true)) continue;
+            $minutes = $norm_num($minutes_in);
+            if ($minutes === '') continue; // champ vide → repli sur la valeur par défaut, rien à stocker
+            $anime_format_settings[$format_key] = $minutes;
+        }
+    }
+    $options['stats_anime_format_settings'] = json_encode($anime_format_settings, JSON_UNESCAPED_UNICODE);
 
     $admin_password = trim($_POST['admin_password'] ?? '');
 
@@ -396,13 +429,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                     <p class="hint">Laissez un champ vide pour utiliser la valeur par défaut. Les séries à plusieurs catégories utilisent la moyenne de leurs catégories.</p>
                 <?php endif; ?>
 
+                <!-- ══ STATISTIQUES — ANIMETHÈQUE ═══════════════════════════ -->
+                <h3 class="options-section-title">Statistiques (Animethèque)</h3>
+                <p class="hint">Réglez la durée moyenne d'un épisode (en minutes), par format Anilist. Ces valeurs alimentent le temps de visionnage de la page de statistiques ; elles ne servent que si la durée réelle de l'épisode n'est pas connue d'Anilist. Pas de notion de prix côté animés (cf. bloc 13).</p>
+
+                <?php
+                // Réglages courants (déjà lus/normalisés par stats_get_anime_settings(),
+                // qui applique elle-même le repli par défaut — cf. fonctions/stats_compute.php).
+                $anime_settings_current = stats_get_anime_settings($options);
+                $anime_def_minutes_cur  = $anime_settings_current['default'];
+                $anime_fmt_settings_cur = $anime_settings_current['formats']; // [FORMAT => minutes]
+                ?>
+
+                <div class="stats-defaults">
+                    <label>Valeur par défaut (formats non renseignés)</label>
+                    <div class="stats-cat-row stats-cat-row--anime stats-cat-head">
+                        <span class="stats-cat-name">Par défaut</span>
+                        <input type="number" step="any" min="0" name="stats_anime_default_minutes" placeholder="Min/épisode" value="<?= htmlspecialchars((string) $anime_def_minutes_cur) ?>">
+                    </div>
+                </div>
+
+                <div class="stats-cat-row stats-cat-row--anime stats-cat-labels">
+                    <span class="stats-cat-name">Format</span>
+                    <span>Min/épisode</span>
+                </div>
+                <div class="stats-cat-list">
+                    <?php foreach (anilist_format_keys() as $__fmt_key):
+                        $__fmt_label = anilist_format_label($__fmt_key);
+                        $__fmt_val   = $anime_fmt_settings_cur[$__fmt_key] ?? '';
+                    ?>
+                        <div class="stats-cat-row stats-cat-row--anime">
+                            <span class="stats-cat-name" title="<?= htmlspecialchars($__fmt_label) ?>"><?= htmlspecialchars($__fmt_label) ?></span>
+                            <input type="number" step="any" min="0"
+                                   name="stats_anime_format[<?= htmlspecialchars($__fmt_key) ?>]"
+                                   placeholder="<?= htmlspecialchars((string) $anime_def_minutes_cur) ?>"
+                                   value="<?= $__fmt_val === '' ? '' : htmlspecialchars((string) $__fmt_val) ?>">
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <p class="hint">Laissez un champ vide pour utiliser la valeur par défaut. Un épisode dont la durée réelle est connue via Anilist n'utilise jamais ces réglages.</p>
+
                 <!-- ══ VIGNETTE ══════════════════════════════════════════ -->
                 <h3 class="options-section-title">Vignette</h3>
 
                 <div class="form-group">
                     <label for="default_logo">Remplacer la vignette par défaut :</label>
                     <input type="file" id="default_logo" name="default_logo" accept="image/png">
-                    <p class="hint">L'image téléversée remplacera le fichier logo.png actuel (PNG obligatoire).</p>
+                    <p class="hint">L'image téléversée remplacera le fichier logo.png actuel (PNG obligatoire). Cette vignette est <strong>partagée</strong> entre la Mangathèque et l'Animethèque : elle sert de repli final pour les deux collections (après la vignette personnalisée d'une série, et, côté animés, après la vignette Anilist).</p>
                     <p class="hint">Vignette par défaut actuelle :</p>
                     <?php if (file_exists('assets/img/logo.png')): ?>
                         <div>
@@ -434,22 +507,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                 </p>
 
                 <!-- ══ VISIBILITÉ ════════════════════════════════════════ -->
+                <?php
+                // Fragment de rendu d'un bloc de visibilité pour une collection.
+                // $suffix = '' (Mangathèque, clés historiques) ou '_anime' (Animethèque).
+                $render_visibility_block = function (string $type, string $suffix) use ($options): void {
+                    $collection = type_vocab($type, 'collection'); // "Mangathèque" / "Animethèque"
+                    $__private = !empty($options['private_mode' . $suffix]);
+                    $__mature  = !empty($options['hide_mature' . $suffix]);
+                    $__reviews = !empty($options['hide_reviews' . $suffix]);
+                    ?>
+                    <h4 class="options-subsection-title"><?= htmlspecialchars($collection) ?></h4>
+
+                    <label>
+                        <input type="checkbox" name="private_mode<?= $suffix ?>" <?= $__private ? 'checked' : '' ?>> Mode privé
+                    </label>
+                    <p class="hint">La <?= htmlspecialchars($collection) ?> ne sera pas visible publiquement : le bouton reste dans le menu, mais son contenu est entièrement masqué (aucun décompte).</p>
+
+                    <label>
+                        <input type="checkbox" name="hide_mature<?= $suffix ?>" <?= $__mature ? 'checked' : '' ?>> Masquer les séries matures
+                    </label>
+                    <p class="hint">Les séries matures de la <?= htmlspecialchars($collection) ?> ne seront pas visibles au public.</p>
+
+                    <label>
+                        <input type="checkbox" name="hide_reviews<?= $suffix ?>" <?= $__reviews ? 'checked' : '' ?>> Cacher les critiques
+                    </label>
+                    <p class="hint">Les critiques de la <?= htmlspecialchars($collection) ?> ne seront pas visibles au public.</p>
+                    <?php
+                };
+                ?>
                 <h3 class="options-section-title">Visibilité</h3>
+                <p class="hint">Chaque collection a ses propres réglages de visibilité, entièrement indépendants l'un de l'autre.</p>
 
-                <label>
-                    <input type="checkbox" name="private_mode" <?= $options['private_mode'] ? 'checked' : '' ?>> Mode privé
-                </label>
-                <p class="hint">Votre bibliothèque ne sera pas visible publiquement.</p>
-
-                <label>
-                    <input type="checkbox" name="hide_mature" <?= $options['hide_mature'] ? 'checked' : '' ?>> Masquer les séries matures
-                </label>
-                <p class="hint">Vos séries matures ne seront pas visibles au public.</p>
-
-                <label>
-                    <input type="checkbox" name="hide_reviews" <?= !empty($options['hide_reviews']) ? 'checked' : '' ?>> Cacher les critiques
-                </label>
-                <p class="hint">Vos critiques ne seront pas visibles au public.</p>
+                <?php $render_visibility_block('manga', ''); ?>
+                <?php $render_visibility_block('anime', '_anime'); ?>
 
                 <!-- ══ BABENGAS ══════════════════════════════════════════ -->
                 <h3 class="options-section-title">Babengas (Babelio)</h3>

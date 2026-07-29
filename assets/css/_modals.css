@@ -16,6 +16,22 @@
     margin-top: 4px;
 }
 
+/* Sous-titre de collection (bloc 14) : distingue les blocs Mangathèque /
+   Animethèque à l'intérieur d'une même section "Visibilité". Moins marqué
+   que .options-section-title (pas de barre de séparation, plus discret). */
+.options-subsection-title {
+    font-size: 0.82em;
+    color: var(--text-color);
+    font-weight: 600;
+    margin-top: 18px;
+    margin-bottom: 8px;
+    font-family: 'Outfit', system-ui, sans-serif;
+}
+
+.options-subsection-title:first-of-type {
+    margin-top: 2px;
+}
+
 /* Styles pour les modales */
 body.modal-open {
     overflow: hidden;
@@ -1351,4 +1367,17 @@ html:has(body.modal-open) {
         font-size: 0.78em;
     }
     .stats-cat-name { font-size: 0.8em; }
+}
+
+/* ── Variante Animethèque (bloc 14) : format + durée, 2 colonnes seulement ──
+   Toutes les autres règles .stats-cat-row (labels, inputs, focus…) restent
+   héritées telles quelles ; seule la grille change de nombre de colonnes. */
+.stats-cat-row--anime {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+
+@media (max-width: 520px) {
+    .stats-cat-row--anime {
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    }
 }

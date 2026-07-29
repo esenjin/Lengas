@@ -286,6 +286,32 @@ function sidebar_section_color(string $key): string {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Visibilité par collection (bloc 14)
+// ──────────────────────────────────────────────────────────────────────────────
+// Les trois réglages de visibilité (mode privé, masquage des séries matures,
+// masquage des critiques) sont scindés entre Mangathèque et Animethèque : deux
+// collections indépendantes, deux réglages indépendants. Les clés Mangathèque
+// restent celles d'avant la V4 (private_mode, hide_mature, hide_reviews) pour
+// ne perdre aucun réglage existant ; les clés Animethèque portent le suffixe
+// `_anime`. Un seul point de lecture ici évite de dupliquer ce `if` partout
+// dans index.php / stats.php.
+function visibility_option(array $options, string $type, string $setting): bool {
+    $suffix = (sanitize_series_type($type) === 'anime') ? '_anime' : '';
+    return !empty($options[$setting . $suffix]);
+}
+
+// Raccourcis nommés, pour ne jamais avoir à retaper la clé d'option en dur.
+function is_private_mode(array $options, string $type): bool {
+    return visibility_option($options, $type, 'private_mode');
+}
+function is_hide_mature(array $options, string $type): bool {
+    return visibility_option($options, $type, 'hide_mature');
+}
+function is_hide_reviews(array $options, string $type): bool {
+    return visibility_option($options, $type, 'hide_reviews');
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Vignette d'une série — cascade d'affichage
 // ──────────────────────────────────────────────────────────────────────────────
 // Ordre de priorité, sans exception :

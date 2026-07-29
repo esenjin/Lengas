@@ -362,8 +362,16 @@ function init_db(PDO $pdo): void {
             'index_page_title' => "Lengas - La mangathèque d'Esenjin !",
             'admin_page_title' => 'Gestion de ma collection',
             'stats_page_title' => 'Statistiques de Lengas',
+            // ── Visibilité (bloc 14 : réglages scindés par collection) ──
+            // Ces trois clés sans suffixe pilotent la Mangathèque, exactement
+            // comme avant la V4 (rétro-compatibilité). Les clés `_anime`
+            // pilotent l'Animethèque et sont indépendantes.
             'private_mode'          => '0',
             'hide_mature'           => '0',
+            'hide_reviews'          => '0',
+            'private_mode_anime'    => '0',
+            'hide_mature_anime'     => '0',
+            'hide_reviews_anime'    => '0',
             // Thème du site (clé) : 'dark' (sombre, par défaut) ou 'light', etc.
             'theme'                 => 'dark',
             // Réglages "Statistiques" : temps & valeur moyens par tome (repli global)
@@ -768,9 +776,14 @@ function load_options(): array {
         $opts[$r['key']] = $r['value'];
     }
     // Convertir les booléens
+    // ── Visibilité Mangathèque (clés historiques, sans suffixe) ──
     $opts['private_mode']        = (bool)($opts['private_mode']        ?? false);
     $opts['hide_mature']         = (bool)($opts['hide_mature']         ?? false);
     $opts['hide_reviews']        = (bool)($opts['hide_reviews']        ?? false);
+    // ── Visibilité Animethèque (bloc 14 : réglages scindés) ──
+    $opts['private_mode_anime']  = (bool)($opts['private_mode_anime']  ?? false);
+    $opts['hide_mature_anime']   = (bool)($opts['hide_mature_anime']   ?? false);
+    $opts['hide_reviews_anime']  = (bool)($opts['hide_reviews_anime']  ?? false);
     return $opts;
 }
 

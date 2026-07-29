@@ -19,8 +19,14 @@ $options = load_options();
 // ── Collection affichée (Mangathèque / Animethèque) ──────────────────────────
 $current_type = sanitize_series_type($_GET['type'] ?? '');
 
-// Critiques visibles publiquement ? (option "cacher les critiques")
-$reviews_public = empty($options['hide_reviews']);
+// ── Visibilité (bloc 14 : réglages scindés par collection) ───────────────────
+// Mode privé, masquage des séries matures et masquage des critiques sont
+// désormais réglés indépendamment pour chaque collection (cf. helpers.php).
+$is_private   = is_private_mode($options, $current_type);
+$hide_mature  = is_hide_mature($options, $current_type);
+
+// Critiques visibles publiquement ? (option "cacher les critiques", par collection)
+$reviews_public = !$is_private && !is_hide_reviews($options, $current_type);
 $public_review_ids = $reviews_public ? array_flip(get_review_series_ids()) : [];
 $admin_pseudo = trim($options['admin_pseudo'] ?? '');
 
@@ -42,33 +48,6 @@ function series_latest_date($series, $field) {
         }
     }
     return empty($dates) ? '0000-00-00' : max($dates);
-}
-
-// Vérifier si le mode privé est activé
-if ($options['private_mode']) {
-    // Afficher un message informatif avec la structure HTML complète
-    ?>
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title><?= htmlspecialchars($options['index_page_title']) ?></title>
-        <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
-        <meta property="og:image" content="logo.png">
-        <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-        <link rel="stylesheet" href="assets/css/main.css">
-        <?= theme_link_tag($options) ?>
-    </head>
-    <body>
-        <div class="container">
-            <h1><?= htmlspecialchars($options['index_page_title']) ?></h1>
-            <p>Le site est en mode privé. La bibliothèque n'est pas accessible au public.</p>
-        </div>
-    </body>
-    </html>
-    <?php
-    exit;
 }
 
 // Fonction pour normaliser une chaîne de caractères
@@ -96,20 +75,39 @@ if (isset($_GET['get_paginated_series'])) {
     $status_mode   = $_GET['status_mode'] ?? 'or';
     $type_filter   = sanitize_series_type($_GET['type'] ?? '');
 
+    // Collection privée : masquage total, aucune série ne remonte (endpoint
+    // interrogé même si la page HTML affiche déjà le message de collection privée).
+    if (is_private_mode($options, $type_filter)) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'series' => [], 'has_more' => false]);
+        exit;
+    }
+
     // Applique le type, la recherche et le tri à chaque requête
     $filtered_data = series_of_type($data, $type_filter);
+    if (is_hide_mature($options, $type_filter)) {
+        $filtered_data = array_filter($filtered_data, function ($series) {
+            return !($series['mature'] ?? false);
+        });
+    }
     if (!empty($search_term)) {
         $normalized_search = normalize_string($search_term);
         $filtered_data = array_filter($filtered_data, function($series) use ($normalized_search) {
             return series_matches_search($series, $normalized_search);
         });
     }
+
+    // Recalculés pour $type_filter : en pratique toujours égal à $current_type
+    // (transmis par un champ caché du formulaire), mais on ne suppose rien.
+    $ep_reviews_public   = is_hide_reviews($options, $type_filter) ? false : true;
+    $ep_public_review_ids = $ep_reviews_public ? array_flip(get_review_series_ids()) : [];
+
     $filtered_data = apply_status_filter(
         $filtered_data,
         $status_filter,
         $status_mode,
-        function($series) use ($public_review_ids, $reviews_public) {
-            return $reviews_public && isset($public_review_ids[$series['id']]);
+        function($series) use ($ep_public_review_ids, $ep_reviews_public) {
+            return $ep_reviews_public && isset($ep_public_review_ids[$series['id']]);
         },
         $type_filter
     );
@@ -123,9 +121,9 @@ if (isset($_GET['get_paginated_series'])) {
 
     // Marque les séries possédant une critique visible et ajoute les champs
     // d'affichage (vignette résolue, studios, format, éditions).
-    $paginated_data = array_map(function ($s) use ($public_review_ids) {
+    $paginated_data = array_map(function ($s) use ($ep_public_review_ids) {
         $s = decorate_series_for_display($s);
-        $s['has_review'] = isset($public_review_ids[$s['id']]);
+        $s['has_review'] = isset($ep_public_review_ids[$s['id']]);
         return $s;
     }, array_values($paginated_data));
 
@@ -145,12 +143,15 @@ if (isset($_GET['get_paginated_series'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
     $all_data = load_data();
 
-    // Les séries matures masquées ne doivent pas ressortir dans les suggestions.
-    if ($options['hide_mature']) {
-        $all_data = array_filter($all_data, function ($series) {
-            return !($series['mature'] ?? false);
-        });
-    }
+    // La recherche traverse les collections : chaque réglage de visibilité
+    // (mode privé, séries matures) s'applique selon le type propre à CHAQUE
+    // série, pas selon un seul type global — une collection privée doit
+    // disparaître entièrement des suggestions, l'autre rester cherchable.
+    $all_data = array_filter($all_data, function ($series) use ($options) {
+        if (is_private_mode($options, series_type($series))) return false;
+        if (is_hide_mature($options, series_type($series)) && !empty($series['mature'])) return false;
+        return true;
+    });
 
     $field = $_GET['field'] ?? '';
     $term  = trim($_GET['term'] ?? '');
@@ -218,21 +219,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_review'])) {
     header('Content-Type: application/json');
 
-    // Respecte le mode privé et l'option "cacher les critiques".
-    if ($options['private_mode'] || !$reviews_public) {
-        echo json_encode(['success' => false, 'message' => 'Indisponible.']);
+    $series_id = $_GET['series_id'] ?? '';
+
+    // La série doit exister publiquement (recherche tous types confondus, la
+    // critique pouvant être demandée depuis n'importe quelle collection).
+    $all_data_gr = load_data();
+    $series = null;
+    foreach ($all_data_gr as $s) {
+        if ($s['id'] === $series_id) { $series = $s; break; }
+    }
+    if ($series === null) {
+        echo json_encode(['success' => false, 'message' => 'Introuvable.']);
         exit;
     }
 
-    $series_id = $_GET['series_id'] ?? '';
-
-    // La série doit exister publiquement (et ne pas être masquée si mature).
-    $series = null;
-    foreach ($data as $s) {
-        if ($s['id'] === $series_id) { $series = $s; break; }
-    }
-    if ($series === null || ($options['hide_mature'] && !empty($series['mature']))) {
-        echo json_encode(['success' => false, 'message' => 'Introuvable.']);
+    // Respecte le mode privé, le masquage des matures et celui des critiques —
+    // chacun évalué selon le type PROPRE à la série demandée.
+    $__series_type = series_type($series);
+    if (
+        is_private_mode($options, $__series_type) ||
+        is_hide_reviews($options, $__series_type) ||
+        (is_hide_mature($options, $__series_type) && !empty($series['mature']))
+    ) {
+        echo json_encode(['success' => false, 'message' => 'Indisponible.']);
         exit;
     }
 
@@ -250,8 +259,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_review'])) {
     exit;
 }
 
-// Filtrer les séries matures si l'option est activée
-if ($options['hide_mature']) {
+// Filtrer les séries matures si l'option est activée (réglage de la collection courante)
+if ($hide_mature) {
     $data = array_filter($data, function($series) {
         return !($series['mature'] ?? false);
     });
@@ -261,31 +270,14 @@ if ($options['hide_mature']) {
 // $data ne sert qu'au rendu, contrairement à admin.php).
 $data = series_of_type($data, $current_type);
 
-// Vérifier si le mode privé est activé
-if ($options['private_mode']) {
-    // Afficher un message informatif avec la structure HTML complète
-    ?>
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title><?= htmlspecialchars($options['index_page_title']) ?></title>
-        <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
-        <meta property="og:image" content="logo.png">
-        <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-        <link rel="stylesheet" href="assets/css/main.css">
-        <?= theme_link_tag($options) ?>
-    </head>
-    <body>
-        <div class="container">
-            <h1><?= htmlspecialchars($options['index_page_title']) ?></h1>
-            <p>Le site est en mode privé. La bibliothèque n'est pas accessible au public.</p>
-        </div>
-    </body>
-    </html>
-    <?php
-    exit;
+// ── Collection privée (bloc 14) ──────────────────────────────────────────────
+// Chaque collection a désormais son propre réglage de mode privé. Contrairement
+// à l'ancien comportement (page minimale, menu masqué), le bouton de la
+// collection reste visible dans le menu latéral : seul son CONTENU disparaît,
+// avec un message à la place, et aucun décompte n'est affiché nulle part
+// (compteurs, pagination, résultats de recherche).
+if ($is_private) {
+    $data = [];
 }
 
 // Gestion du tri, filtre et recherche
@@ -357,6 +349,13 @@ if (!empty($search_term)) {
     <div class="container">
         <h1><?= htmlspecialchars($options['index_page_title']) ?></h1>
 
+        <?php if ($is_private): ?>
+            <!-- Collection privée : masquage total du contenu, aucun décompte,
+                 aucun filtre affiché (ils n'auraient rien sur quoi porter). -->
+            <p class="private-collection-message">
+                Cette collection (<?= htmlspecialchars(type_label($current_type, true)) ?>) est privée.
+            </p>
+        <?php else: ?>
         <!-- Barre de filtres et recherche -->
         <div class="filters">
             <form method="get">
@@ -384,15 +383,18 @@ if (!empty($search_term)) {
                     <?php render_status_filter($status_filter, $status_mode ?? 'or', $reviews_public, $current_type); ?>
                 </div>
 
-                <?php if ($options['hide_mature']): ?>
+                <?php if ($hide_mature): ?>
                     <p style="color: var(--status-mature);">🔞 Les séries matures sont masquées.</p>
                 <?php endif; ?>
             </form>
         </div>
+        <?php endif; ?>
 
         <!-- Liste des séries -->
         <div class="series-list" id="series-list">
-            <?php if (empty($data)): ?>
+            <?php if ($is_private): ?>
+                <?php // Rien : le message ci-dessus remplace entièrement la liste. ?>
+            <?php elseif (empty($data)): ?>
                 <p>Aucune série trouvée.</p>
             <?php else: ?>
                 <?php

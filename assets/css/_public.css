@@ -32,3 +32,13 @@
     max-height: 300px;
     overflow-y: auto;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Collection privée (bloc 14) — remplace entièrement filtres + liste
+   ═══════════════════════════════════════════════════════════════════════════ */
+.private-collection-message {
+    text-align: center;
+    color: var(--text-gray);
+    padding: 48px 16px;
+    font-size: 1.05em;
+}

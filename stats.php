@@ -8,6 +8,13 @@ require_once 'includes/anilist.php'; // anilist_format_label() — libellés des
 
 $all_data = load_data();
 $options  = load_options();
+
+// ── Visibilité (bloc 14 : réglages scindés par collection) ───────────────────
+$manga_private = is_private_mode($options, 'manga');
+$anime_private = is_private_mode($options, 'anime');
+$hide_mature        = is_hide_mature($options, 'manga');
+$hide_mature_anime  = is_hide_mature($options, 'anime');
+
 // ── Mangathèque / Animethèque ────────────────────────────────────────────────
 // Deux collections cloisonnées, comme partout ailleurs sur le site (admin,
 // index, filtres…). Le filtrage est sans danger ici : aucune écriture sur la
@@ -15,13 +22,37 @@ $options  = load_options();
 // l'affichage (voir l'avertissement de save_data()).
 $data       = series_of_type($all_data, 'manga');
 $anime_data = series_of_type($all_data, 'anime');
+
+// Filtrage des séries matures, selon le réglage propre à chaque collection
+// (avant tout calcul de statistiques : une série mature masquée ne doit
+// apparaître dans AUCUN décompte, pas seulement dans le KPI dédié).
+if ($hide_mature) {
+    $data = array_values(array_filter($data, fn($s) => empty($s['mature'])));
+}
+if ($hide_mature_anime) {
+    $anime_data = array_values(array_filter($anime_data, fn($s) => empty($s['mature'])));
+}
+
+// $has_anime doit refléter la présence RÉELLE de séries animées en base,
+// pas le fait que la collection soit privée : sinon une Animethèque privée
+// masquerait aussi son onglet, alors qu'on veut y afficher un message.
 $has_anime  = count($anime_data) > 0;
+
+// Collection privée (bloc 14) : masquage total, aucun décompte. On vide
+// simplement le tableau source de la collection concernée — tout le calcul
+// en aval (compute_stats / compute_anime_stats, KPI, graphiques, recherche)
+// travaille alors sur une collection vide, sans qu'aucun nombre ne fuite.
+if ($manga_private) $data       = [];
+if ($anime_private) $anime_data = [];
 
 // Le titre de la page stats utilise bien stats_page_title (bug corrigé)
 $page_title = $options['stats_page_title'] ?? ($options['site_name'] ?? 'Statistiques');
 
 // ── Mode privé : page minimale ───────────────────────────────────────────────
-if (!empty($options['private_mode'])) {
+// Uniquement si les DEUX collections sont privées : sinon, chaque onglet gère
+// individuellement son propre message (cf. plus bas), le reste de la page
+// (menu, onglets, l'autre collection) restant accessible.
+if ($manga_private && $anime_private) {
     ?>
     <!DOCTYPE html>
     <html lang="fr">
@@ -47,7 +78,6 @@ if (!empty($options['private_mode'])) {
 
 // ── Calcul de toutes les statistiques ────────────────────────────────────────
 $stats        = compute_stats($data, $options);
-$hide_mature  = !empty($options['hide_mature']);
 
 // Nombre de critiques (séries encore présentes uniquement)
 $stats['review_count'] = count(list_reviews($data));
@@ -306,6 +336,9 @@ $anime_chart_payload = [
              PANNEAU MANGATHÈQUE (contenu historique, inchangé)
              ══════════════════════════════════════════════════════════════════ -->
         <div class="stats-tab-panel stats-tab-panel--active" data-stats-tab-panel="manga">
+        <?php if ($manga_private): ?>
+            <p class="private-collection-message">Cette collection (Mangathèque) est privée.</p>
+        <?php else: ?>
 
         <!-- ══ 1. VUE D'ENSEMBLE ══════════════════════════════════════════ -->
         <section class="stats-section">
@@ -672,6 +705,7 @@ $anime_chart_payload = [
             </div>
         </section>
 
+        <?php endif; // fin if ($manga_private) ?>
         </div><!-- /* fin .stats-tab-panel[data-stats-tab-panel="manga"] */ -->
 
         <!-- ══════════════════════════════════════════════════════════════════
@@ -679,6 +713,9 @@ $anime_chart_payload = [
              ══════════════════════════════════════════════════════════════════ -->
         <?php if ($has_anime): ?>
         <div class="stats-tab-panel" data-stats-tab-panel="anime">
+        <?php if ($anime_private): ?>
+            <p class="private-collection-message">Cette collection (Animethèque) est privée.</p>
+        <?php else: ?>
 
         <!-- ══ 1. VUE D'ENSEMBLE ══════════════════════════════════════════ -->
         <section class="stats-section">
@@ -701,7 +738,7 @@ $anime_chart_payload = [
                         <div class="kpi-label"><?= $label ?></div>
                     </div>
                 <?php endforeach; ?>
-                <?php if (!$hide_mature): ?>
+                <?php if (!$hide_mature_anime): ?>
                     <div class="kpi-card kpi-card--anime">
                         <img class="kpi-icon" src="https://api.iconify.design/mdi/alert-octagon.svg?color=%23e879c6" width="22" height="22" alt="">
                         <div class="kpi-value"><?= $anime_stats['mature_series'] ?></div>
@@ -902,6 +939,7 @@ $anime_chart_payload = [
             </div>
         </section>
 
+        <?php endif; // fin if ($anime_private) ?>
         </div><!-- /* fin .stats-tab-panel[data-stats-tab-panel="anime"] */ -->
         <?php endif; ?>
 
