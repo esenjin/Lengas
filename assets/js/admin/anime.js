@@ -60,7 +60,6 @@ function createAnimeSeriesCard(series) {
 
     const imageSrc = series.image && series.image !== '' ? series.image : 'assets/img/logo.png';
     const badge = animeStatusBadge(series.status);
-    const count = series.volumes_count || 0;
 
     card.innerHTML = `
         <img class="series-image" src="${animeEscape(imageSrc)}" alt="${animeEscape(series.name)}" loading="lazy">
@@ -85,8 +84,7 @@ function createAnimeSeriesCard(series) {
                 ${animeAnilistBadgeHtml(series)}
                 <span class="anime-sync-badge" data-anime-sync-badge hidden></span>
             </div>
-            <button class="load-volumes-btn" data-series-id="${series.id}" data-volumes-count="${count}">Voir les épisodes (${count})</button>
-            <div class="volumes-container" data-series-id="${series.id}"></div>
+            <div class="volumes-container" data-series-id="${series.id}" data-loaded="true">${series.volumes_html || ''}</div>
         </div>
     `;
     return card;
@@ -126,8 +124,9 @@ function animeSyncSetBadge(card, html, cls) {
     el.hidden = !html;
 }
 
-// Recharge la liste des épisodes si elle est déjà affichée, et met à jour le
-// bouton « Voir les épisodes (N) » ainsi que le badge de statut de diffusion.
+// Recharge la liste des épisodes (toujours affichée) et met à jour le badge
+// de statut de diffusion, pour que les nouveaux épisodes diffusés apparaissent
+// sans que l'utilisateur ait à recharger la page lui-même.
 function animeSyncRefreshCard(card, seriesId, result) {
     const badge = animeStatusBadge(result.anime_status);
     const statusBadgeEl = card.querySelector('[data-anime-status-badge]');
@@ -136,24 +135,8 @@ function animeSyncRefreshCard(card, seriesId, result) {
         statusBadgeEl.textContent = badge.icon;
     }
 
-    const loadBtn = card.querySelector('.load-volumes-btn');
-    if (loadBtn) {
-        loadBtn.dataset.volumesCount = String(result.volumes_count);
-        const container = card.querySelector('.volumes-container');
-        const isExpanded = container && container.dataset.loaded === 'true' && container.style.display !== 'none';
-        const itemsLabel = (typeof animeVocab === 'function') ? animeVocab('items', 'épisodes') : 'épisodes';
-        loadBtn.textContent = (isExpanded ? `Cacher les ${itemsLabel} (` : `Voir les ${itemsLabel} (`) + result.volumes_count + ')';
-    }
-
-    // Si la liste des épisodes était déjà ouverte, on la recharge pour que les
-    // nouveaux épisodes diffusés apparaissent sans que l'utilisateur ait à
-    // rouvrir le panneau lui-même.
-    const container = card.querySelector('.volumes-container');
-    if (container && container.dataset.loaded === 'true') {
-        container.dataset.loaded = 'false';
-        if (typeof loadSeriesVolumes === 'function') {
-            loadSeriesVolumes(seriesId);
-        }
+    if (typeof refreshSeriesVolumes === 'function') {
+        refreshSeriesVolumes(seriesId);
     }
 
     // window.seriesData reflète aussi ce que verrait une nouvelle carte créée

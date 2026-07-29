@@ -643,9 +643,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
     $offset = ($page - 1) * $per_page;
     $paginated_data = array_slice($filtered_data, $offset, $per_page);
 
-    // En mode "light", on ne renvoie que les métadonnées
+    // En mode "light", on ne renvoie que les métadonnées — mais désormais
+    // accompagnées du HTML des tomes/épisodes déjà rendu : depuis SQLite, ce
+    // contenu ne coûte plus assez cher à générer pour justifier d'attendre un
+    // clic. Les prêts sont préchargés ici UNE SEULE fois pour toute la page
+    // plutôt qu'une requête par série.
+    //
+    // Pas de vérification MangaUpdates ici : comparer le décompte de chaque
+    // série à sa fiche MangaUpdates implique un appel réseau (mangaupdates_get_volumes)
+    // dès que son cache local a expiré, ce qui rendrait le simple affichage de
+    // la liste bien plus lent — pouvant aller jusqu'à une requête HTTP par
+    // série de la page, en série. Ce contrôle reste disponible à la demande
+    // dans l'outil « Incohérences » (page Outils), qui reste le bon endroit
+    // pour ce genre de vérification ponctuelle.
     if ($light_mode) {
-        $light_series = array_map(function($series) use ($review_series_ids) {
+        $loaned_by_series = loans_by_series(load_loans());
+
+        $light_series = array_map(function($series) use ($review_series_ids, $loaned_by_series) {
             // Détermine le statut de publication
             $status = 'en cours';
             $has_last = false;
@@ -736,6 +750,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 // pour rien sur une série déjà à jour ou hors verrou.
                 'anilist_synced_at'          => (int)($series['anilist_synced_at'] ?? 0),
                 'sync_due'                   => is_anime($series) && anilist_sync_is_due($series, false),
+                // Tomes/épisodes déjà rendus en HTML : affichés directement à
+                // la création de la carte, sans aller-retour AJAX supplémentaire.
+                // Pas de notifications MangaUpdates ici (cf. commentaire plus
+                // haut) : celles-ci restent réservées à l'outil Incohérences.
+                'volumes_html'               => render_volumes_html(
+                    $series,
+                    [],
+                    $loaned_by_series[$series['id']] ?? []
+                ),
             ];
         }, $paginated_data);
 
@@ -767,140 +790,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_series_volumes'])) 
         exit;
     }
 
-    // Vocabulaire de la collection : « tome » ou « épisode », « lecture » ou
-    // « visionnage ». Rien n'est écrit en dur, tout vient du registre des types.
-    $series_is_anime = is_anime($series);
-    $vocab           = type_vocab($series);
-
     // Notifications via MangaUpdates — mangas uniquement : le décompte d'un
     // animé vient d'Anilist, et rien ne manque jamais à une liste d'épisodes
     // qu'on ne remplit pas à la main.
-    $notifications = [];
-    if (!$series_is_anime) {
-        $ref_volumes = null;
-        if (!empty($series['mangaupdates_url'])) {
-            $mu_id = mangaupdates_get_id_from_url($series['mangaupdates_url']);
-            if ($mu_id !== null) {
-                $mu = mangaupdates_get_volumes($mu_id);
-                if ($mu !== null && $mu['volumes'] !== null && (int)$mu['volumes'] > 0) {
-                    $ref_volumes = (int)$mu['volumes'];
-                }
-            }
-        }
-        $notifications = generate_notifications($series['volumes'], $ref_volumes);
-    }
+    $notifications = series_notifications($series);
 
     // Charger les prêts pour cette série — jamais pour un animé, même possédé
     // en édition physique : on ne prête pas un épisode.
     $loaned_volumes = [];
-    if (!$series_is_anime) {
-        $all_loans = load_loans();
-        foreach ($all_loans as $loan) {
-            if ($loan['series_id'] === $series_id) {
-                $loaned_volumes[$loan['volume_number']] = $loan['borrower_name'];
-            }
-        }
+    if (!is_anime($series)) {
+        $loaned_volumes = loans_by_series(load_loans())[$series_id] ?? [];
     }
 
     // Générer le HTML des tomes (ou des épisodes)
-    $volumes_html = '<ul class="volumes-list">';
-    foreach ($series['volumes'] as $volume_index => $volume) {
-        $is_loaned = isset($loaned_volumes[$volume['number']]);
-
-        // Construire l'infobulle (survol)
-        $tooltip_lines = [];
-
-        $format_date = function ($d) {
-            if (empty($d)) return '';
-            $ts = strtotime($d);
-            return $ts ? date('d/m/Y', $ts) : '';
-        };
-
-        $added_at = $format_date($volume['added_at'] ?? '');
-        if ($added_at !== '' && !$series_is_anime) {
-            $tooltip_lines[] = "Date d'ajout à la collection : $added_at";
-        }
-
-        if (($volume['status'] ?? '') === 'terminé') {
-            $read_at = $format_date($volume['read_at'] ?? '');
-            if ($read_at !== '') {
-                // « Date de lecture » ou « Date de visionnage »
-                $tooltip_lines[] = 'Date de ' . $vocab['activity'] . " : $read_at";
-            }
-        }
-
-        // Le collector n'a pas de sens pour un épisode : c'est l'édition
-        // physique de la série entière qui est collector, pas l'épisode.
-        if (!empty($volume['collector']) && !$series_is_anime) {
-            $tooltip_lines[] = 'Tome collector !';
-        }
-
-        if (!empty($volume['last'])) {
-            $tooltip_lines[] = 'Dernier ' . $vocab['item'] . ' de la série !';
-        }
-
-        if ($is_loaned) {
-            $tooltip_lines[] = 'Prêté à ' . $loaned_volumes[$volume['number']];
-        }
-
-        $title_attr = !empty($tooltip_lines)
-            ? ' data-title="' . htmlspecialchars(implode("\n", $tooltip_lines), ENT_QUOTES) . '"'
-            : '';
-
-        $volumes_html .= sprintf(
-            '<li class="status-%s%s%s%s"%s data-series-id="%s" data-volume-index="%d">%d%s</li>',
-            str_replace(' ', '-', strtolower($volume['status'])),
-            !empty($volume['collector']) ? ' volume-collector' : '',
-            !empty($volume['last']) ? ' volume-last' : '',
-            $is_loaned ? ' volume-loaned' : '',
-            $title_attr,
-            $series_id,
-            $volume_index,
-            $volume['number'],
-            $is_loaned ? '<span class="volume-loan-badge" aria-label="En prêt">🤝</span>' : ''
-        );
-    }
-    // Bouton « + » de fin de liste. Même geste, deux sens selon la collection :
-    //
-    //   • manga  → ouvre la modale « Ajouter des tomes », série pré-sélectionnée.
-    //     Masqué si le dernier tome porte le tag « dernier tome de la série »
-    //     (collection réputée complète) ;
-    //   • animé  → fait passer le PREMIER épisode non terminé en « terminé ».
-    //     Il n'ajoute donc rien : les épisodes viennent d'Anilist. Masqué une
-    //     fois tous les épisodes vus, faute d'épisode suivant à marquer.
-    $volumes = $series['volumes'];
-    if ($series_is_anime) {
-        if (anime_next_episode_index($series) >= 0) {
-            $volumes_html .= sprintf(
-                '<li class="volume-add-btn episode-mark-btn" data-series-id="%s" title="Marquer l\'épisode suivant comme %s" aria-label="Marquer l\'épisode suivant comme %s">+</li>',
-                htmlspecialchars($series_id, ENT_QUOTES),
-                htmlspecialchars($vocab['done_short'], ENT_QUOTES),
-                htmlspecialchars($vocab['done_short'], ENT_QUOTES)
-            );
-        }
-    } else {
-        $last_volume = !empty($volumes) ? end($volumes) : null;
-        $series_is_complete = $last_volume !== null && !empty($last_volume['last']);
-        if (!$series_is_complete) {
-            $volumes_html .= sprintf(
-                '<li class="volume-add-btn" data-series-id="%s" title="Ajouter des tomes à cette série" aria-label="Ajouter des tomes">+</li>',
-                htmlspecialchars($series_id, ENT_QUOTES)
-            );
-        }
-    }
-    $volumes_html .= '</ul>';
-
-    // Une série animée sans épisode n'est pas une série vide à compléter : c'est
-    // une série dont rien n'a encore été diffusé. On le dit, plutôt que de
-    // laisser une liste vide et sans explication.
-    if ($series_is_anime && empty($volumes)) {
-        $volumes_html = '<p class="hint">Aucun épisode diffusé pour le moment.</p>' . $volumes_html;
-    }
-
-    // Ajouter les notifications si nécessaire
-    if (!empty($notifications)) {
-        $volumes_html = '<div class="issues-list"><span class="warning-icon">⚠️</span><span class="issues-text">' . implode(' ', $notifications) . '</span></div>' . $volumes_html;
-    }
+    $volumes_html = render_volumes_html($series, $notifications, $loaned_volumes);
 
     header('Content-Type: application/json');
     echo json_encode([

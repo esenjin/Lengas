@@ -163,8 +163,7 @@ function createLightSeriesCard(series) {
                 ${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}
                 ${series.babelio_url ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}
             </div>
-            <button class="load-volumes-btn" data-series-id="${series.id}" data-volumes-count="${series.volumes_count}">Voir les tomes (${series.volumes_count})</button>
-            <div class="volumes-container" data-series-id="${series.id}"></div>
+            <div class="volumes-container" data-series-id="${series.id}" data-loaded="true">${series.volumes_html || ''}</div>
         </div>
     `;
     return seriesCard;
@@ -177,7 +176,6 @@ function formatList(list) {
     return filtered.length > 0 ? filtered.join(', ') : '<em>aucun</em>';
 }
 
-// Charge les tomes d'une série (ou les masque si déjà affichés)
 // Libellé pluriel de l'unité d'une série (« tomes » ou « épisodes »), lu dans
 // le registre de types exposé par le PHP (window.seriesTypes) — jamais écrit
 // en dur, pour qu'un type futur n'ait rien à changer ici. episodes.js définit
@@ -191,33 +189,22 @@ function seriesItemsLabel(seriesId) {
     return (def && def.vocab && def.vocab.items) ? def.vocab.items : 'tomes';
 }
 
-function loadSeriesVolumes(seriesId) {
+// Recharge le contenu (déjà affiché) des tomes/épisodes d'une série depuis le
+// serveur. Les tomes/épisodes sont désormais affichés en permanence — plus de
+// bouton "voir/cacher" — cette fonction ne sert donc plus qu'à rafraîchir un
+// container déjà visible après une action qui a pu en changer le contenu côté
+// serveur sans repasser par le DOM local (ex : synchronisation Anilist).
+function refreshSeriesVolumes(seriesId) {
     const container = document.querySelector(`.volumes-container[data-series-id="${seriesId}"]`);
-    const btn = document.querySelector(`.load-volumes-btn[data-series-id="${seriesId}"]`);
-    const volumesCount = btn ? btn.dataset.volumesCount : '';
+    if (!container) return;
     const itemsLabel = seriesItemsLabel(seriesId);
 
-    // Toggle : si les tomes sont visibles, on les masque
-    if (container.dataset.loaded === 'true') {
-        if (container.style.display === 'none') {
-            container.style.display = '';
-            if (btn) btn.textContent = `Cacher les ${itemsLabel} (${volumesCount})`;
-        } else {
-            container.style.display = 'none';
-            if (btn) btn.textContent = `Voir les ${itemsLabel} (${volumesCount})`;
-        }
-        return;
-    }
-
-    // Premier chargement
-    container.innerHTML = `<p class="loading-text">Chargement des ${itemsLabel}...</p>`;
     fetch(`admin.php?get_series_volumes=true&series_id=${encodeURIComponent(seriesId)}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 container.innerHTML = data.volumes_html;
                 container.dataset.loaded = 'true';
-                if (btn) btn.textContent = `Cacher les ${itemsLabel} (${volumesCount})`;
             } else {
                 container.innerHTML = `<p class="error">Erreur : ${data.message}</p>`;
             }
@@ -248,20 +235,11 @@ function openAddVolumesForSeries(seriesId) {
 
 // Écouteur unique pour tous les clics dans #series-list (délégation d'événements)
 //
-// Il n'y en avait ici que deux, strictement identiques sur les tomes et le
-// bouton « + » : le second suffisait, le premier ne faisait que rejouer le même
-// traitement. Le typage des séries en aurait fait deux copies à maintenir en
-// phase — l'une aurait fini par ouvrir la mauvaise modale. Fusionnés.
+// Le bouton "Voir/cacher les tomes" a disparu : les tomes/épisodes sont
+// désormais affichés en permanence dans chaque carte, rendus côté serveur dès
+// le chargement (plus pertinent depuis SQLite, qui rend ce contenu bon marché
+// à générer). Il ne reste ici que les autres actions de la carte.
 document.getElementById('series-list').addEventListener('click', (e) => {
-    // Bouton "Voir les tomes"
-    const loadBtn = e.target.closest('.load-volumes-btn');
-    if (loadBtn) {
-        e.preventDefault();
-        const seriesId = loadBtn.dataset.seriesId;
-        loadSeriesVolumes(seriesId);
-        return;
-    }
-
     // Bouton "Modifier"
     const editBtn = e.target.closest('.edit-series-btn');
         if (editBtn) {

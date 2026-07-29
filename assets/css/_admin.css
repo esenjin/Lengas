@@ -73,27 +73,7 @@
     box-shadow: 0 4px 16px rgba(52, 211, 153, 0.25);
 }
 
-/* Styles pour la section de gestion des volumes */
-.load-volumes-btn {
-    background: var(--background-lighter);
-    color: var(--text-color);
-    border: var(--border-subtle) !important;
-    border: 1px solid rgba(255,255,255,0.08) !important;
-    padding: 8px 14px;
-    border-radius: var(--border-radius-sm);
-    cursor: pointer;
-    margin-top: 10px;
-    font-size: 0.875em;
-    font-weight: 500;
-    transition: var(--transition);
-}
-
-.load-volumes-btn:hover {
-    background: var(--background-darker);
-    transform: translateY(-1px);
-    box-shadow: none;
-}
-
+/* Conteneur des tomes/épisodes (toujours affiché, sans bouton toggle) */
 .volumes-container {
     margin-top: 12px;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
