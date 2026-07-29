@@ -663,7 +663,7 @@ $wishlist = load_wishlist();
 
         // ── Filtre de type + recherche + tri ──────────────────────────────────
         // Réinitialisé à « les deux » à chaque visite (pas de mémorisation),
-        // à l'image du filtre de type des critiques (bloc 12).
+        // à l'image du filtre de type de la page « Critiques ».
         function applyFiltersAndSort() {
             const term      = normalizeString(document.getElementById('wishlist-search').value);
             const typeFilter = document.getElementById('wishlist-type-filter').value;

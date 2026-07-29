@@ -145,13 +145,11 @@ if (!function_exists('stats_series_averages')) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Réglages "Statistiques" de l'Animethèque (durée par format)
 // ─────────────────────────────────────────────────────────────────────────────
-// Pendant du bloc 13 à stats_get_settings() ci-dessus, mais pour les animés :
-// une durée moyenne d'épisode (en minutes) par FORMAT Anilist (TV, MOVIE,
-// OVA…) plutôt que par catégorie manga, plus un repli global. L'écran de
-// réglage correspondant (options.php) est du ressort du bloc 14 ; en son
-// absence, cette fonction retombe silencieusement sur des valeurs par défaut
-// raisonnables — aucune des deux valeurs stockées ci-dessous ne dépend donc de
-// l'avancement du bloc 14 pour fonctionner.
+// Pendant de stats_get_settings() ci-dessus, mais pour les animés : une durée
+// moyenne d'épisode (en minutes) par FORMAT Anilist (TV, MOVIE, OVA…) plutôt
+// que par catégorie manga, plus un repli global. L'écran de réglage
+// correspondant vit dans options.php ; en son absence, cette fonction retombe
+// silencieusement sur des valeurs par défaut raisonnables.
 //
 // Stockage attendu (option JSON `stats_anime_format_settings`) :
 //   { "TV": 24, "MOVIE": 100, ... }  → minutes par épisode, par format
@@ -695,7 +693,7 @@ if (!function_exists('compute_stats')) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Calcul — Animethèque (bloc 13)
+// Calcul — Animethèque
 // ─────────────────────────────────────────────────────────────────────────────
 // Pendant de compute_stats() pour les séries de type 'anime'. Volontairement un
 // calcul À PART plutôt qu'une extension du précédent : les deux collections ne

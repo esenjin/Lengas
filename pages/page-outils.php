@@ -343,7 +343,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
     // Nouvelle campagne : toute campagne d'aperçu précédente (validée ou non)
     // est abandonnée. Réglages et pseudo ne sont jamais mémorisés d'une
-    // campagne à l'autre (décision structurante du bloc 8).
+    // campagne à l'autre.
     anilist_import_clear_state();
 
     $wishlist = load_wishlist();
@@ -505,9 +505,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
-// ── Sous-onglet « Vérification via Anilist » (page « Complétude des séries »,
-// V4 bloc 9) : synchronisation en flux (SSE), sur le modèle des deux autres
-// sous-onglets de cet onglet. Réutilise intégralement le moteur du bloc 9
+// ── Sous-onglet « Vérification via Anilist » (page « Complétude des séries ») :
+// synchronisation en flux (SSE), sur le modèle des deux autres sous-onglets de
+// cet onglet. Réutilise intégralement le moteur de synchronisation
 // (fonctions/tools/anilist_sync.php) : ni l'éligibilité, ni le verrou, ni la
 // mise à jour des épisodes ne sont redéfinis ici.
 //
@@ -566,9 +566,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
-// ── Endpoint SSE : outil « Vérification via Anilist » (V4 bloc 10) ───────────
+// ── Endpoint SSE : outil de revérification des animés (page « Outils ») ──────
 // Compare, pour chaque série animée avec identifiant Anilist, tous les champs
-// factuels NON couverts par la synchro automatique du bloc 9 (studios, format,
+// factuels NON couverts par la synchronisation automatique (studios, format,
 // genres, statut de diffusion, nombre d'épisodes annoncé, vignette, titres
 // alternatifs) à la fiche Anilist actuelle. Aucune écriture ici : seul le
 // rapport est construit, l'écriture attend une validation explicite (endpoint
@@ -620,7 +620,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
-// ── Endpoint : application des corrections validées (V4 bloc 10) ────────────
+// ── Endpoint : application des corrections validées (revérification animés) ─
 // Format attendu ($_POST['selections'], JSON) :
 //   { "<series_id>": { "fields": ["studios","genres",…], "accept_new_titles": bool }, … }
 // Une série absente de $selections, ou envoyée avec un tableau `fields` vide
@@ -933,7 +933,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
             </div><!-- /sous-onglet babengas -->
             <?php endif; ?>
 
-            <!-- ── Sous-onglet : Vérification via Anilist (V4 bloc 9) ───────── -->
+            <!-- ── Sous-onglet : Vérification via Anilist ────────────────────── -->
             <?php if (!empty(series_of_type($data, 'anime'))): ?>
             <div class="tools-subtab-panel" data-subtab-panel="anilist-sync">
             <div class="tools-section">
@@ -1077,7 +1077,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
             </div>
         </div><!-- /onglet anilist-import -->
 
-        <!-- ── Onglet : Vérification des animés (V4 bloc 10) ───────────────── -->
+        <!-- ── Onglet : Vérification des animés ──────────────────────────────── -->
         <?php if (!empty(series_of_type($data, 'anime'))): ?>
         <div class="tools-tab-panel" data-tab-panel="anilist-recheck">
             <div class="tools-section">
@@ -1265,7 +1265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
         </div>
     </div>
 
-    <!-- Édition rapide d'une série animée depuis l'outil « Incohérences » (V4 bloc 11) -->
+    <!-- Édition rapide d'une série animée depuis l'outil « Incohérences » -->
     <!-- Volontairement plus étroite que la modale manga ci-dessus : seuls le statut de
          visionnage et sa date sont modifiables (pas d'ajout/suppression d'épisode, pas de
          case « dernier épisode » — Anilist est la seule source, le tag se réévalue seul). -->

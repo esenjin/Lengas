@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  CHART.JS — Donuts (Animethèque, bloc 13)
+    //  CHART.JS — Donuts (Animethèque)
     // ══════════════════════════════════════════════════════════════════════════
     const A = window.ANIME_STATS || {};
 
@@ -595,7 +595,7 @@ document.addEventListener('DOMContentLoaded', function () {
     lineChart('line-reading-growth', S.reading_growth || [], 'Total lu cumulé', C.sky, false);
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  APEXCHARTS — Animethèque (bloc 13)
+    //  APEXCHARTS — Animethèque
     // ══════════════════════════════════════════════════════════════════════════
     const animeCharts = {}; // registre pour les toggles (même principe que `charts` ci-dessus)
 

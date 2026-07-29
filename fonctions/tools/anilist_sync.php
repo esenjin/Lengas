@@ -1,18 +1,19 @@
 <?php
 // ────────────────────────────────────────────────────────────────────────────
-// fonctions/tools/anilist_sync.php — Synchronisation automatique (V4 bloc 9)
+// fonctions/tools/anilist_sync.php — Synchronisation automatique
 //
 // Tient à jour, sans intervention, les séries animées dont la diffusion ET le
 // visionnage sont tous deux « en cours ». Périmètre volontairement étroit et
-// strictement disjoint de l'outil de revérification (bloc 10) :
+// strictement disjoint de l'outil de revérification (fonctions/tools/
+// anilist_recheck.php) :
 //
 //   TOUCHE   → épisodes (nouveaux épisodes diffusés, statuts « à voir »
 //              conservés, tag « dernier épisode ») et statut de diffusion.
 //   NE TOUCHE JAMAIS → titre choisi, vignette personnalisée, note, coches
 //              mature / favori / visionnage abandonné, éditions physiques,
 //              studios, genres, format, titres alternatifs, rewatch_count.
-//              Tout cela relève de la revérification manuelle (bloc 10), qui
-//              demande une validation explicite avant écriture.
+//              Tout cela relève de la revérification manuelle, qui demande
+//              une validation explicite avant écriture.
 //
 // Le moteur ci-dessous (anilist_sync_series_now) est le SEUL point d'écriture
 // d'une synchronisation. Il est appelé par deux entrées distinctes :
@@ -193,9 +194,10 @@ function anilist_sync_series_now(array $data, string $series_id, bool $force = f
     $episodes_before = count($series['volumes'] ?? []);
     $status_before   = $series['status'] ?? '';
 
-    // Périmètre strict du bloc 9 : épisodes + statut de diffusion, rien
-    // d'autre (cf. en-tête de ce fichier). Les autres champs factuels
-    // (studios, genres, format, titres alternatifs…) relèvent du bloc 10.
+    // Périmètre strict de la synchronisation automatique : épisodes + statut
+    // de diffusion, rien d'autre (cf. en-tête de ce fichier). Les autres
+    // champs factuels (studios, genres, format, titres alternatifs…)
+    // relèvent de la revérification manuelle.
     $data[$key]['status']  = $media['status_tag'] ?? $data[$key]['status'];
     $data[$key]['volumes'] = anime_episodes_from_media($media, $data[$key]['volumes'] ?? []);
     $data[$key]['volumes'] = anime_refresh_last_episode(

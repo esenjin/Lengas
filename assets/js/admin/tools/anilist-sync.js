@@ -1,6 +1,6 @@
 // ──────────────────────────────────────────────────────────────────────────
 // assets/js/admin/tools/anilist-sync.js — Sous-onglet « Vérification via
-// Anilist » (V4 bloc 9)
+// Anilist »
 //
 // Synchronisation en flux (SSE) des séries animées dont la diffusion et le
 // visionnage sont tous deux « en cours » : nouveaux épisodes diffusés et

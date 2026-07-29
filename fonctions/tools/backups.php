@@ -129,13 +129,14 @@ function delete_backup(string $backup_file): array {
 // destiné à la portabilité / lecture externe (il ne remplace pas la sauvegarde
 // ZIP qui, elle, contient aussi le fichier SQLite et les images).
 //
-// V4 (bloc 11) : aucune adaptation nécessaire ici. load_data() renvoie déjà
-// tous les champs animés (studios, format, titres alternatifs, éditions
+// Animés : aucune adaptation nécessaire ici. load_data() renvoie déjà tous
+// les champs animés (studios, format, titres alternatifs, éditions
 // physiques…) au même titre que les champs mangas, et load_wishlist() renvoie
 // déjà son propre type et anilist_id. La sauvegarde ZIP, elle, couvre les
-// nouvelles tables (series_editions, anilist_cache) via le fichier SQLite
-// entier, et les vignettes Anilist via le dossier uploads/ entier : les deux
-// sont déjà exhaustifs par construction, sans liste de champs à tenir à jour.
+// tables dédiées aux animés (series_editions, anilist_cache) via le fichier
+// SQLite entier, et les vignettes Anilist via le dossier uploads/ entier :
+// les deux sont déjà exhaustifs par construction, sans liste de champs à
+// tenir à jour.
 // ──────────────────────────────────────────────────────────────────────────────
 function build_json_export(): array {
     $collection = function_exists('load_data')     ? load_data()     : [];

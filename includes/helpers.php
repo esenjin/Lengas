@@ -25,8 +25,15 @@
 //                                         → libellés des cases du filtre de statut
 //                                           de lecture/visionnage (status_filter.php)
 // ──────────────────────────────────────────────────────────────────────────────
+// ⚠️ Garde individuel : cette fonction est la seule à en avoir vraiment besoin
+// (cache statique interne). Volontairement PAS de garde parapluie autour des
+// dizaines de fonctions qui suivent dans ce fichier : un unique
+// `if (!function_exists(...))` enveloppant tout le fichier ferait disparaître
+// silencieusement TOUT le bloc — y compris des fonctions sans aucun rapport,
+// comme is_private_mode() — si une seule fonction du bloc existait déjà par
+// ailleurs. require_once suffit à empêcher une redéclaration dans le flux
+// normal d'inclusion.
 if (!function_exists('series_type_registry')) {
-
 function series_type_registry(): array {
     static $registry = null;
     if ($registry !== null) {
@@ -102,6 +109,7 @@ function series_type_registry(): array {
 
     return $registry;
 }
+} // end function_exists guard (series_type_registry uniquement)
 
 // Type retenu quand aucun n'est précisé (rétro-compatibilité : tout l'existant
 // est du manga).
@@ -478,8 +486,6 @@ function series_edition_comments($series): array {
     }
     return $out;
 }
-
-} // end function_exists guard
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Notation subjective des séries (facultative)

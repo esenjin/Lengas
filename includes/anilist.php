@@ -1043,7 +1043,7 @@ function anilist_fetch_user_list(string $username, $on_progress = null): array {
                     'updated_at'        => $updated,
                     'updated_at_date'   => anilist_timestamp_date($updated),
                     // Date de visionnage retenue par le site : completedAt,
-                    // repli sur updatedAt (décision structurante du bloc 8).
+                    // repli sur updatedAt.
                     'watched_at'        => $completed !== '' ? $completed : anilist_timestamp_date($updated),
                     'custom_lists'      => $entry_custom,
                     'media'             => $media,

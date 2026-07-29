@@ -1,6 +1,6 @@
 <?php
 // ────────────────────────────────────────────────────────────────────────────
-// fonctions/wishlist.php — Liste d'envies, typée (V4 bloc 7)
+// fonctions/wishlist.php — Liste d'envies, typée
 //
 // Une entrée peut être :
 //   • un manga (type = 'manga') : saisie libre, comportement identique aux
@@ -24,7 +24,8 @@ function load_wishlist(): array {
     foreach ($rows as $r) {
         $result[] = [
             'name'       => $r['name'],
-            // Repli 'manga' : couvre les entrées antérieures au bloc 7.
+            // Repli 'manga' : couvre les entrées créées avant le typage de la
+            // liste d'envies.
             'type'       => (isset($r['type']) && trim($r['type']) !== '') ? $r['type'] : 'manga',
             'author'     => $r['author'],
             'publisher'  => $r['publisher'],
@@ -76,7 +77,7 @@ function wishlist_of_type(array $wishlist, $type): array {
 // Ajouter une entrée à la liste d'envies.
 //
 // $type = 'manga' : $author et $publisher sont utilisés tels quels, comme
-// avant le bloc 7 — aucune recherche Anilist n'entre en jeu.
+// pour toute entrée manga — aucune recherche Anilist n'entre en jeu.
 // $type = 'anime' : $studio remplace $author (pas d'éditeur), et
 // $anilist_id doit provenir d'une fiche Anilist choisie (recherche par titre
 // ou par identifiant) — jamais saisi librement.
@@ -287,7 +288,7 @@ function add_from_wishlist(array $data, array $wishlist, int $index): array {
 }
 
 // Passage en collection d'une entrée animée : import complet depuis Anilist,
-// sur le moteur du bloc 3 (fonctions/anime.php::add_anime_series()).
+// sur le même moteur que l'ajout direct (fonctions/anime.php::add_anime_series()).
 //
 // Anilist fait autorité même ici : seul l'anilist_id mémorisé transite, la
 // fiche est intégralement rechargée (le studio ou le titre affichés en

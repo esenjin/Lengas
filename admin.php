@@ -726,7 +726,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
                 // vignette Anilist qui, elle, ne s'efface jamais à la main.
                 'custom_image'               => $series['image'] ?? '',
                 'anilist_image'              => $series['anilist_image'] ?? '',
-                // ── Synchronisation automatique (V4 bloc 9) ──────────────────
+                // ── Synchronisation automatique ──────────────────────────────
                 // Le front décide lui-même s'il doit déclencher une synchro à
                 // l'affichage de la carte : sync_due lui épargne un aller-retour
                 // pour rien sur une série déjà à jour ou hors verrou.

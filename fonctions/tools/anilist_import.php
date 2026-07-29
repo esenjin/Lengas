@@ -1,6 +1,6 @@
 <?php
 // ────────────────────────────────────────────────────────────────────────────
-// fonctions/tools/anilist_import.php — Outil « Import Anilist » (V4 bloc 8)
+// fonctions/tools/anilist_import.php — Outil « Import Anilist »
 //
 // Import de masse de la liste ANIME d'un compte Anilist, par pseudo public.
 // Se déroule en deux temps, strictement séparés :
@@ -12,8 +12,8 @@
 //
 //   Phase 2 — IMPORT : n'écrit que ce que l'aperçu, éventuellement corrigé par
 //   l'utilisateur (statuts décochés, formats exclus, séries décochées à la
-//   main…), a retenu. Aiguillage par statut de liste Anilist, cf. tableau de la
-//   feuille de route (bloc 8, phase 2).
+//   main…), a retenu. Aiguillage par statut de liste Anilist, cf. tableau de
+//   correspondance dans la fonction anilist_import_apply_entry() plus bas.
 //
 // Pas de campagne façon Babengas ici : Anilist répond en quelques secondes par
 // tranche de 250 entrées (anilist_fetch_user_list), la progression tient dans
@@ -34,11 +34,10 @@
 // Une seule campagne d'aperçu à la fois. Stockée dans la table `options`
 // (clé 'anilist_import_state', valeur JSON) : rien de nouveau à migrer.
 //
-// ⚠️ Le pseudo et les réglages ne sont PAS mémorisés d'une campagne à l'autre
-// (décision structurante du bloc 8) : cette persistance ne sert qu'à survivre
-// à un rechargement PENDANT une même campagne, jamais à préremplir la
-// suivante. anilist_import_clear_state() est appelée à chaque nouvelle
-// campagne ET après un import réussi.
+// ⚠️ Le pseudo et les réglages ne sont PAS mémorisés d'une campagne à l'autre :
+// cette persistance ne sert qu'à survivre à un rechargement PENDANT une même
+// campagne, jamais à préremplir la suivante. anilist_import_clear_state() est
+// appelée à chaque nouvelle campagne ET après un import réussi.
 
 function anilist_import_state_key(): string {
     return 'anilist_import_state';
@@ -208,9 +207,9 @@ function anilist_import_build_preview(string $username, array $data, array $wish
             'episodes'          => $media['episodes'],
             'repeat'            => $entry['repeat'],
             'score'             => $entry['score'],
-            // Date de visionnage retenue par le site (décision structurante
-            // du bloc 8) : completedAt, repli sur updatedAt. Déjà calculée par
-            // le connecteur, simplement propagée jusqu'à la phase d'import.
+            // Date de visionnage retenue par le site : completedAt, repli sur
+            // updatedAt. Déjà calculée par le connecteur, simplement propagée
+            // jusqu'à la phase d'import.
             'watched_at'        => $entry['watched_at'],
             'custom_lists'      => $entry['custom_lists'],
             // Favori NATIF Anilist (cœur), distinct des listes personnalisées
@@ -373,8 +372,8 @@ function anilist_import_create_library_entry(array $data, array $media, array $e
 
     $data[$key] = anilist_import_apply_watch_progress($data[$key], $entry, $media);
     if (!empty($entry['will_be_favourite'])) {
-        // La coche favorite n'est posée qu'À LA CRÉATION (décision
-        // structurante du bloc 8) : c'est justement le cas ici.
+        // La coche favorite n'est posée qu'À LA CRÉATION : c'est justement
+        // le cas ici. Un ré-import ne la coche ni ne la décoche jamais.
         $data[$key]['favorite'] = true;
     }
 
@@ -416,8 +415,13 @@ function anilist_import_update_library_entry(array $data, array $existing, array
 }
 
 // Applique la progression de visionnage d'après le statut de liste Anilist de
-// l'entrée d'import, en suivant strictement le tableau d'aiguillage de la
-// feuille de route (bloc 8, phase 2).
+// l'entrée d'import, en suivant strictement le tableau d'aiguillage suivant :
+//   COMPLETED           → tous les épisodes en « terminé »
+//   CURRENT             → 1..progress en « terminé », le reste en « à voir »
+//   REPEATING           → tous les épisodes en « terminé » + rewatch_count
+//   DROPPED / PAUSED    → progression + coche « Visionnage abandonné »
+//   PLANNING            → liste d'envies, aucun épisode créé
+//   (NOT_YET_RELEASED)  → liste d'envies, prioritaire sur le statut de liste
 //
 // ⚠️ REPEATING : ne JAMAIS appliquer la règle de CURRENT ici. `progress` sur
 // un revisionnage reflète l'avancement du REVISIONNAGE en cours, pas la

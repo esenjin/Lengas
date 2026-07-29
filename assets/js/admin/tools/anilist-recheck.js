@@ -1,6 +1,6 @@
 // ──────────────────────────────────────────────────────────────────────────
 // assets/js/admin/tools/anilist-recheck.js — Outil « Vérification des
-// animés » (V4 bloc 10)
+// animés »
 //
 // Compare en flux (SSE) chaque série animée à sa fiche Anilist actuelle et
 // affiche un rapport détaillé, ligne par ligne, des écarts détectés. Rien

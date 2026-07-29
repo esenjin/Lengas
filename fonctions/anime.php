@@ -150,10 +150,10 @@ function find_series_by_anilist_id(array $data, $anilist_id): ?array {
 // Refus possibles :
 //   • fiche inexploitable ;
 //   • série déjà présente (même anilist_id) ;
-//   • série non encore diffusée — elle relève de la liste d'envies.
-//     ⚠️ Ce refus est PROVISOIRE : au bloc 7, la liste d'envies devient typée et
-//     ces séries y sont routées d'office au lieu d'être rejetées. Le message
-//     temporaire ci-dessous est alors à retirer.
+//   • série non encore diffusée — elle relève de la liste d'envies, jamais de
+//     la vidéothèque. Ce garde-fou serveur double le blocage déjà fait côté
+//     interface (bouton d'ajout absent pour ces fiches dans la modale de la
+//     vidéothèque ; sélectionnables uniquement depuis la liste d'envies).
 //
 // Les épisodes sont créés dans la foulée, à partir du nombre d'épisodes
 // RÉELLEMENT DIFFUSÉS (fonctions/episodes.php) : ni plus, ni moins, et jamais à

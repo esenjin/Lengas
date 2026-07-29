@@ -92,7 +92,7 @@ function createAnimeSeriesCard(series) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Synchronisation automatique (V4 bloc 9)
+// Synchronisation automatique
 //
 // Déclenchée à l'affichage de chaque carte animée éligible (diffusion ET
 // visionnage « en cours », verrou de 24h écoulé — sync_due calculé côté

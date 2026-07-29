@@ -7,7 +7,7 @@
 // OU à l'intérieur d'une catégorie ; entre catégories, OU ou ET selon le mode.
 // Aucun critère coché => tout afficher.
 //
-// ⚠️ Typage (bloc 6) : le panneau est construit pour un type de série donné.
+// ⚠️ Le panneau est construit pour un type de série donné.
 // Les libellés viennent exclusivement du registre de types (includes/helpers.php,
 // type_vocab()) — aucun mot en dur ici. Le bloc « Lues ailleurs » n'a pas
 // d'équivalent côté animé (aucune notion de lecture externe) et est retiré du

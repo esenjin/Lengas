@@ -13,9 +13,9 @@
 //   incomplete.php          → Séries incomplètes (tomes manquants)
 //   babengas-helpers.php   → Vérification du décompte VF via Babelio (Babengas)
 //   coherence.php          → Incohérences de la collection
-//   anilist_import.php     → Import de masse de la liste Anilist (V4 bloc 8)
-//   anilist_sync.php       → Synchronisation automatique Anilist (V4 bloc 9)
-//   anilist_recheck.php    → Vérification manuelle des animés (V4 bloc 10)
+//   anilist_import.php     → Import de masse de la liste Anilist
+//   anilist_sync.php       → Synchronisation automatique Anilist
+//   anilist_recheck.php    → Vérification manuelle des animés
 // ────────────────────────────────────────────────────────────────────────────
 
 require_once __DIR__ . '/tools/backups.php';

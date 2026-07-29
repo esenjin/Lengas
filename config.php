@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '3.9.1');
+define('SITE_VERSION', '4.0.0');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Chemin vers la base de données SQLite
@@ -208,12 +208,12 @@ function init_db(PDO $pdo): void {
         $pdo->exec("ALTER TABLE series ADD COLUMN rewatch_count INTEGER NOT NULL DEFAULT 0");
     } catch (Exception $e) { /* colonne déjà présente */ }
 
-    // ── Horodatage de la dernière synchronisation Anilist (verrou du bloc 9) ───
+    // ── Horodatage de la dernière synchronisation Anilist (verrou 24h) ───────
     try {
         $pdo->exec("ALTER TABLE series ADD COLUMN anilist_synced_at INTEGER NOT NULL DEFAULT 0");
     } catch (Exception $e) { /* colonne déjà présente */ }
 
-    // ── Durée d'un épisode en minutes (champ `duration` d'Anilist, bloc 13) ────
+    // ── Durée d'un épisode en minutes (champ `duration` d'Anilist) ─────────────
     // Alimente le temps de visionnage des statistiques Animethèque. Vide (0)
     // quand Anilist ne la fournit pas : le calcul retombe alors sur le réglage
     // par format (stats_get_anime_settings()).
@@ -234,7 +234,7 @@ function init_db(PDO $pdo): void {
     } catch (Exception $e) { /* doublons préexistants : index non créé */ }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // V4 bloc 7 — Typage de la liste d'envies
+    // Typage de la liste d'envies
     // ──────────────────────────────────────────────────────────────────────────
     // Une entrée de wishlist peut désormais être un manga (comportement inchangé,
     // saisie libre) ou un animé (recherche Anilist, anilist_id mémorisé). Le
@@ -362,16 +362,8 @@ function init_db(PDO $pdo): void {
             'index_page_title' => "Lengas - La mangathèque d'Esenjin !",
             'admin_page_title' => 'Gestion de ma collection',
             'stats_page_title' => 'Statistiques de Lengas',
-            // ── Visibilité (bloc 14 : réglages scindés par collection) ──
-            // Ces trois clés sans suffixe pilotent la Mangathèque, exactement
-            // comme avant la V4 (rétro-compatibilité). Les clés `_anime`
-            // pilotent l'Animethèque et sont indépendantes.
             'private_mode'          => '0',
             'hide_mature'           => '0',
-            'hide_reviews'          => '0',
-            'private_mode_anime'    => '0',
-            'hide_mature_anime'     => '0',
-            'hide_reviews_anime'    => '0',
             // Thème du site (clé) : 'dark' (sombre, par défaut) ou 'light', etc.
             'theme'                 => 'dark',
             // Réglages "Statistiques" : temps & valeur moyens par tome (repli global)
@@ -776,14 +768,9 @@ function load_options(): array {
         $opts[$r['key']] = $r['value'];
     }
     // Convertir les booléens
-    // ── Visibilité Mangathèque (clés historiques, sans suffixe) ──
     $opts['private_mode']        = (bool)($opts['private_mode']        ?? false);
     $opts['hide_mature']         = (bool)($opts['hide_mature']         ?? false);
     $opts['hide_reviews']        = (bool)($opts['hide_reviews']        ?? false);
-    // ── Visibilité Animethèque (bloc 14 : réglages scindés) ──
-    $opts['private_mode_anime']  = (bool)($opts['private_mode_anime']  ?? false);
-    $opts['hide_mature_anime']   = (bool)($opts['hide_mature_anime']   ?? false);
-    $opts['hide_reviews_anime']  = (bool)($opts['hide_reviews_anime']  ?? false);
     return $opts;
 }
 

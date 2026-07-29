@@ -51,7 +51,7 @@ const COHERENCE_LABELS = {
     ref_more_volumes:           { icon: '📦', label: 'Plus de tomes que la référence' },
     loan_deleted_series:        { icon: '👻', label: 'Prêt — série supprimée' },
     loan_read_elsewhere:        { icon: '📤', label: 'Prêt — lue ailleurs' },
-    // ── Animés (V4 bloc 11) ──────────────────────────────────────────────────
+    // ── Animés ────────────────────────────────────────────────────────────────
     anime_no_anilist_id:        { icon: '🆔', label: 'Sans identifiant Anilist' },
     anime_missing_episodes:     { icon: '🕳️', label: 'Épisodes manquants' },
     anime_duplicate_episodes:   { icon: '👯', label: 'Doublons' },
@@ -551,7 +551,7 @@ function applyCoherenceFilter(_filter) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Modale d'édition rapide « animé » depuis l'outil « Incohérences » (V4 bloc 11)
+// Modale d'édition rapide « animé » depuis l'outil « Incohérences »
 // ──────────────────────────────────────────────────────────────────────────────
 // Volontairement plus étroite que la modale manga : seuls le statut de
 // visionnage et sa date se corrigent ici. Pas d'ajout/suppression d'épisode,

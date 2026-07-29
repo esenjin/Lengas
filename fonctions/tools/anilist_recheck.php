@@ -1,26 +1,24 @@
 <?php
 // ────────────────────────────────────────────────────────────────────────────
 // fonctions/tools/anilist_recheck.php — Outil « Vérification des animés »
-// (V4 bloc 10)
 //
-// Complète la synchronisation automatique du bloc 9 : là où celle-ci ne
-// touche qu'aux épisodes et au statut de diffusion, cet outil compare TOUS
-// les autres champs factuels d'une série animée à sa fiche Anilist actuelle
-// — titres alternatifs, studios, format, genres, nombre d'épisodes annoncé,
-// vignette Anilist — et ne les corrige qu'après validation explicite,
-// série par série.
+// Complète la synchronisation automatique : là où celle-ci ne touche qu'aux
+// épisodes et au statut de diffusion, cet outil compare TOUS les autres
+// champs factuels d'une série animée à sa fiche Anilist actuelle — titres
+// alternatifs, studios, format, genres, nombre d'épisodes annoncé, vignette
+// Anilist — et ne les corrige qu'après validation explicite, série par série.
 //
-// Périmètre strictement disjoint du bloc 9 (voir fonctions/tools/
-// anilist_sync.php) : aucune des deux mécaniques ne touche aux champs de
-// l'autre. Les épisodes eux-mêmes ne sont PAS reconstruits ici — un nombre
-// d'épisodes modifié est seulement SIGNALÉ, la mise à jour de la liste
-// d'épisodes proprement dite reste du ressort de la synchro automatique du
-// bloc 9 (ou de la prochaine synchro éligible).
+// Périmètre strictement disjoint de la synchronisation automatique (voir
+// fonctions/tools/anilist_sync.php) : aucune des deux mécaniques ne touche
+// aux champs de l'autre. Les épisodes eux-mêmes ne sont PAS reconstruits
+// ici — un nombre d'épisodes modifié est seulement SIGNALÉ, la mise à jour
+// de la liste d'épisodes proprement dite reste du ressort de la synchro
+// automatique (ou de la prochaine synchro éligible).
 //
 // Ne sont JAMAIS proposés à l'écrasement : titre choisi, vignette
 // personnalisée, note, coches mature / favori / visionnage abandonné,
 // éditions physiques, rewatch_count. Ces champs restent la propriété de
-// l'utilisateur (décision structurante de la feuille de route V4).
+// l'utilisateur.
 //
 // Dépendances : includes/anilist.php (connecteur, anilist_fetch_media_batch),
 // fonctions/anime.php (anime_download_cover, anime_purge_cover, is_anime),
@@ -65,7 +63,7 @@ function anilist_recheck_lists_differ(array $a, array $b): bool {
 //
 // Ne compare QUE les champs factuels non personnalisables. Le titre n'est
 // jamais proposé comme un écart à corriger : ce n'est pas une divergence, un
-// nouveau titre alternatif est une ADDITION au sélecteur (cf. bloc 3), traitée
+// nouveau titre alternatif est une ADDITION au sélecteur de titres, traitée
 // à part (voir anilist_recheck_new_alt_titles ci-dessous).
 function anilist_recheck_diff_series(array $series, array $media): array {
     $diffs = [];
@@ -94,7 +92,7 @@ function anilist_recheck_diff_series(array $series, array $media): array {
         ];
     }
 
-    // ── Durée d'un épisode (bloc 13 : alimente le temps de visionnage) ───
+    // ── Durée d'un épisode (alimente le temps de visionnage des statistiques) ───
     $local_duration  = max(0, (int)($series['episode_duration'] ?? 0));
     $remote_duration = max(0, (int)($media['duration'] ?? 0));
     if ($remote_duration > 0 && $remote_duration !== $local_duration) {
@@ -119,11 +117,11 @@ function anilist_recheck_diff_series(array $series, array $media): array {
     }
 
     // ── Statut de diffusion ──────────────────────────────────────────────
-    // Rappel : la synchro automatique (bloc 9) tient déjà ce champ à jour,
-    // mais seulement pour les séries en cours de diffusion ET de visionnage.
+    // Rappel : la synchro automatique tient déjà ce champ à jour, mais
+    // seulement pour les séries en cours de diffusion ET de visionnage.
     // Une série en pause, terminée ou abandonnée peut très bien avoir bougé
-    // sur Anilist sans jamais être passée par le bloc 9 — c'est justement le
-    // rôle de cet outil de le rattraper.
+    // sur Anilist sans jamais être passée par la synchro automatique —
+    // c'est justement le rôle de cet outil de le rattraper.
     $local_status  = trim((string)($series['status'] ?? ''));
     $remote_status = $media['status_tag'] ?? null;
     if ($remote_status !== null && $remote_status !== $local_status) {
@@ -137,8 +135,8 @@ function anilist_recheck_diff_series(array $series, array $media): array {
 
     // ── Nombre d'épisodes DIFFUSÉS ───────────────────────────────────────
     // Signalé, mais PAS appliqué ici : reconstruire la liste des épisodes est
-    // le rôle de la synchro automatique (bloc 9), pas de cet outil. On se
-    // contente d'avertir qu'un nouvel épisode a été diffusé sur Anilist.
+    // le rôle de la synchro automatique, pas de cet outil. On se contente
+    // d'avertir qu'un nouvel épisode a été diffusé sur Anilist.
     //
     // ⚠️ On compare à `aired_episodes` (déjà diffusés à ce jour), PAS à
     // `episodes` (le total annoncé pour toute la série). Pour une série TV en

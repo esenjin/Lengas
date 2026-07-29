@@ -352,7 +352,7 @@ function check_manga_coherence(array $data): array {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Règles animés (V4 bloc 11)
+// Règles animés
 // ────────────────────────────────────────────────────────────────────────────
 // Périmètre disjoint des mangas : numéro d'épisode manquant/doublon (même
 // logique que les tomes), mauvais tag « dernier épisode », statut de diffusion
@@ -460,8 +460,8 @@ function check_anime_coherence(array $data): array {
 
         // ── Statut de diffusion divergent d'Anilist ──────────────────────────
         // Purement informatif ici : la comparaison fine (avec appel réseau et
-        // cache 24h) relève de l'outil de revérification (bloc 10) et de la
-        // synchronisation automatique (bloc 9). On se contente de signaler les
+        // cache 24h) relève de l'outil de revérification et de la
+        // synchronisation automatique. On se contente de signaler les
         // cas structurellement incohérents, sans aucun appel réseau :
         //   • diffusion marquée terminée sans le moindre épisode tagué dernier ;
         //   • un épisode est tagué dernier mais la diffusion n'est ni terminée,
@@ -477,7 +477,7 @@ function check_anime_coherence(array $data): array {
         // ── Vignette Anilist introuvable ──────────────────────────────────────
         // Le champ est renseigné mais le fichier a disparu du serveur (purge
         // manuelle, restauration partielle…). Purement informatif : se corrige
-        // via une revérification (bloc 10), pas de saisie manuelle possible.
+        // via une revérification, pas de saisie manuelle possible.
         $anilist_image = trim((string)($series['anilist_image'] ?? ''));
         if ($anilist_image !== '' && !file_exists($anilist_image)) {
             $series_issues[] = ['type' => 'anime_cover_missing', 'message' => "La vignette Anilist enregistrée est introuvable sur le serveur."];

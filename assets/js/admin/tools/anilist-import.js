@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────
-// assets/js/admin/tools/anilist-import.js — Outil « Import Anilist » (V4 bloc 8)
+// assets/js/admin/tools/anilist-import.js — Outil « Import Anilist »
 //
 // Déroulement en deux temps, strictement séparés :
 //   1. Récupération + aperçu (SSE) : aucune écriture serveur, seul l'aperçu
