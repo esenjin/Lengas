@@ -52,16 +52,17 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                     </a>
                 </li>
 
-<?php if ($current_page === 'admin.php' && $__sidebar_type === 'manga'): ?>
-                <!-- Ajouter une série (uniquement sur la page admin : les modales
-                     correspondantes n'existent que là) -->
+                <!-- Ajouter une série (modale présente en permanence sur
+                     admin.php ; toujours visible ici, redirige/bascule vers
+                     la Mangathèque si nécessaire avant de l'ouvrir) -->
                 <li>
                     <button type="button"
                             class="sidebar-link"
                             id="sidebar-add-series-btn"
                             data-tooltip="Ajouter une série"
                             data-modal-trigger="open-add-series-modal"
-                            data-admin-redirect="<?= $base ?>admin.php">
+                            data-modal-needs-type="manga"
+                            data-admin-redirect="<?= $base ?>admin.php?type=manga">
                         <img src="https://api.iconify.design/mdi/book-plus.svg?color=<?= $__c_manga ?>" width="22" height="22" alt="">
                     </button>
                 </li>
@@ -73,11 +74,11 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                             id="sidebar-add-volumes-btn"
                             data-tooltip="Ajouter des tomes"
                             data-modal-trigger="open-add-multiple-volumes-modal"
-                            data-admin-redirect="<?= $base ?>admin.php">
+                            data-modal-needs-type="manga"
+                            data-admin-redirect="<?= $base ?>admin.php?type=manga">
                         <img src="https://api.iconify.design/mdi/book-plus-multiple.svg?color=<?= $__c_manga ?>" width="22" height="22" alt="">
                     </button>
                 </li>
-<?php endif; ?>
 
                 <!-- Mangas à lire : lecture débutée, pas encore terminée -->
                 <li>
@@ -104,19 +105,20 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                     </a>
                 </li>
 
-<?php if ($current_page === 'admin.php' && $__sidebar_type === 'anime'): ?>
-                <!-- Ajouter une série animée (recherche Anilist) -->
+                <!-- Ajouter une série animée (recherche Anilist), toujours
+                     visible ici, redirige/bascule vers l'Animethèque si
+                     nécessaire avant de l'ouvrir -->
                 <li>
                     <button type="button"
                             class="sidebar-link"
                             id="sidebar-add-anime-btn"
                             data-tooltip="Ajouter une série animée"
                             data-modal-trigger="open-add-anime-modal"
+                            data-modal-needs-type="anime"
                             data-admin-redirect="<?= $base ?>admin.php?type=anime">
                         <img src="https://api.iconify.design/mdi/video-plus.svg?color=<?= $__c_anime ?>" width="22" height="22" alt="">
                     </button>
                 </li>
-<?php endif; ?>
 
                 <!-- Animés à visionner : visionnage débuté, pas encore terminé -->
                 <li>
@@ -328,17 +330,27 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
     });
 
     /* ── Liens du drawer : ferme le menu puis navigue/ouvre la modale ── */
+    var currentType = <?= json_encode($__sidebar_type) ?>;
     document.querySelectorAll('.sidebar-link[data-modal-trigger]').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var triggerId = btn.dataset.modalTrigger;
             var redirect  = btn.dataset.adminRedirect;
+            var needsType = btn.dataset.modalNeedsType;
 
             /* Sur mobile, ferme le drawer avant d'ouvrir la modale */
             if (window.innerWidth <= 768) {
                 closeDrawer();
             }
 
-            if (isAdmin) {
+            /* La modale voulue existe dans le DOM (elle est toujours présente
+               sur admin.php, quel que soit le type affiché), mais si elle est
+               rattachée à une collection précise (manga/anime) et qu'on n'est
+               pas déjà dans cette collection, on bascule d'abord dessus :
+               plus cohérent que d'ouvrir "Ajouter une série animée" alors que
+               la Mangathèque est affichée à l'écran. */
+            var wrongType = needsType && (!isAdmin || currentType !== needsType);
+
+            if (isAdmin && !wrongType) {
                 var hiddenBtn = document.getElementById(triggerId);
                 if (hiddenBtn) {
                     /* Petit délai pour laisser l'animation du drawer se terminer */
@@ -346,7 +358,11 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                     setTimeout(function() { hiddenBtn.click(); }, delay);
                 }
             } else {
-                window.location.href = redirect || 'admin.php';
+                var target = redirect || 'admin.php';
+                if (triggerId) {
+                    target += (target.indexOf('?') === -1 ? '?' : '&') + 'open_modal=' + encodeURIComponent(triggerId);
+                }
+                window.location.href = target;
             }
         });
     });
@@ -377,6 +393,20 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                query string) referait tourner ce bloc et rouvrirait la modale
                juste après l'enregistrement. */
             var params = new URLSearchParams(window.location.search);
+
+            /* Ouverture automatique après redirection depuis un bouton de la
+               sidebar dont la modale n'était pas disponible dans le contexte
+               d'origine (mauvais type affiché, ou page hors admin.php). */
+            var openModalId = params.get('open_modal');
+            if (openModalId) {
+                var openModalBtn = document.getElementById(openModalId);
+                if (openModalBtn) openModalBtn.click();
+
+                params.delete('open_modal');
+                var cleanedQueryModal = params.toString();
+                history.replaceState(null, '', window.location.pathname + (cleanedQueryModal ? '?' + cleanedQueryModal : ''));
+            }
+
             if (params.get('open_add_series') === '1') {
                 var nameEl      = document.getElementById('add-series-name');
                 var authorEl    = document.getElementById('add-series-author');
