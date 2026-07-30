@@ -1,4 +1,4 @@
-# Lengas - Gestion de collection de mangas/light-novels
+# Lengas - Gestion de collection de mangas/light-novels/animés
 
 ## Sommaire
 - [Description](#description)
