@@ -653,6 +653,88 @@ function get_status_icon($status) {
     }
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Mise en lumière du profil admin (bloc « Mise en lumière »)
+// ──────────────────────────────────────────────────────────────────────────────
+// Jusqu'à 5 séries par type (manga / anime), choisies par l'admin parmi sa
+// collection, affichées sur son profil (page dédiée + modale publique
+// « Qui suis-je ? »). Stockage : option 'admin_highlights', JSON
+// {"manga": [id, id, …], "anime": [id, id, …]}, au plus 5 identifiants par
+// type. Les identifiants sont ceux de la table `series` (mêmes UUID que
+// partout ailleurs) ; une série supprimée depuis disparaît simplement de la
+// mise en lumière au prochain calcul (jamais de nettoyage actif nécessaire,
+// cf. profil_highlighted_series() qui ne renvoie que ce qui existe encore).
+if (!function_exists('series_highlights_max')) {
+    function series_highlights_max(): int {
+        return 5;
+    }
+}
+
+// Décode l'option 'admin_highlights' en tableau ['manga' => [...], 'anime' => [...]],
+// normalisé (clés toujours présentes, identifiants uniques, plafond respecté).
+function profil_get_highlight_ids(array $options): array {
+    $out = array_fill_keys(series_type_keys(), []);
+    $raw = $options['admin_highlights'] ?? '';
+    if ($raw === '') return $out;
+    $decoded = json_decode((string)$raw, true);
+    if (!is_array($decoded)) return $out;
+
+    foreach (series_type_keys() as $type) {
+        $ids = $decoded[$type] ?? [];
+        if (!is_array($ids)) continue;
+        $clean = [];
+        foreach ($ids as $id) {
+            $id = trim((string)$id);
+            if ($id === '' || in_array($id, $clean, true)) continue;
+            $clean[] = $id;
+            if (count($clean) >= series_highlights_max()) break;
+        }
+        $out[$type] = $clean;
+    }
+    return $out;
+}
+
+// Séries effectivement mises en lumière, décorées pour l'affichage
+// (thumbnail, format, etc. via decorate_series_for_display()), dans l'ordre
+// choisi par l'admin. $data doit provenir de load_data() (ou d'un
+// sous-ensemble contenant au moins les séries visées) ; une entrée dont l'id
+// ne correspond plus à aucune série (supprimée depuis) est simplement omise.
+//
+// $visible_only restreint aux séries dont la collection n'est pas cachée par
+// les réglages de visibilité (mode privé / masquage mature) — utilisé côté
+// public, jamais côté admin (qui doit voir sa sélection telle quelle).
+function profil_highlighted_series(array $data, array $options, bool $visible_only = false): array {
+    $ids_by_type = profil_get_highlight_ids($options);
+    $by_id = [];
+    foreach ($data as $s) {
+        $by_id[$s['id']] = $s;
+    }
+
+    $out = array_fill_keys(series_type_keys(), []);
+    foreach ($ids_by_type as $type => $ids) {
+        foreach ($ids as $id) {
+            if (!isset($by_id[$id])) continue; // série supprimée depuis
+            $series = $by_id[$id];
+            if (series_type($series) !== $type) continue; // cohérence défensive
+            if ($visible_only) {
+                if (is_private_mode($options, $type)) continue;
+                if (is_hide_mature($options, $type) && !empty($series['mature'])) continue;
+            }
+            $out[$type][] = decorate_series_for_display($series);
+        }
+    }
+    return $out;
+}
+
+// Le bloc « Mise en lumière » a-t-il quelque chose à montrer publiquement ?
+// (au moins une série visible, tous types confondus)
+function profil_has_visible_highlights(array $data, array $options): bool {
+    foreach (profil_highlighted_series($data, $options, true) as $list) {
+        if (!empty($list)) return true;
+    }
+    return false;
+}
+
 // Récupère la dernière version publiée sur Gitea (null si indisponible).
 if (!function_exists('get_latest_version_from_gitea')) {
     function get_latest_version_from_gitea() {

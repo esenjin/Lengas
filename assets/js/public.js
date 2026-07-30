@@ -854,6 +854,17 @@ function setModalLicenseBtn(series) {
         }
     });
 
+    // Clic sur une carte « Mise en lumière » (modale profil « Qui suis-je ? ») :
+    // ferme la modale profil, ouvre directement la fiche de la série visée.
+    // Réutilise le même pool que le retour de licence (window.allSeriesData),
+    // qui couvre déjà les deux collections et respecte la même visibilité
+    // (privé/mature) que celle appliquée côté serveur pour construire le bloc.
+    document.addEventListener('click', function (e) {
+        const card = e.target.closest('.profil-highlight-card');
+        if (!card) return;
+        openSeriesFromLicense(card.dataset.seriesId);
+    });
+
     // Croix de fermeture de la modale licence.
     document.getElementById('close-license-detail-public-modal')?.addEventListener('click', closeAllModals);
 

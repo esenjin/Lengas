@@ -451,6 +451,119 @@ body.with-sidebar .logout-container {
 
 .button-icon:hover img { opacity: 1; }
 
+/* ── Module « Déplacer dans la liste » (panneau d'ajout wishlist) ─────────── */
+.wishlist-move-block {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: var(--border-subtle);
+}
+
+.wishlist-move-title {
+    margin: 0 0 6px;
+    font-size: 0.95rem;
+    color: var(--text-color);
+}
+
+.wishlist-move-search-wrap {
+    position: relative;
+    margin-top: 10px;
+}
+
+.wishlist-move-search-wrap input {
+    margin-bottom: 0;
+}
+
+.wishlist-move-results {
+    display: none;
+    position: absolute;
+    z-index: 5;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    background: var(--background-card);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius-sm);
+    max-height: 260px;
+    overflow-y: auto;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.wishlist-move-result-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.88rem;
+}
+
+.wishlist-move-result-row:hover {
+    background: var(--input-bg-focus);
+}
+
+.wishlist-move-result-thumb {
+    width: 28px;
+    height: 38px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex-shrink: 0;
+    background: var(--background-medium);
+}
+
+.wishlist-move-result-empty {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.wishlist-move-selected {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: var(--background-card);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius-sm);
+}
+
+.wishlist-move-selected-thumb {
+    width: 34px;
+    height: 46px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex-shrink: 0;
+    background: var(--background-medium);
+}
+
+.wishlist-move-selected-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.wishlist-move-selected-name {
+    font-size: 0.9rem;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wishlist-move-selected-meta {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.wishlist-move-confirm {
+    margin-top: 12px;
+    width: 100%;
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    RESPONSIVE TABLETTE  ≤ 900px
    ══════════════════════════════════════════════════════════════════════ */

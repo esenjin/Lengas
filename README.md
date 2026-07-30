@@ -90,7 +90,8 @@ Depuis la version 4.0, chaque série porte un **type** : `manga` (regroupant aus
 ### Profil de l'administrateur
 - Page « Profil » dédiée (icône compte du menu latéral admin) pour se présenter aux visiteurs
 - Photo de profil (téléversée dans `uploads/`), pseudo (crédite les critiques), biographie en Markdown (même éditeur et même rendu que les critiques) et liens sociaux illimités (même sélecteur d'icône et de couleur que les liens personnalisés du menu latéral)
-- Sur la page d'accueil publique, un bouton « Qui suis-je ? » ouvre une modale présentant le profil (affiché uniquement si au moins un champ est renseigné)
+- **Mise en lumière** : jusqu'à 5 mangas/light-novels et 5 animés de votre collection, choisis via une recherche instantanée et rangés dans un panier réordonnable (boutons ↑/↓) ; chaque changement est enregistré immédiatement
+- Sur la page d'accueil publique, un bouton « Qui suis-je ? » ouvre une modale présentant le profil (affiché uniquement si au moins un champ est renseigné), avec la mise en lumière entre la biographie et les liens sociaux ; un clic sur une série ouvre directement sa fiche de détail. Une série mise en lumière dont la collection est en mode privé ou masquage mature n'apparaît pas côté public
 
 ### Critiques
 - Rédaction d'un avis par série (manga ou animé) via un éditeur Markdown dédié (page « Critiques »)
@@ -100,6 +101,7 @@ Depuis la version 4.0, chaque série porte un **type** : `manga` (regroupant aus
 - Alerte lorsque la série n'est pas (ou pas entièrement) lue/visionnée, adaptée au vocabulaire du type de série
 - Filtre par type (mangas / animés / les deux, réinitialisé à « les deux » à chaque visite) et filtre « Avec critique »
 - Badge ✏️ sur la page publique ; les visiteurs consultent la critique dans une modale dédiée
+- Boutons dédiés « Critiques mangas » / « Critiques animés » dans le menu latéral public, à côté de Mangathèque/Animethèque : redirigent directement vers la collection concernée avec le filtre « Avec critique » déjà appliqué
 
 ### Licences
 - Regroupement libre de plusieurs séries (mangas et/ou animés) sous une même « licence » nommée par vous (page « Licences »), par exemple le manga, la saison 1 et la saison 2 animées d'une même œuvre
@@ -120,6 +122,7 @@ Depuis la version 4.0, chaque série porte un **type** : `manga` (regroupant aus
 - Une série animée pas encore diffusée y est automatiquement dirigée depuis la modale d'ajout d'animé
 - Possibilité d'ajouter une série de la liste d'envies à votre collection ; pour un animé déjà associé à une fiche Anilist, l'import est immédiat, sans nouvelle recherche
 - La vignette Anilist n'est téléchargée qu'au moment du passage en collection, jamais tant que la série reste en liste d'envies
+- **Déplacer dans la liste** : mouvement inverse, retire une série de votre collection (manga ou animé) pour la replacer dans la liste d'envies, préremplie avec ses informations déjà connues (auteur/éditeur ou studio) ; si la série a des tomes actuellement prêtés, un avertissement bloquant est affiché avant de continuer
 
 ### Gestion des prêts
 - Prêt d'un tome unique ou d'une plage de tomes d'une même série
@@ -172,6 +175,7 @@ Toutes les options du site sont regroupées sur la page `pages/page-options.php`
 - Modales pour les actions
 - Tri et filtrage des séries
 - Menu latéral organisé en sections thématiques (Mangathèque, Animethèque, Hors collection, Mutualisé, Divers, Gestion), avec titre de section et libellé au-dessus de chaque icône, y compris sur mobile
+- « Mangas à lire » et « Animés à visionner » (menu latéral admin) trient automatiquement par date de lecture/visionnage descendante ; « Animés à visionner » inclut en plus les animés pas encore commencés (« à voir »), en plus de ceux en cours
 
 ### Sécurité
 - Mode privé pour cacher votre bibliothèque (réglable par collection)
@@ -384,6 +388,7 @@ lengas/
 │       │   ├── loans.js
 │       │   ├── pagination.js
 │       │   ├── profil.js
+│       │   ├── highlights.js
 │       │   ├── reviews.js
 │       │   ├── licenses.js
 │       │   ├── main.js

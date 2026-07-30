@@ -287,6 +287,79 @@ function add_from_wishlist(array $data, array $wishlist, int $index): array {
     return ['success' => true, 'data' => $data, 'wishlist' => $wishlist];
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Déplacer une série de la collection vers la liste d'envies (mouvement
+// inverse de add_from_wishlist()) : la série est retirée de sa collection
+// (mêmes suppressions que delete_series() — vignette(s), tomes/épisodes en
+// cascade) et une entrée équivalente est créée dans la liste d'envies,
+// préremplie avec ce qui était déjà connu (auteur/éditeur pour un manga,
+// studio et identifiant Anilist pour un animé) plutôt que de repartir d'une
+// fiche vide à ressaisir.
+//
+// N'a AUCUN effet sur les prêts en cours : à l'appelant de vérifier au
+// préalable (cf. series_has_active_loans() ci-dessous) et d'avertir l'admin
+// avant d'appeler cette fonction, comme le fait déjà add_from_wishlist() pour
+// les doublons — ce n'est pas cette fonction qui bloque, mais le point d'appel
+// qui doit décider en connaissance de cause.
+//
+// Dépend de fonctions/series.php (delete_series(), find_series_by_id()) :
+// ce fichier doit être chargé par l'appelant.
+function move_series_to_wishlist(array $data, array $wishlist, string $series_id): array {
+    $found = find_series_by_id($data, $series_id);
+    if (!$found) {
+        return ['success' => false, 'message' => 'Série introuvable.'];
+    }
+    $series = $found['data'];
+    $type   = series_type($series);
+
+    $name       = $series['name'];
+    $author     = ($type === 'manga') ? ($series['author'] ?? '') : '';
+    $publisher  = ($type === 'manga') ? ($series['publisher'] ?? '') : '';
+    $studio     = ($type === 'anime') ? (function_exists('series_studios_text') ? series_studios_text($series) : '') : '';
+    $anilist_id = ($type === 'anime') ? trim((string)($series['anilist_id'] ?? '')) : '';
+
+    // Un manga déplacé doit garder auteur/éditeur non vides pour rester
+    // éditable ensuite (add_to_wishlist() les exige pour ce type) ; un champ
+    // manquant est simplement remplacé par un tiret plutôt que de bloquer le
+    // déplacement pour une série mal renseignée à l'origine.
+    if ($type === 'manga') {
+        if ($author === '') $author = '—';
+        if ($publisher === '') $publisher = '—';
+    }
+
+    $add_result = add_to_wishlist($wishlist, $name, $author, $publisher, $type, $studio, $anilist_id);
+    if (!$add_result['success']) {
+        return ['success' => false, 'message' => $add_result['message']];
+    }
+
+    // Suppression de la collection : même mécanique que delete_series()
+    // (vignette personnalisée + vignette Anilist supprimées, tomes/épisodes
+    // et éditions physiques en cascade en base).
+    $delete_result = delete_series($data, $series_id);
+    if (!$delete_result['success']) {
+        return ['success' => false, 'message' => $delete_result['message']];
+    }
+
+    return [
+        'success'  => true,
+        'data'     => $delete_result['data'],
+        'wishlist' => $add_result['wishlist'],
+        'message'  => "« $name » a été déplacée vers la liste d'envies.",
+    ];
+}
+
+// La série a-t-elle au moins un tome actuellement prêté ? (mangas uniquement —
+// les animés ne se prêtent jamais, cf. fonctions/loans.php). Sert à avertir
+// l'admin avant un déplacement vers la liste d'envies, qui retire la série
+// (et donc ses prêts en cours) de la collection.
+function series_has_active_loans(string $series_id): bool {
+    if (!function_exists('load_loans')) return false;
+    foreach (load_loans() as $loan) {
+        if (($loan['series_id'] ?? '') === $series_id) return true;
+    }
+    return false;
+}
+
 // Passage en collection d'une entrée animée : import complet depuis Anilist,
 // sur le même moteur que l'ajout direct (fonctions/anime.php::add_anime_series()).
 //

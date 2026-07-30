@@ -15,6 +15,7 @@ require 'fonctions/anime.php';
 require 'fonctions/episodes.php';
 require 'fonctions/wishlist.php';
 require 'fonctions/options.php';
+require 'fonctions/loans.php'; // pour series_has_active_loans() (module « Déplacer dans la liste »)
 
 $data    = load_data();
 $options = load_options();
@@ -116,9 +117,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
         exit;
     }
+
+    // ── Module « Déplacer dans la liste » ─────────────────────────────────────
+    // Vérifie les prêts en cours d'une série de la collection avant tout
+    // déplacement effectif (avertissement bloquant côté front, cf. JS plus bas :
+    // ce endpoint ne fait qu'informer, il ne bloque rien lui-même).
+    if (isset($_POST['check_series_loans'])) {
+        $series_id = $_POST['series_id'] ?? '';
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'has_loans' => series_has_active_loans($series_id)]);
+        exit;
+    }
+
+    // Déplacement effectif : retire la série de la collection, l'ajoute à la
+    // liste d'envies avec les informations déjà connues.
+    if (isset($_POST['move_to_wishlist'])) {
+        $series_id       = $_POST['series_id'] ?? '';
+        $current_wishlist = load_wishlist();
+        $result          = move_series_to_wishlist($data, $current_wishlist, $series_id);
+        header('Content-Type: application/json');
+        if ($result['success']) {
+            save_wishlist($result['wishlist']);
+            $data = $result['data'];
+        }
+        echo json_encode($result);
+        exit;
+    }
 }
 
 $wishlist = load_wishlist();
+
+// ── Candidats pour le module « Déplacer dans la liste » ──────────────────────
+// Toute la collection (mangas et animés), sous une forme allégée pour la
+// recherche côté client : id, nom, type, auteur/éditeur OU studio (selon le
+// type), et vignette déjà arbitrée par la cascade d'affichage habituelle.
+$move_candidates = array_map(function ($s) {
+    $type = series_type($s);
+    return [
+        'id'     => $s['id'],
+        'name'   => $s['name'],
+        'type'   => $type,
+        'meta'   => ($type === 'anime')
+            ? series_studios_text($s)
+            : trim(($s['author'] ?? '') . (($s['publisher'] ?? '') !== '' ? ' · ' . $s['publisher'] : '')),
+        'thumb'  => series_thumbnail($s),
+    ];
+}, $data);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -190,6 +234,39 @@ $wishlist = load_wishlist();
                     <div id="wishlist-anime-feedback" class="anime-search-feedback"></div>
                     <div id="wishlist-anime-results" class="anime-search-results"></div>
                     <button type="button" id="wishlist-add-anime-btn" class="button button-ats wishlist-add-anime-confirm">Ajouter à la liste</button>
+                </div>
+
+                <!-- ══ DÉPLACER DANS LA LISTE ═══════════════════════════════
+                     Retire une série de la collection (manga ou animé) pour
+                     la replacer dans la liste d'envies, avec ses informations
+                     déjà connues (auteur/éditeur ou studio). -->
+                <div class="wishlist-move-block">
+                    <h3 class="wishlist-move-title">Déplacer dans la liste</h3>
+                    <p class="hint">
+                        Retirez une série de votre collection pour la replacer dans la liste
+                        d'envies, avec ses informations déjà connues.
+                    </p>
+
+                    <div class="wishlist-move-search-wrap">
+                        <label for="wishlist-move-search" class="sr-only">Série de la collection</label>
+                        <input type="text" id="wishlist-move-search" placeholder="Rechercher une série de la collection…" autocomplete="off">
+                        <div class="wishlist-move-results" id="wishlist-move-results"></div>
+                    </div>
+
+                    <div class="wishlist-move-selected" id="wishlist-move-selected" hidden>
+                        <img class="wishlist-move-selected-thumb" id="wishlist-move-selected-thumb" src="" alt="" loading="lazy">
+                        <div class="wishlist-move-selected-info">
+                            <span class="wishlist-move-selected-name" id="wishlist-move-selected-name"></span>
+                            <span class="wishlist-move-selected-meta" id="wishlist-move-selected-meta"></span>
+                        </div>
+                        <button type="button" class="button-icon" id="wishlist-move-clear-btn" title="Changer de série" aria-label="Changer de série">
+                            <img src="https://api.iconify.design/mdi/close.svg?color=%23f87171" width="18" height="18" alt="">
+                        </button>
+                    </div>
+
+                    <button type="button" id="wishlist-move-confirm-btn" class="button button-ats wishlist-move-confirm" disabled>
+                        Déplacer vers la liste d'envies
+                    </button>
                 </div>
             </section>
 
@@ -270,6 +347,26 @@ $wishlist = load_wishlist();
             </div>
         </div>
 
+        <!-- Modale "déplacer dans la liste" -->
+        <div class="modal" id="move-to-wishlist-modal">
+            <div class="modal-content modal-content--narrow">
+                <span class="close-modal" id="close-move-to-wishlist-modal">&times;</span>
+                <h2>Déplacer dans la liste</h2>
+                <p>
+                    La série <strong id="mtw-series-name"></strong> va être retirée de votre
+                    collection et replacée dans la liste d'envies.
+                </p>
+                <p class="hint" id="mtw-loans-warning" style="display:none;">
+                    ⚠️ Cette série a actuellement des tomes prêtés : les prêts en cours seront
+                    perdus si vous continuez.
+                </p>
+                <div class="modal-actions">
+                    <button class="button button-ats" id="mtw-confirm-btn">Continuer</button>
+                    <button class="button button-ext" id="mtw-cancel-btn">Annuler</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modales utilitaires -->
         <div class="modal" id="custom-confirm-modal">
             <div class="modal-content modal-content--narrow">
@@ -302,6 +399,11 @@ $wishlist = load_wishlist();
 
         let wishlistData = <?= json_encode(array_values($wishlist)) ?>;
         let pendingAddFromWishlist = null;
+
+        // Collection complète (mangas + animés), pour le module « Déplacer
+        // dans la liste » : recherche instantanée côté client, comme les
+        // autres sélecteurs de série du site.
+        window.moveCandidates = <?= json_encode(array_values($move_candidates), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
         function normalizeString(str) {
             return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -747,6 +849,160 @@ $wishlist = load_wishlist();
 
         // Rendu initial via JS (remplace le rendu PHP statique pour cohérence)
         applyFiltersAndSort();
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Module « Déplacer dans la liste » : recherche instantanée dans la
+        // collection (window.moveCandidates), sélection d'une série, puis
+        // confirmation (avec avertissement bloquant si des tomes sont
+        // actuellement prêtés) avant le déplacement effectif.
+        // ─────────────────────────────────────────────────────────────────────
+        (function setupMoveToWishlist() {
+            const searchInput  = document.getElementById('wishlist-move-search');
+            const resultsBox   = document.getElementById('wishlist-move-results');
+            const selectedWrap = document.getElementById('wishlist-move-selected');
+            const selectedThumb = document.getElementById('wishlist-move-selected-thumb');
+            const selectedName = document.getElementById('wishlist-move-selected-name');
+            const selectedMeta = document.getElementById('wishlist-move-selected-meta');
+            const clearBtn     = document.getElementById('wishlist-move-clear-btn');
+            const confirmBtn   = document.getElementById('wishlist-move-confirm-btn');
+
+            const modal        = document.getElementById('move-to-wishlist-modal');
+            const modalName    = document.getElementById('mtw-series-name');
+            const modalWarning = document.getElementById('mtw-loans-warning');
+            const modalConfirm = document.getElementById('mtw-confirm-btn');
+            const modalCancel  = document.getElementById('mtw-cancel-btn');
+            const modalClose   = document.getElementById('close-move-to-wishlist-modal');
+
+            let selected = null; // candidat choisi : { id, name, type, meta, thumb }
+
+            function selectSeries(item) {
+                selected = item;
+                searchInput.value = '';
+                resultsBox.style.display = 'none';
+                resultsBox.innerHTML = '';
+                searchInput.hidden = true;
+
+                const typeDef = (window.seriesTypes && window.seriesTypes[item.type || 'manga']) || null;
+                const typeBadge = typeDef
+                    ? `<span class="suggestion-type-badge wishlist-type-badge" style="--type-color:${typeDef.color}">${htmlEscape(typeDef.label)}</span>`
+                    : '';
+
+                selectedThumb.src = item.thumb ? ('../' + item.thumb) : '../assets/img/logo.png';
+                selectedName.innerHTML = htmlEscape(item.name) + ' ' + typeBadge;
+                selectedMeta.textContent = item.meta || '';
+                selectedWrap.hidden = false;
+                confirmBtn.disabled = false;
+            }
+
+            function clearSelection() {
+                selected = null;
+                selectedWrap.hidden = true;
+                searchInput.hidden = false;
+                confirmBtn.disabled = true;
+                searchInput.value = '';
+                searchInput.focus();
+            }
+
+            clearBtn.addEventListener('click', clearSelection);
+
+            function renderResults() {
+                const term = normalizeString(searchInput.value);
+                if (term === '') {
+                    resultsBox.style.display = 'none';
+                    resultsBox.innerHTML = '';
+                    return;
+                }
+                const matches = (window.moveCandidates || [])
+                    .filter(c => normalizeString(c.name).includes(term))
+                    .slice(0, 8);
+
+                if (matches.length === 0) {
+                    resultsBox.innerHTML = '<div class="wishlist-move-result-empty">Aucune série ne correspond.</div>';
+                    resultsBox.style.display = 'block';
+                    return;
+                }
+                resultsBox.innerHTML = '';
+                matches.forEach(c => {
+                    const typeDef = (window.seriesTypes && window.seriesTypes[c.type || 'manga']) || null;
+                    const typeBadge = typeDef
+                        ? `<span class="suggestion-type-badge wishlist-type-badge" style="--type-color:${typeDef.color}">${htmlEscape(typeDef.label)}</span>`
+                        : '';
+                    const row = document.createElement('div');
+                    row.className = 'wishlist-move-result-row';
+                    const thumb = c.thumb ? ('../' + c.thumb) : '../assets/img/logo.png';
+                    row.innerHTML = `
+                        <img class="wishlist-move-result-thumb" src="${htmlEscape(thumb)}" alt="" loading="lazy">
+                        <span>${htmlEscape(c.name)} ${typeBadge}</span>
+                    `;
+                    row.addEventListener('click', () => selectSeries(c));
+                    resultsBox.appendChild(row);
+                });
+                resultsBox.style.display = 'block';
+            }
+
+            searchInput.addEventListener('input', renderResults);
+            searchInput.addEventListener('focus', renderResults);
+            document.addEventListener('click', e => {
+                if (!searchInput.contains(e.target) && !resultsBox.contains(e.target)) {
+                    resultsBox.style.display = 'none';
+                }
+            });
+
+            // ── Confirmation (avec avertissement bloquant si prêts en cours) ────
+            confirmBtn.addEventListener('click', async function () {
+                if (!selected) return;
+                modalName.textContent = selected.name;
+                modalWarning.style.display = 'none';
+                modal.classList.add('modal-active');
+
+                try {
+                    const res = await fetch('page-wishlist.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `check_series_loans=true&series_id=${encodeURIComponent(selected.id)}`
+                    });
+                    const data = await res.json();
+                    if (data.success && data.has_loans) {
+                        modalWarning.style.display = '';
+                    }
+                } catch (err) {
+                    console.error('Erreur de vérification des prêts :', err);
+                }
+            });
+
+            function closeModal() { modal.classList.remove('modal-active'); }
+            modalCancel.addEventListener('click', closeModal);
+            modalClose.addEventListener('click', closeModal);
+            modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+            modalConfirm.addEventListener('click', async function () {
+                if (!selected) return;
+                modalConfirm.disabled = true;
+                try {
+                    const res = await fetch('page-wishlist.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `move_to_wishlist=true&series_id=${encodeURIComponent(selected.id)}`
+                    });
+                    const data = await res.json();
+                    closeModal();
+                    if (!data.success) {
+                        showCustomAlert('Erreur', data.message || 'Le déplacement a échoué.');
+                        return;
+                    }
+                    // Retire le candidat déplacé de la liste des candidats (évite
+                    // de le proposer à nouveau sans recharger la page), met à
+                    // jour la liste d'envies affichée, et réinitialise le module.
+                    window.moveCandidates = (window.moveCandidates || []).filter(c => c.id !== selected.id);
+                    wishlistData = data.wishlist;
+                    applyFiltersAndSort();
+                    clearSelection();
+                    showCustomAlert('Déplacée', data.message || 'Série déplacée vers la liste d\'envies.');
+                } finally {
+                    modalConfirm.disabled = false;
+                }
+            });
+        })();
     </script>
 </body>
 </html>

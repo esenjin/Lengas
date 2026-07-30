@@ -28,6 +28,7 @@ require 'fonctions/reviews.php';       // pour review_render_markdown() (aperçu
 require 'includes/custom_icons.php';   // icônes + couleurs (liens sociaux)
 
 $options = load_options();
+$data    = load_data(); // pour le sélecteur de la « Mise en lumière »
 
 // ── Aperçu Markdown de la biographie (AJAX, rendu serveur = rendu public) ─────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['profil_action'])) {
@@ -37,6 +38,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['profil_action'])) {
     if ($_POST['profil_action'] === 'preview') {
         $content  = $_POST['content'] ?? '';
         $response = ['success' => true, 'html' => review_render_markdown($content)];
+    }
+
+    // Recherche de séries pour le sélecteur de la « Mise en lumière »
+    // (résultats déjà filtrés par type, la recherche elle-même se fait
+    // côté client sur la liste complète transmise au chargement de page).
+    if ($_POST['profil_action'] === 'save_highlights') {
+        $ids_by_type = [];
+        foreach (series_type_keys() as $type) {
+            $raw = $_POST['highlights_' . $type] ?? '';
+            $ids = array_filter(array_map('trim', explode(',', (string)$raw)), 'strlen');
+            $ids_by_type[$type] = array_slice(array_values(array_unique($ids)), 0, series_highlights_max());
+        }
+        $options['admin_highlights'] = json_encode($ids_by_type, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        save_options($options);
+        $response = ['success' => true];
     }
 
     echo json_encode($response);
@@ -131,6 +147,31 @@ $pseudo        = trim($options['admin_pseudo'] ?? '');
 $bio           = (string)($options['admin_bio'] ?? '');
 $social_links  = profil_get_social_links($options);
 $has_avatar    = ($avatar !== '' && file_exists($avatar));
+
+// ── Mise en lumière : sélection actuelle (décorée) + candidats par type ──────
+$highlighted = profil_highlighted_series($data, $options, false);
+$highlight_candidates = [];
+foreach (series_type_keys() as $__t) {
+    $highlight_candidates[$__t] = array_map(function ($s) {
+        return [
+            'id'     => $s['id'],
+            'name'   => $s['name'],
+            'thumb'  => series_thumbnail($s),
+            'mature' => !empty($s['mature']),
+        ];
+    }, series_of_type($data, $__t));
+}
+
+// Visibilité publique par type (mode privé / masquage des séries matures) :
+// sert à avertir l'admin, dans le bloc « Mise en lumière », qu'une série
+// ajoutée ne sera en réalité pas visible par ses visiteurs.
+$highlight_visibility = [];
+foreach (series_type_keys() as $__t) {
+    $highlight_visibility[$__t] = [
+        'private'     => is_private_mode($options, $__t),
+        'hide_mature' => is_hide_mature($options, $__t),
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -240,6 +281,56 @@ $has_avatar    = ($avatar !== '' && file_exists($avatar));
                         </div>
                     </div>
                 </div>
+
+                <!-- ══ MISE EN LUMIÈRE ═══════════════════════════════════ -->
+                <h3 class="options-section-title">Mise en lumière</h3>
+                <p class="hint">
+                    Choisissez jusqu'à <?= series_highlights_max() ?> mangas/light-novels et
+                    <?= series_highlights_max() ?> animés de votre collection que vous appréciez
+                    particulièrement : ils apparaîtront sur votre profil, dans l'ordre choisi
+                    ci-dessous. Un clic sur une vignette, côté public, ouvre directement la fiche
+                    de la série.
+                </p>
+
+                <div class="highlights-field" id="highlights-field">
+                    <?php foreach (series_type_keys() as $__t):
+                        $__vocab = type_vocab($__t);
+                        $__color = type_color($__t);
+                        $__vis   = $highlight_visibility[$__t];
+                    ?>
+                    <div class="highlights-group" data-highlight-type="<?= htmlspecialchars($__t) ?>">
+                        <h4 class="highlights-group-title" style="--type-color: <?= htmlspecialchars($__color) ?>">
+                            <img src="https://api.iconify.design/<?= str_replace(':', '/', type_icon($__t)) ?>.svg?color=<?= rawurlencode($__color) ?>" width="18" height="18" alt="">
+                            <?= htmlspecialchars($__vocab['collection']) ?>
+                            <span class="highlights-count"><span class="highlights-count-value">0</span>/<?= series_highlights_max() ?></span>
+                        </h4>
+
+                        <?php if ($__vis['private']): ?>
+                            <p class="highlights-warning">
+                                ⚠️ La <?= htmlspecialchars($__vocab['collection']) ?> est actuellement en mode privé :
+                                les séries choisies ici ne seront visibles par aucun visiteur tant que ce réglage
+                                reste actif.
+                            </p>
+                        <?php elseif ($__vis['hide_mature']): ?>
+                            <p class="highlights-warning" data-mature-warning hidden>
+                                ⚠️ Le masquage des séries matures est actif pour cette collection : une série mature
+                                choisie ici ne sera pas visible par vos visiteurs.
+                            </p>
+                        <?php endif; ?>
+
+                        <div class="highlights-search-wrap">
+                            <input type="text" class="highlights-search" placeholder="Rechercher une série à ajouter…" autocomplete="off">
+                            <div class="highlights-search-results"></div>
+                        </div>
+
+                        <div class="highlights-slots" data-slots></div>
+                        <p class="hint highlights-empty" data-empty-hint>Aucune série sélectionnée pour le moment.</p>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <input type="hidden" id="highlights-manga-input" value="">
+                <input type="hidden" id="highlights-anime-input" value="">
 
                 <!-- ══ LIENS SOCIAUX ═════════════════════════════════════ -->
                 <h3 class="options-section-title">Liens sociaux</h3>
@@ -381,9 +472,20 @@ $has_avatar    = ($avatar !== '' && file_exists($avatar));
     <script>
         window.profilColors       = <?= json_encode(custom_link_colors(), JSON_UNESCAPED_SLASHES) ?>;
         window.profilDefaultColor = <?= json_encode(custom_link_default_color()) ?>;
+
+        // ── Mise en lumière : candidats (toute la collection par type) et
+        // sélection actuelle (identifiants dans l'ordre choisi). ──────────────
+        window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
+        window.highlightCandidates = <?= json_encode($highlight_candidates, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        window.highlightVisibility = <?= json_encode($highlight_visibility) ?>;
+        window.highlightSelected = <?= json_encode(array_map(function ($list) {
+            return array_map(fn($s) => $s['id'], $list);
+        }, $highlighted), JSON_UNESCAPED_UNICODE) ?>;
+        window.highlightsMax = <?= json_encode(series_highlights_max()) ?>;
     </script>
     <script src="../assets/js/admin/main.js"></script>
     <script src="../assets/js/admin/profil.js"></script>
+    <script src="../assets/js/admin/highlights.js"></script>
 
     <script>
     // Bouton « Retour en haut »

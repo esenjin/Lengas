@@ -31,6 +31,14 @@ $has_profil = ($profil_pseudo !== '' || $profil_bio !== '' ||
 $__c_manga = rawurlencode(sidebar_section_color('manga'));
 $__c_anime = rawurlencode(sidebar_section_color('anime'));
 $__c_gray  = rawurlencode(sidebar_section_color('gray'));
+
+// Bouton « Critiques mangas|animés » : affiché uniquement si les critiques
+// sont effectivement consultables publiquement pour cette collection (ni
+// mode privé, ni masquage des critiques réglé séparément) — sans quoi le
+// filtre « Avec critique » mènerait vers une collection qui n'affiche de
+// toute façon jamais rien.
+$__reviews_public_manga = !is_private_mode($options, 'manga') && !is_hide_reviews($options, 'manga');
+$__reviews_public_anime = !is_private_mode($options, 'anime') && !is_hide_reviews($options, 'anime');
 ?>
 <nav class="sidebar" id="sidebar" aria-label="Navigation principale">
 
@@ -48,11 +56,23 @@ $__c_gray  = rawurlencode(sidebar_section_color('gray'));
 
                 <li>
                     <a href="index.php?type=manga"
-                       class="sidebar-link <?= ($current_page === 'index.php' && $__sidebar_type === 'manga') ? 'is-active is-active--pink' : '' ?>"
+                       class="sidebar-link <?= ($current_page === 'index.php' && $__sidebar_type === 'manga' && ($_GET['status_filter'] ?? '') !== 'has_review') ? 'is-active is-active--pink' : '' ?>"
                        data-tooltip="Mangathèque">
                         <img src="https://api.iconify.design/mdi/bookshelf.svg?color=<?= $__c_manga ?>" width="22" height="22" alt="">
                     </a>
                 </li>
+
+                <?php if ($__reviews_public_manga): ?>
+                <!-- Critiques mangas : bascule directement sur le filtre unique
+                     « Avec critique », déjà appliqué à l'arrivée. -->
+                <li>
+                    <a href="index.php?type=manga&status_filter=has_review"
+                       class="sidebar-link <?= ($current_page === 'index.php' && $__sidebar_type === 'manga' && ($_GET['status_filter'] ?? '') === 'has_review') ? 'is-active is-active--pink' : '' ?>"
+                       data-tooltip="Critiques mangas">
+                        <img src="https://api.iconify.design/mdi/pencil.svg?color=<?= $__c_manga ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+                <?php endif; ?>
 
             </ul>
         </li>
@@ -64,11 +84,22 @@ $__c_gray  = rawurlencode(sidebar_section_color('gray'));
 
                 <li>
                     <a href="index.php?type=anime"
-                       class="sidebar-link <?= ($current_page === 'index.php' && $__sidebar_type === 'anime') ? 'is-active is-active--blue' : '' ?>"
+                       class="sidebar-link <?= ($current_page === 'index.php' && $__sidebar_type === 'anime' && ($_GET['status_filter'] ?? '') !== 'has_review') ? 'is-active is-active--blue' : '' ?>"
                        data-tooltip="Animethèque">
                         <img src="https://api.iconify.design/mdi/television-classic.svg?color=<?= $__c_anime ?>" width="22" height="22" alt="">
                     </a>
                 </li>
+
+                <?php if ($__reviews_public_anime): ?>
+                <!-- Critiques animés : même principe que côté Mangathèque. -->
+                <li>
+                    <a href="index.php?type=anime&status_filter=has_review"
+                       class="sidebar-link <?= ($current_page === 'index.php' && $__sidebar_type === 'anime' && ($_GET['status_filter'] ?? '') === 'has_review') ? 'is-active is-active--blue' : '' ?>"
+                       data-tooltip="Critiques animés">
+                        <img src="https://api.iconify.design/mdi/pencil.svg?color=<?= $__c_anime ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+                <?php endif; ?>
 
             </ul>
         </li>
@@ -77,6 +108,18 @@ $__c_gray  = rawurlencode(sidebar_section_color('gray'));
         <li class="sidebar-section">
             <span class="sidebar-section-title">Divers</span>
             <ul class="sidebar-section-items" role="list">
+
+                <?php if ($current_page === 'index.php' && $has_profil): ?>
+                    <!-- Qui suis-je ? (profil de l'admin, modale disponible) -->
+                    <li>
+                        <button type="button"
+                                class="sidebar-link"
+                                id="open-profil-modal"
+                                data-tooltip="Qui suis-je ?">
+                            <img src="https://api.iconify.design/mdi/account-circle.svg?color=<?= $__c_gray ?>" width="22" height="22" alt="">
+                        </button>
+                    </li>
+                <?php endif; ?>
 
                 <!-- Statistiques -->
                 <li>
@@ -88,18 +131,6 @@ $__c_gray  = rawurlencode(sidebar_section_color('gray'));
                 </li>
 
                 <?php if ($current_page === 'index.php'): ?>
-                    <?php if ($has_profil): ?>
-                        <!-- Qui suis-je ? (profil de l'admin, modale disponible) -->
-                        <li>
-                            <button type="button"
-                                    class="sidebar-link"
-                                    id="open-profil-modal"
-                                    data-tooltip="Qui suis-je ?">
-                                <img src="https://api.iconify.design/mdi/account-circle.svg?color=<?= $__c_gray ?>" width="22" height="22" alt="">
-                            </button>
-                        </li>
-                    <?php endif; ?>
-
                     <!-- Légende / infos (uniquement sur l'accueil : modale disponible) -->
                     <li>
                         <button type="button"

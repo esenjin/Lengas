@@ -15,11 +15,23 @@ $__sidebar_type = function_exists('sanitize_series_type')
 
 // Filtre de statuts actuellement appliqué (utilisé pour « Mangas à lire » et
 // « Animés à visionner », et pour détecter quand l'une des deux est active).
-// Un seul jeton : une série DÉBUTÉE mais pas encore terminée (ni « à débuter »,
-// ni « terminée », ni « abandonnée »).
+//
+// Manga : un seul jeton — une série DÉBUTÉE mais pas encore terminée (ni « à
+// débuter », ni « terminée », ni « abandonnée »).
+//
+// Anime : DEUX jetons — en plus des animés en cours de visionnage, « Animés à
+// visionner » inclut désormais ceux pas encore commencés (« à voir »), pour
+// couvrir toute la file d'attente en un clic plutôt que le seul visionnage
+// déjà entamé.
+//
+// Les deux liens appliquent en plus un tri par date de lecture/visionnage
+// descendant (les plus récemment avancées en tête), pour retrouver en un
+// coup d'œil ce qu'on vient de commencer.
 $__sidebar_status_filter = trim((string)($_GET['status_filter'] ?? ''));
-$__sidebar_backlog_tokens = 'reading_in_progress';
-$__sidebar_is_backlog = ($__sidebar_status_filter === $__sidebar_backlog_tokens);
+$__sidebar_backlog_tokens_manga = 'reading_in_progress';
+$__sidebar_backlog_tokens_anime = 'reading_not_started,reading_in_progress';
+$__sidebar_backlog_tokens = ($__sidebar_type === 'anime') ? $__sidebar_backlog_tokens_anime : $__sidebar_backlog_tokens_manga;
+$__sidebar_is_backlog = in_array($__sidebar_status_filter, [$__sidebar_backlog_tokens_manga, $__sidebar_backlog_tokens_anime], true);
 
 // Couleurs des sections, centralisées dans includes/helpers.php (elles-mêmes
 // le pendant des variables CSS --sidebar-section-* de assets/css/_variables.css).
@@ -80,9 +92,11 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                     </button>
                 </li>
 
-                <!-- Mangas à lire : lecture débutée, pas encore terminée -->
+                <!-- Mangas à lire : lecture débutée, pas encore terminée —
+                     triés par date de lecture descendante (les plus
+                     récemment avancés en tête). -->
                 <li>
-                    <a href="<?= $base ?>admin.php?type=manga&status_filter=<?= urlencode($__sidebar_backlog_tokens) ?>"
+                    <a href="<?= $base ?>admin.php?type=manga&status_filter=<?= urlencode($__sidebar_backlog_tokens_manga) ?>&sort_by=read_at&sort_order=desc"
                        class="sidebar-link <?= ($current_page === 'admin.php' && $__sidebar_type === 'manga' && $__sidebar_is_backlog) ? 'is-active is-active--pink' : '' ?>"
                        data-tooltip="Mangas à lire">
                         <img src="https://api.iconify.design/mdi/book-clock.svg?color=<?= $__c_manga ?>" width="22" height="22" alt="">
@@ -120,9 +134,11 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                     </button>
                 </li>
 
-                <!-- Animés à visionner : visionnage débuté, pas encore terminé -->
+                <!-- Animés à visionner : à voir OU visionnage débuté (pas
+                     encore terminé) — triés par date de visionnage
+                     descendante (les plus récemment avancés en tête). -->
                 <li>
-                    <a href="<?= $base ?>admin.php?type=anime&status_filter=<?= urlencode($__sidebar_backlog_tokens) ?>"
+                    <a href="<?= $base ?>admin.php?type=anime&status_filter=<?= urlencode($__sidebar_backlog_tokens_anime) ?>&sort_by=read_at&sort_order=desc"
                        class="sidebar-link <?= ($current_page === 'admin.php' && $__sidebar_type === 'anime' && $__sidebar_is_backlog) ? 'is-active is-active--blue' : '' ?>"
                        data-tooltip="Animés à visionner">
                         <img src="https://api.iconify.design/mdi/television-play.svg?color=<?= $__c_anime ?>" width="22" height="22" alt="">
@@ -189,16 +205,6 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
             <span class="sidebar-section-title">Divers</span>
             <ul class="sidebar-section-items" role="list">
 
-                <!-- Statistiques -->
-                <li>
-                    <a href="<?= $base ?>stats.php"
-                       class="sidebar-link <?= $current_page === 'stats.php' ? 'is-active is-active--gray' : '' ?>"
-                       data-tooltip="Statistiques"
-                       target="_blank">
-                        <img src="https://api.iconify.design/mdi/chart-bar.svg?color=<?= $__c_gray ?>" width="22" height="22" alt="">
-                    </a>
-                </li>
-
                 <!-- Accueil public -->
                 <li>
                     <a href="<?= $base ?>index.php"
@@ -206,6 +212,16 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                        data-tooltip="Accueil public"
                        target="_blank">
                         <img src="https://api.iconify.design/mdi/home.svg?color=<?= $__c_gray ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
+                <!-- Statistiques -->
+                <li>
+                    <a href="<?= $base ?>stats.php"
+                       class="sidebar-link <?= $current_page === 'stats.php' ? 'is-active is-active--gray' : '' ?>"
+                       data-tooltip="Statistiques"
+                       target="_blank">
+                        <img src="https://api.iconify.design/mdi/chart-bar.svg?color=<?= $__c_gray ?>" width="22" height="22" alt="">
                     </a>
                 </li>
 

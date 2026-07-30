@@ -69,8 +69,14 @@ $profil_pseudo = trim($options['admin_pseudo'] ?? '');
 $profil_bio    = (string)($options['admin_bio'] ?? '');
 $profil_social = profil_get_social_links($options);
 $profil_has_avatar = ($profil_avatar !== '' && file_exists($profil_avatar));
+// Mise en lumière : uniquement les séries dont la collection n'est pas
+// masquée (mode privé / masquage mature), tous types confondus. Calculée ici
+// (avant tout filtrage de $data par $current_type) car une mise en lumière
+// peut mélanger manga et animé.
+$profil_highlights = profil_highlighted_series($data, $options, true);
 $has_profil = ($profil_pseudo !== '' || trim($profil_bio) !== '' ||
-               $profil_has_avatar || !empty($profil_social));
+               $profil_has_avatar || !empty($profil_social) ||
+               !empty($profil_highlights['manga']) || !empty($profil_highlights['anime']));
 
 // Récupère la date la plus récente (added_at ou read_at) parmi les tomes d'une série
 function series_latest_date($series, $field) {
@@ -357,6 +363,23 @@ if (!empty($search_term)) {
         return series_matches_search($series, $normalized_search);
     });
 }
+
+// Appliquer le filtre de statuts (dont « Avec critique »/« Sans critique »).
+// Manquait au rendu HTML initial (non-AJAX) : jusqu'ici seul l'endpoint de
+// pagination infinie (get_paginated_series) l'appliquait, ce qui faisait
+// apparaître TOUTES les séries au premier chargement d'une page comme
+// index.php?status_filter=has_review, avant toute interaction JS — un
+// comportement qui donnait l'impression que le filtre se combinait en « OU »
+// avec le reste plutôt que d'être appliqué seul.
+$data = array_values(apply_status_filter(
+    $data,
+    $status_filter,
+    $status_mode,
+    function ($series) use ($public_review_ids) {
+        return isset($public_review_ids[$series['id']]);
+    },
+    $current_type
+));
 ?>
 
 <!DOCTYPE html>
@@ -614,8 +637,36 @@ if (!empty($search_term)) {
                 </div>
             <?php endif; ?>
 
+            <?php if (!empty($profil_highlights['manga']) || !empty($profil_highlights['anime'])): ?>
+                <div class="profil-modal-highlights">
+                    <h3 class="profil-modal-section-title">Séries coup de cœur</h3>
+                    <?php foreach (series_type_keys() as $__ht):
+                        $__list = $profil_highlights[$__ht] ?? [];
+                        if (empty($__list)) continue;
+                        $__color = type_color($__ht);
+                    ?>
+                        <div class="profil-highlights-group" style="--type-color: <?= htmlspecialchars($__color) ?>">
+                            <h4 class="profil-highlights-title">
+                                <img src="https://api.iconify.design/<?= str_replace(':', '/', type_icon($__ht)) ?>.svg?color=<?= rawurlencode($__color) ?>" width="16" height="16" alt="">
+                                <?= htmlspecialchars(type_vocab($__ht, 'collection')) ?>
+                            </h4>
+                            <div class="profil-highlights-row">
+                                <?php foreach ($__list as $__s): ?>
+                                    <button type="button" class="profil-highlight-card" data-series-id="<?= htmlspecialchars($__s['id']) ?>" title="<?= htmlspecialchars($__s['name']) ?>">
+                                        <img class="profil-highlight-thumb" src="<?= htmlspecialchars($__s['thumbnail']) ?>" alt="" loading="lazy">
+                                        <span class="profil-highlight-name"><?= htmlspecialchars($__s['name']) ?></span>
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
             <?php if (!empty($profil_social)): ?>
                 <div class="profil-modal-social">
+                    <h3 class="profil-modal-section-title">Liens sociaux</h3>
+                    <div class="profil-modal-social-links">
                     <?php foreach ($profil_social as $__link):
                         $__icon_name = str_replace(':', '/', custom_link_icon_name($__link['icon']));
                         $__icon_col  = rawurlencode(custom_link_color_hex($__link['color'])); ?>
@@ -627,6 +678,7 @@ if (!empty($search_term)) {
                             <span><?= htmlspecialchars($__link['name']) ?></span>
                         </a>
                     <?php endforeach; ?>
+                    </div>
                 </div>
             <?php endif; ?>
         </div>
