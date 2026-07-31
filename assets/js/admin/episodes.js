@@ -97,6 +97,76 @@ function openEpisodeModal(series, episodeIndex) {
 document.getElementById('edit-episode-status')?.addEventListener('change', updateWatchedAtVisibility);
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Soumission AJAX du formulaire d'édition d'un épisode : évite de recharger
+// toute la page pour ne rafraîchir, au final, qu'une seule carte. Même
+// mécanique que edit-volume-form (volumes.js) et edit-series-form (series.js) :
+// le serveur (admin.php) reçoit "ajax=1" et répond en JSON avec la carte
+// "light" à jour.
+// ─────────────────────────────────────────────────────────────────────────────
+(function () {
+    const form = document.getElementById('edit-episode-form');
+    if (!form) return;
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalLabel = submitBtn ? submitBtn.textContent : '';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Mise à jour…';
+        }
+
+        const seriesId = document.getElementById('edit-episode-series-id').value;
+        const formData = new FormData(form);
+        formData.set('ajax', '1');
+        // FormData n'inclut la valeur d'un bouton submit que s'il a déclenché
+        // l'envoi ; on la rajoute donc explicitement pour que le serveur voie
+        // bien $_POST['update_episode'].
+        formData.set('update_episode', 'Mettre à jour');
+
+        try {
+            const response = await fetch('admin.php' + window.location.search, {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (!result.success) {
+                showCustomAlert('Erreur', result.message || "La mise à jour a échoué.");
+                return;
+            }
+
+            // Remplace la carte existante par une version fraîchement générée
+            // (épisodes + badges à jour), et tient seriesData à jour pour les
+            // autres écrans sans re-fetch complet de la collection.
+            const oldCard = document.querySelector(`.series-card[data-series-id="${CSS.escape(seriesId)}"]`);
+            const newCard = createLightSeriesCard(result.series);
+            if (oldCard) {
+                oldCard.replaceWith(newCard);
+            } else if (typeof seriesList !== 'undefined' && seriesList) {
+                seriesList.appendChild(newCard);
+            }
+
+            if (Array.isArray(seriesData)) {
+                const idx = seriesData.findIndex(s => s.id === seriesId);
+                if (idx !== -1) seriesData[idx] = Object.assign({}, seriesData[idx], result.series);
+            }
+
+            document.getElementById('edit-episode-modal').classList.remove('modal-active');
+        } catch (error) {
+            console.error('Erreur:', error);
+            showCustomAlert('Erreur', "La mise à jour a échoué : le serveur n'a pas répondu.");
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalLabel;
+            }
+        }
+    });
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Bouton « + » : épisode suivant marqué comme vu
 // ─────────────────────────────────────────────────────────────────────────────
 

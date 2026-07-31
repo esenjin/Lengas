@@ -340,6 +340,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
     $series_id = $_POST['series_id'] ?? '';
     $volume_index = (int)($_POST['volume_index'] ?? 0);
 
+    // Requête AJAX (édition sans rechargement de page) : la réponse devient
+    // du JSON contenant la carte "light" à jour, plutôt qu'une redirection.
+    // $_POST['ajax'] est ajouté par edit-volume-modal (volumes.js) ; son
+    // absence préserve le comportement historique pour tout appelant non-JS.
+    $is_ajax = !empty($_POST['ajax']);
+
     // Un épisode ne passe jamais par ici : update_volume() sait cocher
     // « collector » et « dernier tome », et fait basculer le statut de la série
     // au passage — trois choses qu'Anilist seul décide pour un animé. Le front
@@ -347,7 +353,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
     // pour un POST forgé.
     $target = find_series_by_id($data, $series_id);
     if ($target && is_anime($target['data'])) {
-        $_SESSION['error_message'] = "Un épisode se modifie depuis sa propre fiche.";
+        $message = "Un épisode se modifie depuis sa propre fiche.";
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $message]);
+            exit;
+        }
+        $_SESSION['error_message'] = $message;
         header("Location: " . $_SERVER['REQUEST_URI']);
         exit;
     }
@@ -377,6 +389,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
         }
     }
 
+    if ($is_ajax) {
+        header('Content-Type: application/json');
+        if (!$result['success']) {
+            echo json_encode(['success' => false, 'message' => $result['message'] ?? "La mise à jour a échoué."]);
+            exit;
+        }
+        $updated = find_series_by_id($result['data'], $series_id);
+        if (!$updated) {
+            echo json_encode(['success' => false, 'message' => "Série introuvable après mise à jour."]);
+            exit;
+        }
+        $loaned_by_series = loans_by_series(load_loans());
+        echo json_encode([
+            'success' => true,
+            'series'  => build_light_series($updated['data'], $review_series_ids, $loaned_by_series[$series_id] ?? []),
+        ]);
+        exit;
+    }
+
     header("Location: " . $_SERVER['REQUEST_URI']);
     exit;
 }
@@ -395,6 +426,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_episode'])) {
         $watched_at = null;
     }
 
+    // Requête AJAX (édition sans rechargement de page) : la réponse devient
+    // du JSON contenant la carte "light" à jour, plutôt qu'une redirection.
+    // $_POST['ajax'] est ajouté par edit-episode-modal (episodes.js) ; son
+    // absence préserve le comportement historique pour tout appelant non-JS.
+    $is_ajax = !empty($_POST['ajax']);
+
     $result = update_episode($data, $series_id, $episode_index, $status, $watched_at);
     if ($result['success']) {
         // Option « tout marquer » : le statut de visionnage (et sa date) est
@@ -410,7 +447,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_episode'])) {
         // (replace_series_volumes()), aucune écriture supplémentaire n'est
         // donc nécessaire ici.
     } else {
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $result['message'] ?? "La mise à jour a échoué."]);
+            exit;
+        }
         $_SESSION['error_message'] = $result['message'];
+    }
+
+    if ($is_ajax) {
+        header('Content-Type: application/json');
+        $updated = find_series_by_id($result['data'], $series_id);
+        if (!$updated) {
+            echo json_encode(['success' => false, 'message' => "Série introuvable après mise à jour."]);
+            exit;
+        }
+        $loaned_by_series = loans_by_series(load_loans());
+        echo json_encode([
+            'success' => true,
+            'series'  => build_light_series($updated['data'], $review_series_ids, $loaned_by_series[$series_id] ?? []),
+        ]);
+        exit;
     }
 
     header("Location: " . $_SERVER['REQUEST_URI']);
@@ -1095,7 +1152,7 @@ if ($search_term) {
             <div class="modal-content">
                 <span class="close-modal" id="close-edit-volume-modal">&times;</span>
                 <h2>Éditer le tome</h2>
-                <form method="post">
+                <form method="post" id="edit-volume-form">
                     <input type="hidden" name="series_id" id="edit-series-id">
                     <input type="hidden" name="volume_index" id="edit-volume-index">
                     <p id="edit-volume-number-display" class="volume-number-display"></p>
@@ -1139,7 +1196,7 @@ if ($search_term) {
             <div class="modal-content">
                 <span class="close-modal" id="close-edit-episode-modal">&times;</span>
                 <h2>Éditer l'<?= htmlspecialchars($__ep_vocab['item']) ?></h2>
-                <form method="post">
+                <form method="post" id="edit-episode-form">
                     <input type="hidden" name="series_id" id="edit-episode-series-id">
                     <input type="hidden" name="episode_index" id="edit-episode-index">
                     <p id="edit-episode-number-display" class="volume-number-display"></p>
