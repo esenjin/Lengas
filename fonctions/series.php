@@ -1,4 +1,113 @@
 <?php
+// Construit la représentation "light" d'une série (mêmes champs que
+// l'endpoint get_paginated_series&light=true), pour qu'une carte puisse être
+// (re)générée côté client de façon identique, que ce soit lors du défilement
+// infini ou juste après la mise à jour d'une série (sans recharger la page).
+//
+// $review_series_ids : ensemble des IDs de séries possédant une critique
+// (array_flip(get_review_series_ids())).
+// $loaned_volumes     : prêts de CETTE série uniquement (loans_by_series(...)[$id] ?? []).
+function build_light_series(array $series, array $review_series_ids, array $loaned_volumes): array {
+    // Détermine le statut de publication
+    $status = 'en cours';
+    $has_last = false;
+    if (isset($series['volumes']) && is_array($series['volumes'])) {
+        foreach ($series['volumes'] as $volume) {
+            if (!empty($volume['last'])) {
+                $has_last = true;
+                $status = 'terminée';
+                break;
+            }
+        }
+    }
+    if (isset($series['status'])) {
+        $status = $series['status'];
+    }
+
+    // Calcule le statut de lecture — ou de visionnage pour un animé : même
+    // jeu de valeurs, badges et filtres restent communs.
+    if (is_anime($series)) {
+        $reading_status = anime_watching_status($series);
+    } else {
+        $reading_status = 'not_started';
+        if (!empty($series['reading_abandoned'])) {
+            $reading_status = 'abandoned';
+        } else {
+            $read_count = 0;
+            $total_count = 0;
+            foreach ($series['volumes'] ?? [] as $volume) {
+                $total_count++;
+                if ($volume['status'] === 'terminé') $read_count++;
+            }
+            if ($total_count > 0 && $read_count === $total_count && $has_last) {
+                $reading_status = 'completed';
+            } elseif ($read_count > 0 && !$has_last) {
+                $reading_status = 'in_progress';
+            } elseif ($read_count > 0) {
+                // Des tomes lus mais publication terminée sans tous avoir lu
+                $reading_status = 'in_progress';
+            }
+        }
+    }
+
+    return [
+        'id' => $series['id'],
+        'name' => $series['name'],
+        'type' => series_type($series),
+        'author' => $series['author'],
+        'publisher' => $series['publisher'],
+        'other_contributors' => $series['other_contributors'] ?? [],
+        'categories' => $series['categories'] ?? [],
+        'genres' => $series['genres'] ?? [],
+        // Vignette déjà résolue par la cascade perso → Anilist → défaut :
+        // le front affiche ce qu'on lui donne, il n'arbitre rien.
+        'image' => series_thumbnail($series),
+        'volumes_count' => count($series['volumes']),
+        'favorite' => $series['favorite'] ?? false,
+        'mature' => $series['mature'] ?? false,
+        'status' => $status,
+        'reading_status' => $reading_status,
+        'mangaupdates_url'           => $series['mangaupdates_url'] ?? '',
+        'babelio_url'                => $series['babelio_url'] ?? '',
+        'read_elsewhere'             => (bool)($series['read_elsewhere'] ?? false),
+        'reading_abandoned'          => (bool)($series['reading_abandoned'] ?? false),
+        'rating'                     => $series['rating'] ?? '',
+        'has_review'                 => isset($review_series_ids[$series['id']]),
+        'reread_count'               => (int)($series['reread_count'] ?? 0),
+        // ── Champs animé (vides ou nuls sur un manga) ────────────────
+        'anilist_id'                 => $series['anilist_id'] ?? '',
+        'anilist_url'                => $series['anilist_url'] ?? '',
+        'studios'                    => $series['studios'] ?? [],
+        'studios_text'               => series_studios_text($series),
+        'anime_format'               => $series['anime_format'] ?? '',
+        'format_label'               => is_anime($series)
+                                            ? anilist_format_label($series['anime_format'] ?? '')
+                                            : '',
+        'alt_titles'                 => series_alt_titles($series),
+        'watching_abandoned'         => (bool)($series['watching_abandoned'] ?? false),
+        'rewatch_count'              => (int)($series['rewatch_count'] ?? 0),
+        'editions'                   => series_edition_comments($series),
+        // Vignette personnalisée seule : la modale d'édition doit savoir
+        // s'il y en a une à proposer de supprimer, indépendamment de la
+        // vignette Anilist qui, elle, ne s'efface jamais à la main.
+        'custom_image'               => $series['image'] ?? '',
+        'anilist_image'              => $series['anilist_image'] ?? '',
+        // ── Synchronisation automatique ──────────────────────────────
+        // Le front décide lui-même s'il doit déclencher une synchro à
+        // l'affichage de la carte : sync_due lui épargne un aller-retour
+        // pour rien sur une série déjà à jour ou hors verrou.
+        'anilist_synced_at'          => (int)($series['anilist_synced_at'] ?? 0),
+        'sync_due'                   => is_anime($series) && anilist_sync_is_due($series, false),
+        // Tomes/épisodes déjà rendus en HTML : affichés directement à la
+        // création de la carte, sans aller-retour AJAX supplémentaire.
+        'volumes_html'               => render_volumes_html(
+            $series,
+            [],
+            $loaned_volumes
+        ),
+    ];
+}
+
 // Ajouter une série
 // $type : clé du registre de types (includes/helpers.php). Par défaut 'manga',
 // la modale d'ajout de cette page ne créant que des mangas et light-novels.

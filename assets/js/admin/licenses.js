@@ -12,6 +12,8 @@
 
     const listContainer  = document.getElementById('licenses-list');
     const searchInput    = document.getElementById('licenses-search');
+    const sortBySelect   = document.getElementById('licenses-sort-by');
+    const sortOrderSelect = document.getElementById('licenses-sort-order');
     const newBtn         = document.getElementById('new-license-btn');
 
     const newModal        = document.getElementById('new-license-modal');
@@ -65,10 +67,35 @@
         return res.json();
     }
 
+    // Recalcule et affiche le nombre total de licences et de séries qu'elles
+    // regroupent, à partir des cartes déjà présentes dans le DOM (source de
+    // vérité déjà à jour après chaque création/suppression/ajout/retrait,
+    // sans requête serveur supplémentaire).
+    const totalsEl = document.getElementById('licenses-totals');
+    function refreshTotals() {
+        if (!totalsEl) return;
+        const cards = Array.from(listContainer.querySelectorAll('.license-card'));
+        const licensesCount = cards.length;
+        const seriesCount = cards.reduce((sum, card) => {
+            const n = parseInt(card.querySelector('.license-card-count')?.textContent || '0', 10);
+            return sum + (isNaN(n) ? 0 : n);
+        }, 0);
+
+        if (licensesCount === 0) {
+            totalsEl.innerHTML = '';
+            return;
+        }
+        totalsEl.innerHTML = `<br>${licensesCount} licence${licensesCount > 1 ? 's' : ''} ` +
+            `regroupant ${seriesCount} série${seriesCount > 1 ? 's' : ''} au total.`;
+    }
+
     // ── Vue liste ────────────────────────────────────────────────────────────
     async function loadList() {
         listContainer.innerHTML = '<p class="licenses-empty">Chargement…</p>';
-        const data = await api('list');
+        const data = await api('list', {
+            sort_by: sortBySelect ? sortBySelect.value : 'created_at',
+            sort_order: sortOrderSelect ? sortOrderSelect.value : 'desc',
+        });
         if (!data.success) {
             listContainer.innerHTML = '<p class="licenses-empty">Erreur de chargement.</p>';
             return;
@@ -79,6 +106,7 @@
     function renderList(licenses) {
         if (!licenses.length) {
             listContainer.innerHTML = '<p class="licenses-empty">Aucune licence pour le moment. 📚</p>';
+            refreshTotals();
             return;
         }
         listContainer.innerHTML = '';
@@ -86,6 +114,9 @@
             const card = document.createElement('div');
             card.className = 'license-card';
             card.dataset.licenseId = lic.id;
+            // Sert à la recherche (applyListFilter) : matcher aussi sur le
+            // contenu de la licence, pas seulement sur son propre nom.
+            card.dataset.seriesNames = JSON.stringify(lic.series_names || []);
             const img = '../' + ((lic.thumbnail && lic.thumbnail !== '') ? htmlEscape(lic.thumbnail) : 'assets/img/logo.png');
             const p = lic.count > 1 ? 's' : '';
             card.innerHTML = `
@@ -108,6 +139,7 @@
                     if (!listContainer.querySelector('.license-card')) {
                         listContainer.innerHTML = '<p class="licenses-empty">Aucune licence pour le moment. 📚</p>';
                     }
+                    refreshTotals();
                 } else {
                     showCustomAlert('Erreur', res.message || 'Suppression impossible.');
                 }
@@ -115,13 +147,21 @@
             listContainer.appendChild(card);
         });
         applyListFilter();
+        refreshTotals();
     }
 
     function applyListFilter() {
         const term = normalizeString(searchInput ? searchInput.value : '');
         listContainer.querySelectorAll('.license-card').forEach(card => {
+            if (term === '') { card.style.display = ''; return; }
+
             const title = normalizeString(card.querySelector('.license-card-title')?.textContent || '');
-            card.style.display = (term === '' || title.includes(term)) ? '' : 'none';
+            if (title.includes(term)) { card.style.display = ''; return; }
+
+            let seriesNames = [];
+            try { seriesNames = JSON.parse(card.dataset.seriesNames || '[]'); } catch (e) { seriesNames = []; }
+            const matchesSeries = seriesNames.some(name => normalizeString(name).includes(term));
+            card.style.display = matchesSeries ? '' : 'none';
         });
     }
     searchInput?.addEventListener('input', applyListFilter);
@@ -208,7 +248,7 @@
             row.innerHTML = `
                 <img class="license-series-row-thumb" src="${img}" alt="" loading="lazy">
                 <div class="license-series-row-info">
-                    <p class="license-series-row-name">${htmlEscape(s.name)} ${typeBadge}</p>
+                    <p class="license-series-row-name" style="${typeDef ? `color:${typeDef.color}` : ''}">${htmlEscape(s.name)} ${typeBadge}</p>
                     <p class="license-series-row-meta">${htmlEscape(s.author || '')}</p>
                 </div>
                 <div class="license-series-row-actions">
@@ -236,6 +276,7 @@
         const [item] = currentSeries.splice(index, 1);
         currentSeries.splice(target, 0, item);
         renderSeriesList();
+        refreshCard(); // la série en tête peut changer, donc potentiellement la vignette
         await persistOrder();
     }
 
@@ -255,20 +296,36 @@
         if (res.success) {
             currentSeries = currentSeries.filter(s => s.id !== seriesId);
             renderSeriesList();
-            refreshCardCount();
+            refreshCard();
         } else {
             showCustomAlert('Erreur', res.message || 'Retrait impossible.');
         }
     }
 
-    // Met à jour le compteur affiché sur la carte de la liste, sans recharger
-    // toute la grille (évite de perdre la position de scroll).
-    function refreshCardCount() {
+    // Met à jour le compteur ET la vignette affichés sur la carte de la
+    // liste, sans recharger toute la grille (évite de perdre la position de
+    // scroll). La vignette suit la même règle que côté serveur
+    // (license_thumbnail()) : celle de la première série membre qui en
+    // possède une, sinon le logo par défaut.
+    function refreshCard() {
         const card = listContainer.querySelector(`.license-card[data-license-id="${cssEscape(currentLicenseId)}"]`);
         if (!card) return;
+
         const n = currentSeries.length;
         const countEl = card.querySelector('.license-card-count');
         if (countEl) countEl.textContent = `${n} série${n > 1 ? 's' : ''}`;
+
+        const thumbEl = card.querySelector('.license-card-thumb');
+        if (thumbEl) {
+            const withImage = currentSeries.find(s => s.image && s.image !== '');
+            thumbEl.src = '../' + (withImage ? htmlEscape(withImage.image) : 'assets/img/logo.png');
+        }
+
+        // Garde la recherche à jour : la liste des séries membres a pu changer.
+        card.dataset.seriesNames = JSON.stringify(currentSeries.map(s => s.name));
+        applyListFilter();
+
+        refreshTotals();
     }
 
     function cssEscape(s) {
@@ -362,15 +419,17 @@
             name: s.name,
             type: s.type,
             author: s.author,
-            image: ''
+            image: s.image || ''
         });
         addInput.value = '';
         addResults.classList.remove('is-open');
         licensableCache = null; // invalide le cache : cette série n'est plus disponible
         renderSeriesList();
-        refreshCardCount();
+        refreshCard();
     }
 
     // ── Init ─────────────────────────────────────────────────────────────────
+    sortBySelect?.addEventListener('change', loadList);
+    sortOrderSelect?.addEventListener('change', loadList);
     loadList();
 })();

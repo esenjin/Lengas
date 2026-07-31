@@ -229,12 +229,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_anime_series'])) 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_anime_series'])) {
     $series_id = $_POST['series_id'] ?? '';
 
+    // Requête AJAX (édition sans rechargement de page) : la réponse devient
+    // du JSON contenant la carte "light" à jour, plutôt qu'une redirection.
+    // $_POST['ajax'] est ajouté par edit-anime-form (anime.js).
+    $is_ajax = !empty($_POST['ajax']);
+
     $new_image = null;
     if (!empty($_FILES['anime_image']['name'])) {
         $error_message = null;
         $new_image = upload_image($_FILES['anime_image'], $error_message);
         if ($new_image === false) {
-            $_SESSION['error_message'] = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
+            $message = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
+            if ($is_ajax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $message]);
+                exit;
+            }
+            $_SESSION['error_message'] = $message;
             header("Location: " . $_SERVER['REQUEST_URI']);
             exit;
         }
@@ -255,6 +266,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_anime_series']
         'new_image'          => $new_image,
         'remove_image'       => !empty($_POST['anime_remove_image']),
     ]);
+
+    if ($is_ajax) {
+        header('Content-Type: application/json');
+        if (!$result['success']) {
+            echo json_encode(['success' => false, 'message' => $result['message'] ?? "La mise à jour a échoué."]);
+            exit;
+        }
+        $updated = find_series_by_id($result['data'], $series_id);
+        if (!$updated) {
+            echo json_encode(['success' => false, 'message' => "Série introuvable après mise à jour."]);
+            exit;
+        }
+        $loaned_by_series = loans_by_series(load_loans());
+        echo json_encode([
+            'success' => true,
+            // Avertissement éventuel (ex. champ ignoré) sans que ce soit un échec.
+            'warning' => trim($result['message'] ?? '') !== '' ? $result['message'] : '',
+            'series'  => build_light_series($updated['data'], $review_series_ids, $loaned_by_series[$series_id] ?? []),
+        ]);
+        exit;
+    }
 
     if ($result['success']) {
         // Écriture ciblée : update_anime_series() upserte elle-même la
@@ -526,12 +558,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $edit_rating = sanitize_rating($_POST['edit_rating'] ?? '');
     $edit_reread_count = max(0, (int)($_POST['edit_reread_count'] ?? 0));
 
+    // Requête AJAX (édition sans rechargement de page) : la réponse devient
+    // du JSON contenant la carte "light" à jour, plutôt qu'une redirection.
+    // $_POST['ajax'] est ajouté par edit-series-form (series.js) ; son absence
+    // préserve le comportement historique pour tout appelant non-JS.
+    $is_ajax = !empty($_POST['ajax']);
+
     $new_image = null;
     if (!empty($_FILES['edit_image']['name'])) {
         $error_message = null;
         $new_image = upload_image($_FILES['edit_image'], $error_message);
         if ($new_image === false) {
-            $_SESSION['error_message'] = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
+            $message = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
+            if ($is_ajax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $message]);
+                exit;
+            }
+            $_SESSION['error_message'] = $message;
             header("Location: " . $_SERVER['REQUEST_URI']);
             exit;
         }
@@ -548,6 +592,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
             $mu_id = mangaupdates_get_id_from_url($mangaupdates_url);
             if ($mu_id !== null) @mangaupdates_get_volumes($mu_id, true);
         }
+    }
+
+    if ($is_ajax) {
+        header('Content-Type: application/json');
+        if (!$result['success']) {
+            echo json_encode(['success' => false, 'message' => $result['message'] ?? "La mise à jour a échoué."]);
+            exit;
+        }
+        $updated = find_series_by_id($result['data'], $series_id);
+        if (!$updated) {
+            echo json_encode(['success' => false, 'message' => "Série introuvable après mise à jour."]);
+            exit;
+        }
+        $loaned_by_series = loans_by_series(load_loans());
+        echo json_encode([
+            'success' => true,
+            'series'  => build_light_series($updated['data'], $review_series_ids, $loaned_by_series[$series_id] ?? []),
+        ]);
+        exit;
     }
 
     header("Location: " . $_SERVER['REQUEST_URI']);
@@ -689,106 +752,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
         $loaned_by_series = loans_by_series(load_loans());
 
         $light_series = array_map(function($series) use ($review_series_ids, $loaned_by_series) {
-            // Détermine le statut de publication
-            $status = 'en cours';
-            $has_last = false;
-            if (isset($series['volumes']) && is_array($series['volumes'])) {
-                foreach ($series['volumes'] as $volume) {
-                    if (!empty($volume['last'])) {
-                        $has_last = true;
-                        $status = 'terminée';
-                        break;
-                    }
-                }
-            }
-            if (isset($series['status'])) {
-                $status = $series['status'];
-            }
-
-            // Calcule le statut de lecture — ou de visionnage pour un animé :
-            // même jeu de valeurs, badges et filtres restent communs.
-            if (is_anime($series)) {
-                $reading_status = anime_watching_status($series);
-            } else {
-                $reading_status = 'not_started';
-                if (!empty($series['reading_abandoned'])) {
-                    $reading_status = 'abandoned';
-                } else {
-                    $read_count = 0;
-                    $total_count = 0;
-                    foreach ($series['volumes'] ?? [] as $volume) {
-                        $total_count++;
-                        if ($volume['status'] === 'terminé') $read_count++;
-                    }
-                    if ($total_count > 0 && $read_count === $total_count && $has_last) {
-                        $reading_status = 'completed';
-                    } elseif ($read_count > 0 && !$has_last) {
-                        $reading_status = 'in_progress';
-                    } elseif ($read_count > 0) {
-                        // Des tomes lus mais publication terminée sans tous avoir lu
-                        $reading_status = 'in_progress';
-                    }
-                }
-            }
-
-            return [
-                'id' => $series['id'],
-                'name' => $series['name'],
-                'type' => series_type($series),
-                'author' => $series['author'],
-                'publisher' => $series['publisher'],
-                'other_contributors' => $series['other_contributors'] ?? [],
-                'categories' => $series['categories'] ?? [],
-                'genres' => $series['genres'] ?? [],
-                // Vignette déjà résolue par la cascade perso → Anilist → défaut :
-                // le front affiche ce qu'on lui donne, il n'arbitre rien.
-                'image' => series_thumbnail($series),
-                'volumes_count' => count($series['volumes']),
-                'favorite' => $series['favorite'] ?? false,
-                'mature' => $series['mature'] ?? false,
-                'status' => $status,
-                'reading_status' => $reading_status,
-                'mangaupdates_url'           => $series['mangaupdates_url'] ?? '',
-                'babelio_url'                => $series['babelio_url'] ?? '',
-                'read_elsewhere'             => (bool)($series['read_elsewhere'] ?? false),
-                'reading_abandoned'          => (bool)($series['reading_abandoned'] ?? false),
-                'rating'                     => $series['rating'] ?? '',
-                'has_review'                 => isset($review_series_ids[$series['id']]),
-                'reread_count'               => (int)($series['reread_count'] ?? 0),
-                // ── Champs animé (vides ou nuls sur un manga) ────────────────
-                'anilist_id'                 => $series['anilist_id'] ?? '',
-                'anilist_url'                => $series['anilist_url'] ?? '',
-                'studios'                    => $series['studios'] ?? [],
-                'studios_text'               => series_studios_text($series),
-                'anime_format'               => $series['anime_format'] ?? '',
-                'format_label'               => is_anime($series)
-                                                    ? anilist_format_label($series['anime_format'] ?? '')
-                                                    : '',
-                'alt_titles'                 => series_alt_titles($series),
-                'watching_abandoned'         => (bool)($series['watching_abandoned'] ?? false),
-                'rewatch_count'              => (int)($series['rewatch_count'] ?? 0),
-                'editions'                   => series_edition_comments($series),
-                // Vignette personnalisée seule : la modale d'édition doit savoir
-                // s'il y en a une à proposer de supprimer, indépendamment de la
-                // vignette Anilist qui, elle, ne s'efface jamais à la main.
-                'custom_image'               => $series['image'] ?? '',
-                'anilist_image'              => $series['anilist_image'] ?? '',
-                // ── Synchronisation automatique ──────────────────────────────
-                // Le front décide lui-même s'il doit déclencher une synchro à
-                // l'affichage de la carte : sync_due lui épargne un aller-retour
-                // pour rien sur une série déjà à jour ou hors verrou.
-                'anilist_synced_at'          => (int)($series['anilist_synced_at'] ?? 0),
-                'sync_due'                   => is_anime($series) && anilist_sync_is_due($series, false),
-                // Tomes/épisodes déjà rendus en HTML : affichés directement à
-                // la création de la carte, sans aller-retour AJAX supplémentaire.
-                // Pas de notifications MangaUpdates ici (cf. commentaire plus
-                // haut) : celles-ci restent réservées à l'outil Incohérences.
-                'volumes_html'               => render_volumes_html(
-                    $series,
-                    [],
-                    $loaned_by_series[$series['id']] ?? []
-                ),
-            ];
+            return build_light_series($series, $review_series_ids, $loaned_by_series[$series['id']] ?? []);
         }, $paginated_data);
 
         header('Content-Type: application/json');

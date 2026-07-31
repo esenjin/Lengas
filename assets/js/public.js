@@ -820,7 +820,7 @@ function setModalLicenseBtn(series) {
                 btn.innerHTML = `
                     <img class="license-public-row-thumb" src="${htmlEscape(s.image || 'assets/img/logo.png')}" alt="" loading="lazy">
                     <div class="license-public-row-info">
-                        <p class="license-public-row-name">${htmlEscape(s.name)}${typeBadge}</p>
+                        <p class="license-public-row-name" style="${typeDef ? `color:${typeDef.color}` : ''}">${htmlEscape(s.name)}${typeBadge}</p>
                         <p class="license-public-row-meta">${htmlEscape(meta)}</p>
                     </div>
                 `;

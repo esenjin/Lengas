@@ -8,11 +8,14 @@
 // d'une éventuelle licence A.
 //
 // Schéma (SQLite, créé de façon idempotente comme reviews_init_table()) :
-//   licenses(id TEXT PK, name TEXT, created_at TEXT)
+//   licenses(id TEXT PK, name TEXT, created_at TEXT, updated_at TEXT)
 //   license_series(license_id TEXT, series_id TEXT UNIQUE, position INTEGER)
 // `series_id` est UNIQUE : c'est ce qui garantit qu'une série n'est jamais
 // membre de deux licences en même temps (INSERT OR REPLACE suffit à la
-// déplacer d'une licence à l'autre).
+// déplacer d'une licence à l'autre). `updated_at` est mis à jour par
+// touch_license() à chaque modification perçue par l'utilisateur (renommage,
+// ajout/retrait/réordonnancement d'une série) ; il alimente le tri « dernière
+// modification » de la page de gestion des licences.
 // ──────────────────────────────────────────────────────────────────────────────
 
 // ── Création des tables (idempotent) ─────────────────────────────────────────
@@ -32,6 +35,28 @@ function licenses_init_tables(): void {
             position    INTEGER NOT NULL DEFAULT 0
         )
     ");
+
+    // Migration : colonne `updated_at`, ajoutée après coup (tri « dernière
+    // modification »). Idempotente comme les ALTER TABLE de config.php : sur
+    // une base déjà migrée, la colonne existe déjà et l'ALTER échoue
+    // silencieusement (capturé par le try/catch).
+    try {
+        $db->exec("ALTER TABLE licenses ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''");
+        // Sur une base préexistante, initialise updated_at à created_at pour
+        // que le tri « dernière modification » ait un point de départ sensé
+        // plutôt qu'une chaîne vide en tête ou en fin de liste.
+        $db->exec("UPDATE licenses SET updated_at = created_at WHERE updated_at = ''");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+}
+
+// Marque une licence comme modifiée maintenant (nom ou contenu). Appelée par
+// toute action qui change ce que l'utilisateur perçoit comme « éditer la
+// licence » : renommage, ajout/retrait/réordonnancement d'une série. Pas par
+// create_license(), où created_at fait déjà foi.
+function touch_license(string $license_id): void {
+    $db = get_db();
+    $db->prepare("UPDATE licenses SET updated_at = ? WHERE id = ?")
+       ->execute([date('Y-m-d H:i:s'), $license_id]);
 }
 
 // ── Résolution de la vignette d'une licence ──────────────────────────────────
@@ -54,11 +79,14 @@ function license_thumbnail(array $member_series, string $default = 'assets/img/l
 // ── Liste de toutes les licences, avec métadonnées d'affichage ───────────────
 // $data doit contenir TOUTES les séries (mangas + animés), exactement comme
 // list_reviews() : pas de tableau déjà cloisonné par type.
-function list_licenses(array $data): array {
+//
+// $sort_by  : 'name' | 'created_at' | 'updated_at' | 'count' (défaut 'created_at')
+// $sort_order : 'asc' | 'desc' (défaut 'desc', comportement historique)
+function list_licenses(array $data, string $sort_by = 'created_at', string $sort_order = 'desc'): array {
     licenses_init_tables();
     $db = get_db();
 
-    $licenses = $db->query("SELECT id, name, created_at FROM licenses ORDER BY created_at DESC")->fetchAll();
+    $licenses = $db->query("SELECT id, name, created_at, updated_at FROM licenses")->fetchAll();
     if (empty($licenses)) return [];
 
     $by_id = [];
@@ -77,14 +105,47 @@ function list_licenses(array $data): array {
     foreach ($licenses as $lic) {
         $members = $members_by_license[$lic['id']] ?? [];
         $result[] = [
-            'id'         => $lic['id'],
-            'name'       => $lic['name'],
-            'created_at' => $lic['created_at'],
-            'count'      => count($members),
-            'thumbnail'  => license_thumbnail($members),
+            'id'           => $lic['id'],
+            'name'         => $lic['name'],
+            'created_at'   => $lic['created_at'],
+            'updated_at'   => $lic['updated_at'] ?: $lic['created_at'],
+            'count'        => count($members),
+            'thumbnail'    => license_thumbnail($members),
+            // Noms des séries membres : permet à la recherche de la page de
+            // gestion des licences de matcher aussi sur le contenu d'une
+            // licence, pas seulement sur son propre nom.
+            'series_names' => array_values(array_map(fn($s) => $s['name'], $members)),
         ];
     }
+
+    sort_licenses($result, $sort_by, $sort_order);
+
     return $result;
+}
+
+// Tri en place de la liste des licences (déjà décorées par list_licenses()).
+// Fait en PHP plutôt qu'en SQL : 'count' n'existe qu'une fois les séries
+// membres jointes et comptées, un ORDER BY SQL direct serait plus complexe
+// pour un gain nul vu le nombre de licences en jeu (jamais plus que quelques
+// dizaines/centaines).
+function sort_licenses(array &$licenses, string $sort_by, string $sort_order): void {
+    $sort_by    = in_array($sort_by, ['name', 'created_at', 'updated_at', 'count'], true) ? $sort_by : 'created_at';
+    $sort_order = ($sort_order === 'asc') ? 'asc' : 'desc';
+
+    usort($licenses, function ($a, $b) use ($sort_by) {
+        if ($sort_by === 'name') {
+            return strnatcasecmp($a['name'], $b['name']);
+        }
+        if ($sort_by === 'count') {
+            return $a['count'] <=> $b['count'];
+        }
+        // created_at / updated_at : chaînes 'Y-m-d H:i:s', comparables telles quelles.
+        return strcmp((string)$a[$sort_by], (string)$b[$sort_by]);
+    });
+
+    if ($sort_order === 'desc') {
+        $licenses = array_reverse($licenses);
+    }
 }
 
 // ── Détail d'une licence : ses séries membres, dans l'ordre, décorées ───────
@@ -153,6 +214,10 @@ function get_licensable_series(array $data, string $exclude_license_id = ''): ar
             'name'   => $s['name'],
             'type'   => series_type($s),
             'author' => is_anime($s) ? series_studios_text($s) : (string)($s['author'] ?? ''),
+            // Vignette déjà résolue (perso -> Anilist -> défaut) : permet au
+            // front de mettre à jour la vignette de la carte de licence dès
+            // l'ajout d'une série, sans attendre un rechargement de page.
+            'image'  => series_thumbnail($s),
         ];
     }
     return $out;
@@ -171,8 +236,9 @@ function create_license(string $name): array {
 
     $id = generate_uuid();
     $db = get_db();
-    $db->prepare("INSERT INTO licenses (id, name, created_at) VALUES (?, ?, ?)")
-       ->execute([$id, $name, date('Y-m-d H:i:s')]);
+    $now = date('Y-m-d H:i:s');
+    $db->prepare("INSERT INTO licenses (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)")
+       ->execute([$id, $name, $now, $now]);
 
     return ['success' => true, 'message' => 'Licence créée.', 'id' => $id];
 }
@@ -196,6 +262,7 @@ function rename_license(string $license_id, string $name): array {
     }
 
     $db->prepare("UPDATE licenses SET name = ? WHERE id = ?")->execute([$name, $license_id]);
+    touch_license($license_id);
     return ['success' => true, 'message' => 'Licence renommée.'];
 }
 
@@ -244,6 +311,7 @@ function add_series_to_license(array $data, string $license_id, string $series_i
 
     $db->prepare("INSERT OR REPLACE INTO license_series (license_id, series_id, position) VALUES (?, ?, ?)")
        ->execute([$license_id, $series_id, $next_position]);
+    touch_license($license_id);
 
     return ['success' => true, 'message' => 'Série ajoutée à la licence.'];
 }
@@ -254,6 +322,7 @@ function remove_series_from_license(string $license_id, string $series_id): arra
     $db = get_db();
     $db->prepare("DELETE FROM license_series WHERE license_id = ? AND series_id = ?")
        ->execute([$license_id, $series_id]);
+    touch_license($license_id);
     return ['success' => true, 'message' => 'Série retirée de la licence.'];
 }
 
@@ -280,8 +349,23 @@ function reorder_license_series(string $license_id, array $ordered_series_ids): 
         $update->execute([$position, $license_id, $series_id]);
         $position++;
     }
+    touch_license($license_id);
 
     return ['success' => true, 'message' => 'Ordre mis à jour.'];
+}
+
+// ── Totaux d'affichage (page de gestion des licences) ───────────────────────
+// Nombre total de licences et nombre total de séries regroupées dans une
+// licence (tous types confondus, chaque série ne comptant qu'une fois — elle
+// n'appartient jamais à plus d'une licence à la fois, cf. tête de fichier).
+function license_totals(): array {
+    licenses_init_tables();
+    $db = get_db();
+
+    $licenses_count = (int)$db->query("SELECT COUNT(*) AS n FROM licenses")->fetch()['n'];
+    $series_count   = (int)$db->query("SELECT COUNT(DISTINCT series_id) AS n FROM license_series")->fetch()['n'];
+
+    return ['licenses_count' => $licenses_count, 'series_count' => $series_count];
 }
 
 // ── Identifiant de licence d'une série, ou '' si elle n'en a aucune ──────────

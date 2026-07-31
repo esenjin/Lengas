@@ -14,6 +14,7 @@ require 'fonctions/licenses.php';
 
 $data    = load_data();
 $options = load_options();
+$totals  = license_totals();
 // ── Mangas ET animés ──────────────────────────────────────────────────────────
 // Comme page-critiques.php : $data reste la collection complète, tous types
 // confondus. Aucune écriture sur la table `series` n'a lieu ici.
@@ -26,7 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['license_action'])) {
     switch ($_POST['license_action']) {
 
         case 'list':
-            $response = ['success' => true, 'licenses' => list_licenses($data)];
+            $sort_by    = $_POST['sort_by'] ?? 'created_at';
+            $sort_order = $_POST['sort_order'] ?? 'desc';
+            $response = ['success' => true, 'licenses' => list_licenses($data, $sort_by, $sort_order)];
             break;
 
         case 'detail':
@@ -104,12 +107,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['license_action'])) {
     <main class="page-main">
         <div class="page-header">
             <h1>Licences</h1>
-            <p class="page-subtitle">Regroupez vos séries (mangas et animés) sous une même licence.</p>
+            <p class="page-subtitle">
+                Regroupez vos séries (mangas et animés) sous une même licence.
+                <span id="licenses-totals"><?php if ($totals['licenses_count'] > 0): ?>
+                    <br>
+                    <?= $totals['licenses_count'] ?> licence<?= $totals['licenses_count'] > 1 ? 's' : '' ?>
+                    regroupant <?= $totals['series_count'] ?> série<?= $totals['series_count'] > 1 ? 's' : '' ?> au total.
+                <?php endif; ?></span>
+            </p>
         </div>
 
         <div class="licenses-list-toolbar">
             <input type="text" id="licenses-search" class="licenses-search-input"
-                   placeholder="Filtrer par nom de licence…" autocomplete="off">
+                   placeholder="Filtrer par nom de licence ou de série…" autocomplete="off">
+            <div class="sort-options">
+                <select name="sort_by" id="licenses-sort-by">
+                    <option value="created_at">Trier par date de création</option>
+                    <option value="updated_at">Trier par date d'édition</option>
+                    <option value="name">Trier par nom</option>
+                    <option value="count">Trier par nombre de séries</option>
+                </select>
+                <select name="sort_order" id="licenses-sort-order">
+                    <option value="desc" selected>Descendant</option>
+                    <option value="asc">Ascendant</option>
+                </select>
+            </div>
             <button type="button" id="new-license-btn" class="button button-aos">
                 <img src="https://api.iconify.design/mdi/bookmark-plus.svg?color=%23ffffff" width="18" height="18" alt="">
                 Nouvelle licence

@@ -555,11 +555,75 @@ window.animeResultHtml = animeResultHtml;
     };
 
     // Garde-fou de taille, identique à celui des mangas.
-    document.getElementById('edit-anime-form')?.addEventListener('submit', function (e) {
+    const animeForm = document.getElementById('edit-anime-form');
+    animeForm?.addEventListener('submit', function (e) {
         const fileInput = this.querySelector('input[type="file"]');
         if (fileInput && fileInput.files.length > 0 && fileInput.files[0].size > 5 * 1024 * 1024) {
             e.preventDefault();
             showCustomAlert('Avertissement', 'Le fichier est trop volumineux (max. 5 Mo).');
+        }
+    });
+
+    // ── Soumission AJAX : évite de recharger toute la page pour ne rafraîchir,
+    // au final, qu'une seule carte. Le serveur reçoit "ajax=1" et répond en
+    // JSON avec la carte "light" à jour (mêmes champs que la pagination).
+    animeForm?.addEventListener('submit', async function (e) {
+        if (e.defaultPrevented) return; // garde-fou de taille ci-dessus a déjà annulé
+        e.preventDefault();
+
+        const submitBtn = animeForm.querySelector('button[type="submit"]');
+        const originalLabel = submitBtn ? submitBtn.textContent : '';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Mise à jour…';
+        }
+
+        const seriesId = document.getElementById('edit-anime-id').value;
+        const formData = new FormData(animeForm);
+        formData.set('ajax', '1');
+        // FormData n'inclut la valeur d'un bouton submit que s'il a déclenché
+        // l'envoi ; on la rajoute donc explicitement pour que le serveur voie
+        // bien $_POST['update_anime_series'].
+        formData.set('update_anime_series', 'Mettre à jour');
+
+        try {
+            const response = await fetch('admin.php' + window.location.search, {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (!result.success) {
+                showCustomAlert('Erreur', result.message || "La mise à jour a échoué.");
+                return;
+            }
+
+            const oldCard = document.querySelector(`.series-card[data-series-id="${CSS.escape(seriesId)}"]`);
+            const newCard = createAnimeSeriesCard(result.series);
+            if (oldCard) {
+                oldCard.replaceWith(newCard);
+            } else if (typeof seriesList !== 'undefined' && seriesList) {
+                seriesList.appendChild(newCard);
+            }
+
+            if (Array.isArray(window.seriesData)) {
+                const idx = window.seriesData.findIndex(s => s && s.id === seriesId);
+                if (idx !== -1) window.seriesData[idx] = Object.assign({}, window.seriesData[idx], result.series);
+            }
+
+            modal.classList.remove('modal-active');
+
+            if (result.warning) {
+                showCustomAlert('Information', result.warning);
+            }
+        } catch (error) {
+            console.error('Erreur:', error);
+            showCustomAlert('Erreur', "La mise à jour a échoué : le serveur n'a pas répondu.");
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalLabel;
+            }
         }
     });
 })();
