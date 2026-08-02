@@ -91,6 +91,13 @@ $tools = [
         'visible'     => true,
     ],
     [
+        'icon'        => 'source-merge',
+        'name'        => 'Groupage de licences',
+        'description' => "Suggère des séries sans licence qui semblent appartenir à la même œuvre, à regrouper en un clic.",
+        'href'        => 'outils/outil-groupage-licences.php',
+        'visible'     => true,
+    ],
+    [
         'icon'        => 'shield-check-outline',
         'name'        => "Vérification d'intégrité",
         'description' => "Compare votre instance au dépôt et vérifie la structure de vos données, fichiers et modules facultatifs.",

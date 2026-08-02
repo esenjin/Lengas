@@ -808,6 +808,8 @@
 .tool-back-link:hover {
     color: var(--primary-color);
 }
+
+
 /* ── Outil « Groupage de licences » ────────────────────────────────────────
    Réutilise .tools-section, .hint, .cedit-feedback, .button-sm et les
    variables de couleur déjà en place ailleurs dans les outils. */
@@ -873,20 +875,14 @@
 .grouping-series-item {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 10px;
+    padding: 6px 10px;
     border-radius: var(--border-radius-sm);
-}
-
-.grouping-series-checkbox-wrap {
-    display: flex;
-    align-items: center;
-    padding: 6px 8px;
     cursor: pointer;
-    border-radius: var(--border-radius-sm);
     transition: var(--transition-fast);
 }
 
-.grouping-series-checkbox-wrap:hover {
+.grouping-series-item:hover {
     background-color: var(--background-darker);
 }
 
@@ -894,34 +890,6 @@
     accent-color: var(--primary-color);
     flex-shrink: 0;
     margin: 0;
-}
-
-/* Zone cliquable "consulter" : tout sauf la case. Bouton natif réinitialisé
-   pour ressembler à la ligne de texte qu'elle remplace. */
-.grouping-series-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1;
-    min-width: 0;
-    padding: 6px 10px;
-    border: none !important;
-    background-color: transparent !important;
-    color: inherit !important;
-    font-family: inherit !important;
-    font-weight: normal !important;
-    font-size: inherit !important;
-    letter-spacing: normal !important;
-    text-align: left;
-    cursor: pointer;
-    border-radius: var(--border-radius-sm);
-    transition: var(--transition-fast);
-}
-
-.grouping-series-info:hover {
-    background-color: var(--background-darker) !important;
-    transform: none !important;
-    box-shadow: none !important;
 }
 
 .grouping-series-type {
@@ -935,13 +903,13 @@
 }
 
 .grouping-series-type--manga {
-    background-color: rgba(201, 78, 147, 0.15) !important;
-    color: #c94e93 !important;
+    background-color: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
 }
 
 .grouping-series-type--anime {
-    background-color: rgba(56, 189, 248, 0.15) !important;
-    color: #38bdf8 !important;
+    background-color: rgba(192, 132, 252, 0.15);
+    color: var(--primary-color);
 }
 
 .grouping-series-name {
@@ -957,70 +925,6 @@
     flex-shrink: 0;
 }
 
-/* ── Modale de détail léger d'une série (lecture seule) ─────────────────── */
-.grouping-series-detail-body {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 6px;
-}
-
-.grouping-series-detail-thumb {
-    width: 96px;
-    height: 96px;
-    object-fit: cover;
-    border-radius: var(--border-radius-sm);
-    background: var(--background-medium);
-    margin-bottom: 8px;
-}
-
-.grouping-series-detail-title {
-    margin: 0;
-    font-size: 1.1rem;
-}
-
-.grouping-series-detail-fields {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 14px;
-    text-align: left;
-}
-
-.grouping-series-detail-field {
-    display: flex !important;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 12px;
-    font-size: 0.88rem;
-    border-bottom: var(--border-subtle);
-    padding-bottom: 6px;
-}
-
-.grouping-series-detail-field > span:last-child {
-    text-align: right;
-}
-
-.grouping-series-detail-label {
-    color: var(--text-muted);
-    flex-shrink: 0;
-}
-
-.grouping-series-detail-badges {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 14px;
-}
-
-.grouping-series-detail-loading {
-    color: var(--text-gray);
-    padding: 20px 0;
-}
-
 .grouping-group-actions {
     display: flex;
     flex-wrap: wrap;
@@ -1034,56 +938,4 @@
     gap: 4px;
     font-size: 0.85rem;
     color: var(--text-gray);
-}
-
-.grouping-group--existing {
-    border-color: rgba(192, 132, 252, 0.35);
-}
-
-.grouping-group-license-badge {
-    background-color: var(--primary-subtle) !important;
-    color: var(--primary-color) !important;
-    font-weight: 600 !important;
-    font-size: 0.82rem !important;
-    padding: 2px 10px;
-    border-radius: var(--border-radius-sm);
-    border: none;
-    font-family: inherit;
-    cursor: pointer;
-    transition: var(--transition-fast);
-}
-
-.grouping-group-license-badge:hover {
-    background-color: var(--primary-glow) !important;
-    transform: none;
-    box-shadow: none;
-}
-
-/* ── Modale de détail léger d'une licence existante ──────────────────────── */
-.grouping-license-detail-body {
-    text-align: center;
-}
-
-.grouping-license-detail-count {
-    color: var(--text-gray);
-    font-size: 0.85rem;
-    margin: 4px 0 16px;
-}
-
-.grouping-license-detail-series-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    text-align: left;
-    max-height: 320px;
-    overflow-y: auto;
-}
-
-.grouping-license-detail-series-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 6px 10px;
-    border-radius: var(--border-radius-sm);
-    background-color: var(--background-darker);
 }

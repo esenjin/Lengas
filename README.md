@@ -109,6 +109,7 @@ Depuis la version 4.0, chaque série porte un **type** : `manga` (regroupant aus
 - Vignette de la licence : celle de la première série membre qui en possède une (sinon la suivante, puis le logo par défaut), titre et nombre de séries
 - Modale de détail d'une licence : liste ordonnée des séries membres, réordonnable (boutons ↑/↓), avec ajout et retrait de séries
 - Bouton « 📚 Licence » dans la modale de détail publique d'une série (sous le bouton « Critique »), visible uniquement si la série appartient à une licence : ouvre la liste ordonnée des séries de la licence, chacune menant à sa propre fiche
+- L'outil « Groupage de licences » (voir [Outils](#outils-une-page-dédiée-par-outil)) suggère automatiquement des regroupements pour les séries qui n'ont pas encore de licence
 
 ### Notation
 - Note subjective facultative par série, au choix parmi trois valeurs : ☺️ « J'ai apprécié », 😑 « Mi-figue mi-raisin », 😠 « Je n'ai pas aimé »
@@ -163,6 +164,7 @@ Tous les outils du site sont accessibles depuis `pages/page-outils.php`, accessi
 - **Incohérences** (`pages/outils/outil-coherences.php`) : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome »/« dernier épisode », statut différent de MangaUpdates ou d'Anilist, prêts orphelins, série animée sans identifiant Anilist, épisode terminé sans date, vignette Anilist introuvable, etc.) et propose une édition rapide de la série concernée ; les anomalies factuelles d'une série animée renvoient vers sa fiche Anilist pour correction à la source
 - **Sauvegardes** (`pages/outils/outil-sauvegardes.php`) : création et téléchargement d'archives de vos données, ainsi que l'export JSON complet (inclut les tables et les vignettes propres à l'Animethèque)
 - **Association MangaUpdates** (`pages/outils/outil-associations-mu.php`) : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement ; un second outil récupère de la même façon les genres manquants
+- **Groupage de licences** (`pages/outils/outil-groupage-licences.php`) : repère les séries sans licence qui semblent appartenir à la même œuvre (comparaison du nom et, pour les animés, des titres alternatifs Anilist, avec bonus si deux mangas partagent le même auteur ou si deux animés partagent le même studio) et propose de les regrouper. Chaque suggestion se valide individuellement : création d'une nouvelle licence, rattachement à une licence existante détectée automatiquement (avec consultation de son contenu actuel avant de confirmer), rattachement à une autre licence choisie manuellement, ou ignorée. Seuil de similarité ajustable, avec un repère calculé sur le score moyen des licences déjà existantes. Analyse entièrement locale (aucun appel réseau)
 - **Vérification d'intégrité** (`pages/outils/outil-integrite.php`) : compare automatiquement votre instance au dépôt Gitea, **au tag correspondant à votre version installée** (si aucun tag ne correspond, la comparaison se fait avec la version la plus récente et le signale). Pour chaque fichier versionné, elle vérifie la **présence** ET le **contenu** (comparaison d'empreinte : « OK », « Modifié » ou « Manquant »). Elle repère aussi les **fichiers étrangers au dépôt** (présents sur l'instance mais absents du dépôt, hors données `uploads/` `saves/` `bdd/`, config Vestikan, thèmes personnalisés et photo de profil de l'admin), l'**état des modules facultatifs** Vestikan et Babengas (installés ? réellement activés ? service distant fonctionnel ?), la **connectivité à l'API Anilist**, les permissions, les fichiers interdits, les doublons, les images orphelines (la photo de profil de l'admin et les vignettes Anilist actives ne sont jamais considérées comme orphelines), l'accès externe aux dossiers sensibles, la structure de la base de données (y compris les tables et colonnes propres à l'Animethèque), les thèmes personnalisés présents
 
 ### Options (page dédiée « Options »)
@@ -363,6 +365,7 @@ lengas/
 │       ├── outil-coherences.php       # Incohérences de la collection
 │       ├── outil-sauvegardes.php      # Sauvegardes et export JSON
 │       ├── outil-associations-mu.php  # Association MangaUpdates (fiches + genres)
+│       ├── outil-groupage-licences.php # Groupage de licences (suggestions de regroupement)
 │       └── outil-integrite.php        # Vérification d'intégrité
 ├── vestikan/              # Connexion SSO Vestikan (facultatif, non versionné pour la config)
 │   ├── vestikan-login.php    # Démarrage de la connexion Vestikan
@@ -426,7 +429,8 @@ lengas/
 │       │       ├── integrity.js
 │       │       ├── anilist-import.js
 │       │       ├── anilist-sync.js
-│       │       └── anilist-recheck.js
+│       │       ├── anilist-recheck.js
+│       │       └── grouping.js
 │       ├── stats.js
 │       ├── historique.js
 │       └── public.js
@@ -465,7 +469,8 @@ lengas/
 │       ├── coherence.php          # Incohérences de la collection
 │       ├── anilist_import.php     # Import de masse de la liste Anilist
 │       ├── anilist_sync.php       # Synchronisation automatique des animés en cours
-│       └── anilist_recheck.php    # Vérification manuelle des animés
+│       ├── anilist_recheck.php    # Vérification manuelle des animés
+│       └── grouping.php           # Groupage de licences (suggestions de regroupement)
 ├── uploads/              # Images des séries, dont les vignettes Anilist téléchargées (chmod 0774)
 ├── saves/                # Sauvegardes de la base de données (chmod 0774)
 └── bdd/                  # Fichiers de données (chmod 0774)
