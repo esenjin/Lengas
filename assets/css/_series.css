@@ -130,6 +130,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--series-title-color);
+    /* Empêche le flexbox (.series-info est en column) de rétrécir le titre
+       quand le contenu total dépasse la hauteur fixe de la carte admin
+       (350px, voir .series-card:has(> .series-actions)) : sans ça, un h2
+       se voyait écrasé en hauteur — texte partiellement ou totalement
+       masqué — au profit du reste du contenu, au lieu de laisser le
+       scroll interne de .series-info absorber le débordement. */
+    flex-shrink: 0;
 }
 
 .series-stats {
