@@ -117,6 +117,7 @@
     .series-card {
         grid-template-columns: 90px 1fr;
         grid-template-rows: 90px auto;
+        height: auto;
         max-height: none;
         border-radius: var(--border-radius);
     }
