@@ -14,12 +14,18 @@
     display: grid;
     grid-template-columns: 150px 1fr;
     grid-template-rows: 150px auto;
-    height: 350px;
     border: var(--border-subtle);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
                 box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
                 border-color 0.25s ease;
     position: relative;
+}
+
+/* Hauteur fixe réservée aux cartes admin (identifiables par la colonne
+   .series-actions, absente côté public) : évite des cartes de hauteurs
+   disparates dans la grille admin, sans impacter le rendu public. */
+.series-card:has(> .series-actions) {
+    height: 350px;
 }
 
 .series-card::before {
@@ -86,8 +92,34 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
+}
+
+/* Scroll interne réservé à l'admin : nécessaire uniquement quand la carte a
+   une hauteur fixe (voir .series-card:has(> .series-actions) ci-dessus).
+   Scrollbar stylisée en violet — remplace l'ancienne scrollbar dédiée aux
+   tomes pour n'en garder qu'une seule par carte. */
+.series-card:has(> .series-actions) .series-info {
     min-height: 0;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(192, 132, 252, 0.3) transparent;
+}
+
+.series-card:has(> .series-actions) .series-info::-webkit-scrollbar {
+    width: 4px;
+}
+
+.series-card:has(> .series-actions) .series-info::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.series-card:has(> .series-actions) .series-info::-webkit-scrollbar-thumb {
+    background: rgba(192, 132, 252, 0.3);
+    border-radius: 2px;
+}
+
+.series-card:has(> .series-actions) .series-info::-webkit-scrollbar-thumb:hover {
+    background: rgba(192, 132, 252, 0.5);
 }
 
 .series-info h2 {
@@ -328,27 +360,6 @@
     grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
     gap: 6px;
     padding-bottom: 4px;
-    max-height: 260px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(192, 132, 252, 0.3) transparent;
-}
-
-.volumes-list::-webkit-scrollbar {
-    width: 4px;
-}
-
-.volumes-list::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.volumes-list::-webkit-scrollbar-thumb {
-    background: rgba(192, 132, 252, 0.3);
-    border-radius: 2px;
-}
-
-.volumes-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(192, 132, 252, 0.5);
 }
 
 /* ── Pop-up (tooltip) stylisée au survol des tomes ───────────────────────────
