@@ -26,6 +26,10 @@ $has_profil = ($profil_pseudo !== '' || $profil_bio !== '' ||
                ($profil_avatar !== '' && file_exists($profil_avatar)) ||
                !empty($profil_social));
 
+// Pages publiques qui embarquent la modale « Qui suis-je ? »
+// (includes/public-profil-modal.php) et peuvent donc afficher le bouton.
+$__profil_pages = ['index.php', 'stats.php', 'historique.php'];
+
 // Couleurs des sections, centralisées dans includes/helpers.php (elles-mêmes
 // le pendant des variables CSS --sidebar-section-* de assets/css/_variables.css).
 $__c_manga = rawurlencode(sidebar_section_color('manga'));
@@ -109,7 +113,7 @@ $__reviews_public_anime = !is_private_mode($options, 'anime') && !is_hide_review
             <span class="sidebar-section-title">Divers</span>
             <ul class="sidebar-section-items" role="list">
 
-                <?php if ($current_page === 'index.php' && $has_profil): ?>
+                <?php if (in_array($current_page, $__profil_pages, true) && $has_profil): ?>
                     <!-- Qui suis-je ? (profil de l'admin, modale disponible) -->
                     <li>
                         <button type="button"
@@ -129,6 +133,17 @@ $__reviews_public_anime = !is_private_mode($options, 'anime') && !is_hide_review
                         <img src="https://api.iconify.design/mdi/chart-bar.svg?color=<?= $__c_gray ?>" width="22" height="22" alt="">
                     </a>
                 </li>
+
+                <?php if (empty($options['hide_history'])): ?>
+                <!-- Historique (journal chronologique des tomes lus / épisodes vus) -->
+                <li>
+                    <a href="historique.php"
+                       class="sidebar-link <?= $current_page === 'historique.php' ? 'is-active is-active--gray' : '' ?>"
+                       data-tooltip="Historique">
+                        <img src="https://api.iconify.design/mdi/history.svg?color=<?= $__c_gray ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+                <?php endif; ?>
 
                 <?php if ($current_page === 'index.php'): ?>
                     <!-- Légende / infos (uniquement sur l'accueil : modale disponible) -->

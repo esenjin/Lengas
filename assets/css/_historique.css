@@ -1,0 +1,168 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Page publique « Historique » (historique.php)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Filtre de type (manga / anime / tout) ──────────────────────────────── */
+.history-filters {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 28px;
+}
+
+.history-type-toggle {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.history-type-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1.5px solid var(--background-lighter);
+    background: var(--background-card);
+    color: var(--text-color);
+    font-size: 0.92em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.history-type-btn:hover {
+    border-color: var(--primary-color);
+}
+
+.history-type-btn.is-active {
+    background: var(--type-color, var(--primary-color));
+    border-color: var(--type-color, var(--primary-color));
+    color: #0d0d12;
+}
+
+.history-type-btn img {
+    display: block;
+}
+
+/* ── Timeline (liste des jours) ──────────────────────────────────────────── */
+.history-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    min-height: 300px;
+    min-width: 0;
+}
+
+.history-day {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.history-day-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05em;
+    color: var(--text-white);
+    border-bottom: 1px solid var(--background-lighter);
+    padding-bottom: 8px;
+    margin: 0;
+    text-transform: capitalize;
+}
+
+.history-day-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+}
+
+/* ── Carte "jour x série" ────────────────────────────────────────────────── */
+.history-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    /* Empêche un titre très long (texte non cassable) de dicter la taille
+       minimale intrinsèque de cet item de grid : sans ce min-width:0, la
+       piste "1fr" de .history-day-cards peut être étirée bien au-delà de la
+       largeur réelle du conteneur (et donc de l'écran) sur mobile, la carte
+       débordant alors avec un nom sur deux lignes non tronqué. */
+    min-width: 0;
+    border-radius: 10px;
+    background: var(--background-card);
+    border: 1px solid var(--background-lighter);
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+
+.history-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+    border-color: var(--series-title-color);
+}
+
+.history-card--anime:hover {
+    border-color: var(--anime-title-color);
+}
+
+.history-card-thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--background-darker);
+}
+
+.history-card-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.history-card-name {
+    margin: 0;
+    font-weight: 600;
+    color: var(--series-title-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-card--anime .history-card-name {
+    color: var(--anime-title-color);
+}
+
+.history-card-items {
+    margin: 0;
+    font-size: 0.88em;
+    color: var(--text-gray);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── État vide ────────────────────────────────────────────────────────────── */
+.history-empty {
+    text-align: center;
+    color: var(--text-gray);
+    padding: 48px 16px;
+    font-size: 1.05em;
+}
+
+/* ── "Afficher plus" ─────────────────────────────────────────────────────── */
+.history-load-more-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 32px;
+}
+
+@media (max-width: 768px) {
+    .history-day-cards {
+        grid-template-columns: 1fr;
+    }
+}

@@ -2,6 +2,7 @@
 require 'config.php';
 require 'fonctions/stats_compute.php';
 require 'fonctions/reviews.php';
+require_once 'fonctions/licenses.php'; // get_series_license_map() — bouton « Licence » de la fiche détail
 require 'includes/themes.php';
 require 'includes/helpers.php';      // registre central des types
 require_once 'includes/anilist.php'; // anilist_format_label() — libellés des formats Animethèque
@@ -16,6 +17,25 @@ $options  = load_options();
 $data       = series_of_type($all_data, 'manga');
 $anime_data = series_of_type($all_data, 'anime');
 $has_anime  = count($anime_data) > 0;
+
+// ── Séries visibles publiquement, tous types confondus (pour la modale de
+// détail série, réutilisée telle quelle depuis index.php / public.js — les
+// « séries coup de cœur » du profil peuvent y renvoyer) ─────────────────────
+$visible_data = array_values(array_filter($all_data, function ($series) use ($options) {
+    $t = series_type($series);
+    if (is_private_mode($options, $t)) return false;
+    if (is_hide_mature($options, $t) && !empty($series['mature'])) return false;
+    return true;
+}));
+$public_review_ids = [];
+foreach (series_type_keys() as $__t) {
+    if (!is_private_mode($options, $__t) && !is_hide_reviews($options, $__t)) {
+        $public_review_ids = array_flip(get_review_series_ids());
+        break;
+    }
+}
+$public_series_licenses = get_series_license_map();
+$reviews_public = !is_hide_reviews($options, 'manga') || !is_hide_reviews($options, 'anime');
 
 // Le titre de la page stats utilise bien stats_page_title (bug corrigé)
 $page_title = $options['stats_page_title'] ?? ($options['site_name'] ?? 'Statistiques');
@@ -921,6 +941,92 @@ $anime_chart_payload = [
 
     </div>
 
+    <!-- Modale pour afficher les détails d'une série (réutilise le rendu et
+         les scripts de la page d'accueil : mêmes ID, mêmes fonctions JS).
+         Absente du parcours normal de cette page (pas de liste de séries
+         cliquable ici) : sert uniquement de cible aux « séries coup de
+         cœur » du profil, cf. includes/public-profil-modal.php. -->
+    <div class="modal" id="series-detail-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-series-detail-modal">&times;</span>
+            <h2 id="modal-series-title"></h2>
+            <div id="modal-series-content" class="modal-scrollable-content">
+                <div class="modal-series-header">
+                    <div class="modal-series-image-col">
+                        <img id="modal-series-image" src="" alt="Image de la série" class="series-image">
+                        <div id="modal-series-review-btn"></div>
+                        <div id="modal-series-license-btn"></div>
+                    </div>
+                    <div class="modal-series-info">
+                        <p id="modal-row-author"><strong>Auteur :</strong> <span id="modal-series-author"></span></p>
+                        <p id="modal-row-publisher"><strong>Éditeur :</strong> <span id="modal-series-publisher"></span></p>
+                        <p id="modal-row-contributors"><strong>Autres contributeurs :</strong> <span id="modal-series-other-contributors"></span></p>
+                        <p id="modal-row-studios"><strong>Studios :</strong> <span id="modal-series-studios"></span></p>
+                        <p id="modal-row-categories"><strong id="modal-label-categories">Catégories :</strong> <span id="modal-series-categories"></span></p>
+                        <p><strong>Genres :</strong> <span id="modal-series-genres"></span></p>
+                        <div class="series-stats" id="modal-series-stats"></div>
+                        <div class="series-badges" id="modal-series-badges"></div>
+                    </div>
+                </div>
+                <h3 id="modal-volumes-title">Liste des tomes :</h3>
+                <ul class="volumes-list" id="modal-volumes-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale critique -->
+    <div class="modal" id="review-detail-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-review-detail-modal">&times;</span>
+            <div class="review-modal-header">
+                <img id="review-modal-thumb" class="review-modal-thumb" src="" alt="">
+                <div class="review-modal-heading">
+                    <h2 id="review-modal-title"></h2>
+                    <p id="review-modal-author"></p>
+                    <p id="review-modal-publisher"></p>
+                    <p id="review-modal-categories"></p>
+                </div>
+            </div>
+            <div class="review-modal-actions">
+                <button type="button" id="review-modal-back" class="button button-ext">← Retour à la série</button>
+            </div>
+            <div id="review-modal-body" class="review-modal-body review-rendered"></div>
+            <p id="review-modal-credit" class="review-modal-credit"></p>
+        </div>
+    </div>
+
+    <!-- Modale licence -->
+    <div class="modal" id="license-detail-public-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-license-detail-public-modal">&times;</span>
+            <div class="license-public-header">
+                <span class="license-public-icon">📚</span>
+                <h2 id="license-public-title"></h2>
+            </div>
+            <div id="license-public-list" class="license-public-list">
+                <p class="reviews-empty">Chargement…</p>
+            </div>
+        </div>
+    </div>
+
+    <?php
+    // Modale « Qui suis-je ? » (profil de l'admin). $profil_data fournit la
+    // collection complète (tous types, non filtrée) pour la mise en lumière —
+    // $all_data est déjà chargé en haut de cette page (cf. load_data()).
+    $profil_data = $all_data;
+    require 'includes/public-profil-modal.php';
+    ?>
+
+    <!-- Éléments factices, jamais affichés : public.js (chargé ci-dessous pour
+         sa modale de détail/critique/licence/profil) installe un écouteur de
+         défilement infini global qui cible ces ID sans jamais vérifier leur
+         présence. Sans eux, le premier scroll sur cette page lèverait une
+         exception JS (page sans liste de séries paginée). Le fetch qu'il
+         déclenchera une seule fois est inoffensif (aucune série mangathèque
+         de type vide côté serveur) et hasMoreSeries repasse à false ensuite. -->
+    <div id="series-list" style="display:none !important;"></div>
+    <div class="loading-spinner" id="loading-spinner" style="display:none !important;"></div>
+
     <button id="back-to-top" title="Retour en haut">↑</button>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -934,7 +1040,30 @@ $anime_chart_payload = [
         // type dans les résultats de recherche — même source que partout
         // ailleurs sur le site (cf. includes/helpers.php, series_types_for_js()).
         window.seriesTypes = <?= json_encode(series_types_for_js(), JSON_UNESCAPED_UNICODE) ?>;
+        // Toutes les séries visibles publiquement (tous types confondus),
+        // décorées comme sur l'accueil, pour alimenter la modale de détail
+        // série et ses boutons Critique/Licence — sert ici uniquement de cible
+        // aux « séries coup de cœur » du profil (aucune carte de série
+        // cliquable ailleurs sur cette page). public.js s'attend aussi à
+        // trouver seriesData en portée globale (défilement infini de
+        // l'accueil, absent de cette page) : on la fait pointer vers le même
+        // pool, sans conséquence puisque ce mécanisme est neutralisé côté DOM
+        // (#series-list/#loading-spinner factices ci-dessus).
+        window.allSeriesData = <?= json_encode(array_values(array_map(function ($s) use ($public_series_licenses, $public_review_ids) {
+            $s = decorate_series_for_display($s);
+            $s['has_review'] = isset($public_review_ids[$s['id']]);
+            $lic = $public_series_licenses[$s['id']] ?? null;
+            $s['has_license']  = $lic !== null;
+            $s['license_id']   = $lic['license_id'] ?? '';
+            $s['license_name'] = $lic['license_name'] ?? '';
+            return $s;
+        }, $visible_data))) ?>;
+        window.seriesData = window.allSeriesData;
+        window.reviewsPublic  = <?= json_encode($reviews_public) ?>;
+        window.licensesPublic = true;
     </script>
+    <script src="assets/js/admin/main.js"></script>
+    <script src="assets/js/public.js"></script>
     <script src="assets/js/stats.js"></script>
 </body>
 </html>

@@ -50,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $options['index_page_title'] = trim($_POST['index_page_title'] ?? '');
     $options['admin_page_title'] = trim($_POST['admin_page_title'] ?? '');
     $options['stats_page_title'] = trim($_POST['stats_page_title'] ?? '');
+    $options['history_page_title'] = trim($_POST['history_page_title'] ?? '');
     // ── Visibilité (bloc 14 : réglages scindés par collection) ──────────────
     // Les clés sans suffixe pilotent la Mangathèque (rétro-compatibilité),
     // les clés `_anime` pilotent l'Animethèque, indépendamment.
@@ -59,6 +60,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     $options['private_mode_anime'] = !empty($_POST['private_mode_anime']);
     $options['hide_mature_anime'] = !empty($_POST['hide_mature_anime']);
     $options['hide_reviews_anime'] = !empty($_POST['hide_reviews_anime']);
+    // Historique (historique.php) : réglage global, indépendant des deux
+    // collections puisque la page les mélange volontairement toutes les deux.
+    $options['hide_history'] = !empty($_POST['hide_history']);
 
     // ── Babengas (facultatif) ────────────────────────────────────────────────
     // L'URL est normalisée sans barre oblique finale, comme attendu par le
@@ -296,6 +300,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
 
                 <label for="stats-page-title">Titre de la page de statistiques</label>
                 <input type="text" name="stats_page_title" id="stats-page-title" placeholder="Titre de la page de statistiques" value="<?= htmlspecialchars($options['stats_page_title']) ?>" required>
+
+                <label for="history-page-title">Titre de la page « Historique »</label>
+                <input type="text" name="history_page_title" id="history-page-title" placeholder="Historique" value="<?= htmlspecialchars($options['history_page_title'] ?? '') ?>">
+                <p class="hint">Laissez vide pour reprendre le nom du site.</p>
 
                 <p class="hint">Le pseudo de l'admin (utilisé pour créditer les critiques) se règle désormais depuis la page <a href="page-profil.php">Profil</a>.</p>
 
@@ -540,6 +548,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
 
                 <?php $render_visibility_block('manga', ''); ?>
                 <?php $render_visibility_block('anime', '_anime'); ?>
+
+                <h4 class="options-subsection-title">Historique</h4>
+                <label>
+                    <input type="checkbox" name="hide_history" <?= !empty($options['hide_history']) ? 'checked' : '' ?>> Cacher la page « Historique »
+                </label>
+                <p class="hint">La page <code>historique.php</code>, qui liste jour après jour les tomes lus et épisodes vus (Mangathèque et Animethèque confondues), ne sera pas accessible publiquement. Son lien disparaît aussi du menu latéral public.</p>
 
                 <!-- ══ BABENGAS ══════════════════════════════════════════ -->
                 <h3 class="options-section-title">Babengas (Babelio)</h3>

@@ -616,74 +616,14 @@ $data = array_values(apply_status_filter(
         </div>
     </div>
 
-    <?php if ($has_profil): ?>
-    <!-- Modale « Qui suis-je ? » (profil de l'administrateur) -->
-    <div class="modal" id="profil-modal">
-        <div class="modal-content">
-            <span class="close-modal" id="close-profil-modal">&times;</span>
-
-            <div class="profil-modal-header">
-                <img class="profil-modal-avatar"
-                     src="<?= $profil_has_avatar ? htmlspecialchars($profil_avatar) . '?v=' . filemtime($profil_avatar) : 'assets/img/logo.png' ?>"
-                     alt="<?= htmlspecialchars($profil_pseudo !== '' ? $profil_pseudo : 'Profil') ?>">
-                <div class="profil-modal-heading">
-                    <h2><?= $profil_pseudo !== '' ? htmlspecialchars($profil_pseudo) : 'Qui suis-je ?' ?></h2>
-                </div>
-            </div>
-
-            <?php if (trim($profil_bio) !== ''): ?>
-                <div class="profil-modal-bio review-rendered">
-                    <?= review_render_markdown($profil_bio) ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if (!empty($profil_highlights['manga']) || !empty($profil_highlights['anime'])): ?>
-                <div class="profil-modal-highlights">
-                    <h3 class="profil-modal-section-title">Séries coup de cœur</h3>
-                    <?php foreach (series_type_keys() as $__ht):
-                        $__list = $profil_highlights[$__ht] ?? [];
-                        if (empty($__list)) continue;
-                        $__color = type_color($__ht);
-                    ?>
-                        <div class="profil-highlights-group" style="--type-color: <?= htmlspecialchars($__color) ?>">
-                            <h4 class="profil-highlights-title">
-                                <img src="https://api.iconify.design/<?= str_replace(':', '/', type_icon($__ht)) ?>.svg?color=<?= rawurlencode($__color) ?>" width="16" height="16" alt="">
-                                <?= htmlspecialchars(type_vocab($__ht, 'collection')) ?>
-                            </h4>
-                            <div class="profil-highlights-row">
-                                <?php foreach ($__list as $__s): ?>
-                                    <button type="button" class="profil-highlight-card" data-series-id="<?= htmlspecialchars($__s['id']) ?>" title="<?= htmlspecialchars($__s['name']) ?>">
-                                        <img class="profil-highlight-thumb" src="<?= htmlspecialchars($__s['thumbnail']) ?>" alt="" loading="lazy">
-                                        <span class="profil-highlight-name"><?= htmlspecialchars($__s['name']) ?></span>
-                                    </button>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if (!empty($profil_social)): ?>
-                <div class="profil-modal-social">
-                    <h3 class="profil-modal-section-title">Liens sociaux</h3>
-                    <div class="profil-modal-social-links">
-                    <?php foreach ($profil_social as $__link):
-                        $__icon_name = str_replace(':', '/', custom_link_icon_name($__link['icon']));
-                        $__icon_col  = rawurlencode(custom_link_color_hex($__link['color'])); ?>
-                        <a href="<?= htmlspecialchars($__link['url']) ?>"
-                           class="profil-social-link"
-                           target="_blank" rel="noopener"
-                           title="<?= htmlspecialchars($__link['name']) ?>">
-                            <img src="https://api.iconify.design/<?= $__icon_name ?>.svg?color=<?= $__icon_col ?>" width="22" height="22" alt="">
-                            <span><?= htmlspecialchars($__link['name']) ?></span>
-                        </a>
-                    <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
-    <?php endif; ?>
+    <?php
+    // Modale « Qui suis-je ? » (profil de l'admin). $profil_data, $profil_avatar,
+    // $profil_pseudo, $profil_bio, $profil_social, $profil_has_avatar,
+    // $profil_highlights et $has_profil sont déjà calculés plus haut dans cette
+    // page (cf. bloc « Profil de l'administrateur ») : le fragment partagé les
+    // réutilise tels quels (gardes isset()) plutôt que de les recalculer.
+    require 'includes/public-profil-modal.php';
+    ?>
 
     <button id="back-to-top" title="Retour en haut">↑</button>
 

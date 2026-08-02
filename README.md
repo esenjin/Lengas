@@ -91,7 +91,7 @@ Depuis la version 4.0, chaque série porte un **type** : `manga` (regroupant aus
 - Page « Profil » dédiée (icône compte du menu latéral admin) pour se présenter aux visiteurs
 - Photo de profil (téléversée dans `uploads/`), pseudo (crédite les critiques), biographie en Markdown (même éditeur et même rendu que les critiques) et liens sociaux illimités (même sélecteur d'icône et de couleur que les liens personnalisés du menu latéral)
 - **Mise en lumière** : jusqu'à 5 mangas/light-novels et 5 animés de votre collection, choisis via une recherche instantanée et rangés dans un panier réordonnable (boutons ↑/↓) ; chaque changement est enregistré immédiatement
-- Sur la page d'accueil publique, un bouton « Qui suis-je ? » ouvre une modale présentant le profil (affiché uniquement si au moins un champ est renseigné), avec la mise en lumière entre la biographie et les liens sociaux ; un clic sur une série ouvre directement sa fiche de détail. Une série mise en lumière dont la collection est en mode privé ou masquage mature n'apparaît pas côté public
+- Le bouton « Qui suis-je ? » ouvre une modale présentant le profil (affiché uniquement si au moins un champ est renseigné), avec la mise en lumière entre la biographie et les liens sociaux ; disponible dans le menu latéral des pages publiques Accueil, Statistiques et Historique. Un clic sur une série mise en lumière ouvre directement sa fiche de détail, depuis les trois pages. Une série mise en lumière dont la collection est en mode privé ou masquage mature n'apparaît pas côté public
 
 ### Critiques
 - Rédaction d'un avis par série (manga ou animé) via un éditeur Markdown dédié (page « Critiques »)
@@ -140,6 +140,14 @@ Page dédiée organisée en deux onglets, **Mangathèque** (par défaut) et **An
 - **Mangathèque** : nombre de séries, de tomes, valeur de la collection, tomes collectors, prêts, lues ailleurs, répartition par statut, etc.
 - **Animethèque** : nombre de séries, d'épisodes, répartition par statut de visionnage/genre/format/studio, favoris, notations, revisionnages, et un temps de visionnage total calculé à partir de la durée réelle des épisodes fournie par Anilist (avec un repli paramétrable par format dans les options).
 
+### Historique (page publique « Historique »)
+- Page dédiée (`historique.php`, lien dans le menu latéral public, section « Divers ») listant, jour après jour et du plus récent au plus ancien, les tomes lus et épisodes vus, en se basant sur leur date de lecture/visionnage
+- Une carte par série et par jour (vignette, nom, numéros concernés), cliquable pour ouvrir la même modale de détail que sur l'accueil. Les numéros consécutifs sont condensés en plages (« 1 à 5, 8, 10 et 11 » plutôt que « 1, 2, 3, 4, 5, 8, 10, 11 »)
+- Filtre Mangathèque / Animethèque / les deux (par défaut)
+- 30 jours affichés initialement, avec un bouton « Afficher plus » qui en charge 30 de plus à chaque clic
+- Respecte le mode privé et le masquage des séries matures de chaque collection (un tome d'une collection privée n'apparaît jamais dans l'historique)
+- Peut être entièrement masquée au public depuis les options du site (page « Options », section « Visibilité »), indépendamment du mode privé des deux collections
+
 ### Thèmes
 - Thèmes de base fournis : « Sombre » (par défaut) et « Clair »
 - Thèmes personnalisés : déposez un fichier `assets/css/_variables-<nom>.css` pour l'ajouter automatiquement à la liste (suivre le même shéma que les thèmes natifs)
@@ -165,6 +173,7 @@ Toutes les options du site sont regroupées sur la page `pages/page-options.php`
 - Réglages des statistiques : temps de lecture et valeur d'un tome par catégorie (Mangathèque), durée d'un épisode par format Anilist (Animethèque)
 - Choix du thème (clair, sombre ou personnalisé)
 - Mode privé, masquage des séries matures et masquage des critiques, chacun réglable **séparément** pour la Mangathèque et l'Animethèque. En mode privé côté public, le bouton d'accès à la collection concernée reste visible dans le menu, mais la page affiche uniquement un message indiquant que la collection est privée, sans le moindre décompte
+- Masquage de la page « Historique » (réglage unique, la page mélangeant les deux collections) : masquée, son lien disparaît aussi du menu latéral public
 - Vignette par défaut (partagée entre les deux collections)
 - Configuration du service Babengas (facultatif)
 - Modification du mot de passe administrateur
@@ -327,6 +336,7 @@ lengas/
 ├── index.php              # Page publique
 ├── admin.php              # Interface d'administration
 ├── stats.php              # Page des statistiques
+├── historique.php         # Page publique « Historique » (journal chronologique)
 ├── config.php             # Configuration du site
 ├── login.php              # Connexion
 ├── logout.php             # Déconnexion
@@ -376,6 +386,7 @@ lengas/
 │   │   ├── _responsive.css
 │   │   ├── _reviews.css
 │   │   ├── _licenses.css
+│   │   ├── _historique.css
 │   │   ├── _series.css
 │   │   ├── _sidebar.css
 │   │   ├── _stats.css
@@ -417,6 +428,7 @@ lengas/
 │       │       ├── anilist-sync.js
 │       │       └── anilist-recheck.js
 │       ├── stats.js
+│       ├── historique.js
 │       └── public.js
 ├── includes/
 │   ├── auth.php              # Gestion de l'authentification et des sessions
@@ -425,7 +437,8 @@ lengas/
 │   ├── anilist.php           # Connecteur API Anilist (GraphQL) : recherche, fiches, listes utilisateur
 │   ├── babengas.php          # Intégration du microservice Babengas
 │   ├── sidebar.php           # Menu latéral à icônes de l'administration
-│   ├── public-sidebar.php    # Menu latéral à icônes des pages publiques (accueil et statistiques)
+│   ├── public-sidebar.php    # Menu latéral à icônes des pages publiques (accueil, statistiques, historique)
+│   ├── public-profil-modal.php # Modale « Qui suis-je ? », partagée par les pages publiques ci-dessus
 │   ├── custom_icons.php      # Icônes, couleurs et lecture des liens personnalisés (partagé options/sidebar)
 │   ├── themes.php            # Gestion des thèmes (base + personnalisés)
 │   └── status_filter.php     # Filtrage des séries par statut, adapté au type de série affiché
