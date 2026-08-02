@@ -4,7 +4,19 @@ register_session_handler();
 session_start();
 
 if (!($_SESSION['logged_in'] ?? false)) {
-    header('Location: login.php');
+    // La redirection doit rester valide quelle que soit la profondeur de la
+    // page qui a inclus ce fichier (racine, pages/, pages/outils/…). Comme
+    // chaque page appelante fait un chdir() vers la racine du projet avant
+    // d'inclure auth.php, le chemin de la requête HTTP (SCRIPT_NAME) permet
+    // de calculer le bon préfixe relatif vers login.php, à la racine.
+    $__script_dir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+    $__depth      = 0;
+    if (preg_match('#/pages/outils/?$#', $__script_dir)) {
+        $__depth = 2;
+    } elseif (preg_match('#/pages/?$#', $__script_dir)) {
+        $__depth = 1;
+    }
+    header('Location: ' . str_repeat('../', $__depth) . 'login.php');
     exit;
 }
 

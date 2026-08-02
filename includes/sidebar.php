@@ -2,10 +2,17 @@
 // includes/sidebar.php
 $current_page = basename($_SERVER['PHP_SELF']);
 // Prefixe d'URL selon la profondeur de la page qui inclut ce menu :
-// les pages de pages/ sont un cran plus bas que la racine du site.
-$__in_pages = strpos(str_replace('\\', '/', $_SERVER['PHP_SELF']), '/pages/') !== false;
-$base  = $__in_pages ? '../' : '';
+// les pages de pages/ sont un cran plus bas que la racine du site, celles de
+// pages/outils/ (un outil par fichier) un cran plus bas encore.
+$__self_path  = str_replace('\\', '/', $_SERVER['PHP_SELF']);
+$__in_outils  = strpos($__self_path, '/pages/outils/') !== false;
+$__in_pages   = $__in_outils || strpos($__self_path, '/pages/') !== false;
+$base  = $__in_outils ? '../../' : ($__in_pages ? '../' : '');
 $pages = $base . 'pages/';
+// Une page d'outil individuelle (pages/outils/outil-*.php) fait partie de la
+// section « Outils » au même titre que l'index (page-outils.php) : l'icône
+// reste active sur les deux.
+$__is_tools_page = $__in_outils || $current_page === 'page-outils.php';
 
 // Collection actuellement affichée. Sert à marquer la bonne entrée comme active
 // et à n'exposer l'ajout d'un animé que dans l'Animethèque.
@@ -254,7 +261,7 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                 <!-- Outils -->
                 <li>
                     <a href="<?= $pages ?>page-outils.php"
-                       class="sidebar-link <?= $current_page === 'page-outils.php' ? 'is-active is-active--orange' : '' ?>"
+                       class="sidebar-link <?= $__is_tools_page ? 'is-active is-active--orange' : '' ?>"
                        data-tooltip="Outils">
                         <img src="https://api.iconify.design/mdi/wrench.svg?color=<?= $__c_orange ?>" width="22" height="22" alt="">
                     </a>

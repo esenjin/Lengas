@@ -735,3 +735,76 @@
 .anilist-recheck-diff--info {
     opacity: 0.85;
 }
+
+/* ── Index des outils (page-outils.php) : grille de cartes ──────────────── */
+.tools-index-grid {
+    max-width: 900px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.tools-index-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: var(--background-card);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius-lg);
+    padding: 18px;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.tools-index-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--box-shadow-sm);
+    border-color: rgba(192, 132, 252, 0.4);
+}
+
+.tools-index-card-icon {
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+
+.tools-index-card-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.tools-index-card-title {
+    margin: 0 0 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-white);
+}
+
+.tools-index-card-desc {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: var(--text-gray);
+}
+
+.tools-index-card-cta {
+    align-self: flex-end;
+    flex-shrink: 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    white-space: nowrap;
+}
+
+/* ── Pages outil individuelles (pages/outils/outil-*.php) : lien de retour ── */
+.tool-back-link {
+    display: inline-block;
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+    color: var(--text-gray);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+.tool-back-link:hover {
+    color: var(--primary-color);
+}

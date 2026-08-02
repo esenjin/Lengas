@@ -8,9 +8,10 @@
 //   • Associer les genres   : récupère les genres de la fiche MangaUpdates des
 //     séries qui ont une URL mais aucun genre renseigné.
 //
-// La recherche elle-même se fait en flux (SSE) depuis page-outils.php afin
-// d'afficher la progression ; ce fichier fournit les helpers de ciblage et
-// l'enregistrement des résultats validés.
+// La recherche elle-même se fait en flux (SSE) depuis
+// pages/outils/outil-associations-mu.php afin d'afficher la progression ;
+// ce fichier fournit les helpers de ciblage et l'enregistrement des
+// résultats validés.
 // ────────────────────────────────────────────────────────────────────────────
 
 if (!function_exists('mangaupdates_get_id_from_url')) {

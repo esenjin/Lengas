@@ -85,7 +85,7 @@ function clean_forbidden_files(): array {
     $failed_files    = [];
 
     foreach ($forbidden_files as $file) {
-        // CWD = racine du projet (chdir dans page-outils.php).
+        // CWD = racine du projet (chdir dans pages/outils/_bootstrap.php).
         $path = $file;
         if (file_exists($path)) {
             if (unlink($path)) {

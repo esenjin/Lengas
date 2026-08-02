@@ -75,7 +75,7 @@ function loadMuAssociate() {
     renderProgress();
 
     let anyMatch = false;
-    const source = new EventSource('page-outils.php?action=mu_associate_stream');
+    const source = new EventSource('outil-associations-mu.php?action=mu_associate_stream');
     muAssociateSource = source;
 
     source.addEventListener('progress', (ev) => {
@@ -203,7 +203,7 @@ function saveMuAssociations() {
     const saveBtn = document.getElementById('mu-associate-save-btn');
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Enregistrement...'; }
 
-    fetch('page-outils.php', {
+    fetch('outil-associations-mu.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params.toString()
@@ -261,7 +261,7 @@ function loadMuGenres() {
     renderProgress();
 
     let anyMatch = false;
-    const source = new EventSource('page-outils.php?action=mu_genres_stream');
+    const source = new EventSource('outil-associations-mu.php?action=mu_genres_stream');
     muGenresSource = source;
 
     source.addEventListener('progress', (ev) => {
@@ -359,7 +359,7 @@ function postMuGenres(payload, onDone) {
         params.append(`genres[${id}]`, payload[id]);
     });
 
-    fetch('page-outils.php', {
+    fetch('outil-associations-mu.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params.toString()

@@ -461,7 +461,7 @@ function displayIntegrityResults(results) {
     const postClean = (action, confirmMsg) => {
         showCustomConfirm('Confirmation', confirmMsg).then((confirmed) => {
             if (!confirmed) return;
-            fetch('page-outils.php', {
+            fetch('outil-integrite.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'tool_action=' + encodeURIComponent(action)
@@ -512,7 +512,7 @@ document.addEventListener('click', (e) => {
     textSpan.textContent = 'Vérification en cours...';
     spinner.style.display = 'inline-block';
 
-    fetch('page-outils.php', {
+    fetch('outil-integrite.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'tool_action=check_integrity'

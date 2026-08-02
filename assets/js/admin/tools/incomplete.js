@@ -25,8 +25,8 @@ function launchIncompleteSearch(forceUncached) {
     renderProgress();
 
     const url = forceUncached
-        ? 'page-outils.php?action=incomplete_series_stream&force_uncached=1'
-        : 'page-outils.php?action=incomplete_series_stream';
+        ? 'outil-mangaupdates.php?action=incomplete_series_stream&force_uncached=1'
+        : 'outil-mangaupdates.php?action=incomplete_series_stream';
     const es = new EventSource(url);
 
     es.addEventListener('progress', e => {
@@ -232,7 +232,7 @@ function renderIncompleteList(list) {
 // Attache les listeners sur les boutons d'ajout de tomes (après chaque rendu)
 function bindIncompleteButtons() {
     function refreshAfterAdd() {
-        fetch('page-outils.php', {
+        fetch('outil-mangaupdates.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'action=get_incomplete_series'
@@ -245,7 +245,7 @@ function bindIncompleteButtons() {
 
     document.querySelectorAll('.add-missing-volume').forEach(btn => {
         btn.addEventListener('click', function() {
-            fetch('page-outils.php', {
+            fetch('outil-mangaupdates.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: `action=add_missing_volume&series_id=${this.dataset.seriesId}&volume_number=${this.dataset.volumeNumber}`
@@ -261,7 +261,7 @@ function bindIncompleteButtons() {
 
     document.querySelectorAll('.add-all-missing-volumes').forEach(btn => {
         btn.addEventListener('click', function() {
-            fetch('page-outils.php', {
+            fetch('outil-mangaupdates.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: `action=add_all_missing_volumes&series_id=${this.dataset.seriesId}&missing_volumes=${this.dataset.missingVolumes}`
@@ -325,7 +325,7 @@ function displayIncompleteSeries(incomplete_series, no_reference_series, failed_
                     <ul class="summary-list">
                         ${failed_series.map(s => {
                             const muBadge = (s.reason === 'Nombre de tomes non renseigné sur MangaUpdates' && s.mangaupdates_url)
-                                ? ` <a class="mu-badge" href="${s.mangaupdates_url}" target="_blank" rel="noopener" title="Voir la fiche sur MangaUpdates (nombre de tomes non renseigné)"><img src="../assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>`
+                                ? ` <a class="mu-badge" href="${s.mangaupdates_url}" target="_blank" rel="noopener" title="Voir la fiche sur MangaUpdates (nombre de tomes non renseigné)"><img src="../../assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>`
                                 : '';
                             const addBtn = s.id && !s.has_mu_url
                                 ? ` <button class="add-mu-url-btn summary-edit-btn" data-series-id="${s.id}" data-series-name="${(s.name || '').replace(/"/g, '&quot;')}">Ajouter</button>`
@@ -399,7 +399,7 @@ document.getElementById('save-add-mu-url-btn')?.addEventListener('click', functi
     params.set('tool_action', 'mu_associate_save');
     params.append('associations[' + id + ']', url);
 
-    fetch('page-outils.php', {
+    fetch('outil-mangaupdates.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params.toString()

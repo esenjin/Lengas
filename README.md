@@ -66,7 +66,7 @@ Depuis la version 4.0, chaque série porte un **type** : `manga` (regroupant aus
 ### Gestion des séries (Mangathèque)
 - Ajout, modification et suppression de séries
 - Association à une fiche MangaUpdates (URL) pour le suivi du nombre de tomes et du statut de publication
-- Remplissage automatique des URL MangaUpdates en masse via l'outil « Associer MangaUpdates » de la page « Outils » (recherche par titre + auteur)
+- Remplissage automatique des URL MangaUpdates en masse via l'outil « Association MangaUpdates » (recherche par titre + auteur)
 - Association à une fiche Babelio (URL) pour connaître le nombre de tomes réellement parus en France, via le service Babengas
 
 ### Gestion des séries (Animethèque)
@@ -144,19 +144,18 @@ Page dédiée organisée en deux onglets, **Mangathèque** (par défaut) et **An
 - Thèmes de base fournis : « Sombre » (par défaut) et « Clair »
 - Thèmes personnalisés : déposez un fichier `assets/css/_variables-<nom>.css` pour l'ajouter automatiquement à la liste (suivre le même shéma que les thèmes natifs)
 
-### Outils (page dédiée « Outils », organisée en onglets)
-Tous les outils du site sont regroupés sur la page `pages/page-outils.php`, accessible via l'icône clé à molette du menu latéral.
+### Outils (une page dédiée par outil)
+Tous les outils du site sont accessibles depuis `pages/page-outils.php`, accessible via l'icône clé à molette du menu latéral : cette page liste chaque outil (icône, nom, description, bouton d'accès) et renvoie vers sa propre page, dans `pages/outils/`.
 
-- **Complétude des séries**, en trois sous-onglets :
-  - *Vérification via MangaUpdates* : détecte les tomes manquants en comparant votre collection au nombre de tomes indiqué par MangaUpdates (le décompte VF est privilégié lorsqu'il est disponible), avec progression en direct, filtres et ajout des tomes manquants
-  - *Vérification avec Babengas (via Babelio)* : voir la section dédiée plus bas
-  - *Vérification via Anilist* : déclenche la synchronisation automatique des séries animées éligibles (diffusion et visionnage tous deux « en cours »), avec un bouton de forçage qui ignore le verrou de 24 h — voir [Intégration Anilist](#intégration-anilist-animethèque)
-- **Import Anilist** : importe en masse la liste ANIME d'un compte Anilist (par pseudo public), avec un écran d'aperçu détaillé avant toute écriture — voir [Intégration Anilist](#intégration-anilist-animethèque)
-- **Vérification des animés** : compare chaque série animée à sa fiche Anilist actuelle sur tout ce que la synchronisation automatique ne couvre pas (titres alternatifs, studios, format, genres, vignette…), avec validation explicite avant toute correction
-- **Incohérences** : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome »/« dernier épisode », statut différent de MangaUpdates ou d'Anilist, prêts orphelins, série animée sans identifiant Anilist, épisode terminé sans date, vignette Anilist introuvable, etc.) et propose une édition rapide de la série concernée ; les anomalies factuelles d'une série animée renvoient vers sa fiche Anilist pour correction à la source
-- **Sauvegardes** : création et téléchargement d'archives de vos données, ainsi que l'export JSON complet (inclut les tables et les vignettes propres à l'Animethèque)
-- **Association MangaUpdates** : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement ; un second outil récupère de la même façon les genres manquants
-- **Vérification d'intégrité** : compare automatiquement votre instance au dépôt Gitea, **au tag correspondant à votre version installée** (si aucun tag ne correspond, la comparaison se fait avec la version la plus récente et le signale). Pour chaque fichier versionné, elle vérifie la **présence** ET le **contenu** (comparaison d'empreinte : « OK », « Modifié » ou « Manquant »). Elle repère aussi les **fichiers étrangers au dépôt** (présents sur l'instance mais absents du dépôt, hors données `uploads/` `saves/` `bdd/`, config Vestikan, thèmes personnalisés et photo de profil de l'admin), l'**état des modules facultatifs** Vestikan et Babengas (installés ? réellement activés ? service distant fonctionnel ?), la **connectivité à l'API Anilist**, les permissions, les fichiers interdits, les doublons, les images orphelines (la photo de profil de l'admin et les vignettes Anilist actives ne sont jamais considérées comme orphelines), l'accès externe aux dossiers sensibles, la structure de la base de données (y compris les tables et colonnes propres à l'Animethèque), les thèmes personnalisés présents
+- **Vérification via MangaUpdates** (`pages/outils/outil-mangaupdates.php`) : détecte les tomes manquants en comparant votre collection au nombre de tomes indiqué par MangaUpdates (le décompte VF est privilégié lorsqu'il est disponible), avec progression en direct, filtres et ajout des tomes manquants
+- **Vérification via Babengas** (`pages/outils/outil-babengas.php`, visible uniquement si Babengas est configuré et activé) : voir la section dédiée plus bas
+- **Synchronisation via Anilist** (`pages/outils/outil-anilist-sync.php`, visible uniquement si l'Animethèque contient au moins une série) : déclenche la synchronisation automatique des séries animées éligibles (diffusion et visionnage tous deux « en cours »), avec un bouton de forçage qui ignore le verrou de 24 h — voir [Intégration Anilist](#intégration-anilist-animethèque)
+- **Import Anilist** (`pages/outils/outil-anilist-import.php`) : importe en masse la liste ANIME d'un compte Anilist (par pseudo public), avec un écran d'aperçu détaillé avant toute écriture — voir [Intégration Anilist](#intégration-anilist-animethèque)
+- **Vérification des animés** (`pages/outils/outil-anilist-recheck.php`, visible uniquement si l'Animethèque contient au moins une série) : compare chaque série animée à sa fiche Anilist actuelle sur tout ce que la synchronisation automatique ne couvre pas (titres alternatifs, studios, format, genres, vignette…), avec validation explicite avant toute correction
+- **Incohérences** (`pages/outils/outil-coherences.php`) : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome »/« dernier épisode », statut différent de MangaUpdates ou d'Anilist, prêts orphelins, série animée sans identifiant Anilist, épisode terminé sans date, vignette Anilist introuvable, etc.) et propose une édition rapide de la série concernée ; les anomalies factuelles d'une série animée renvoient vers sa fiche Anilist pour correction à la source
+- **Sauvegardes** (`pages/outils/outil-sauvegardes.php`) : création et téléchargement d'archives de vos données, ainsi que l'export JSON complet (inclut les tables et les vignettes propres à l'Animethèque)
+- **Association MangaUpdates** (`pages/outils/outil-associations-mu.php`) : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement ; un second outil récupère de la même façon les genres manquants
+- **Vérification d'intégrité** (`pages/outils/outil-integrite.php`) : compare automatiquement votre instance au dépôt Gitea, **au tag correspondant à votre version installée** (si aucun tag ne correspond, la comparaison se fait avec la version la plus récente et le signale). Pour chaque fichier versionné, elle vérifie la **présence** ET le **contenu** (comparaison d'empreinte : « OK », « Modifié » ou « Manquant »). Elle repère aussi les **fichiers étrangers au dépôt** (présents sur l'instance mais absents du dépôt, hors données `uploads/` `saves/` `bdd/`, config Vestikan, thèmes personnalisés et photo de profil de l'admin), l'**état des modules facultatifs** Vestikan et Babengas (installés ? réellement activés ? service distant fonctionnel ?), la **connectivité à l'API Anilist**, les permissions, les fichiers interdits, les doublons, les images orphelines (la photo de profil de l'admin et les vignettes Anilist actives ne sont jamais considérées comme orphelines), l'accès externe aux dossiers sensibles, la structure de la base de données (y compris les tables et colonnes propres à l'Animethèque), les thèmes personnalisés présents
 
 ### Options (page dédiée « Options »)
 Toutes les options du site sont regroupées sur la page `pages/page-options.php`, accessible via l'icône engrenage du menu latéral.
@@ -209,8 +208,8 @@ Pour chaque animé : titres (romaji, anglais, natif, synonymes), studios, format
 Anilist autorise 90 requêtes par minute ; le connecteur applique une fenêtre glissante avec une temporisation intégrée pour rester en dessous de ce plafond en toute circonstance, et respecte un éventuel `Retry-After` en cas de dépassement. Toute indisponibilité de l'API (erreur réseau, délai dépassé, réponse malformée) se traduit par un message clair, jamais par une erreur fatale du site.
 
 ### Ce qui est automatique
-- **Synchronisation automatique** : les séries dont la diffusion **et** le visionnage sont tous deux « en cours » se tiennent à jour toutes seules. Déclenchée uniquement côté administration, avec un verrou de 24 h par série (ramené à 1 h en cas d'échec de l'API), elle se limite strictement aux **épisodes** (création des nouveaux épisodes diffusés, en statut « à voir ») et au **statut de diffusion**. Elle s'exécute en arrière-plan (AJAX) sans jamais bloquer l'affichage de la page ; un sous-onglet dédié de la page « Outils » (Complétude des séries → Vérification via Anilist) permet aussi de la déclencher ou de la forcer manuellement (tous verrous ignorés)
-- **Import de masse** : l'outil « Import Anilist » de la page « Outils » récupère la liste ANIME complète d'un compte, par pseudo public saisi à chaque campagne (jamais mémorisé). Il se déroule en deux temps : un écran d'aperçu complet (décompte par destination, sélection des séries favorites, des statuts et formats à importer, traitement des séries déjà présentes, exclusion des séries classées adultes, liste détaillée décochable série par série) puis, après validation explicite, l'écriture proprement dite. L'aiguillage suit le statut de liste Anilist de chaque entrée :
+- **Synchronisation automatique** : les séries dont la diffusion **et** le visionnage sont tous deux « en cours » se tiennent à jour toutes seules. Déclenchée uniquement côté administration, avec un verrou de 24 h par série (ramené à 1 h en cas d'échec de l'API), elle se limite strictement aux **épisodes** (création des nouveaux épisodes diffusés, en statut « à voir ») et au **statut de diffusion**. Elle s'exécute en arrière-plan (AJAX) sans jamais bloquer l'affichage de la page ; l'outil dédié « Synchronisation via Anilist » permet aussi de la déclencher ou de la forcer manuellement (tous verrous ignorés)
+- **Import de masse** : l'outil « Import Anilist » récupère la liste ANIME complète d'un compte, par pseudo public saisi à chaque campagne (jamais mémorisé). Il se déroule en deux temps : un écran d'aperçu complet (décompte par destination, sélection des séries favorites, des statuts et formats à importer, traitement des séries déjà présentes, exclusion des séries classées adultes, liste détaillée décochable série par série) puis, après validation explicite, l'écriture proprement dite. L'aiguillage suit le statut de liste Anilist de chaque entrée :
 
   | Statut Anilist | Destination | Traitement |
   |---|---|---|
@@ -275,11 +274,11 @@ Elles ne sont pas obligatoire, mais il est recommandé de passer par les version
 ---
 
 ## Importer une base de données
-1. Créer une sauvegarde avec l'outil dédié (page "Outils", onglet "Sauvegardes")
+1. Créer une sauvegarde avec l'outil dédié (« Outils » → « Sauvegardes »)
 2. Extraire l'archive
 3. (facultatif) Supprimer le dossier `uploads/` et le fichier `bdd/lengas.db` de votre site
 4. Déplacer les dossiers `bdd/` et `uploads/` que vous venez d'extraire à la racine de votre site (écraser les fichiers si nécessaire)
-5. (facultatif) Utiliser l'outil de vérification de l'intégrité du site (page "Outils", onglet "Vérification d'intégrité")
+5. (facultatif) Utiliser l'outil de vérification de l'intégrité du site (« Outils » → « Vérification d'intégrité »)
 6. Félicitation, votre base de données est de nouveau là !
 
 ---
@@ -290,7 +289,7 @@ Elles ne sont pas obligatoire, mais il est recommandé de passer par les version
 
 Son intégration à Lengas est **entièrement facultative** : sans les fichiers Babengas ni la configuration dans les options, la fonctionnalité reste invisible et le site fonctionne normalement.
 
-Babelio filtrant les IP d'hébergeurs, Babengas doit tourner sur une machine à IP résidentielle (un homelab), exposée en HTTPS via un reverse proxy. Une fois le service en ligne, renseignez son URL et sa clé partagée dans les options du site (page « Options », section « Babengas ») : un onglet « Vérification Babelio » apparaît alors sur la page « Outils ».
+Babelio filtrant les IP d'hébergeurs, Babengas doit tourner sur une machine à IP résidentielle (un homelab), exposée en HTTPS via un reverse proxy. Une fois le service en ligne, renseignez son URL et sa clé partagée dans les options du site (page « Options », section « Babengas ») : l'outil dédié « Vérification via Babengas » apparaît alors dans la liste des outils.
 
 Chaque série à vérifier doit disposer d'une **URL de fiche série Babelio** (champ dédié à l'ajout et à la modification), au format `/serie/SLUG/ID` :
 
@@ -313,7 +312,7 @@ Pour installer Babengas sur son homelab :
 
 Vestikan est un système de connexion SSO (« Se connecter avec Vestikan »). Son intégration à Lengas est **entièrement facultative** : sans les fichiers Vestikan ni le fichier `vestikan/vestikan-config.php`, le site reste **100 % fonctionnel** et la connexion se fait par mot de passe comme d'habitude.
 
-Lorsqu'il est configuré, un bouton « Se connecter avec Vestikan » apparaît sur la page de connexion, en complément du mot de passe. L'état de la connexion (active / inactive) est visible dans les options du site, sous le champ de mot de passe, et le détail des fichiers Vestikan apparaît dans l'outil de vérification d'intégrité (page « Outils ») (une absence y est signalée en orange « Absent », car non bloquante). L'outil indique en plus si le SSO est **réellement activé** (fichier `vestikan/vestikan-config.php` présent et complet) et si le **serveur Vestikan répond** (sonde de l'URL d'autorisation).
+Lorsqu'il est configuré, un bouton « Se connecter avec Vestikan » apparaît sur la page de connexion, en complément du mot de passe. L'état de la connexion (active / inactive) est visible dans les options du site, sous le champ de mot de passe, et le détail des fichiers Vestikan apparaît dans l'outil de vérification d'intégrité (une absence y est signalée en orange « Absent », car non bloquante). L'outil indique en plus si le SSO est **réellement activé** (fichier `vestikan/vestikan-config.php` présent et complet) et si le **serveur Vestikan répond** (sonde de l'URL d'autorisation).
 
 Pour l'activer :
 - Guide d'intégration : [Vestikan/INTEGRATION.md](https://git.crystalyx.net/Esenjin_Asakha/Vestikan/src/branch/main/INTEGRATION.md)
@@ -339,8 +338,22 @@ lengas/
 │   ├── page-critiques.php # Page de rédaction des critiques + rendu Markdown
 │   ├── page-licences.php  # Page de gestion des licences (regroupement de séries)
 │   ├── page-profil.php    # Page du profil de l'admin (photo, pseudo, bio, liens sociaux)
-│   ├── page-outils.php    # Page des outils (+ endpoints SSE/POST associés)
-│   └── page-options.php   # Page des options du site (configuration + mise à jour)
+│   ├── page-options.php   # Page des options du site (configuration + mise à jour)
+│   ├── page-outils.php    # Index des outils (icône + nom + description + bouton d'accès)
+│   └── outils/            # Un fichier par outil (page complète + endpoints SSE/POST)
+│       ├── _bootstrap.php          # Socle commun (chdir + requires + $data/$options)
+│       ├── _layout_head.php        # En-tête HTML commun (sidebar, titre, lien retour)
+│       ├── _layout_foot.php        # Pied HTML commun (back-to-top, scripts)
+│       ├── _tools-modals.php       # Modales partagées entre plusieurs outils
+│       ├── outil-mangaupdates.php     # Vérification via MangaUpdates (tomes manquants)
+│       ├── outil-babengas.php         # Vérification via Babengas (Babelio)
+│       ├── outil-anilist-sync.php     # Synchronisation via Anilist
+│       ├── outil-anilist-import.php   # Import Anilist
+│       ├── outil-anilist-recheck.php  # Vérification des animés
+│       ├── outil-coherences.php       # Incohérences de la collection
+│       ├── outil-sauvegardes.php      # Sauvegardes et export JSON
+│       ├── outil-associations-mu.php  # Association MangaUpdates (fiches + genres)
+│       └── outil-integrite.php        # Vérification d'intégrité
 ├── vestikan/              # Connexion SSO Vestikan (facultatif, non versionné pour la config)
 │   ├── vestikan-login.php    # Démarrage de la connexion Vestikan
 │   ├── vestikan-callback.php # Callback OAuth Vestikan

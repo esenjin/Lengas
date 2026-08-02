@@ -565,8 +565,8 @@ function anilist_import_process_wishlist_entry(array $wishlist, array $entry): a
 // elle-même sa série et ses tomes/épisodes via anilist_import_create_
 // library_entry() / anilist_import_update_library_entry().
 // $data ne sert donc plus, en sortie, qu'à retrouver l'état à jour pour
-// l'affichage — l'appelant (endpoint de page-outils.php) n'a plus qu'à
-// appeler save_wishlist() pour la liste d'envies.
+// l'affichage — l'appelant (endpoint de pages/outils/outil-anilist-import.php)
+// n'a plus qu'à appeler save_wishlist() pour la liste d'envies.
 //
 // $on_progress : callable(int $current, int $total, string $title) — facultatif.
 //

@@ -13,15 +13,13 @@
 (function () {
     'use strict';
 
-    const panel = document.querySelector('[data-subtab-panel="babengas"]');
-    if (!panel) return; // Intégration non configurée : rien à faire
-
     const resultsDiv  = document.getElementById('babengas-results');
     const progressDiv = document.getElementById('babengas-progress');
     const launchBtn   = document.getElementById('babengas-launch');
     const launchAllBtn = document.getElementById('babengas-launch-all');
     const launchForceBtn = document.getElementById('babengas-launch-force');
     const cancelBtn   = document.getElementById('babengas-cancel');
+    if (!launchBtn) return; // Page chargée hors contexte (élément attendu absent)
 
     let pollTimer = null;
 
@@ -38,7 +36,7 @@
     }
 
     function post(params) {
-        return fetch('page-outils.php', {
+        return fetch('outil-babengas.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams(params).toString()
@@ -108,7 +106,7 @@
                         <ul class="summary-list">
                             ${failed.map(s => {
                                 const badge = s.babelio_url
-                                    ? ` <a class="babelio-badge" href="${esc(s.babelio_url)}" target="_blank" rel="noopener" title="Voir la fiche sur Babelio"><img src="../assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>`
+                                    ? ` <a class="babelio-badge" href="${esc(s.babelio_url)}" target="_blank" rel="noopener" title="Voir la fiche sur Babelio"><img src="../../assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>`
                                     : '';
                                 return `<li><strong>${esc(s.name)}</strong>${s.read_elsewhere ? ' <span class="read-elsewhere-badge">Lue ailleurs</span>' : ''}${s.author ? ' — ' + esc(s.author) : ''} <span class="summary-reason">${esc(s.reason)}</span>${badge}</li>`;
                             }).join('')}
@@ -394,7 +392,7 @@
         params.set('tool_action', 'babelio_associate_save');
         params.append('associations[' + id + ']', url);
 
-        fetch('page-outils.php', {
+        fetch('outil-babengas.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: params.toString()

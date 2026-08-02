@@ -167,7 +167,7 @@
         applyResultsEl.innerHTML = '';
         renderProgress(0, 0, 'Recensement des séries animées…');
 
-        const url = 'page-outils.php?action=anilist_recheck_stream' + (force ? '&force=1' : '');
+        const url = 'outil-anilist-recheck.php?action=anilist_recheck_stream' + (force ? '&force=1' : '');
         const es = new EventSource(url);
         currentEs = es;
 
@@ -224,7 +224,7 @@
         applySpinner.style.display = 'inline-block';
         applyResultsEl.innerHTML = '';
 
-        fetch('page-outils.php', {
+        fetch('outil-anilist-recheck.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'tool_action=anilist_recheck_apply&selections=' + encodeURIComponent(JSON.stringify(selections))

@@ -14,11 +14,10 @@
 (function () {
     'use strict';
 
-    const panel = document.querySelector('[data-tab-panel="anilist-import"]');
-    if (!panel) return;
-
     // ── Éléments ──────────────────────────────────────────────────────────
     const stepUsername = document.getElementById('anilist-import-step-username');
+    if (!stepUsername) return; // Page chargée hors contexte (élément attendu absent)
+
     const stepPreview   = document.getElementById('anilist-import-step-preview');
     const stepRunning   = document.getElementById('anilist-import-step-running');
     const stepDone      = document.getElementById('anilist-import-step-done');
@@ -86,7 +85,7 @@
     }
 
     function post(params) {
-        return fetch('page-outils.php', {
+        return fetch('outil-anilist-import.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams(params).toString()
@@ -112,7 +111,7 @@
             `<p class="analysis-progress"><span class="progress-spinner"></span>` +
             `Récupération de la liste de « ${esc(username)} »…</p>`;
 
-        const url = 'page-outils.php?action=anilist_import_preview_stream&username=' + encodeURIComponent(username);
+        const url = 'outil-anilist-import.php?action=anilist_import_preview_stream&username=' + encodeURIComponent(username);
         const es = new EventSource(url);
         currentEs = es;
 
@@ -159,7 +158,7 @@
     // ── Reprise après rechargement de page ───────────────────────────────
 
     function checkExistingState() {
-        fetch('page-outils.php?action=anilist_import_state')
+        fetch('outil-anilist-import.php?action=anilist_import_state')
             .then(r => r.json())
             .then(d => {
                 if (d.success && d.has_state) {
@@ -405,7 +404,7 @@
         settings.favLists.forEach(l => body.append('favourite_lists[]', l));
         body.set('favourite_native', settings.favNative ? '1' : '0');
 
-        fetch('page-outils.php', {
+        fetch('outil-anilist-import.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: body.toString()
@@ -434,7 +433,7 @@
         runProgressEl.innerHTML =
             `<p class="analysis-progress"><span class="progress-spinner"></span>Préparation de l'import…</p>`;
 
-        const es = new EventSource('page-outils.php?action=anilist_import_run_stream');
+        const es = new EventSource('outil-anilist-import.php?action=anilist_import_run_stream');
         currentEs = es;
 
         es.addEventListener('progress', e => {

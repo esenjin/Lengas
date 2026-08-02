@@ -8,8 +8,8 @@
 // Note : le coeur de l'analyse — get_incomplete_series() — vit dans
 // includes/mangaupdates.php, car il est indissociable du client d'API et de son
 // cache SQLite. Ce fichier regroupe les helpers propres à l'outil et garantit
-// que la dépendance est chargée, afin que page-outils.php n'ait à inclure que
-// fonctions/tools.php.
+// que la dépendance est chargée, afin que les pages outils n'aient à inclure
+// que fonctions/tools.php (via pages/outils/_bootstrap.php).
 // ────────────────────────────────────────────────────────────────────────────
 
 if (!function_exists('get_incomplete_series')) {
@@ -17,7 +17,7 @@ if (!function_exists('get_incomplete_series')) {
 }
 
 // Regroupe le résultat brut de get_incomplete_series() en une structure prête à
-// être renvoyée en JSON par les endpoints de page-outils.php.
+// être renvoyée en JSON par les endpoints de pages/outils/outil-mangaupdates.php.
 function build_incomplete_report(array $data): array {
     $result = get_incomplete_series($data);
 

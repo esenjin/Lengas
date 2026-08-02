@@ -15,7 +15,7 @@ document.getElementById('create-backup-btn').addEventListener('click', () => {
     textSpan.textContent = 'Création en cours...';
     spinner.style.display = 'inline-block';
 
-    fetch('page-outils.php', {
+    fetch('outil-sauvegardes.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'backup_action=create_backup'
@@ -52,7 +52,7 @@ if (exportJsonBtn) {
         if (textSpan) textSpan.textContent = 'Export en cours...';
         if (spinner) spinner.style.display = 'inline-block';
 
-        fetch('page-outils.php', {
+        fetch('outil-sauvegardes.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'backup_action=export_json'
@@ -91,7 +91,7 @@ if (exportJsonBtn) {
 
 // Charger la liste des sauvegardes
 function loadBackupsList() {
-    fetch('page-outils.php', {
+    fetch('outil-sauvegardes.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'backup_action=list_backups'
@@ -134,7 +134,7 @@ function displayBackupsList(backups, meta) {
         backupDiv.innerHTML = `
             <p><strong>${backup.name}</strong> (${backup.date})${detailsText}</p>
             <div class="backup-actions">
-                <a href="page-outils.php?download_backup=${encodeURIComponent(backup.name)}" class="button button-oas">Télécharger</a>
+                <a href="outil-sauvegardes.php?download_backup=${encodeURIComponent(backup.name)}" class="button button-oas">Télécharger</a>
                 <button class="delete-backup-btn" data-backup-file="${backup.name}">Supprimer</button>
             </div>
         `;
@@ -154,7 +154,7 @@ function displayBackupsList(backups, meta) {
             const backupFile = this.dataset.backupFile;
             showCustomConfirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer cette sauvegarde ?').then((confirmed) => {
                 if (confirmed) {
-                    fetch('page-outils.php', {
+                    fetch('outil-sauvegardes.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: `backup_action=delete_backup&backup_file=${encodeURIComponent(backupFile)}`

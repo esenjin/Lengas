@@ -100,7 +100,7 @@
         resultsEl.innerHTML = '';
         renderProgress(0, 0, force ? 'Recensement des séries éligibles…' : 'Recensement des séries dues…');
 
-        const url = 'page-outils.php?action=anilist_sync_stream' + (force ? '&force=1' : '');
+        const url = 'outil-anilist-sync.php?action=anilist_sync_stream' + (force ? '&force=1' : '');
         const es = new EventSource(url);
         currentEs = es;
 

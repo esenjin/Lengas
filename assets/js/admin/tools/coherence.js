@@ -16,7 +16,7 @@ function loadCoherences() {
     const container = document.getElementById('coherences-results');
     container.innerHTML = '<p class="loading-text">Analyse en cours…</p>';
 
-    fetch('page-outils.php', {
+    fetch('outil-coherences.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'tool_action=check_coherence'
@@ -181,7 +181,7 @@ function renderCoherences(issues) {
             muBadge.rel = 'noopener';
             muBadge.className = 'mu-badge';
             muBadge.title = 'Voir sur MangaUpdates';
-            muBadge.innerHTML = '<img src="../assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo">';
+            muBadge.innerHTML = '<img src="../../assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo">';
             header.appendChild(muBadge);
         }
 
@@ -192,7 +192,7 @@ function renderCoherences(issues) {
             babelioBadge.rel = 'noopener';
             babelioBadge.className = 'babelio-badge';
             babelioBadge.title = 'Voir sur Babelio';
-            babelioBadge.innerHTML = '<img src="../assets/img/babelogo.png" alt="Babelio" class="babelio-logo">';
+            babelioBadge.innerHTML = '<img src="../../assets/img/babelogo.png" alt="Babelio" class="babelio-logo">';
             header.appendChild(babelioBadge);
         }
 
@@ -488,7 +488,7 @@ document.getElementById('cedit-save-btn').addEventListener('click', () => {
         add_volumes:     JSON.stringify(addVolumes),
     });
 
-    fetch('page-outils.php', {
+    fetch('outil-coherences.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body:    params.toString(),
@@ -656,7 +656,7 @@ document.getElementById('acedit-save-btn')?.addEventListener('click', () => {
         episodes_updates:  JSON.stringify(episodesUpdates),
     });
 
-    fetch('page-outils.php', {
+    fetch('outil-coherences.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body:    params.toString(),
