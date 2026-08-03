@@ -99,7 +99,7 @@ function normalize_string($str) {
 
 // Pagination
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$per_page_public = 12;
+$per_page_public = 120;
 $offset = ($page - 1) * $per_page_public;
 
 

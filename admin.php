@@ -41,7 +41,7 @@ $review_series_ids = array_flip(get_review_series_ids());
 
 // Pagination
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$per_page_admin = 9;
+$per_page_admin = 90;
 $offset = ($page - 1) * $per_page_admin;
 
 // Gestion des actions pour les séries

@@ -65,7 +65,7 @@ async function loadMoreSeries() {
             : 'manga';
 
         const response = await fetch(
-            `admin.php?get_paginated_series=true&page=${currentPage + 1}&per_page=9&light=true` +
+            `admin.php?get_paginated_series=true&page=${currentPage + 1}&per_page=90&light=true` +
             `&type=${encodeURIComponent(seriesType)}` +
             `&search=${encodeURIComponent(searchTerm)}` +
             `&sort_by=${sortBy}&sort_order=${sortOrder}` +
