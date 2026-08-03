@@ -497,7 +497,18 @@ function anilist_import_apply_watch_progress(array $series, array $entry, array 
     // la cocher pour DROPPED/PAUSED.
     $series['watching_abandoned'] = in_array($status, ['DROPPED', 'PAUSED'], true);
 
-    $series['rewatch_count'] = max(0, (int)($entry['repeat'] ?? 0));
+    // Même règle que la modale d'édition (fonctions/anime.php,
+    // update_anime_series()) : la date de dernier revisionnage ne se met à
+    // jour que si le compteur AUGMENTE — à la création, la série n'a encore
+    // aucun compteur (0), donc un import REPEATING avec repeat > 0 pose bien
+    // la date ; à une mise à jour, un repeat inchangé ou en baisse ne touche
+    // jamais la date.
+    $new_rewatch_count = max(0, (int)($entry['repeat'] ?? 0));
+    $previous_rewatch_count = (int)($series['rewatch_count'] ?? 0);
+    $series['rewatch_count'] = $new_rewatch_count;
+    if ($new_rewatch_count > $previous_rewatch_count) {
+        $series['rewatch_last_date'] = date('Y-m-d');
+    }
 
     // Le tag « dernier épisode » ne dépend que du statut de diffusion et du
     // compte complet — jamais du statut de liste de l'utilisateur.

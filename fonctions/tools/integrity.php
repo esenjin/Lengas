@@ -634,6 +634,7 @@ function check_site_integrity(array $data): array {
         $anilist_columns = [
             'type', 'anilist_id', 'anilist_url', 'studios', 'anime_format',
             'alt_titles', 'anilist_image', 'watching_abandoned', 'rewatch_count',
+            'rewatch_last_date', 'reread_last_date',
             'anilist_synced_at', 'rating',
         ];
         foreach ($anilist_columns as $col) {

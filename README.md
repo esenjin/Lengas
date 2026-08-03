@@ -142,8 +142,10 @@ Page dédiée organisée en deux onglets, **Mangathèque** (par défaut) et **An
 - **Animethèque** : nombre de séries, d'épisodes, répartition par statut de visionnage/genre/format/studio, favoris, notations, revisionnages, et un temps de visionnage total calculé à partir de la durée réelle des épisodes fournie par Anilist (avec un repli paramétrable par format dans les options).
 
 ### Historique (page publique « Historique »)
-- Page dédiée (`historique.php`, lien dans le menu latéral public, section « Divers ») listant, jour après jour et du plus récent au plus ancien, les tomes lus et épisodes vus, en se basant sur leur date de lecture/visionnage
+- Page dédiée (`historique.php`, lien dans le menu latéral public, section « Divers », et dans le menu latéral admin depuis lequel elle s'ouvre dans un nouvel onglet) listant, jour après jour et du plus récent au plus ancien, les tomes lus et épisodes vus, en se basant sur leur date de lecture/visionnage
 - Une carte par série et par jour (vignette, nom, numéros concernés), cliquable pour ouvrir la même modale de détail que sur l'accueil. Les numéros consécutifs sont condensés en plages (« 1 à 5, 8, 10 et 11 » plutôt que « 1, 2, 3, 4, 5, 8, 10, 11 »)
+- Les relectures (mangas) et revisionnages (animés) apparaissent également, dans une carte dédiée au liseré discret (« 4ème relecture », « 3ème revisionnage ») à la date de leur dernière augmentation. Cette date se pose automatiquement, sans saisie manuelle, dès que le compteur de relectures/revisionnages augmente (modale d'édition ou import Anilist) ; elle n'est jamais posée rétroactivement pour un compteur déjà supérieur à 0 avant l'introduction de cette fonctionnalité, ni modifiée si le compteur baisse ou reste stable
+- Barre de recherche par nom de série (titre affiché et titres alternatifs Anilist inclus pour les animés) : filtre instantanément les cartes déjà chargées et, si besoin, charge automatiquement les jours plus anciens par lots de 30 jusqu'à trouver une correspondance ou épuiser tout l'historique
 - Filtre Mangathèque / Animethèque / les deux (par défaut)
 - 30 jours affichés initialement, avec un bouton « Afficher plus » qui en charge 30 de plus à chaque clic
 - Respecte le mode privé et le masquage des séries matures de chaque collection (un tome d'une collection privée n'apparaît jamais dans l'historique)
@@ -186,6 +188,7 @@ Toutes les options du site sont regroupées sur la page `pages/page-options.php`
 - Tri et filtrage des séries
 - Menu latéral organisé en sections thématiques (Mangathèque, Animethèque, Hors collection, Mutualisé, Divers, Gestion), avec titre de section et libellé au-dessus de chaque icône, y compris sur mobile
 - « Mangas à lire » et « Animés à visionner » (menu latéral admin) trient automatiquement par date de lecture/visionnage descendante ; « Animés à visionner » inclut en plus les animés pas encore commencés (« à voir »), en plus de ceux en cours
+- Pied du menu latéral admin : actualiser et se déconnecter côte à côte, puis numéro de version cliquable vers le dépôt Gitéa (même présentation que le menu latéral public)
 
 ### Sécurité
 - Mode privé pour cacher votre bibliothèque (réglable par collection)

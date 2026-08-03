@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '4.1.1');
+define('SITE_VERSION', '4.1.2');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Chemin vers la base de données SQLite
@@ -228,6 +228,23 @@ function init_db(PDO $pdo): void {
     // manga. Vaut 0 pour un animé (le revisionnage y suit rewatch_count).
     try {
         $pdo->exec("ALTER TABLE series ADD COLUMN reread_count INTEGER NOT NULL DEFAULT 0");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
+    // ── Date de la dernière relecture / du dernier revisionnage ────────────────
+    // Format Y-m-d, vide par défaut. Alimentée automatiquement (jamais saisie à
+    // la main) : dès que reread_count/rewatch_count AUGMENTE par rapport à sa
+    // valeur précédente, la date correspondante est mise à la date du jour (cf.
+    // update_series()/update_anime_series()/anilist_import.php). Une baisse ou
+    // une valeur inchangée du compteur ne touche jamais la date. Sert
+    // uniquement à faire apparaître les relectures/revisionnages dans la page
+    // « Historique » (historique.php) — les séries dont le compteur était déjà
+    // > 0 avant l'introduction de ce champ n'ont volontairement aucune date
+    // rétroactive.
+    try {
+        $pdo->exec("ALTER TABLE series ADD COLUMN reread_last_date TEXT NOT NULL DEFAULT ''");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+    try {
+        $pdo->exec("ALTER TABLE series ADD COLUMN rewatch_last_date TEXT NOT NULL DEFAULT ''");
     } catch (Exception $e) { /* colonne déjà présente */ }
 
     // ── Garde-fou anti-doublon sur l'identifiant Anilist ───────────────────────
@@ -620,10 +637,12 @@ function load_data(): array {
             'anilist_image'          => $s['anilist_image'] ?? '',
             'watching_abandoned'     => (bool)($s['watching_abandoned'] ?? false),
             'rewatch_count'          => (int)($s['rewatch_count'] ?? 0),
+            'rewatch_last_date'      => $s['rewatch_last_date'] ?? '',
             'anilist_synced_at'      => (int)($s['anilist_synced_at'] ?? 0),
             'episode_duration'       => (int)($s['episode_duration'] ?? 0),
             // ── Relectures (mangas) ───────────────────────────────────────────
             'reread_count'           => (int)($s['reread_count'] ?? 0),
+            'reread_last_date'       => $s['reread_last_date'] ?? '',
             'editions'               => $editions_by_series[$s['id']] ?? [],
             'volumes'                => $vols,
         ];
@@ -662,8 +681,8 @@ function load_data(): array {
 function upsert_series_row(array $series): void {
     $db = get_db();
     $stmt = $db->prepare("
-        INSERT INTO series (id, name, type, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, anilist_synced_at, episode_duration, reread_count)
-        VALUES (:id,:name,:type,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:anilist_synced_at,:episode_duration,:reread_count)
+        INSERT INTO series (id, name, type, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, rewatch_last_date, anilist_synced_at, episode_duration, reread_count, reread_last_date)
+        VALUES (:id,:name,:type,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:rewatch_last_date,:anilist_synced_at,:episode_duration,:reread_count,:reread_last_date)
         ON CONFLICT(id) DO UPDATE SET
             name=excluded.name, type=excluded.type,
             author=excluded.author, publisher=excluded.publisher,
@@ -679,9 +698,11 @@ function upsert_series_row(array $series): void {
             anilist_image=excluded.anilist_image,
             watching_abandoned=excluded.watching_abandoned,
             rewatch_count=excluded.rewatch_count,
+            rewatch_last_date=excluded.rewatch_last_date,
             anilist_synced_at=excluded.anilist_synced_at,
             episode_duration=excluded.episode_duration,
-            reread_count=excluded.reread_count
+            reread_count=excluded.reread_count,
+            reread_last_date=excluded.reread_last_date
     ");
 
     $s = $series;
@@ -715,9 +736,11 @@ function upsert_series_row(array $series): void {
         ':anilist_image'      => $s['anilist_image'] ?? '',
         ':watching_abandoned' => (int)($s['watching_abandoned'] ?? false),
         ':rewatch_count'      => max(0, (int)($s['rewatch_count'] ?? 0)),
+        ':rewatch_last_date'  => $s['rewatch_last_date'] ?? '',
         ':anilist_synced_at'  => max(0, (int)($s['anilist_synced_at'] ?? 0)),
         ':episode_duration'   => max(0, (int)($s['episode_duration'] ?? 0)),
         ':reread_count'       => max(0, (int)($s['reread_count'] ?? 0)),
+        ':reread_last_date'   => $s['reread_last_date'] ?? '',
     ]);
 }
 

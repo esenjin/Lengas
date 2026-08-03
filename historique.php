@@ -74,9 +74,23 @@ $reviews_public = !is_hide_reviews($options, 'manga') || !is_hide_reviews($optio
 $type_filter = $_GET['type'] ?? '';
 $type_filter = in_array($type_filter, ['manga', 'anime'], true) ? $type_filter : '';
 
+// Écrit un nombre en ordinal français court : 1 → "1er", 2 → "2ème", etc.
+function history_ordinal(int $n): string {
+    return $n === 1 ? '1er' : $n . 'ème';
+}
+
 // ── Construction du journal : date => [ ['series' => …, 'items' => […]] ] ───
 // Un tome/épisode compte dans l'historique s'il est marqué "terminé" et
 // possède une date de lecture/visionnage (read_at, format Y-m-d).
+//
+// Une série apparaît en plus, ce même journal, à la date de sa dernière
+// relecture/revisionnage (reread_last_date / rewatch_last_date, cf.
+// config.php) — dans une entrée à part (kind: 'reread'), jamais fusionnée
+// avec l'entrée « tomes/épisodes » du jour, même si les deux tombent le même
+// jour pour la même série. Ce champ n'est renseigné que par les
+// AUGMENTATIONS du compteur constatées après l'introduction de la
+// fonctionnalité : une série déjà relue avant cette date n'a donc aucune date
+// connue et n'apparaît pas ici pour ce motif.
 function history_build_entries(array $series_list, string $type_filter): array {
     $by_date = [];
     foreach ($series_list as $series) {
@@ -92,14 +106,41 @@ function history_build_entries(array $series_list, string $type_filter): array {
             $date = substr($read_at, 0, 10);
             $items_by_date[$date][] = $v;
         }
-        if (empty($items_by_date)) continue;
 
-        $decorated = decorate_series_for_display($series);
-        foreach ($items_by_date as $date => $items) {
-            usort($items, fn($a, $b) => $a['number'] <=> $b['number']);
+        $decorated = null; // décoré paresseusement, seulement si nécessaire
+
+        if (!empty($items_by_date)) {
+            $decorated = decorate_series_for_display($series);
+            foreach ($items_by_date as $date => $items) {
+                usort($items, fn($a, $b) => $a['number'] <=> $b['number']);
+                $by_date[$date][] = [
+                    'kind'   => 'volumes',
+                    'series' => $decorated,
+                    'items'  => $items,
+                ];
+            }
+        }
+
+        // Relecture / revisionnage : clé et compteur adaptés au type de série.
+        $is_anime_series = is_anime($series);
+        $rereread_date = trim((string)($is_anime_series
+            ? ($series['rewatch_last_date'] ?? '')
+            : ($series['reread_last_date'] ?? '')));
+        $rereread_count = (int)($is_anime_series
+            ? ($series['rewatch_count'] ?? 0)
+            : ($series['reread_count'] ?? 0));
+
+        if ($rereread_date !== '' && preg_match('/^\d{4}-\d{2}-\d{2}/', $rereread_date) && $rereread_count > 0) {
+            if ($decorated === null) {
+                $decorated = decorate_series_for_display($series);
+            }
+            $date = substr($rereread_date, 0, 10);
             $by_date[$date][] = [
-                'series' => $decorated,
-                'items'  => $items,
+                'kind'    => 'reread',
+                'series'  => $decorated,
+                'is_anime' => $is_anime_series,
+                'count'   => $rereread_count,
+                'label'   => history_ordinal($rereread_count) . ' ' . ($is_anime_series ? 'revisionnage' : 'relecture'),
             ];
         }
     }
@@ -172,6 +213,28 @@ function history_format_numbers(array $numbers): string {
     return implode(', ', $parts);
 }
 
+// Normalisation dédiée à la recherche de la page Historique : accents et
+// casse neutralisés, mais espaces CONSERVÉS (contrairement à
+// normalize_string() de includes/helpers.php, qui les supprime aussi — utile
+// pour un identifiant technique, mais qui casserait ici la recherche
+// multi-mots, ex. "one piece" ne devant pas dépendre de l'absence d'espace).
+function history_normalize_search(string $string): string {
+    $table = [
+        'À'=>'A','Á'=>'A','Â'=>'A','Ã'=>'A','Ä'=>'A','Å'=>'A','Æ'=>'AE',
+        'Ç'=>'C','È'=>'E','É'=>'E','Ê'=>'E','Ë'=>'E','Ì'=>'I','Í'=>'I',
+        'Î'=>'I','Ï'=>'I','Ð'=>'D','Ñ'=>'N','Ò'=>'O','Ó'=>'O','Ô'=>'O',
+        'Õ'=>'O','Ö'=>'O','Ø'=>'O','Ù'=>'U','Ú'=>'U','Û'=>'U','Ü'=>'U',
+        'Ý'=>'Y','ß'=>'s','à'=>'a','á'=>'a','â'=>'a','ã'=>'a','ä'=>'a',
+        'å'=>'a','æ'=>'ae','ç'=>'c','è'=>'e','é'=>'e','ê'=>'e','ë'=>'e',
+        'ì'=>'i','í'=>'i','î'=>'i','ï'=>'i','ð'=>'d','ñ'=>'n','ò'=>'o',
+        'ó'=>'o','ô'=>'o','õ'=>'o','ö'=>'o','ø'=>'o','ù'=>'u','ú'=>'u',
+        'û'=>'u','ü'=>'u','ý'=>'y','ÿ'=>'y','Ŕ'=>'R','ŕ'=>'r',
+    ];
+    $string = strtr($string, $table);
+    $string = mb_strtolower($string, 'UTF-8');
+    return trim(preg_replace('/\s+/', ' ', $string));
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Rendu HTML d'un jour (bloc date + cartes série), utilisé à la fois pour le
 // rendu initial et par l'endpoint AJAX get_more_days (JSON contenant le HTML
@@ -185,22 +248,45 @@ function history_render_day(array $day): string {
         <div class="history-day-cards">
             <?php foreach ($day['entries'] as $entry):
                 $series = $entry['series'];
-                $items  = $entry['items'];
                 $is_anime = is_anime($series);
-                $vocab = type_vocab($series['type']);
-                $numbers = array_map(fn($v) => $v['number'], $items);
+                // Titres alternatifs (animés) inclus dans un attribut data-*
+                // dédié : sert de terrain de recherche côté JS, sans jamais
+                // s'afficher — seul le titre choisi reste visible sur la carte.
+                $search_haystack = history_normalize_search($series['name'] . ' ' . implode(' ', $series['alt_titles'] ?? []));
             ?>
-                <div class="history-card <?= $is_anime ? 'history-card--anime' : '' ?>" data-series-id="<?= htmlspecialchars($series['id']) ?>">
-                    <img class="history-card-thumb" src="<?= htmlspecialchars(series_thumbnail($series)) ?>" alt="" loading="lazy">
-                    <div class="history-card-info">
-                        <p class="history-card-name"><?= htmlspecialchars($series['name']) ?></p>
-                        <p class="history-card-items">
-                            <?= count($items) > 1 ? htmlspecialchars(ucfirst($vocab['items'])) : htmlspecialchars(ucfirst($vocab['item'])) ?>
-                            <?= htmlspecialchars(history_format_numbers($numbers)) ?>
-                            <?= count($items) > 1 ? htmlspecialchars($vocab['done_short'] === 'lu' ? 'lus' : 'vus') : htmlspecialchars($vocab['done_short']) ?>
-                        </p>
+                <?php if (($entry['kind'] ?? 'volumes') === 'reread'): ?>
+                    <!-- Carte dédiée : relecture (manga) ou revisionnage (animé) -->
+                    <div class="history-card history-card--reread <?= $is_anime ? 'history-card--anime' : '' ?>"
+                         data-series-id="<?= htmlspecialchars($series['id']) ?>"
+                         data-search="<?= htmlspecialchars($search_haystack) ?>">
+                        <img class="history-card-thumb" src="<?= htmlspecialchars(series_thumbnail($series)) ?>" alt="" loading="lazy">
+                        <div class="history-card-info">
+                            <p class="history-card-name"><?= htmlspecialchars($series['name']) ?></p>
+                            <p class="history-card-items history-card-items--reread">
+                                <img src="https://api.iconify.design/mdi/repeat.svg?color=%23808090" width="14" height="14" alt="" class="history-reread-icon">
+                                <?= htmlspecialchars(ucfirst($entry['label'])) ?>
+                            </p>
+                        </div>
                     </div>
-                </div>
+                <?php else:
+                    $items  = $entry['items'];
+                    $vocab = type_vocab($series['type']);
+                    $numbers = array_map(fn($v) => $v['number'], $items);
+                ?>
+                    <div class="history-card <?= $is_anime ? 'history-card--anime' : '' ?>"
+                         data-series-id="<?= htmlspecialchars($series['id']) ?>"
+                         data-search="<?= htmlspecialchars($search_haystack) ?>">
+                        <img class="history-card-thumb" src="<?= htmlspecialchars(series_thumbnail($series)) ?>" alt="" loading="lazy">
+                        <div class="history-card-info">
+                            <p class="history-card-name"><?= htmlspecialchars($series['name']) ?></p>
+                            <p class="history-card-items">
+                                <?= count($items) > 1 ? htmlspecialchars(ucfirst($vocab['items'])) : htmlspecialchars(ucfirst($vocab['item'])) ?>
+                                <?= htmlspecialchars(history_format_numbers($numbers)) ?>
+                                <?= count($items) > 1 ? htmlspecialchars($vocab['done_short'] === 'lu' ? 'lus' : 'vus') : htmlspecialchars($vocab['done_short']) ?>
+                            </p>
+                        </div>
+                    </div>
+                <?php endif; ?>
             <?php endforeach; ?>
         </div>
     </section>
@@ -258,7 +344,7 @@ $has_more = $total_days > $days_per_page;
     <div class="container">
         <h1><?= htmlspecialchars($page_title) ?></h1>
 
-        <!-- Filtre de type (manga / anime / les deux) -->
+        <!-- Filtre de type (manga / anime / les deux) + recherche par série -->
         <div class="history-filters">
             <div class="history-type-toggle" role="group" aria-label="Filtrer par collection">
                 <button type="button" class="history-type-btn <?= $type_filter === '' ? 'is-active' : '' ?>" data-history-type="">
@@ -273,6 +359,16 @@ $has_more = $total_days > $days_per_page;
                     Animethèque
                 </button>
             </div>
+
+            <div class="history-search-wrap" id="history-search-wrap">
+                <input type="search"
+                       id="history-search-input"
+                       class="history-search-input"
+                       placeholder="Rechercher une série..."
+                       autocomplete="off">
+                <button type="button" class="history-search-clear" id="history-search-clear" aria-label="Effacer la recherche">&times;</button>
+            </div>
+            <p class="history-search-status" id="history-search-status"></p>
         </div>
 
         <!-- Journal, jour après jour -->

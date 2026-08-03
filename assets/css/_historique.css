@@ -2,11 +2,84 @@
    Page publique « Historique » (historique.php)
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ── Filtre de recherche (JS pose l'attribut [hidden] sur les cartes et les
+   jours qui ne correspondent pas) ────────────────────────────────────────
+   Sans cette règle, .history-card{display:flex} et .history-day{display:flex}
+   (classes, donc plus spécifiques que le display:none implicite de [hidden]
+   dans la feuille de style du navigateur) l'emportaient sur l'attribut posé
+   par historique.js : les éléments restaient visibles malgré hidden=true. ── */
+.history-card[hidden],
+.history-day[hidden] {
+    display: none !important;
+}
+
 /* ── Filtre de type (manga / anime / tout) ──────────────────────────────── */
 .history-filters {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
     margin-bottom: 28px;
+}
+
+/* ── Barre de recherche (titre de série, titres alternatifs inclus) ─────── */
+.history-search-wrap {
+    width: 100%;
+    max-width: 380px;
+    position: relative;
+}
+
+.history-search-input {
+    width: 100%;
+    padding: 9px 36px 9px 14px;
+    border-radius: 999px;
+    border: 1.5px solid var(--background-lighter);
+    background: var(--background-card);
+    color: var(--text-color);
+    font-size: 0.92em;
+    transition: border-color 0.15s;
+}
+
+/* Neutralise la petite croix native de <input type="search"> (Chrome/Safari) :
+   on affiche la nôtre (.history-search-clear), pour un style homogène avec
+   le reste du site plutôt que le rendu par défaut du navigateur. */
+.history-search-input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.history-search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.history-search-clear {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--text-gray);
+    font-size: 1.1em;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.history-search-wrap.has-value .history-search-clear {
+    display: flex;
+}
+
+.history-search-status {
+    text-align: center;
+    font-size: 0.85em;
+    color: var(--text-gray);
+    min-height: 1.2em;
 }
 
 .history-type-toggle {
@@ -142,6 +215,24 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* ── Carte "relecture / revisionnage" ─────────────────────────────────────
+   Même gabarit que .history-card, avec un liseré discret pour la distinguer
+   au premier coup d'œil d'une carte tomes/épisodes classique. ── */
+.history-card--reread {
+    border-style: dashed;
+}
+
+.history-card-items--reread {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.history-reread-icon {
+    flex-shrink: 0;
+    opacity: 0.75;
 }
 
 /* ── État vide ────────────────────────────────────────────────────────────── */

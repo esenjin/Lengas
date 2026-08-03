@@ -74,6 +74,7 @@ function build_light_series(array $series, array $review_series_ids, array $loan
         'rating'                     => $series['rating'] ?? '',
         'has_review'                 => isset($review_series_ids[$series['id']]),
         'reread_count'               => (int)($series['reread_count'] ?? 0),
+        'reread_last_date'           => $series['reread_last_date'] ?? '',
         // ── Champs animé (vides ou nuls sur un manga) ────────────────
         'anilist_id'                 => $series['anilist_id'] ?? '',
         'anilist_url'                => $series['anilist_url'] ?? '',
@@ -86,6 +87,7 @@ function build_light_series(array $series, array $review_series_ids, array $loan
         'alt_titles'                 => series_alt_titles($series),
         'watching_abandoned'         => (bool)($series['watching_abandoned'] ?? false),
         'rewatch_count'              => (int)($series['rewatch_count'] ?? 0),
+        'rewatch_last_date'          => $series['rewatch_last_date'] ?? '',
         'editions'                   => series_edition_comments($series),
         // Vignette personnalisée seule : la modale d'édition doit savoir
         // s'il y en a une à proposer de supprimer, indépendamment de la
@@ -167,6 +169,11 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         'reading_abandoned' => (bool)$reading_abandoned,
         'rating' => sanitize_rating($rating),
         'reread_count' => max(0, (int)$reread_count),
+        // Un nombre de relectures renseigné dès la création (import manuel
+        // d'une série déjà relue par le passé) n'a pas de date réelle connue :
+        // conformément à la règle générale (cf. config.php), on ne date que
+        // les AUGMENTATIONS ultérieures du compteur, jamais rétroactivement.
+        'reread_last_date' => '',
         'volumes' => $volumes
     ];
 
@@ -234,7 +241,15 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
         $data[$series_key]['rating'] = sanitize_rating($rating);
     }
     if ($reread_count !== null) {
-        $data[$series_key]['reread_count'] = max(0, (int)$reread_count);
+        $new_reread_count = max(0, (int)$reread_count);
+        $previous_reread_count = (int)($data[$series_key]['reread_count'] ?? 0);
+        $data[$series_key]['reread_count'] = $new_reread_count;
+        // Ne date que les AUGMENTATIONS du compteur : une baisse (correction
+        // d'une saisie erronée) ou une valeur inchangée ne touche jamais la
+        // date de dernière relecture, qui alimente la page « Historique ».
+        if ($new_reread_count > $previous_reread_count) {
+            $data[$series_key]['reread_last_date'] = date('Y-m-d');
+        }
     }
 
     // Gestion de l'image

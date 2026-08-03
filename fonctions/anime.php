@@ -248,6 +248,10 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
         'anilist_image'      => $anilist_image,
         'watching_abandoned' => false,
         'rewatch_count'      => 0,
+        // Comme pour reread_last_date (mangas), jamais renseignée
+        // rétroactivement : seules les augmentations ultérieures du compteur
+        // (via update_anime_series() ou un import Anilist) la mettent à jour.
+        'rewatch_last_date'  => '',
         'anilist_synced_at'  => 0,
         // Durée d'un épisode en minutes, telle que fournie par Anilist (0 si
         // inconnue — le calcul des statistiques retombe alors sur le réglage
@@ -346,7 +350,14 @@ function update_anime_series(array $data, string $series_id, array $fields): arr
         $data[$key]['rating'] = sanitize_rating($fields['rating']);
     }
     if (array_key_exists('rewatch_count', $fields)) {
-        $data[$key]['rewatch_count'] = max(0, (int)$fields['rewatch_count']);
+        $new_rewatch_count = max(0, (int)$fields['rewatch_count']);
+        $previous_rewatch_count = (int)($data[$key]['rewatch_count'] ?? 0);
+        $data[$key]['rewatch_count'] = $new_rewatch_count;
+        // Même règle que reread_last_date côté manga : seule une AUGMENTATION
+        // du compteur (édition manuelle ou import Anilist) met à jour la date.
+        if ($new_rewatch_count > $previous_rewatch_count) {
+            $data[$key]['rewatch_last_date'] = date('Y-m-d');
+        }
     }
 
     // ── Éditions physiques ──────────────────────────────────────────────────
