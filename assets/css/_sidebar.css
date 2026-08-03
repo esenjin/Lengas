@@ -284,6 +284,14 @@ li.sidebar-separator {
     background: rgba(248, 113, 113, 0.1);
 }
 
+/* ── Paire "Actualiser" / "Se déconnecter" côte à côte ──────────────────── */
+.sidebar-bottom-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 4px;
+}
+
 /* ── Tooltip au survol (desktop uniquement) ────────────────────────────── */
 .sidebar-link[data-tooltip]::before {
     content: '';
@@ -421,6 +429,14 @@ li.sidebar-separator {
     .sidebar-nav--bottom li {
         width: 100%;
         justify-content: flex-start;
+    }
+
+    /* La paire actualiser/déconnexion repasse en pleine largeur empilée,
+       comme n'importe quel autre lien du drawer (la disposition côte à
+       côte est un aménagement desktop uniquement). */
+    .sidebar-bottom-row {
+        flex-direction: column;
+        gap: 2px;
     }
 
     /* ── Liens du drawer : pleine largeur + label texte ── */

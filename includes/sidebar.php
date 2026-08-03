@@ -232,6 +232,16 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                     </a>
                 </li>
 
+                <!-- Historique (page publique, journal chronologique) -->
+                <li>
+                    <a href="<?= $base ?>historique.php"
+                       class="sidebar-link <?= $current_page === 'historique.php' ? 'is-active is-active--gray' : '' ?>"
+                       data-tooltip="Historique"
+                       target="_blank">
+                        <img src="https://api.iconify.design/mdi/history.svg?color=<?= $__c_gray ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
             </ul>
         </li>
 
@@ -274,19 +284,28 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
 
     <!-- Bas de sidebar -->
     <ul class="sidebar-nav sidebar-nav--bottom" role="list">
-        <li>
+        <!-- Actualiser / Se déconnecter, côte à côte -->
+        <li class="sidebar-bottom-row">
             <a href="#"
                class="sidebar-link"
                data-tooltip="Recharger"
                onclick="location.reload(); return false;">
                 <img src="https://api.iconify.design/mdi/refresh.svg?color=%23d4d4e8" width="22" height="22" alt="">
             </a>
-        </li>
-        <li>
             <a href="<?= $base ?>logout.php"
                class="sidebar-link sidebar-link--danger"
                data-tooltip="Déconnexion">
                 <img src="https://api.iconify.design/mdi/logout.svg?color=%23f87171" width="22" height="22" alt="">
+            </a>
+        </li>
+
+        <!-- Version (cliquable vers le dépôt Gitéa) -->
+        <li>
+            <a href="<?= URL_GITEA ?>"
+               class="sidebar-link sidebar-version"
+               data-tooltip="Lengas - <?= htmlspecialchars(SITE_VERSION) ?> — dépôt Gitéa"
+               target="_blank" rel="noopener">
+                <span class="sidebar-version-text"><?= htmlspecialchars(SITE_VERSION) ?></span>
             </a>
         </li>
     </ul>
