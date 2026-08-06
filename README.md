@@ -241,7 +241,13 @@ Anilist autorise 90 requêtes par minute ; le connecteur applique une fenêtre g
 
 ## Prérequis
 - Serveur web (Apache, Nginx)
-- PHP 7.4 ou supérieur
+- PHP 8.0 ou supérieur
+- Extensions PHP : `pdo_sqlite` (base de données), `curl` (Anilist, MangaUpdates, Babengas, Vestikan), `zip` (sauvegardes), `fileinfo` (validation des images téléversées)
+- Droits d'écriture pour le serveur web sur les dossiers `bdd/`, `saves/` et `uploads/` (chmod 0774, voir [Structure des fichiers](#structure-des-fichiers))
+
+Facultatif, selon les fonctionnalités utilisées :
+- Un microservice [Babengas](https://git.crystalyx.net/Esenjin_Asakha/Babengas) (Docker) pour la vérification des sorties françaises via Babelio
+- Une instance [Vestikan](https://git.crystalyx.net/Esenjin_Asakha/Vestikan) pour la connexion SSO
 
 ---
 
