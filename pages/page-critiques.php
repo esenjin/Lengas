@@ -132,9 +132,18 @@ $eligible = array_map(function ($s) {
                     Animés
                 </button>
             </div>
+            <p class="reviews-count" id="reviews-count"></p>
             <div class="reviews-list-toolbar">
                 <input type="text" id="reviews-search" class="reviews-search-input"
                        placeholder="Filtrer par titre, auteur ou studio…" autocomplete="off">
+                <select id="reviews-sort-by" class="reviews-sort-select" title="Trier par">
+                    <option value="name">Trier par nom</option>
+                    <option value="date" selected>Trier par date</option>
+                </select>
+                <select id="reviews-sort-order" class="reviews-sort-select" title="Ordre">
+                    <option value="asc">Ascendant</option>
+                    <option value="desc" selected>Descendant</option>
+                </select>
                 <button type="button" id="new-review-btn" class="button button-aos">
                     <img src="https://api.iconify.design/mdi/pencil-plus.svg?color=%23ffffff" width="18" height="18" alt="">
                     Nouvelle critique

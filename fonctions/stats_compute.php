@@ -734,6 +734,8 @@ if (!function_exists('compute_anime_stats')) {
         $mature_series    = 0;
         $rewatch_total    = 0;
         $rewatched_series = 0;
+        $physical_editions_total  = 0;
+        $physical_editions_series = 0;
 
         // Notation (mêmes clés que rating_definitions(), cf. includes/helpers.php)
         $rating_counts = ['apprecie' => 0, 'mitige' => 0, 'deteste' => 0, '' => 0];
@@ -777,6 +779,12 @@ if (!function_exists('compute_anime_stats')) {
             if ($rewatch > 0) {
                 $rewatch_total += $rewatch;
                 $rewatched_series++;
+            }
+
+            $editions_count = count($series['editions'] ?? []);
+            if ($editions_count > 0) {
+                $physical_editions_total += $editions_count;
+                $physical_editions_series++;
             }
 
             $rating = $series['rating'] ?? '';
@@ -953,6 +961,10 @@ if (!function_exists('compute_anime_stats')) {
             // Revisionnages
             'rewatch_total'    => $rewatch_total,
             'rewatched_series' => $rewatched_series,
+
+            // Éditions physiques
+            'physical_editions_total'  => $physical_editions_total,
+            'physical_editions_series' => $physical_editions_series,
 
             // Notation
             'rating_counts' => $rating_counts,

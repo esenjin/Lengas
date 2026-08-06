@@ -15,6 +15,13 @@
     const listContainer = document.getElementById('reviews-list');
     const searchInput   = document.getElementById('reviews-search');
     const newBtn        = document.getElementById('new-review-btn');
+    const countLabel    = document.getElementById('reviews-count');
+    const sortBySelect  = document.getElementById('reviews-sort-by');
+    const sortOrderSelect = document.getElementById('reviews-sort-order');
+
+    // Dernière liste reçue de l'API (non triée) : sert de source pour le tri,
+    // plutôt que de reparser les cartes déjà rendues dans le DOM.
+    let allReviews = [];
 
     const backBtn       = document.getElementById('review-back-btn');
     const saveBtn       = document.getElementById('review-save-btn');
@@ -154,12 +161,31 @@
             listContainer.innerHTML = '<p class="reviews-empty">Erreur de chargement.</p>';
             return;
         }
-        renderList(data.reviews || []);
+        allReviews = data.reviews || [];
+        renderList(sortReviews(allReviews));
+    }
+
+    // ── Tri de la vue liste (nom / date, ascendant / descendant) ────────────
+    function sortReviews(reviews) {
+        const by    = sortBySelect ? sortBySelect.value : 'date';
+        const order = sortOrderSelect ? sortOrderSelect.value : 'desc';
+        const sorted = reviews.slice();
+        sorted.sort((a, b) => {
+            let cmp;
+            if (by === 'name') {
+                cmp = String(a.name || '').localeCompare(String(b.name || ''), 'fr', { sensitivity: 'base' });
+            } else {
+                cmp = String(a.updated_at || '').localeCompare(String(b.updated_at || ''));
+            }
+            return order === 'asc' ? cmp : -cmp;
+        });
+        return sorted;
     }
 
     function renderList(reviews) {
         if (!reviews.length) {
             listContainer.innerHTML = '<p class="reviews-empty">Aucune critique pour le moment. ✏️</p>';
+            updateCount(0);
             return;
         }
         listContainer.innerHTML = '';
@@ -195,15 +221,18 @@
                 const res = await api('delete', { series_id: r.series_id });
                 if (res.success) {
                     card.remove();
+                    allReviews = allReviews.filter(x => x.series_id !== r.series_id);
                     if (!listContainer.querySelector('.review-card')) {
                         listContainer.innerHTML = '<p class="reviews-empty">Aucune critique pour le moment. ✏️</p>';
                     }
+                    updateCount(listContainer.querySelectorAll('.review-card').length);
                 } else {
                     showCustomAlert('Erreur', res.message || 'Suppression impossible.');
                 }
             });
             listContainer.appendChild(card);
         });
+        updateCount(reviews.length);
     }
 
     function formatDate(s) {
@@ -216,18 +245,51 @@
     // ── Filtre de type : recherche texte + toggle ────────────────────────────
     function applyListFilters() {
         const term = normalizeString(searchInput ? searchInput.value : '');
+        let visible = 0;
         listContainer.querySelectorAll('.review-card').forEach(card => {
             const title = normalizeString(card.querySelector('.review-card-title')?.textContent || '');
             const auth  = normalizeString(card.querySelector('.review-card-author')?.textContent || '');
             const matchesTerm = term === '' || title.includes(term) || auth.includes(term);
             const matchesType = currentTypeFilter === '' || card.dataset.type === currentTypeFilter;
-            card.style.display = (matchesTerm && matchesType) ? '' : 'none';
+            const show = matchesTerm && matchesType;
+            card.style.display = show ? '' : 'none';
+            if (show) visible++;
         });
+        updateCount(visible);
+    }
+
+    // ── Compteur de critiques (total + détail par type) ─────────────────────
+    function updateCount(visible) {
+        if (!countLabel) return;
+        const total = allReviews.length;
+        if (total === 0) {
+            countLabel.textContent = '';
+            return;
+        }
+        const mangaCount = allReviews.filter(r => (r.type || 'manga') === 'manga').length;
+        const animeCount = allReviews.filter(r => r.type === 'anime').length;
+        const parts = [];
+        if (mangaCount > 0) parts.push(`${mangaCount} manga${mangaCount > 1 ? 's' : ''}`);
+        if (animeCount > 0) parts.push(`${animeCount} animé${animeCount > 1 ? 's' : ''}`);
+        const detail = parts.length ? ` (${parts.join(', ')})` : '';
+        const filtered = (typeof visible === 'number' && visible !== total)
+            ? `${visible} affichée${visible > 1 ? 's' : ''} sur `
+            : '';
+        countLabel.textContent = `${filtered}${total} critique${total > 1 ? 's' : ''}${detail}`;
     }
 
     if (searchInput) {
         searchInput.addEventListener('input', applyListFilters);
     }
+
+    // ── Tri : re-rend la liste dans le nouvel ordre, puis réapplique
+    //    recherche/type (le tri ne doit jamais réinitialiser un filtre actif).
+    function resortAndRender() {
+        renderList(sortReviews(allReviews));
+        applyListFilters();
+    }
+    if (sortBySelect)    sortBySelect.addEventListener('change', resortAndRender);
+    if (sortOrderSelect) sortOrderSelect.addEventListener('change', resortAndRender);
 
     if (typeToggle) {
         typeToggle.querySelectorAll('.reviews-type-btn').forEach(btn => {

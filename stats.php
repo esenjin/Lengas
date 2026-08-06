@@ -733,6 +733,13 @@ $anime_chart_payload = [
                     <div class="kpi-value"><?= $anime_stats['rewatched_series'] ?></div>
                     <div class="kpi-label">Séries revisionnées</div>
                 </div>
+                <?php if ($anime_stats['physical_editions_total'] > 0): ?>
+                    <div class="kpi-card kpi-card--anime">
+                        <img class="kpi-icon" src="https://api.iconify.design/mdi/disc.svg?color=%2338bdf8" width="22" height="22" alt="">
+                        <div class="kpi-value"><?= $anime_stats['physical_editions_total'] ?></div>
+                        <div class="kpi-label">Éditions physiques<?php if ($anime_stats['physical_editions_series'] > 0): ?> <em>(<?= $plural($anime_stats['physical_editions_series'], 'série') ?>)</em><?php endif; ?></div>
+                    </div>
+                <?php endif; ?>
             </div>
         </section>
 

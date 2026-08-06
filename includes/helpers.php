@@ -581,6 +581,10 @@ function sort_series(&$data, $sort_by, $sort_order) {
             return $sort_order === 'asc'
                 ? count($a['volumes']) - count($b['volumes'])
                 : count($b['volumes']) - count($a['volumes']);
+        } elseif ($sort_by === 'rereads') {
+            $a_val = (int) (is_anime($a) ? ($a['rewatch_count'] ?? 0) : ($a['reread_count'] ?? 0));
+            $b_val = (int) (is_anime($b) ? ($b['rewatch_count'] ?? 0) : ($b['reread_count'] ?? 0));
+            return $sort_order === 'asc' ? $a_val - $b_val : $b_val - $a_val;
         } elseif ($sort_by === 'categories') {
             $a_categories = implode(', ', $a['categories'] ?? []);
             $b_categories = implode(', ', $b['categories'] ?? []);

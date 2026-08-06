@@ -56,7 +56,7 @@ form {
     overflow-y: auto;
     z-index: 1000;
     margin-top: 4px;
-    display: block;
+    display: none;
     box-shadow: var(--box-shadow);
 }
 

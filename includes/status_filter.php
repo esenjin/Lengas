@@ -74,6 +74,15 @@ function status_filter_categories($type = null) {
                 'no_review'  => 'Sans critique 📝',
             ],
         ],
+        'physical' => [
+            'label' => 'Édition physique',
+            'multi' => true,
+            'requires_anime' => true,
+            'items' => [
+                'has_physical' => 'Avec édition physique 📀',
+                'no_physical'  => 'Sans édition physique ➖',
+            ],
+        ],
         'rating' => [
             'label' => 'Notation',
             'multi' => true,
@@ -89,6 +98,11 @@ function status_filter_categories($type = null) {
     // Bloc sans objet pour les animés : aucune notion de « lue ailleurs ».
     if ($is_anime) {
         unset($categories['read_elsewhere']);
+    }
+    // Bloc sans objet pour les mangas : aucune notion d'édition physique
+    // suivie sur la fiche (contrairement aux animés, cf. fonctions/anime.php).
+    if (!$is_anime) {
+        unset($categories['physical']);
     }
 
     return $categories;
@@ -119,6 +133,10 @@ function series_matches_status_token($series, $token, $has_review) {
             return $has_review;
         case 'no_review':
             return !$has_review;
+        case 'has_physical':
+            return count($series['editions'] ?? []) > 0;
+        case 'no_physical':
+            return count($series['editions'] ?? []) === 0;
         case 'mature':
             return !empty($series['mature']);
         case 'non_mature':

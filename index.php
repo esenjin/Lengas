@@ -338,6 +338,10 @@ function sort_series(&$data, $sort_by, $sort_order) {
             $a_volumes = count($a['volumes'] ?? []);
             $b_volumes = count($b['volumes'] ?? []);
             return $sort_order === 'asc' ? $a_volumes - $b_volumes : $b_volumes - $a_volumes;
+        } elseif ($sort_by === 'rereads') {
+            $a_val = (int) (is_anime($a) ? ($a['rewatch_count'] ?? 0) : ($a['reread_count'] ?? 0));
+            $b_val = (int) (is_anime($b) ? ($b['rewatch_count'] ?? 0) : ($b['reread_count'] ?? 0));
+            return $sort_order === 'asc' ? $a_val - $b_val : $b_val - $a_val;
         } elseif ($sort_by === 'added_at' || $sort_by === 'read_at') {
             $a_val = series_latest_date($a, $sort_by);
             $b_val = series_latest_date($b, $sort_by);
@@ -433,7 +437,8 @@ $data = array_values(apply_status_filter(
                         <option value="author" <?= $sort_by === 'author' ? 'selected' : '' ?>>Trier par auteur</option>
                         <option value="publisher" <?= $sort_by === 'publisher' ? 'selected' : '' ?>>Trier par éditeur</option>
                         <option value="categories" <?= $sort_by === 'categories' ? 'selected' : '' ?>>Trier par catégories</option>
-                        <option value="volumes" <?= $sort_by === 'volumes' ? 'selected' : '' ?>>Trier par nombre de tomes</option>
+                        <option value="volumes" <?= $sort_by === 'volumes' ? 'selected' : '' ?>>Trier par nombre de <?= htmlspecialchars(type_vocab($current_type, 'items')) ?></option>
+                        <option value="rereads" <?= $sort_by === 'rereads' ? 'selected' : '' ?>>Trier par nombre de <?= htmlspecialchars(is_anime($current_type) ? 'revisionnages' : 'relectures') ?></option>
                         <option value="added_at" <?= $sort_by === 'added_at' ? 'selected' : '' ?>>Trier par date d'ajout</option>
                         <option value="read_at" <?= $sort_by === 'read_at' ? 'selected' : '' ?>>Trier par date de lecture</option>
                     </select>

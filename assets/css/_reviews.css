@@ -48,6 +48,13 @@
     float: right;
 }
 
+/* ── Compteur de critiques ───────────────────────────────────────────────── */
+.reviews-count {
+    color: var(--text-gray);
+    font-size: 0.85rem;
+    margin: -6px 0 14px;
+}
+
 /* ── Barre d'outils de la vue liste ─────────────────────────────────────── */
 .reviews-list-toolbar {
     display: flex;
@@ -69,6 +76,15 @@
 .reviews-search-input:focus {
     outline: none;
     border-color: var(--input-border-focus);
+}
+.reviews-sort-select {
+    width: auto;
+    min-width: 0;
+    flex: 0 0 auto;
+    padding: 7px 30px 7px 10px;
+    margin-bottom: 0;
+    font-size: 0.82rem;
+    background-position: right 8px center;
 }
 
 /* ── Liste des critiques ────────────────────────────────────────────────── */
