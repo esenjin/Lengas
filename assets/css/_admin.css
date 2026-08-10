@@ -108,6 +108,29 @@
 
 
 /* ── Outil « Associer MangaUpdates » (modale Outils) ─────────────────────── */
+
+/* Sélecteur de catégorie à exclure de la recherche */
+.mu-associate-exclude {
+    margin: 14px 0 18px;
+    max-width: 360px;
+}
+
+.mu-associate-exclude label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-white);
+    margin-bottom: 6px;
+    font-size: 0.9em;
+}
+
+.mu-associate-exclude select {
+    margin-bottom: 6px;
+}
+
+.mu-associate-exclude .hint {
+    margin: 0;
+}
+
 .mu-associate-form {
     margin-top: 16px;
     display: flex;

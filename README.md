@@ -66,7 +66,7 @@ Depuis la version 4.0, chaque série porte un **type** : `manga` (regroupant aus
 ### Gestion des séries (Mangathèque)
 - Ajout, modification et suppression de séries
 - Association à une fiche MangaUpdates (URL) pour le suivi du nombre de tomes et du statut de publication
-- Remplissage automatique des URL MangaUpdates en masse via l'outil « Association MangaUpdates » (recherche par titre + auteur)
+- Remplissage automatique des URL MangaUpdates en masse via l'outil « Association MangaUpdates » (recherche par titre + auteur), avec possibilité d'exclure une catégorie de la recherche (ex. les light-novels, dont la publication FR ne suit pas MangaUpdates)
 - Association à une fiche Babelio (URL) pour connaître le nombre de tomes réellement parus en France, via le service Babengas
 
 ### Gestion des séries (Animethèque)

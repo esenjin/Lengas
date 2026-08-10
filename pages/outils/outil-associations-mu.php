@@ -31,12 +31,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         flush();
     };
 
-    // Séries sans URL MangaUpdates.
-    // Périmètre V4 : Mangathèque uniquement (MangaUpdates ne référence pas
-    // d'animés) — même filtrage que mu_assoc_targets().
-    $targets = array_values(array_filter(series_of_type($data, 'manga'), function ($s) {
-        return empty($s['mangaupdates_url']);
-    }));
+    // Séries sans URL MangaUpdates, avec exclusion facultative d'une
+    // catégorie Lengas (ex. « Light Novel », dont la publication FR ne suit
+    // pas MangaUpdates) — même filtrage que mu_assoc_targets().
+    $exclude_category = trim((string)($_GET['exclude_category'] ?? ''));
+    $targets = mu_assoc_targets($data, $exclude_category);
     $total        = count($targets);
     $current      = 0;
     $with_results = 0;
@@ -188,6 +187,21 @@ require __DIR__ . '/_layout_head.php';
         <div class="tools-section">
             <h2>Associer une fiche MU aux séries</h2>
             <p>Recherche automatiquement une fiche MangaUpdates pour chaque série sans URL renseignée (titre + auteur), puis vous laisse valider la bonne correspondance avant l'enregistrement. Selon le nombre de séries, l'opération peut prendre quelques minutes.</p>
+<?php
+$mu_assoc_categories = mu_assoc_available_categories($data);
+if (!empty($mu_assoc_categories)):
+?>
+            <div class="mu-associate-exclude">
+                <label for="mu-associate-exclude-category">Exclure une catégorie de la recherche</label>
+                <select id="mu-associate-exclude-category">
+                    <option value="">Aucune (rechercher toutes les séries)</option>
+<?php foreach ($mu_assoc_categories as $cat): ?>
+                    <option value="<?= htmlspecialchars($cat, ENT_QUOTES) ?>"><?= htmlspecialchars($cat) ?></option>
+<?php endforeach; ?>
+                </select>
+                <p class="hint">Les séries portant cette catégorie ne seront pas incluses dans la recherche.</p>
+            </div>
+<?php endif; ?>
             <button id="mu-associate-btn" class="button button-opt">
                 <span id="mu-associate-text">Recherche des liens</span>
                 <span id="mu-associate-spinner" class="spinner" style="display: none;"></span>

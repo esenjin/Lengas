@@ -74,8 +74,13 @@ function loadMuAssociate() {
     };
     renderProgress();
 
+    const excludeSelect = document.getElementById('mu-associate-exclude-category');
+    const excludeCategory = excludeSelect ? excludeSelect.value : '';
+    const streamUrl = 'outil-associations-mu.php?action=mu_associate_stream' +
+        (excludeCategory ? `&exclude_category=${encodeURIComponent(excludeCategory)}` : '');
+
     let anyMatch = false;
-    const source = new EventSource('outil-associations-mu.php?action=mu_associate_stream');
+    const source = new EventSource(streamUrl);
     muAssociateSource = source;
 
     source.addEventListener('progress', (ev) => {

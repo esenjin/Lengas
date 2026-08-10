@@ -20,12 +20,44 @@ if (!function_exists('mangaupdates_get_id_from_url')) {
 
 // ── Ciblage ─────────────────────────────────────────────────────────────────
 
+// Une série possède-t-elle la catégorie donnée (comparaison insensible à la
+// casse/aux espaces) ? Le champ `categories` d'une série est une liste libre
+// de chaînes (cf. fonctions/series.php).
+function mu_series_has_category(array $series, string $category): bool {
+    if ($category === '') return false;
+    $needle = mb_strtolower(trim($category));
+    foreach ($series['categories'] ?? [] as $c) {
+        if (mb_strtolower(trim((string)$c)) === $needle) return true;
+    }
+    return false;
+}
+
+// Catégories distinctes déjà renseignées sur les séries mangas, triées par
+// ordre alphabétique (insensible à la casse). Alimente le sélecteur
+// d'exclusion de l'outil « Associer MangaUpdates ».
+function mu_assoc_available_categories(array $data): array {
+    $seen = [];
+    foreach (series_of_type($data, 'manga') as $s) {
+        foreach ($s['categories'] ?? [] as $c) {
+            $c = trim((string)$c);
+            if ($c === '') continue;
+            $key = mb_strtolower($c);
+            if (!isset($seen[$key])) $seen[$key] = $c;
+        }
+    }
+    $out = array_values($seen);
+    usort($out, fn($a, $b) => strcasecmp($a, $b));
+    return $out;
+}
+
 // Séries dépourvues d'URL MangaUpdates (cibles de « Associer MangaUpdates »).
 // Périmètre V4 : Mangathèque uniquement (MangaUpdates ne référence pas d'animés).
-function mu_assoc_targets(array $data): array {
+// $exclude_category, si non vide, écarte en plus les séries portant cette
+// catégorie (ex. « Light Novel » dont la publication FR ne suit pas MU).
+function mu_assoc_targets(array $data, string $exclude_category = ''): array {
     return array_values(array_filter(
         series_of_type($data, 'manga'),
-        fn($s) => empty($s['mangaupdates_url'])
+        fn($s) => empty($s['mangaupdates_url']) && !mu_series_has_category($s, $exclude_category)
     ));
 }
 
