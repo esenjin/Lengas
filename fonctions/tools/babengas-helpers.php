@@ -163,6 +163,11 @@ function babengas_callback_url(): ?string {
 // ── Suivi de la campagne en cours ───────────────────────────────────────────
 // Retourne l'état + les résultats intégrés si la campagne est terminée.
 function babengas_campaign_status(array $data, ?string $campagne_id = null): array {
+    // Périmètre V4 : Babelio ne référence que la Mangathèque. Filtrage sur la
+    // copie locale uniquement ($data est reçu par valeur) — même restriction
+    // que babengas_launch_campaign() et babengas_series_without_url().
+    $data = series_of_type($data, 'manga');
+
     if (!babengas_enabled()) {
         return ['success' => false, 'message' => "Babengas n'est pas configuré."];
     }

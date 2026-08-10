@@ -31,8 +31,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         flush();
     };
 
-    // Séries sans URL MangaUpdates
-    $targets = array_values(array_filter($data, function ($s) {
+    // Séries sans URL MangaUpdates.
+    // Périmètre V4 : Mangathèque uniquement (MangaUpdates ne référence pas
+    // d'animés) — même filtrage que mu_assoc_targets().
+    $targets = array_values(array_filter(series_of_type($data, 'manga'), function ($s) {
         return empty($s['mangaupdates_url']);
     }));
     $total        = count($targets);
@@ -105,8 +107,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         return false;
     };
 
-    // Cibles : URL MangaUpdates présente ET aucun genre renseigné
-    $targets = array_values(array_filter($data, function ($s) use ($has_genres) {
+    // Cibles : URL MangaUpdates présente ET aucun genre renseigné.
+    // Périmètre V4 : Mangathèque uniquement — même filtrage que
+    // mu_genres_targets().
+    $targets = array_values(array_filter(series_of_type($data, 'manga'), function ($s) use ($has_genres) {
         return !empty($s['mangaupdates_url']) && !$has_genres($s);
     }));
     $total        = count($targets);

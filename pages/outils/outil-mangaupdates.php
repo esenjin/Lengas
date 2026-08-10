@@ -36,7 +36,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $no_reference_series      = [];
     $failed_series            = [];
 
-    $total          = count($data);
+    // Périmètre V4 : ces vérifications ne concernent que la Mangathèque
+    // (MangaUpdates ne référence pas d'animés). Même filtrage que
+    // get_incomplete_series() côté POST.
+    $targets = series_of_type($data, 'manga');
+
+    $total          = count($targets);
     $current        = 0;
     $force_uncached = isset($_GET['force_uncached']) && $_GET['force_uncached'] === '1';
 
@@ -44,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     // Le cache SQLite (24h) évite de re-solliciter l'API à chaque analyse.
     // Avec force_uncached=1, seules les séries sans cache récent sont rechargées depuis l'API.
 
-    foreach ($data as $series) {
+    foreach ($targets as $series) {
         $current++;
         $sse('progress', [
             'current' => $current,
