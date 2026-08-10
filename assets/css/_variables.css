@@ -4,6 +4,7 @@
 :root {
     /* Couleurs principales */
     --primary-color: #c084fc;
+    --primary-color-rgb: 192, 132, 252;
     --primary-hover: #a855f7;
     --primary-subtle: rgba(192, 132, 252, 0.1);
     --primary-glow: rgba(192, 132, 252, 0.2);

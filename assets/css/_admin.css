@@ -763,6 +763,28 @@
     border-color: rgba(192, 132, 252, 0.4);
 }
 
+/* ── Variantes de couleur, selon la fonction de l'outil ────────────────────
+   Même logique que les variantes .sidebar-link.is-active--* (voir
+   _sidebar.css) : rose pour les mangas, bleu pour les animés, brun pour le
+   mutualisé, violet pour tout ce qui touche au site lui-même. Seule la
+   bordure au survol change de teinte ; le reste de la carte (fond, texte)
+   reste identique pour ne pas nuire à la lisibilité. */
+.tools-index-card--pink:hover {
+    border-color: rgba(var(--sidebar-section-manga-rgb), 0.55);
+}
+
+.tools-index-card--blue:hover {
+    border-color: rgba(var(--sidebar-section-anime-rgb), 0.55);
+}
+
+.tools-index-card--brown:hover {
+    border-color: rgba(var(--sidebar-section-brown-rgb), 0.55);
+}
+
+.tools-index-card--purple:hover {
+    border-color: rgba(192, 132, 252, 0.55);
+}
+
 .tools-index-card-icon {
     flex-shrink: 0;
     opacity: 0.9;
@@ -794,6 +816,19 @@
     font-weight: 600;
     color: var(--primary-color);
     white-space: nowrap;
+}
+
+/* ── Variantes de couleur du bouton « Ouvrir → », assorties à la carte ──── */
+.tools-index-card--pink .tools-index-card-cta {
+    color: var(--sidebar-section-manga);
+}
+
+.tools-index-card--blue .tools-index-card-cta {
+    color: var(--sidebar-section-anime);
+}
+
+.tools-index-card--brown .tools-index-card-cta {
+    color: var(--sidebar-section-brown);
 }
 
 /* ── Pages outil individuelles (pages/outils/outil-*.php) : lien de retour ── */

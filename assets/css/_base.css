@@ -174,7 +174,16 @@ input::placeholder {
     font-size: 0.875em;
 }
 
-/* Scrollbar personnalisée */
+/* Scrollbar personnalisée — violette, en accord avec la couleur principale du
+   site (même teinte que les scrollbars déjà stylées localement dans
+   _series.css et _reviews.css : var(--primary-color), ici via son triplet
+   rgba pour rester discrète). scrollbar-width/scrollbar-color couvrent
+   Firefox, les règles ::-webkit-scrollbar* couvrent Chrome/Edge/Safari. */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--primary-color-rgb, 192, 132, 252), 0.35) var(--background-dark);
+}
+
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -185,10 +194,10 @@ input::placeholder {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--background-lighter);
+    background: rgba(var(--primary-color-rgb, 192, 132, 252), 0.35);
     border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
+    background: rgba(var(--primary-color-rgb, 192, 132, 252), 0.6);
 }
