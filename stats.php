@@ -437,8 +437,8 @@ $anime_chart_payload = [
                 <div class="panel-head">
                     <h3>Cartographie des auteurs</h3>
                     <div class="toggle-group" data-target="authors">
-                        <button class="toggle-btn is-active" data-metric="volumes">Par tomes</button>
-                        <button class="toggle-btn" data-metric="series">Par séries</button>
+                        <button class="toggle-btn" data-metric="volumes">Par tomes</button>
+                        <button class="toggle-btn is-active" data-metric="series">Par séries</button>
                     </div>
                 </div>
                 <div id="treemap-authors" class="apex-chart"></div>
@@ -463,8 +463,8 @@ $anime_chart_payload = [
                 <div class="panel-head">
                     <h3>Cartographie des éditeurs</h3>
                     <div class="toggle-group" data-target="publishers">
-                        <button class="toggle-btn is-active" data-metric="volumes">Par tomes</button>
-                        <button class="toggle-btn" data-metric="series">Par séries</button>
+                        <button class="toggle-btn" data-metric="volumes">Par tomes</button>
+                        <button class="toggle-btn is-active" data-metric="series">Par séries</button>
                     </div>
                 </div>
                 <div id="treemap-publishers" class="apex-chart"></div>
@@ -483,8 +483,8 @@ $anime_chart_payload = [
                     <div class="panel-head">
                         <h3>Genres</h3>
                         <div class="toggle-group" data-target="genres">
-                            <button class="toggle-btn is-active" data-metric="volumes">Par tomes</button>
-                            <button class="toggle-btn" data-metric="series">Par séries</button>
+                            <button class="toggle-btn" data-metric="volumes">Par tomes</button>
+                            <button class="toggle-btn is-active" data-metric="series">Par séries</button>
                         </div>
                     </div>
                     <div id="genres-chart" class="apex-chart"></div>
@@ -493,8 +493,8 @@ $anime_chart_payload = [
                     <div class="panel-head">
                         <h3>Catégories</h3>
                         <div class="toggle-group" data-target="categories">
-                            <button class="toggle-btn is-active" data-metric="volumes">Par tomes</button>
-                            <button class="toggle-btn" data-metric="series">Par séries</button>
+                            <button class="toggle-btn" data-metric="volumes">Par tomes</button>
+                            <button class="toggle-btn is-active" data-metric="series">Par séries</button>
                         </div>
                     </div>
                     <div id="categories-chart" class="apex-chart"></div>
@@ -515,8 +515,8 @@ $anime_chart_payload = [
                 <div class="panel-head">
                     <h3>Top contributeurs</h3>
                     <div class="toggle-group" data-target="contributors-view">
-                        <button class="toggle-btn is-active" data-metric="volumes">Par tomes</button>
-                        <button class="toggle-btn" data-metric="series">Par séries</button>
+                        <button class="toggle-btn" data-metric="volumes">Par tomes</button>
+                        <button class="toggle-btn is-active" data-metric="series">Par séries</button>
                     </div>
                 </div>
                 <div id="bar-contributors" class="apex-chart"></div>
@@ -811,8 +811,8 @@ $anime_chart_payload = [
                     <div class="panel-head">
                         <h3>Genres</h3>
                         <div class="toggle-group" data-target="anime-genres">
-                            <button class="toggle-btn is-active" data-metric="volumes">Par épisodes</button>
-                            <button class="toggle-btn" data-metric="series">Par séries</button>
+                            <button class="toggle-btn" data-metric="volumes">Par épisodes</button>
+                            <button class="toggle-btn is-active" data-metric="series">Par séries</button>
                         </div>
                     </div>
                     <div id="anime-genres-chart" class="apex-chart"></div>
@@ -821,8 +821,8 @@ $anime_chart_payload = [
                     <div class="panel-head">
                         <h3>Formats</h3>
                         <div class="toggle-group" data-target="anime-formats">
-                            <button class="toggle-btn is-active" data-metric="volumes">Par épisodes</button>
-                            <button class="toggle-btn" data-metric="series">Par séries</button>
+                            <button class="toggle-btn" data-metric="volumes">Par épisodes</button>
+                            <button class="toggle-btn is-active" data-metric="series">Par séries</button>
                         </div>
                     </div>
                     <div id="anime-formats-chart" class="apex-chart"></div>
@@ -833,8 +833,8 @@ $anime_chart_payload = [
                 <div class="panel-head">
                     <h3>Top studios</h3>
                     <div class="toggle-group" data-target="anime-studios">
-                        <button class="toggle-btn is-active" data-metric="volumes">Par épisodes</button>
-                        <button class="toggle-btn" data-metric="series">Par séries</button>
+                        <button class="toggle-btn" data-metric="volumes">Par épisodes</button>
+                        <button class="toggle-btn is-active" data-metric="series">Par séries</button>
                     </div>
                 </div>
                 <div id="anime-bar-studios" class="apex-chart"></div>

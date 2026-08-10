@@ -318,11 +318,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const authSeriesByName = {};
         S.authors.forEach(a => { authSeriesByName[a.x] = a.series; });
         charts._authSeriesByName = authSeriesByName;
+        charts._authMetric = 'series';
 
         charts.authorsTree = new ApexCharts(document.getElementById('treemap-authors'), {
             ...apexBase,
             chart: { ...apexBase.chart, type: 'treemap', height: 380 },
-            series: treemapSeries(S.authors, 'volumes'),
+            series: treemapSeries(S.authors, 'series'),
             legend: { show: false },
             colors: [C.primary],
             plotOptions: {
@@ -338,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 custom: function ({ seriesIndex, dataPointIndex, w }) {
                     const pt = w.config.series[seriesIndex].data[dataPointIndex];
                     const series = authSeriesByName[pt.x] ?? 0;
-                    const metric = charts._authMetric || 'volumes';
+                    const metric = charts._authMetric || 'series';
                     const main = metric === 'series' ? `${fmtInt(pt.y)} série(s)` : `${fmtInt(pt.y)} tomes`;
                     const second = metric === 'series' ? '' : ` · ${fmtInt(series)} série(s)`;
                     return `<div class="apex-tip"><b>${pt.x}</b><br>${main}${second}</div>`;
@@ -366,8 +367,9 @@ document.addEventListener('DOMContentLoaded', function () {
         return c;
     }
     if (S.authors && S.authors.length) {
-        const top = S.authors.slice(0, 10).map(a => ({ name: a.x, volumes: a.y, series: a.series }));
-        charts.authorsBar = horizontalBar('bar-authors', top, 'volumes', C.primary, 'Tomes');
+        const top = S.authors.slice().sort((a, b) => b.series - a.series).slice(0, 10)
+            .map(a => ({ name: a.x, volumes: a.y, series: a.series }));
+        charts.authorsBar = horizontalBar('bar-authors', top, 'series', C.primary, 'Séries');
     }
 
     // ── 5. Treemap + barres éditeurs ──────────────────────────────────────────
@@ -376,11 +378,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const pubSeriesByName = {};
         S.publishers.forEach(p => { pubSeriesByName[p.x] = p.series; });
         charts._pubSeriesByName = pubSeriesByName;
+        charts._pubMetric = 'series';
 
         charts.publishersTree = new ApexCharts(document.getElementById('treemap-publishers'), {
             ...apexBase,
             chart: { ...apexBase.chart, type: 'treemap', height: 360 },
-            series: [{ data: S.publishers.map(d => ({ x: d.x, y: d.y })) }],
+            series: [{ data: S.publishers.map(d => ({ x: d.x, y: d.series })) }],
             legend: { show: false },
             colors: [C.sky],
             plotOptions: { treemap: { distributed: true, enableShades: true, shadeIntensity: 0.5 } },
@@ -388,7 +391,7 @@ document.addEventListener('DOMContentLoaded', function () {
             tooltip: { theme: 'dark', custom: function ({ seriesIndex, dataPointIndex, w }) {
                 const pt = w.config.series[seriesIndex].data[dataPointIndex];
                 const series = pubSeriesByName[pt.x] ?? 0;
-                const metric = charts._pubMetric || 'volumes';
+                const metric = charts._pubMetric || 'series';
                 const main = metric === 'series'
                     ? `${fmtInt(pt.y)} série(s)`
                     : `${fmtInt(pt.y)} tomes`;
@@ -401,8 +404,9 @@ document.addEventListener('DOMContentLoaded', function () {
         charts.publishersTree.render();
     }
     if (S.publishers && S.publishers.length) {
-        const top = S.publishers.slice(0, 10).map(p => ({ name: p.x, volumes: p.y, series: p.series }));
-        charts.publishersBar = horizontalBar('bar-publishers', top, 'volumes', C.sky, 'Tomes');
+        const top = S.publishers.slice().sort((a, b) => b.series - a.series).slice(0, 10)
+            .map(p => ({ name: p.x, volumes: p.y, series: p.series }));
+        charts.publishersBar = horizontalBar('bar-publishers', top, 'series', C.sky, 'Séries');
     }
 
     // ── 6. Genres (toggle par tomes / par séries) ─────────────────────────────
@@ -459,7 +463,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
         }
 
-        charts.genres = new ApexCharts(el, buildGenres('volumes'));
+        charts.genres = new ApexCharts(el, buildGenres('series'));
         charts.genres.render();
         charts._buildGenres = buildGenres;
     }
@@ -503,7 +507,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
         }
 
-        charts.categories = new ApexCharts(el, buildCategories('volumes'));
+        charts.categories = new ApexCharts(el, buildCategories('series'));
         charts.categories.render();
         charts._buildCategories = buildCategories;
     }
@@ -530,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 } }
             };
         }
-        charts.contrib = new ApexCharts(document.getElementById('bar-contributors'), contribOpts('volumes'));
+        charts.contrib = new ApexCharts(document.getElementById('bar-contributors'), contribOpts('series'));
         charts.contrib.render();
         charts._contribOpts = contribOpts;
     }
@@ -651,7 +655,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
         }
 
-        animeCharts.genres = new ApexCharts(el, buildAnimeGenres('volumes'));
+        animeCharts.genres = new ApexCharts(el, buildAnimeGenres('series'));
         animeCharts.genres.render();
         animeCharts._buildGenres = buildAnimeGenres;
     }
@@ -695,7 +699,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
         }
 
-        animeCharts.formats = new ApexCharts(el, buildAnimeFormats('volumes'));
+        animeCharts.formats = new ApexCharts(el, buildAnimeFormats('series'));
         animeCharts.formats.render();
         animeCharts._buildFormats = buildAnimeFormats;
     }
@@ -721,7 +725,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 } }
             };
         }
-        animeCharts.studios = new ApexCharts(document.getElementById('anime-bar-studios'), studiosOpts('volumes'));
+        animeCharts.studios = new ApexCharts(document.getElementById('anime-bar-studios'), studiosOpts('series'));
         animeCharts.studios.render();
         animeCharts._studiosOpts = studiosOpts;
     }
