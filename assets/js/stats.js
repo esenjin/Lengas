@@ -560,37 +560,31 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ── 9. Courbes temporelles ────────────────────────────────────────────────
+    // Le premier point de chaque courbe correspond souvent au mois de création
+    // de la bibliothèque (import initial de toute la collection d'un coup) :
+    // sa valeur est fréquemment démesurée par rapport aux mois suivants et
+    // écrase l'échelle du graphique, rendant l'évolution réelle illisible.
+    // On l'exclut donc systématiquement de l'affichage (mangas ET animés),
+    // sans recalculer les valeurs suivantes : pour les courbes cumulées
+    // (growth/reading_growth/watched_growth), la progression à partir du 2e
+    // point reste juste, seul le point de départ n'est plus tracé.
     function lineChart(el, series, name, color, annotation) {
         if (!document.getElementById(el) || !series.length) return;
-        const firstMonth = series[0].month;
+        // Exclut le premier point (mois de création) : ne garde que la suite,
+        // pour ne pas fausser l'échelle du graphique avec un import massif.
+        const trimmed = series.length > 1 ? series.slice(1) : series;
+        if (!trimmed.length) return;
         const opts = {
             ...apexBase,
             chart: { ...apexBase.chart, type: 'area', height: 280, zoom: { enabled: false } },
-            series: [{ name, data: series.map(p => p.value) }],
-            xaxis: { categories: series.map(p => p.month), labels: { style: { colors: C.textGray }, rotate: -45, rotateAlways: false, hideOverlappingLabels: true } },
+            series: [{ name, data: trimmed.map(p => p.value) }],
+            xaxis: { categories: trimmed.map(p => p.month), labels: { style: { colors: C.textGray }, rotate: -45, rotateAlways: false, hideOverlappingLabels: true } },
             stroke: { curve: 'smooth', width: 2.5 },
             fill: { type: 'gradient', gradient: { shadeIntensity: 0.4, opacityFrom: 0.45, opacityTo: 0.05 } },
             colors: [color],
             dataLabels: { enabled: false },
             markers: { size: 0, hover: { size: 4 } }
         };
-        // Annotation "Création de la bibliothèque" sur la première date
-        // (uniquement pour les courbes liées à la collection : achats/croissance)
-        if (firstMonth && annotation !== false) {
-            opts.annotations = {
-                xaxis: [{
-                    x: firstMonth,
-                    borderColor: C.amber,
-                    strokeDashArray: 4,
-                    label: {
-                        text: '📚 Créa. de la biblio.',
-                        orientation: 'horizontal',
-                        position: 'top',
-                        style: { color: '#1a1a28', background: C.amber, fontSize: '11px', fontWeight: 600 }
-                    }
-                }]
-            };
-        }
         new ApexCharts(document.getElementById(el), opts).render();
     }
     lineChart('line-purchases', S.purchases || [], 'Tomes ajoutés', C.primary);
