@@ -156,18 +156,23 @@ Page dédiée organisée en deux onglets, **Mangathèque** (par défaut) et **An
 - Thèmes personnalisés : déposez un fichier `assets/css/_variables-<nom>.css` pour l'ajouter automatiquement à la liste (suivre le même shéma que les thèmes natifs)
 
 ### Outils (une page dédiée par outil)
-Tous les outils du site sont accessibles depuis `pages/page-outils.php`, accessible via l'icône clé à molette du menu latéral : cette page liste chaque outil (icône, nom, description, bouton d'accès) et renvoie vers sa propre page, dans `pages/outils/`.
+Tous les outils du site sont accessibles depuis `pages/page-outils.php`, accessible via l'icône clé à molette du menu latéral : cette page liste chaque outil (icône, nom, description, bouton d'accès) et renvoie vers sa propre page, dans `pages/outils/`. Chaque carte est teintée selon la fonction de l'outil : rose pour la Mangathèque, bleu pour l'Animethèque, brun pour le mutualisé (mangas et animés), violet pour ce qui touche au site lui-même.
 
 - **Vérification via MangaUpdates** (`pages/outils/outil-mangaupdates.php`) : détecte les tomes manquants en comparant votre collection au nombre de tomes indiqué par MangaUpdates (le décompte VF est privilégié lorsqu'il est disponible), avec progression en direct, filtres et ajout des tomes manquants
 - **Vérification via Babengas** (`pages/outils/outil-babengas.php`, visible uniquement si Babengas est configuré et activé) : voir la section dédiée plus bas
 - **Synchronisation via Anilist** (`pages/outils/outil-anilist-sync.php`, visible uniquement si l'Animethèque contient au moins une série) : déclenche la synchronisation automatique des séries animées éligibles (diffusion et visionnage tous deux « en cours »), avec un bouton de forçage qui ignore le verrou de 24 h — voir [Intégration Anilist](#intégration-anilist-animethèque)
 - **Import Anilist** (`pages/outils/outil-anilist-import.php`) : importe en masse la liste ANIME d'un compte Anilist (par pseudo public), avec un écran d'aperçu détaillé avant toute écriture — voir [Intégration Anilist](#intégration-anilist-animethèque)
 - **Vérification des animés** (`pages/outils/outil-anilist-recheck.php`, visible uniquement si l'Animethèque contient au moins une série) : compare chaque série animée à sa fiche Anilist actuelle sur tout ce que la synchronisation automatique ne couvre pas (titres alternatifs, studios, format, genres, vignette…), avec validation explicite avant toute correction
-- **Incohérences** (`pages/outils/outil-coherences.php`) : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome »/« dernier épisode », statut différent de MangaUpdates ou d'Anilist, prêts orphelins, série animée sans identifiant Anilist, épisode terminé sans date, vignette Anilist introuvable, etc.) et propose une édition rapide de la série concernée ; les anomalies factuelles d'une série animée renvoient vers sa fiche Anilist pour correction à la source
+- **Vérification des mangas** (`pages/outils/outil-coherences.php`) : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome »/« dernier épisode », statut différent de MangaUpdates ou d'Anilist, prêts orphelins, série animée sans identifiant Anilist, épisode terminé sans date, vignette Anilist introuvable, etc.) et propose une édition rapide de la série concernée ; les anomalies factuelles d'une série animée renvoient vers sa fiche Anilist pour correction à la source
 - **Sauvegardes** (`pages/outils/outil-sauvegardes.php`) : création et téléchargement d'archives de vos données, ainsi que l'export JSON complet (inclut les tables et les vignettes propres à l'Animethèque)
 - **Association MangaUpdates** (`pages/outils/outil-associations-mu.php`) : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement ; un second outil récupère de la même façon les genres manquants
 - **Groupage de licences** (`pages/outils/outil-groupage-licences.php`) : repère les séries sans licence qui semblent appartenir à la même œuvre (comparaison du nom et, pour les animés, des titres alternatifs Anilist, avec bonus si deux mangas partagent le même auteur ou si deux animés partagent le même studio) et propose de les regrouper. Chaque suggestion se valide individuellement : création d'une nouvelle licence, rattachement à une licence existante détectée automatiquement (avec consultation de son contenu actuel avant de confirmer), rattachement à une autre licence choisie manuellement, ou ignorée. Seuil de similarité ajustable, avec un repère calculé sur le score moyen des licences déjà existantes. Analyse entièrement locale (aucun appel réseau)
-- **Vérification d'intégrité** (`pages/outils/outil-integrite.php`) : compare automatiquement votre instance au dépôt Gitea, **au tag correspondant à votre version installée** (si aucun tag ne correspond, la comparaison se fait avec la version la plus récente et le signale). Pour chaque fichier versionné, elle vérifie la **présence** ET le **contenu** (comparaison d'empreinte : « OK », « Modifié » ou « Manquant »). Elle repère aussi les **fichiers étrangers au dépôt** (présents sur l'instance mais absents du dépôt, hors données `uploads/` `saves/` `bdd/`, config Vestikan, thèmes personnalisés et photo de profil de l'admin), l'**état des modules facultatifs** Vestikan et Babengas (installés ? réellement activés ? service distant fonctionnel ?), la **connectivité à l'API Anilist**, les permissions, les fichiers interdits, les doublons, les images orphelines (la photo de profil de l'admin et les vignettes Anilist actives ne sont jamais considérées comme orphelines), l'accès externe aux dossiers sensibles, la structure de la base de données (y compris les tables et colonnes propres à l'Animethèque), les thèmes personnalisés présents
+- **Vérification d'intégrité du site** (`pages/outils/outil-integrite.php`) : compare automatiquement votre instance au dépôt Gitea, **au tag correspondant à votre version installée** (si aucun tag ne correspond, la comparaison se fait avec la version la plus récente et le signale). Pour chaque fichier versionné, elle vérifie la **présence** ET le **contenu** (comparaison d'empreinte : « OK », « Modifié » ou « Manquant »). Elle repère aussi les **fichiers étrangers au dépôt** (présents sur l'instance mais absents du dépôt, hors données `uploads/` `saves/` `bdd/`, config Vestikan, thèmes personnalisés et photo de profil de l'admin), l'**état des modules facultatifs** Vestikan et Babengas (installés ? réellement activés ? service distant fonctionnel ?), la **connectivité à l'API Anilist**, les permissions, les fichiers interdits, les doublons, les images orphelines (la photo de profil de l'admin et les vignettes Anilist actives ne sont jamais considérées comme orphelines), l'accès externe aux dossiers sensibles, la structure de la base de données (y compris les tables et colonnes propres à l'Animethèque), les thèmes personnalisés présents
+
+### Aperçu de lien (OpenGraph)
+Lorsqu'un lien du site est partagé (Discord, réseaux sociaux, messageries…), un aperçu (titre, description, vignette) est généré automatiquement via `includes/opengraph.php`, inclus dans le `<head>` de chaque page :
+- Sur les pages publiques (Accueil, Statistiques, Historique), l'aperçu reprend le nom et la description du site (page « Options »), sa vignette par défaut, ainsi qu'un résumé du nombre de séries et de tomes/épisodes de chaque collection — en respectant le mode privé et le masquage des séries matures : une collection privée n'expose jamais sa taille
+- Sur toute page d'administration (connexion, `admin.php`, Outils, Options, Profil, Critiques, Licences, Prêts, Liste d'envies…), l'aperçu généré est systématiquement celui de l'accueil : un lien admin partagé par erreur n'expose donc jamais le contenu de la page elle-même
 
 ### Options (page dédiée « Options »)
 Toutes les options du site sont regroupées sur la page `pages/page-options.php`, accessible via l'icône engrenage du menu latéral.
@@ -298,7 +303,7 @@ Elles ne sont pas obligatoire, mais il est recommandé de passer par les version
 2. Extraire l'archive
 3. (facultatif) Supprimer le dossier `uploads/` et le fichier `bdd/lengas.db` de votre site
 4. Déplacer les dossiers `bdd/` et `uploads/` que vous venez d'extraire à la racine de votre site (écraser les fichiers si nécessaire)
-5. (facultatif) Utiliser l'outil de vérification de l'intégrité du site (« Outils » → « Vérification d'intégrité »)
+5. (facultatif) Utiliser l'outil de vérification de l'intégrité du site (« Outils » → « Vérification d'intégrité du site »)
 6. Félicitation, votre base de données est de nouveau là !
 
 ---
@@ -371,11 +376,11 @@ lengas/
 │       ├── outil-anilist-sync.php     # Synchronisation via Anilist
 │       ├── outil-anilist-import.php   # Import Anilist
 │       ├── outil-anilist-recheck.php  # Vérification des animés
-│       ├── outil-coherences.php       # Incohérences de la collection
+│       ├── outil-coherences.php       # Vérification des mangas
 │       ├── outil-sauvegardes.php      # Sauvegardes et export JSON
 │       ├── outil-associations-mu.php  # Association MangaUpdates (fiches + genres)
 │       ├── outil-groupage-licences.php # Groupage de licences (suggestions de regroupement)
-│       └── outil-integrite.php        # Vérification d'intégrité
+│       └── outil-integrite.php        # Vérification d'intégrité du site
 ├── vestikan/              # Connexion SSO Vestikan (facultatif, non versionné pour la config)
 │   ├── vestikan-login.php    # Démarrage de la connexion Vestikan
 │   ├── vestikan-callback.php # Callback OAuth Vestikan
@@ -454,6 +459,7 @@ lengas/
 │   ├── public-profil-modal.php # Modale « Qui suis-je ? », partagée par les pages publiques ci-dessus
 │   ├── custom_icons.php      # Icônes, couleurs et lecture des liens personnalisés (partagé options/sidebar)
 │   ├── themes.php            # Gestion des thèmes (base + personnalisés)
+│   ├── opengraph.php         # Balises OpenGraph/Twitter Card communes à toutes les pages (aperçu de lien)
 │   └── status_filter.php     # Filtrage des séries par statut, adapté au type de série affiché
 ├── fonctions/
 │   ├── series.php        # Fonctions de gestion des séries
@@ -470,12 +476,12 @@ lengas/
 │   ├── tools.php         # Chargeur des outils (inclut fonctions/tools/)
 │   └── tools/            # Un fichier de fonctions par outil
 │       ├── backups.php            # Sauvegardes ZIP et export JSON
-│       ├── integrity.php          # Vérification d'intégrité + infos serveur
+│       ├── integrity.php          # Vérification d'intégrité du site + infos serveur
 │       ├── cleanup.php            # Nettoyages (doublons, images orphelines, fichiers interdits)
 │       ├── mangaupdates_assoc.php # Association des fiches et des genres MangaUpdates
 │       ├── babengas-helpers.php   # Helpers de l'outil Babengas
 │       ├── incomplete.php         # Séries incomplètes (tomes manquants)
-│       ├── coherence.php          # Incohérences de la collection
+│       ├── coherence.php          # Vérification des mangas
 │       ├── anilist_import.php     # Import de masse de la liste Anilist
 │       ├── anilist_sync.php       # Synchronisation automatique des animés en cours
 │       ├── anilist_recheck.php    # Vérification manuelle des animés
