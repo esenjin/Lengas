@@ -690,6 +690,11 @@ $data = array_values(apply_status_filter(
         // Contexte de typage (collection affichée + registre allégé).
         window.currentSeriesType = <?= json_encode($current_type) ?>;
         window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
+        // Taille du lot initial rendu server-side ci-dessus (cf. $per_page_public
+        // en tête de fichier). public.js s'aligne dessus pour son scroll infini :
+        // sans cela, un $per_page_public modifié ici sans toucher au JS ferait
+        // réapparaître les séries déjà affichées en double au premier scroll.
+        window.initialPublicPerPage = <?= json_encode($per_page_public) ?>;
     </script>
     <script src="assets/js/admin/main.js"></script>
     <script src="assets/js/public.js"></script>

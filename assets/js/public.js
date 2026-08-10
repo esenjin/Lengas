@@ -317,9 +317,20 @@ document.querySelectorAll('.series-card').forEach(card => {
 });
 
 // Variables globales pour la pagination
+// Le rendu initial (index.php) affiche déjà les $per_page_public premières
+// séries côté serveur. Le scroll infini doit reprendre juste après ce lot,
+// avec le MÊME per_page — sinon (ancien bug) il repartait de la page 2 avec
+// per_page=12, soit les séries 13 à 24, qui étaient déjà affichées : toute la
+// collection se retrouvait dupliquée dès qu'elle dépassait 12 séries.
+// window.initialPublicPerPage est posé par index.php (valeur de
+// $per_page_public) : lire cette valeur plutôt que la dupliquer en dur ici
+// évite toute désynchronisation si l'une des deux est modifiée sans l'autre.
+const INITIAL_PUBLIC_PER_PAGE = window.initialPublicPerPage || 120;
 let currentPage = 1;
 let isLoading = false;
-let hasMoreSeries = true;
+// S'il y avait déjà moins de séries que le lot initial au chargement, il n'y a
+// rien de plus à charger.
+let hasMoreSeries = document.querySelectorAll('#series-list .series-card').length >= INITIAL_PUBLIC_PER_PAGE;
 
 // Écouteurs pour les liens de recherche depuis stats.php
 document.addEventListener('DOMContentLoaded', function() {
@@ -346,7 +357,7 @@ function loadMoreSeries() {
     const sortBy = currentSortBy || urlParams.get('sort_by') || 'name';
     const sortOrder = currentSortOrder || urlParams.get('sort_order') || 'asc';
 
-    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=12&type=${encodeURIComponent(publicSeriesType())}&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}` + statusFilterQuery())
+    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=${INITIAL_PUBLIC_PER_PAGE}&type=${encodeURIComponent(publicSeriesType())}&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}` + statusFilterQuery())
         .then(response => response.json())
         .then(data => {
             if (data.success && data.series && data.series.length > 0) {
@@ -410,7 +421,7 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
     document.getElementById('series-list').innerHTML = '<p>Chargement des résultats...</p>';
 
     // Charge les résultats via AJAX
-    fetch(`index.php?get_paginated_series=true&page=1&per_page=12&type=${encodeURIComponent(publicSeriesType())}&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}` + statusFilterQuery())
+    fetch(`index.php?get_paginated_series=true&page=1&per_page=${INITIAL_PUBLIC_PER_PAGE}&type=${encodeURIComponent(publicSeriesType())}&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}` + statusFilterQuery())
         .then(response => response.json())
         .then(data => {
             const seriesList = document.getElementById('series-list');
