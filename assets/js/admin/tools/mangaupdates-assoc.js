@@ -74,10 +74,13 @@ function loadMuAssociate() {
     };
     renderProgress();
 
-    const excludeSelect = document.getElementById('mu-associate-exclude-category');
-    const excludeCategory = excludeSelect ? excludeSelect.value : '';
+    const excludeCategories = Array.from(document.querySelectorAll('.mu-associate-exclude-checkbox:checked'))
+        .map(cb => cb.value);
+    const excludeParams = excludeCategories
+        .map(c => `exclude_categories[]=${encodeURIComponent(c)}`)
+        .join('&');
     const streamUrl = 'outil-associations-mu.php?action=mu_associate_stream' +
-        (excludeCategory ? `&exclude_category=${encodeURIComponent(excludeCategory)}` : '');
+        (excludeParams ? `&${excludeParams}` : '');
 
     let anyMatch = false;
     const source = new EventSource(streamUrl);

@@ -20,14 +20,16 @@ if (!function_exists('mangaupdates_get_id_from_url')) {
 
 // ── Ciblage ─────────────────────────────────────────────────────────────────
 
-// Une série possède-t-elle la catégorie donnée (comparaison insensible à la
-// casse/aux espaces) ? Le champ `categories` d'une série est une liste libre
-// de chaînes (cf. fonctions/series.php).
-function mu_series_has_category(array $series, string $category): bool {
-    if ($category === '') return false;
-    $needle = mb_strtolower(trim($category));
+// La série possède-t-elle au moins une des catégories données (comparaison
+// insensible à la casse/aux espaces) ? Le champ `categories` d'une série est
+// une liste libre de chaînes (cf. fonctions/series.php).
+function mu_series_has_any_category(array $series, array $categories): bool {
+    if (empty($categories)) return false;
+    $needles = array_map(fn($c) => mb_strtolower(trim((string)$c)), $categories);
+    $needles = array_filter($needles, fn($c) => $c !== '');
+    if (empty($needles)) return false;
     foreach ($series['categories'] ?? [] as $c) {
-        if (mb_strtolower(trim((string)$c)) === $needle) return true;
+        if (in_array(mb_strtolower(trim((string)$c)), $needles, true)) return true;
     }
     return false;
 }
@@ -52,12 +54,12 @@ function mu_assoc_available_categories(array $data): array {
 
 // Séries dépourvues d'URL MangaUpdates (cibles de « Associer MangaUpdates »).
 // Périmètre V4 : Mangathèque uniquement (MangaUpdates ne référence pas d'animés).
-// $exclude_category, si non vide, écarte en plus les séries portant cette
-// catégorie (ex. « Light Novel » dont la publication FR ne suit pas MU).
-function mu_assoc_targets(array $data, string $exclude_category = ''): array {
+// $exclude_categories, si non vide, écarte en plus les séries portant l'une de
+// ces catégories (ex. « Light Novel » dont la publication FR ne suit pas MU).
+function mu_assoc_targets(array $data, array $exclude_categories = []): array {
     return array_values(array_filter(
         series_of_type($data, 'manga'),
-        fn($s) => empty($s['mangaupdates_url']) && !mu_series_has_category($s, $exclude_category)
+        fn($s) => empty($s['mangaupdates_url']) && !mu_series_has_any_category($s, $exclude_categories)
     ));
 }
 

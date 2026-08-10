@@ -31,11 +31,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         flush();
     };
 
-    // Séries sans URL MangaUpdates, avec exclusion facultative d'une
-    // catégorie Lengas (ex. « Light Novel », dont la publication FR ne suit
-    // pas MangaUpdates) — même filtrage que mu_assoc_targets().
-    $exclude_category = trim((string)($_GET['exclude_category'] ?? ''));
-    $targets = mu_assoc_targets($data, $exclude_category);
+    // Séries sans URL MangaUpdates, avec exclusion facultative d'une ou
+    // plusieurs catégories Lengas (ex. « Light Novel », dont la publication
+    // FR ne suit pas MangaUpdates) — même filtrage que mu_assoc_targets().
+    $exclude_categories = $_GET['exclude_categories'] ?? [];
+    if (!is_array($exclude_categories)) $exclude_categories = [];
+    $exclude_categories = array_values(array_filter(array_map(fn($c) => trim((string)$c), $exclude_categories), fn($c) => $c !== ''));
+    $targets = mu_assoc_targets($data, $exclude_categories);
     $total        = count($targets);
     $current      = 0;
     $with_results = 0;
@@ -192,14 +194,16 @@ $mu_assoc_categories = mu_assoc_available_categories($data);
 if (!empty($mu_assoc_categories)):
 ?>
             <div class="mu-associate-exclude">
-                <label for="mu-associate-exclude-category">Exclure une catégorie de la recherche</label>
-                <select id="mu-associate-exclude-category">
-                    <option value="">Aucune (rechercher toutes les séries)</option>
+                <span class="mu-associate-exclude-label">Exclure des catégories de la recherche</span>
+                <div class="mu-associate-exclude-options">
 <?php foreach ($mu_assoc_categories as $cat): ?>
-                    <option value="<?= htmlspecialchars($cat, ENT_QUOTES) ?>"><?= htmlspecialchars($cat) ?></option>
+                    <label class="mu-associate-exclude-option">
+                        <input type="checkbox" class="mu-associate-exclude-checkbox" value="<?= htmlspecialchars($cat, ENT_QUOTES) ?>">
+                        <span><?= htmlspecialchars($cat) ?></span>
+                    </label>
 <?php endforeach; ?>
-                </select>
-                <p class="hint">Les séries portant cette catégorie ne seront pas incluses dans la recherche.</p>
+                </div>
+                <p class="hint">Les séries portant l'une des catégories cochées ne seront pas incluses dans la recherche.</p>
             </div>
 <?php endif; ?>
             <button id="mu-associate-btn" class="button button-opt">

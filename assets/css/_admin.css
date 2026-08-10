@@ -109,22 +109,54 @@
 
 /* ── Outil « Associer MangaUpdates » (modale Outils) ─────────────────────── */
 
-/* Sélecteur de catégorie à exclure de la recherche */
+/* Sélecteur de catégories à exclure de la recherche */
 .mu-associate-exclude {
     margin: 14px 0 18px;
-    max-width: 360px;
 }
 
-.mu-associate-exclude label {
+.mu-associate-exclude-label {
     display: block;
     font-weight: 600;
     color: var(--text-white);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     font-size: 0.9em;
 }
 
-.mu-associate-exclude select {
-    margin-bottom: 6px;
+.mu-associate-exclude-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.mu-associate-exclude-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background-color: var(--background-medium);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius-sm);
+    padding: 6px 12px;
+    font-size: 0.88em;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.mu-associate-exclude-option:hover {
+    background-color: var(--background-darker);
+    border-color: rgba(255, 255, 255, 0.16);
+}
+
+.mu-associate-exclude-option:has(.mu-associate-exclude-checkbox:checked) {
+    background-color: var(--primary-subtle);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.mu-associate-exclude-checkbox {
+    accent-color: var(--primary-color);
+    flex-shrink: 0;
+    margin: 0;
 }
 
 .mu-associate-exclude .hint {
@@ -252,7 +284,8 @@
 /* ── Page « Outils » : largeur limitée (comme la page Options) ────────────── */
 .tools-page .page-header,
 .tools-page .tools-tabs,
-.tools-page .tools-tab-panel {
+.tools-page .tools-tab-panel,
+.tools-page .tools-section {
     max-width: 900px;
 }
 
