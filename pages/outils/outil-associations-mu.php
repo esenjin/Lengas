@@ -42,6 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $current      = 0;
     $with_results = 0;
     $no_results   = [];
+    $failed       = [];              // séries passées faute d'avoir pu être traitées
+    $rate_limit_notified = false;    // n'informer le client qu'une seule fois
 
     foreach ($targets as $series) {
         $current++;
@@ -51,7 +53,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'name'    => $series['name'],
         ]);
 
-        $candidates = mangaupdates_associate_candidates($series['name'], $series['author'] ?? '', 5);
+        // Quoi qu'il arrive sur cette série (erreur API, exception imprévue,
+        // réponse invalide…), on avance : une série en échec ne doit jamais
+        // bloquer ni interrompre le traitement des suivantes.
+        try {
+            $candidates = mangaupdates_associate_candidates($series['name'], $series['author'] ?? '', 5);
+        } catch (\Throwable $e) {
+            $candidates = [];
+            $failed[] = $series['name'];
+        }
+
+        // Signaler une seule fois au client que l'API MangaUpdates limite les
+        // requêtes (429) : la recherche continue, mais ralentie (backoff
+        // géré dans mangaupdates_curl_with_backoff), et les résultats des
+        // séries suivantes peuvent être partiels tant que la limite est active.
+        if (!$rate_limit_notified && mangaupdates_rate_limit_hits() > 0) {
+            $rate_limit_notified = true;
+            $sse('rate_limited', [
+                'message' => "L'API MangaUpdates limite temporairement les requêtes (erreur 429) : la recherche continue mais ralentit automatiquement.",
+            ]);
+        }
 
         if (!empty($candidates)) {
             $with_results++;
@@ -71,10 +92,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     }
 
     $sse('done', [
-        'success'      => true,
-        'total'        => $total,
-        'with_results' => $with_results,
-        'no_results'   => $no_results,
+        'success'        => true,
+        'total'          => $total,
+        'with_results'   => $with_results,
+        'no_results'     => $no_results,
+        'failed'         => $failed,
+        'rate_limited'   => $rate_limit_notified,
     ]);
     exit;
 }
@@ -118,6 +141,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $current      = 0;
     $with_results = 0;
     $no_results   = [];
+    $failed       = [];
+    $rate_limit_notified = false;
 
     foreach ($targets as $series) {
         $current++;
@@ -127,7 +152,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'name'    => $series['name'],
         ]);
 
-        $genres = mangaupdates_get_genres_from_url($series['mangaupdates_url']);
+        // Une série en échec (erreur API, exception imprévue…) ne doit
+        // jamais bloquer ni interrompre le traitement des suivantes.
+        try {
+            $genres = mangaupdates_get_genres_from_url($series['mangaupdates_url']);
+        } catch (\Throwable $e) {
+            $genres = null;
+            $failed[] = $series['name'];
+        }
+
+        if (!$rate_limit_notified && mangaupdates_rate_limit_hits() > 0) {
+            $rate_limit_notified = true;
+            $sse('rate_limited', [
+                'message' => "L'API MangaUpdates limite temporairement les requêtes (erreur 429) : la recherche continue mais ralentit automatiquement.",
+            ]);
+        }
 
         if (!empty($genres)) {
             $with_results++;
@@ -152,6 +191,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         'total'        => $total,
         'with_results' => $with_results,
         'no_results'   => $no_results,
+        'failed'       => $failed,
+        'rate_limited' => $rate_limit_notified,
     ]);
     exit;
 }

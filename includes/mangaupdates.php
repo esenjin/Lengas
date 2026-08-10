@@ -46,13 +46,16 @@ function mangaupdates_get_id_from_url(string $url): ?int {
 
 // ── Requête cURL réutilisable vers l'API MangaUpdates ─────────────────────────
 // Retourne [$body, $http_code, $curl_error] ($curl_error vide si aucune erreur).
+// Timeout volontairement court (5s) : ces appels se font en boucle (parfois
+// des dizaines par série lors d'une association en masse) et un appel lent
+// ne doit pas monopoliser le budget de temps global de la requête SSE.
 function mangaupdates_curl(string $url, ?string $post_json = null): array {
     $ch = curl_init($url);
     $opts = [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Accept: application/json'],
-        CURLOPT_TIMEOUT        => 10,
-        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_TIMEOUT        => 5,
+        CURLOPT_CONNECTTIMEOUT => 4,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_MAXREDIRS      => 3,
@@ -68,6 +71,53 @@ function mangaupdates_curl(string $url, ?string $post_json = null): array {
     $err  = curl_error($ch);
     curl_close($ch);
     return [$resp === false ? '' : $resp, $code, $err];
+}
+
+// ── Backoff global en cas de 429 (Too Many Requests) ───────────────────────────
+// Compteur en mémoire de process (suffisant : chaque flux SSE tourne dans son
+// propre process PHP-FPM). Dès qu'un 429 est rencontré, toutes les requêtes
+// suivantes de CE flux marquent une pause additionnelle progressive, au lieu
+// de continuer à marteler l'API au même rythme.
+function mangaupdates_register_429(): void {
+    global $mangaupdates_429_count;
+    $mangaupdates_429_count = ($mangaupdates_429_count ?? 0) + 1;
+}
+function mangaupdates_backoff_pause(): void {
+    global $mangaupdates_429_count;
+    $n = $mangaupdates_429_count ?? 0;
+    if ($n <= 0) return;
+    // Pause progressive : 1s, 2s, 4s, ... plafonnée à 10s, en plus du
+    // usleep(120ms) habituel entre deux appels.
+    $seconds = min(10, (int)pow(2, min($n - 1, 4)));
+    sleep($seconds);
+}
+
+// ── Requête cURL avec gestion du rate limit (429) ─────────────────────────────
+// Enveloppe mangaupdates_curl() : si l'API répond 429, enregistre l'événement
+// pour activer le backoff progressif sur les appels suivants et retente une
+// fois après la pause (au lieu d'abandonner immédiatement en silence).
+function mangaupdates_curl_with_backoff(string $url, ?string $post_json = null): array {
+    mangaupdates_backoff_pause();
+
+    [$body, $code, $err] = mangaupdates_curl($url, $post_json);
+
+    if ($code === 429) {
+        mangaupdates_register_429();
+        mangaupdates_backoff_pause();
+        [$body, $code, $err] = mangaupdates_curl($url, $post_json); // une seule retentative
+    }
+
+    return [$body, $code, $err];
+}
+
+// ── État du rate limit pour l'appelant (ex. flux SSE) ─────────────────────────
+// Nombre de fois où un 429 a été rencontré depuis le début du process.
+// Permet à un appelant (comme la boucle SSE de l'outil d'association) de
+// signaler à l'utilisateur que l'API MangaUpdates limite les requêtes, sans
+// avoir à modifier la signature des fonctions de recherche/fetch existantes.
+function mangaupdates_rate_limit_hits(): int {
+    global $mangaupdates_429_count;
+    return $mangaupdates_429_count ?? 0;
 }
 
 // ── Parser le champ « status » de MangaUpdates ────────────────────────────────
@@ -256,7 +306,7 @@ function mangaupdates_search(string $query, int $perpage = 5): array {
     $query = trim($query);
     if ($query === '') return [];
 
-    [$body, $code, $err] = mangaupdates_curl(
+    [$body, $code, $err] = mangaupdates_curl_with_backoff(
         'https://api.mangaupdates.com/v1/series/search',
         json_encode(['search' => $query, 'perpage' => $perpage])
     );
@@ -432,7 +482,7 @@ function get_incomplete_series(array $data): array {
 // le champ principal est vide mais l'édition d'origine est renseignée).
 function mangaupdates_fetch_record(int $series_id): ?array {
     if ($series_id <= 0) return null;
-    [$body, $code, $err] = mangaupdates_curl('https://api.mangaupdates.com/v1/series/' . $series_id);
+    [$body, $code, $err] = mangaupdates_curl_with_backoff('https://api.mangaupdates.com/v1/series/' . $series_id);
     if ($err !== '' || $code !== 200) return null;
     $data = json_decode($body, true);
     if (!is_array($data)) return null;
@@ -558,8 +608,10 @@ function mangaupdates_titles_match(string $a, string $b): bool {
 // enrichit chaque candidat avec ses auteurs, calcule la correspondance titre/auteur,
 // puis trie : (titre+auteur) > auteur > titre > reste.
 // Ne retourne que les $max_shown meilleurs (par défaut 5), mais la recherche porte
-// sur $search_perpage résultats (par défaut 25) pour ne rater aucune correspondance d'auteur.
-function mangaupdates_associate_candidates(string $title, string $author, int $max_shown = 5, int $search_perpage = 25): array {
+// sur $search_perpage résultats (par défaut 10) pour limiter les appels de
+// secours mangaupdates_fetch_record() en cascade (jusqu'à 1 par candidat sans
+// auteur), qui pouvaient auparavant atteindre 25 appels réseau par série.
+function mangaupdates_associate_candidates(string $title, string $author, int $max_shown = 5, int $search_perpage = 10): array {
     $raw    = mangaupdates_search($title, $search_perpage);
     $author = trim($author);
 

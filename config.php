@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '4.1.5');
+define('SITE_VERSION', '4.1.6');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Chemin vers la base de données SQLite

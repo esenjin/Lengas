@@ -70,7 +70,10 @@ function loadMuAssociate() {
             `<span class="progress-spinner"></span>` +
             `Recherche : <strong>${muEscHtml(currentName) || '…'}</strong> ` +
             `<span class="progress-count">(${countText})</span>` +
-            `</p>`;
+            `</p>` +
+            (progress.dataset.rateLimited === '1'
+                ? `<p class="mu-associate-ratelimit-banner">⚠️ L'API MangaUpdates limite temporairement les requêtes : la recherche continue mais ralentit automatiquement.</p>`
+                : '');
     };
     renderProgress();
 
@@ -89,6 +92,12 @@ function loadMuAssociate() {
     source.addEventListener('progress', (ev) => {
         const d = JSON.parse(ev.data);
         current = d.current; total = d.total; currentName = d.name;
+        renderProgress();
+    });
+
+    source.addEventListener('rate_limited', (ev) => {
+        // Affiché une seule fois : bandeau persistant tant que la recherche tourne
+        progress.dataset.rateLimited = '1';
         renderProgress();
     });
 
@@ -185,6 +194,16 @@ function finalizeMuAssociate(d, anyMatch) {
             `<ul>${noRes.map(n => `<li>${muEscHtml(n)}</li>`).join('')}</ul>`;
         results.appendChild(det);
     }
+
+    const failed = (d && d.failed) || [];
+    if (failed.length > 0) {
+        const det = document.createElement('details');
+        det.className = 'mu-associate-noresults mu-associate-failed';
+        det.innerHTML = `<summary>⚠️ ${failed.length} série(s) passée(s) suite à une erreur</summary>` +
+            `<ul>${failed.map(n => `<li>${muEscHtml(n)}</li>`).join('')}</ul>` +
+            `<p class="hint">Ces séries n'ont pas pu être traitées (erreur réseau ou API). Relancez la recherche pour réessayer, elles seront de nouveau incluses tant qu'elles n'ont pas d'URL.</p>`;
+        results.appendChild(det);
+    }
 }
 
 // Enregistre les correspondances sélectionnées
@@ -264,7 +283,10 @@ function loadMuGenres() {
             `<span class="progress-spinner"></span>` +
             `Recherche : <strong>${muEscHtml(currentName) || '…'}</strong> ` +
             `<span class="progress-count">(${countText})</span>` +
-            `</p>`;
+            `</p>` +
+            (progress.dataset.rateLimited === '1'
+                ? `<p class="mu-associate-ratelimit-banner">⚠️ L'API MangaUpdates limite temporairement les requêtes : la recherche continue mais ralentit automatiquement.</p>`
+                : '');
     };
     renderProgress();
 
@@ -275,6 +297,11 @@ function loadMuGenres() {
     source.addEventListener('progress', (ev) => {
         const d = JSON.parse(ev.data);
         current = d.current; total = d.total; currentName = d.name;
+        renderProgress();
+    });
+
+    source.addEventListener('rate_limited', (ev) => {
+        progress.dataset.rateLimited = '1';
         renderProgress();
     });
 
@@ -354,6 +381,16 @@ function finalizeMuGenres(d, anyMatch) {
         det.className = 'mu-associate-noresults';
         det.innerHTML = `<summary>${noRes.length} série(s) sans genre trouvé</summary>` +
             `<ul>${noRes.map(n => `<li>${muEscHtml(n)}</li>`).join('')}</ul>`;
+        results.appendChild(det);
+    }
+
+    const failed = (d && d.failed) || [];
+    if (failed.length > 0) {
+        const det = document.createElement('details');
+        det.className = 'mu-associate-noresults mu-associate-failed';
+        det.innerHTML = `<summary>⚠️ ${failed.length} série(s) passée(s) suite à une erreur</summary>` +
+            `<ul>${failed.map(n => `<li>${muEscHtml(n)}</li>`).join('')}</ul>` +
+            `<p class="hint">Ces séries n'ont pas pu être traitées (erreur réseau ou API). Relancez la recherche pour réessayer.</p>`;
         results.appendChild(det);
     }
 }

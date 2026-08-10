@@ -414,6 +414,17 @@
     margin: 8px 0 0;
     padding-left: 18px;
 }
+.mu-associate-failed summary {
+    color: var(--error-color);
+}
+.mu-associate-ratelimit-banner {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--error-color) 12%, transparent);
+    color: var(--error-color);
+    font-size: 0.85rem;
+}
 
 /* ── Association des genres MangaUpdates ──────────────────────────────────── */
 .mu-genres-form {
