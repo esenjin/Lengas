@@ -141,14 +141,19 @@ function handleMainSearchSelection(item, input) {
 //                    recherche principale, qui traverse les collections) ;
 // opts.restrictType → limite la recherche à une seule collection (champs des
 //                    modales, qui ne concernent que la collection affichée).
+//
+// L'endpoint « get_suggestions » ne vit que dans admin.php : sur une autre
+// page (ex. pages/page-wishlist.php), poser window.suggestionsEndpoint avec
+// le chemin relatif vers admin.php avant que ce script ne s'exécute.
 async function fetchSuggestionsForFields(term, fields, opts = {}) {
     const normalizedTerm = normalizeString(term);
     const extra =
         (opts.withTypes ? '&with_types=1' : '') +
         (opts.restrictType ? `&restrict_type=${encodeURIComponent(opts.restrictType)}` : '');
+    const endpoint = window.suggestionsEndpoint || 'admin.php';
 
     const promises = fields.map(field =>
-        fetch(`admin.php?get_suggestions=true&field=${field}&term=${encodeURIComponent(normalizedTerm)}${extra}`)
+        fetch(`${endpoint}?get_suggestions=true&field=${field}&term=${encodeURIComponent(normalizedTerm)}${extra}`)
             .then(response => response.json())
             .catch(() => [])
     );

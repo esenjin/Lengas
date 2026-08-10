@@ -10,6 +10,7 @@ require 'includes/helpers.php';
 require 'includes/themes.php';
 require_once 'includes/opengraph.php';
 require_once 'includes/anilist.php';
+require 'includes/mangaupdates.php'; // pour le réchauffage de cache après « Ajouter à la collection » (manga)
 require 'fonctions/series.php';
 require 'fonctions/volumes.php';
 require 'fonctions/anime.php';
@@ -64,8 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Passage en collection : la manière dont diverge selon le type.
-    //   • manga : redirige vers admin.php (fiche à compléter à la main) —
-    //     comportement inchangé depuis les versions antérieures.
+    //   • manga : ouvre la modale d'ajout de série de CETTE page, préremplie
+    //     avec le nom/auteur/éditeur de l'entrée — rien n'est écrit en base
+    //     tant que ce formulaire n'est pas enregistré (cf. action
+    //     'add_series_from_wishlist' ci-dessous). L'entrée n'est donc jamais
+    //     retirée de la liste d'envies sur un simple clic sur « + » : cette
+    //     branche se contente de renvoyer l'item à afficher, sans écriture.
     //   • anime : import COMPLET et immédiat depuis Anilist, sans quitter
     //     cette page — on peut ainsi enchaîner plusieurs animés d'affilée
     //     sans aller-retour entre les deux pages.
@@ -105,16 +110,111 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Manga : on ne retire l'entrée qu'en confirmant l'intention, la
-        // finalisation se faisant sur admin.php (préremplissage du formulaire).
-        $result = remove_from_wishlist($wishlist, $index);
-        if ($result['success']) save_wishlist($result['wishlist']);
+        // Manga : aucune écriture ici. On renvoie simplement l'item pour que
+        // le front préremplisse la modale d'ajout de série locale ; c'est
+        // l'enregistrement de ce formulaire (action 'add_series_from_wishlist'
+        // ci-dessous) qui créera la série ET retirera l'entrée, en une seule
+        // opération atomique.
         header('Content-Type: application/json');
         echo json_encode([
-            'success'  => true,
-            'type'     => 'manga',
-            'item'     => $item,
-            'wishlist' => $result['wishlist'],
+            'success' => true,
+            'type'    => 'manga',
+            'index'   => $index,
+            'item'    => $item,
+        ]);
+        exit;
+    }
+
+    // Enregistrement du formulaire d'ajout de série préouvert depuis la
+    // liste d'envies (manga uniquement — les animés passent par la branche
+    // ci-dessus, sans formulaire à remplir). Même jeu de champs que la
+    // modale d'ajout de series.php sur admin.php, upload d'image compris.
+    // add_series_from_wishlist() garantit que l'entrée de la wishlist n'est
+    // retirée QUE si la série a effectivement été créée.
+    if (isset($_POST['add_series_from_wishlist'])) {
+        $index = (int)($_POST['index'] ?? 0);
+
+        $name               = trim($_POST['name'] ?? '');
+        $author             = trim($_POST['author'] ?? '');
+        $publisher          = trim($_POST['publisher'] ?? '');
+        $other_contributors = trim($_POST['other_contributors'] ?? '');
+        $categories         = trim($_POST['categories'] ?? '');
+        $genres             = trim($_POST['genres'] ?? '');
+        $mangaupdates_url   = trim($_POST['mangaupdates_url'] ?? '');
+        $babelio_url        = trim($_POST['babelio_url'] ?? '');
+        $mature             = !empty($_POST['mature']);
+        $favorite           = !empty($_POST['favorite']);
+        $volumes_count      = (int)($_POST['volumes_count'] ?? 1);
+        $volumes_status     = $_POST['volumes_status'] ?? 'à lire';
+        $all_collector      = !empty($_POST['all_collector']);
+        $last_volume        = !empty($_POST['last_volume']);
+        $status             = $_POST['series_status'] ?? 'en cours';
+        $read_elsewhere     = !empty($_POST['read_elsewhere']);
+        $reading_abandoned  = !empty($_POST['reading_abandoned']);
+        $rating             = sanitize_rating($_POST['rating'] ?? '');
+        $reread_count       = max(0, (int)($_POST['reread_count'] ?? 0));
+
+        // Initialiser $image à null par défaut, même logique que admin.php :
+        // un échec de téléversement n'empêche pas l'ajout de la série.
+        $image         = null;
+        $error_message = null;
+        if (!empty($_FILES['image']['name'])) {
+            $image = upload_image($_FILES['image'], $error_message);
+            if ($image === false) {
+                $image = null;
+            }
+        }
+
+        $wishlist = load_wishlist();
+        $item     = $wishlist[$index] ?? null;
+
+        if (!$item || sanitize_series_type($item['type'] ?? '') !== 'manga') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Entrée introuvable ou invalide.']);
+            exit;
+        }
+
+        $series_fields = [
+            'name'               => $name,
+            'author'             => $author,
+            'publisher'          => $publisher,
+            'other_contributors' => $other_contributors,
+            'categories'         => $categories,
+            'genres'             => $genres,
+            'mangaupdates_url'   => $mangaupdates_url,
+            'babelio_url'        => $babelio_url,
+            'mature'             => $mature,
+            'favorite'           => $favorite,
+            'volumes_count'      => $volumes_count,
+            'volumes_status'     => $volumes_status,
+            'all_collector'      => $all_collector,
+            'last_volume'        => $last_volume,
+            'image'              => $image,
+            'status'             => $status,
+            'read_elsewhere'     => $read_elsewhere,
+            'reading_abandoned'  => $reading_abandoned,
+            'rating'             => $rating,
+            'reread_count'       => $reread_count,
+        ];
+
+        $result = add_series_from_wishlist($data, $wishlist, $index, $series_fields);
+
+        if ($result['success']) {
+            save_wishlist($result['wishlist']);
+            // Réchauffer le cache MangaUpdates pour la nouvelle série,
+            // même geste que l'ajout classique depuis admin.php.
+            if ($mangaupdates_url !== '') {
+                $mu_id = mangaupdates_get_id_from_url($mangaupdates_url);
+                if ($mu_id !== null) @mangaupdates_get_volumes($mu_id, true);
+            }
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success'   => $result['success'],
+            'message'   => $result['message'] ?? '',
+            'wishlist'  => $result['wishlist'] ?? $wishlist,
+            'series_id' => $result['series_id'] ?? '',
         ]);
         exit;
     }
@@ -145,6 +245,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 }
+
+// L'endpoint « get_suggestions » (autocomplétion) vit uniquement dans
+// admin.php : autocomplete.js y est redirigé via window.suggestionsEndpoint,
+// posé plus bas dans le <script> de cette page. Pas de duplication ici.
 
 $wishlist = load_wishlist();
 
@@ -327,18 +431,16 @@ $move_candidates = array_map(function ($s) {
             </div>
         </div>
 
-        <!-- Modale "ajouter à la collection" -->
+        <!-- Modale "ajouter à la collection" (animés uniquement : import
+             Anilist direct, il ne s'agit que d'une confirmation avant l'appel
+             réseau. Les mangas passent directement par #add-series-from-wishlist-modal,
+             cf. plus bas, sans confirmation intermédiaire : le formulaire lui-même
+             sert de point de confirmation. -->
         <div class="modal" id="add-from-wishlist-modal">
             <div class="modal-content modal-content--narrow">
                 <span class="close-modal" id="close-add-from-wishlist-modal">&times;</span>
                 <h2>Ajouter à la collection</h2>
-                <p id="afw-manga-text">
-                    La série <strong id="afw-series-name"></strong> va être retirée de votre liste d'envies.
-                </p>
-                <p class="hint" id="afw-manga-hint">
-                    Vous serez redirigé vers l'administration pour finaliser l'ajout. La série sera retirée de la liste d'envies, dès que vous cliquerez sur "continuer", même si l'ajout n'est pas finalisé.
-                </p>
-                <p id="afw-anime-text" hidden>
+                <p id="afw-anime-text">
                     La série animée <strong id="afw-anime-series-name"></strong> va être importée
                     intégralement depuis Anilist et rejoindre l'Animethèque.
                 </p>
@@ -346,6 +448,87 @@ $move_candidates = array_map(function ($s) {
                     <button class="button button-ats" id="afw-confirm-btn">Continuer</button>
                     <button class="button button-ext" id="afw-cancel-btn">Annuler</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Modale "ajouter une série" (mangas uniquement), préremplie depuis
+             une entrée de la liste d'envies. Mêmes champs que la modale
+             d'ajout de admin.php, réutilisés ici pour ne pas quitter la page :
+             l'enregistrement crée la série ET retire l'entrée de la liste
+             d'envies en une seule opération côté serveur (action
+             'add_series_from_wishlist'). Tant que ce formulaire n'est pas
+             soumis, ou s'il échoue, l'entrée reste intacte dans la liste. -->
+        <div class="modal" id="add-series-from-wishlist-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-add-series-from-wishlist-modal">&times;</span>
+                <h2>Ajouter une série</h2>
+                <form id="add-series-from-wishlist-form" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="index" id="asfw-index">
+                    <p>Nom :</p>
+                    <input type="text" name="name" id="asfw-name" placeholder="Nom de la série (obligatoire)" autocomplete="off" required>
+                    <p>Auteur :</p>
+                    <input type="text" name="author" id="asfw-author" placeholder="Nom de l'auteur (obligatoire)" autocomplete="off" required>
+                    <p>Éditeur :</p>
+                    <input type="text" name="publisher" id="asfw-publisher" placeholder="Nom de l'éditeur (obligatoire)" autocomplete="off" required>
+                    <p>Autres contributeurs :</p>
+                    <input type="text" name="other_contributors" id="asfw-other-contributors" placeholder="Autres contributeurs (séparés par des virgules) (facultatif)" autocomplete="off">
+                    <p>Catégories :</p>
+                    <input type="text" name="categories" id="asfw-categories" placeholder="Catégories (séparées par des virgules) (obligatoire)" autocomplete="off" required>
+                    <p>Genres :</p>
+                    <input type="text" name="genres" id="asfw-genres" placeholder="Genres (séparés par des virgules) (facultatif)" autocomplete="off">
+                    <p>Nombre de tomes à créer :</p>
+                    <input type="number" name="volumes_count" id="asfw-volumes-count" placeholder="Nombre de tomes" min="1" value="1" autocomplete="off">
+                    <p>Statut des tomes :</p>
+                    <select name="volumes_status" id="asfw-volumes-status" required>
+                        <option value="à lire">À lire</option>
+                        <option value="en cours">En cours</option>
+                        <option value="terminé">Terminé</option>
+                    </select>
+                    <label>
+                        <input type="checkbox" name="all_collector" id="asfw-all-collector"> Tous en collector ⭐
+                    </label>
+                    <p>Statut de publication de la série :</p>
+                    <select name="series_status" id="asfw-status" required>
+                        <option value="en cours">En cours ▶️</option>
+                        <option value="terminée">Terminée ✅</option>
+                        <option value="en pause">En pause ⏳</option>
+                        <option value="abandonnée">Abandonnée ⛔</option>
+                    </select>
+                    <p>URL MangaUpdates :</p>
+                    <input type="text" name="mangaupdates_url" id="asfw-mangaupdates-url" placeholder="https://www.mangaupdates.com/series/xxxxxxx/nom-de-la-serie (facultatif)" autocomplete="off">
+                    <p class="hint"><a tabindex="0" data-hint="L'URL MangaUpdates sert à détecter les tomes manquants des séries terminées (outil « Séries incomplètes »). Sur mangaupdates.com, ouvrez la fiche de votre série puis copiez l'URL complète. L'outil « Associer MangaUpdates » (modale Outils) peut aussi remplir ce champ automatiquement.">À quoi ça sert ? Où la trouver ?</a></p>
+                    <p>URL Babelio :</p>
+                    <input type="text" name="babelio_url" id="asfw-babelio-url" placeholder="https://www.babelio.com/serie/… (ou …/livres/… pour un one-shot)" autocomplete="off">
+                    <p class="hint"><a tabindex="0" data-hint="L'URL Babelio permet de connaître le nombre de tomes réellement parus en France, via le service Babengas (onglet « Vérification Babelio » de la page Outils). Sur babelio.com, ouvrez la fiche SÉRIE (adresse en /serie/…) et copiez l'URL complète. Pour un one-shot (un seul tome, sans fiche série), collez l'adresse de la fiche du tome (/livres/…).">À quoi ça sert ? Où la trouver ?</a></p>
+                    <label>
+                        <input type="checkbox" name="mature" id="asfw-mature"> Contenu mature 🔞
+                    </label>
+                    <label>
+                        <input type="checkbox" name="favorite" id="asfw-favorite"> Série favorite ❤️
+                    </label>
+                    <label>
+                        <input type="checkbox" name="read_elsewhere" id="asfw-read-elsewhere"> Lue ailleurs 📖
+                    </label>
+                    <p class="hint">Cochez si vous avez lu cette série sans la posséder (chez un ami, en bibliothèque, revendue, etc.).</p>
+                    <label>
+                        <input type="checkbox" name="reading_abandoned" id="asfw-reading-abandoned"> Lecture abandonnée 📕
+                    </label>
+                    <p class="hint">Cochez si vous avez arrêté de lire cette série.</p>
+                    <p>Notation (facultatif) :</p>
+                    <select name="rating" id="asfw-rating">
+                        <option value="">Aucune note ➖</option>
+                        <option value="apprecie">J'ai apprécié ☺️</option>
+                        <option value="mitige">Mi-figue mi-raisin 😑</option>
+                        <option value="deteste">Je n'ai pas aimé 😠</option>
+                    </select>
+                    <p>Nombre de relectures (facultatif) :</p>
+                    <input type="number" name="reread_count" id="asfw-reread-count" min="0" step="1" value="0" autocomplete="off">
+                    <p>Vignette :</p>
+                    <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp">
+                    <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
+                    <p class="hint">Cette série sera ajoutée à votre collection et retirée de la liste d'envies dès l'enregistrement.</p>
+                    <button type="submit" name="add_series_from_wishlist" id="asfw-submit-btn">Enregistrer</button>
+                </form>
             </div>
         </div>
 
@@ -394,12 +577,23 @@ $move_candidates = array_map(function ($s) {
 
     <script src="../assets/js/admin/anime.js"></script>
     <script>
+        // Redirige l'endpoint d'autocomplétion (assets/js/admin/autocomplete.js)
+        // vers admin.php, qui vit à la racine du projet — cette page est dans
+        // pages/. Doit être posé AVANT le chargement d'autocomplete.js, qui
+        // interroge cet endpoint dès son exécution.
+        window.suggestionsEndpoint = '../admin.php';
+    </script>
+    <script src="../assets/js/admin/autocomplete.js"></script>
+    <script>
         // Registre des types (libellés, couleurs) : seule source de vérité,
         // partagée avec admin.php et index.php. Aucun libellé ni couleur ne
         // doit être écrit en dur plus bas.
         window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
 
         let wishlistData = <?= json_encode(array_values($wishlist)) ?>;
+        // Entrée animée en attente de confirmation d'import Anilist (modale
+        // #add-from-wishlist-modal). Les mangas n'utilisent plus cette
+        // variable : voir pendingAddSeriesFromWishlistIndex plus bas.
         let pendingAddFromWishlist = null;
 
         // Collection complète (mangas + animés), pour le module « Déplacer
@@ -574,14 +768,21 @@ $move_candidates = array_map(function ($s) {
                 btn.addEventListener('click', function() {
                     const index = parseInt(this.dataset.index);
                     const item  = wishlistData[index];
-                    pendingAddFromWishlist = { index, item };
-                    const isAnime = item.type === 'anime';
-                    document.getElementById('afw-manga-text').hidden = isAnime;
-                    document.getElementById('afw-manga-hint').hidden = isAnime;
-                    document.getElementById('afw-anime-text').hidden = !isAnime;
-                    document.getElementById('afw-series-name').textContent = item.name;
-                    document.getElementById('afw-anime-series-name').textContent = item.name;
-                    document.getElementById('add-from-wishlist-modal').classList.add('modal-active');
+
+                    if (item.type === 'anime') {
+                        // Animé : import Anilist direct, la modale ne sert
+                        // que de confirmation avant l'appel réseau.
+                        pendingAddFromWishlist = { index, item };
+                        document.getElementById('afw-anime-series-name').textContent = item.name;
+                        document.getElementById('add-from-wishlist-modal').classList.add('modal-active');
+                        return;
+                    }
+
+                    // Manga : ouverture directe de la modale d'ajout de
+                    // série, préremplie avec les infos déjà connues. Aucune
+                    // écriture n'a lieu tant que ce formulaire n'est pas
+                    // enregistré (cf. openAddSeriesFromWishlistModal()).
+                    openAddSeriesFromWishlistModal(index, item);
                 });
             });
 
@@ -694,10 +895,14 @@ $move_candidates = array_map(function ($s) {
             }
         });
 
-        // ── Ajouter depuis wishlist → collection ──────────────────────────────
+        // ── Ajouter depuis wishlist → collection (animés uniquement) ──────────
+        // Les mangas passent désormais par #add-series-from-wishlist-modal
+        // (cf. plus bas), sans confirmation intermédiaire : le formulaire lui
+        // même sert de point de confirmation, et rien n'est écrit tant qu'il
+        // n'est pas soumis.
         document.getElementById('afw-confirm-btn').addEventListener('click', async function() {
             if (!pendingAddFromWishlist) return;
-            const { index, item } = pendingAddFromWishlist;
+            const { index } = pendingAddFromWishlist;
             const confirmBtn = this;
             confirmBtn.disabled = true;
             try {
@@ -714,25 +919,14 @@ $move_candidates = array_map(function ($s) {
                     return;
                 }
 
-                if (data.type === 'anime') {
-                    // Import déjà terminé côté serveur : direction admin.php,
-                    // avec la modale d'édition de la série fraîchement importée
-                    // déjà ouverte (pour le tag favori, la note, les
-                    // revisionnages, etc.) — plutôt que de rester ici où il n'y
-                    // a plus rien à faire pour cette série.
-                    const params = new URLSearchParams({ type: 'anime' });
-                    if (data.series_id) params.set('open_edit_anime', data.series_id);
-                    window.location.href = '../admin.php?' + params.toString();
-                } else {
-                    renderWishlist(data.wishlist);
-                    const params = new URLSearchParams({
-                        prefill_name:      item.name,
-                        prefill_author:    item.author,
-                        prefill_publisher: item.publisher,
-                        open_add_series:   '1'
-                    });
-                    window.location.href = '../admin.php?' + params.toString();
-                }
+                // Import déjà terminé côté serveur : direction admin.php,
+                // avec la modale d'édition de la série fraîchement importée
+                // déjà ouverte (pour le tag favori, la note, les
+                // revisionnages, etc.) — plutôt que de rester ici où il n'y
+                // a plus rien à faire pour cette série.
+                const params = new URLSearchParams({ type: 'anime' });
+                if (data.series_id) params.set('open_edit_anime', data.series_id);
+                window.location.href = '../admin.php?' + params.toString();
             } finally {
                 confirmBtn.disabled = false;
                 pendingAddFromWishlist = null;
@@ -744,6 +938,80 @@ $move_candidates = array_map(function ($s) {
             pendingAddFromWishlist = null;
         });
 
+        // ── Ajouter une série depuis la wishlist (mangas) ──────────────────────
+        // Ouvre #add-series-from-wishlist-modal directement, préremplie avec
+        // les infos déjà connues de l'entrée. Rien n'est envoyé au serveur à
+        // l'ouverture : seule la soumission du formulaire (plus bas) crée la
+        // série et retire l'entrée, en une seule opération atomique côté PHP.
+        let pendingAddSeriesFromWishlistIndex = null;
+
+        function openAddSeriesFromWishlistModal(index, item) {
+            pendingAddSeriesFromWishlistIndex = index;
+            const form = document.getElementById('add-series-from-wishlist-form');
+            form.reset();
+            document.getElementById('asfw-index').value       = index;
+            document.getElementById('asfw-name').value        = item.name || '';
+            document.getElementById('asfw-author').value      = item.author || '';
+            document.getElementById('asfw-publisher').value   = item.publisher || '';
+            document.getElementById('add-series-from-wishlist-modal').classList.add('modal-active');
+        }
+
+        // Suggestions d'autocomplétion (assets/js/admin/autocomplete.js) sur
+        // les champs de cette modale, identiques à celles de admin.php :
+        // window.currentSeriesType n'est pas posé sur cette page, donc
+        // currentViewType() retombe sur 'manga' par défaut — cohérent, cette
+        // modale ne créant que des mangas.
+        setupAutocomplete('asfw-name', ['name']);
+        setupAutocomplete('asfw-author', ['author', 'other_contributors']);
+        setupAutocomplete('asfw-publisher', ['publisher']);
+        setupMultiAutocomplete('asfw-other-contributors', ['author', 'other_contributors']);
+        setupMultiAutocomplete('asfw-categories', ['categories']);
+        setupMultiAutocomplete('asfw-genres', ['genres']);
+
+        // Mêmes suggestions sur le formulaire d'ajout rapide manga en haut de
+        // page (déjà référencées par autocomplete.js, mais inertes tant que
+        // ce script n'était pas chargé ici).
+        setupAutocomplete('wishlist-author', ['author', 'other_contributors']);
+        setupAutocomplete('wishlist-publisher', ['publisher']);
+
+        document.getElementById('add-series-from-wishlist-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (pendingAddSeriesFromWishlistIndex === null) return;
+
+            const submitBtn = document.getElementById('asfw-submit-btn');
+            submitBtn.disabled = true;
+            const originalLabel = submitBtn.textContent;
+            submitBtn.textContent = 'Enregistrement…';
+
+            try {
+                const formData = new FormData(this);
+                formData.set('add_series_from_wishlist', 'true');
+                formData.set('index', pendingAddSeriesFromWishlistIndex);
+
+                const res = await fetch('page-wishlist.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (!data.success) {
+                    showCustomAlert('Erreur', data.message || "L'ajout à la collection a échoué.");
+                    return;
+                }
+
+                document.getElementById('add-series-from-wishlist-modal').classList.remove('modal-active');
+                pendingAddSeriesFromWishlistIndex = null;
+                renderWishlist(data.wishlist);
+                showCustomAlert('Ajoutée', data.message || 'Série ajoutée à votre collection.');
+            } catch (err) {
+                console.error('Erreur:', err);
+                showCustomAlert('Erreur', "Une erreur est survenue lors de l'ajout à la collection.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalLabel;
+            }
+        });
+
         // ── Fermeture modales ─────────────────────────────────────────────────
         document.getElementById('close-edit-wishlist-modal').addEventListener('click', () => {
             document.getElementById('edit-wishlist-modal').classList.remove('modal-active');
@@ -751,11 +1019,18 @@ $move_candidates = array_map(function ($s) {
         document.getElementById('close-add-from-wishlist-modal').addEventListener('click', () => {
             document.getElementById('add-from-wishlist-modal').classList.remove('modal-active');
         });
+        document.getElementById('close-add-series-from-wishlist-modal').addEventListener('click', () => {
+            document.getElementById('add-series-from-wishlist-modal').classList.remove('modal-active');
+            pendingAddSeriesFromWishlistIndex = null;
+        });
 
         window.addEventListener('click', e => {
-            ['edit-wishlist-modal','add-from-wishlist-modal','custom-confirm-modal','custom-alert-modal'].forEach(id => {
+            ['edit-wishlist-modal','add-from-wishlist-modal','add-series-from-wishlist-modal','custom-confirm-modal','custom-alert-modal'].forEach(id => {
                 const m = document.getElementById(id);
-                if (e.target === m) m.classList.remove('modal-active');
+                if (e.target === m) {
+                    m.classList.remove('modal-active');
+                    if (id === 'add-series-from-wishlist-modal') pendingAddSeriesFromWishlistIndex = null;
+                }
             });
         });
 

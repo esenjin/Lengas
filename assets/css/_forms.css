@@ -10,7 +10,9 @@ form {
 #add-series-modal input:required,
 #add-series-modal select:required,
 #edit-series-modal input:required,
-#edit-series-modal select:required {
+#edit-series-modal select:required,
+#add-series-from-wishlist-modal input:required,
+#add-series-from-wishlist-modal select:required {
     background-color: var(--input-bg-required, var(--input-bg));
     border-color: var(--input-border-required, var(--input-border));
 }

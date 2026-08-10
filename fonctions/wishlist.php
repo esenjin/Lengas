@@ -348,6 +348,67 @@ function move_series_to_wishlist(array $data, array $wishlist, string $series_id
     ];
 }
 
+// Passage en collection d'une entrée manga : création complète de la série
+// (mêmes champs que la modale d'ajout d'admin.php, gérée ici par
+// add_series()) puis retrait de l'entrée de la wishlist — en une seule
+// opération côté appelant, pour que l'entrée ne disparaisse de la liste
+// d'envies QUE si la série a effectivement été créée. Contrairement à
+// add_anime_from_wishlist(), les champs de la série sont fournis par
+// l'appelant (saisis/édités dans la modale d'ajout, préremplie mais
+// modifiable), pas relus depuis l'entrée de la wishlist elle-même.
+//
+// $index doit correspondre à une entrée de type 'manga' : à l'appelant de le
+// vérifier (cf. page-wishlist.php), cette fonction ne le revérifie pas.
+//
+// Dépend de fonctions/series.php (add_series()) : ce fichier doit être
+// chargé par l'appelant.
+function add_series_from_wishlist(array $data, array $wishlist, int $index, array $series_fields): array {
+    if (!isset($wishlist[$index])) {
+        return ['success' => false, 'message' => 'Index invalide.'];
+    }
+
+    $result = add_series(
+        $data,
+        $series_fields['name'],
+        $series_fields['author'],
+        $series_fields['publisher'],
+        $series_fields['other_contributors'],
+        $series_fields['categories'],
+        $series_fields['genres'],
+        $series_fields['mangaupdates_url'],
+        $series_fields['babelio_url'],
+        $series_fields['mature'],
+        $series_fields['favorite'],
+        $series_fields['volumes_count'],
+        $series_fields['volumes_status'],
+        $series_fields['all_collector'],
+        $series_fields['last_volume'],
+        $series_fields['image'],
+        $series_fields['status'],
+        $series_fields['read_elsewhere'],
+        $series_fields['reading_abandoned'],
+        $series_fields['rating'],
+        'manga',
+        $series_fields['reread_count']
+    );
+
+    if (!$result['success']) {
+        return ['success' => false, 'message' => $result['message'] ?? "L'ajout a échoué."];
+    }
+
+    $remove = remove_from_wishlist($wishlist, $index);
+
+    return [
+        'success'   => true,
+        'data'      => $result['data'],
+        'wishlist'  => $remove['success'] ? $remove['wishlist'] : $wishlist,
+        'message'   => $result['message'],
+        // Dernière série ajoutée = la nouvelle (add_series() l'append) :
+        // permet à l'appelant de connaître son id sans la rechercher par nom.
+        'series_id' => $result['data'][count($result['data']) - 1]['id'] ?? '',
+    ];
+}
+
 // La série a-t-elle au moins un tome actuellement prêté ? (mangas uniquement —
 // les animés ne se prêtent jamais, cf. fonctions/loans.php). Sert à avertir
 // l'admin avant un déplacement vers la liste d'envies, qui retire la série
