@@ -644,6 +644,30 @@ function coherence_quick_edit(array &$data, array $input): array {
         usort($data[$idx]['volumes'], fn($a, $b) => $a['number'] - $b['number']);
     }
 
+    // Synchroniser le statut de la série avec l'état du tag "dernier tome",
+    // comme le fait update_volume() (fonctions/volumes.php) — sans quoi un
+    // tome coché/décoché "dernier" depuis cette modale peut se retrouver en
+    // désaccord avec le statut, et se faire aussitôt re-signaler par l'outil
+    // ("Un tome est tagué dernier mais la série n'est pas marquée comme
+    // terminée."). On ne touche cependant pas un statut déjà "abandonnée" ou
+    // "en pause" fourni explicitement ci-dessus (ligne "Statut de
+    // publication") : seule l'oscillation "en cours" <-> "terminée" est prise
+    // en charge automatiquement, exactement comme côté fiche série.
+    if ($new_status === '') {
+        $current_series_status = $data[$idx]['status'] ?? 'en cours';
+        $has_last = false;
+        foreach ($data[$idx]['volumes'] as $v) {
+            if (!empty($v['last'])) { $has_last = true; break; }
+        }
+
+        if ($has_last && $current_series_status === 'en cours') {
+            $data[$idx]['status'] = 'terminée';
+        }
+        if (!$has_last && $current_series_status === 'terminée') {
+            $data[$idx]['status'] = 'en cours';
+        }
+    }
+
     upsert_series_row($data[$idx]);
     replace_series_volumes($series_id, $data[$idx]['volumes']);
 

@@ -181,7 +181,17 @@ function add_volume_to_series($data, $series_id, $volume_number, $status, $is_co
             'added_at' => date('Y-m-d'),
             'read_at' => ($status === 'terminé') ? date('Y-m-d') : ''
         ];
+
+        // Synchroniser le statut de la série avec le tag "dernier tome",
+        // comme le fait update_volume() ci-dessous — sans quoi un tome ajouté
+        // ici en cochant "dernier" laisse la série en "en cours" et se fait
+        // aussitôt signaler par l'outil « Vérification des mangas ».
+        if ($is_last && ($data[$series_index]['status'] ?? 'en cours') === 'en cours') {
+            $data[$series_index]['status'] = 'terminée';
+        }
+
         replace_series_volumes($series_id, $data[$series_index]['volumes']);
+        upsert_series_row($data[$series_index]);
         return ['success' => true, 'data' => $data];
     } else {
         return ['success' => false, 'message' => "Le tome $volume_number existe déjà."];
@@ -236,7 +246,16 @@ function add_multiple_volumes_to_series($data, $series_id, $volumes_count, $stat
         return ['success' => false, 'message' => "Les tomes " . implode(', ', $existing_volumes) . " existent déjà."];
     }
 
+    // Synchroniser le statut de la série avec le tag "dernier tome", comme le
+    // fait update_volume() ci-dessous — sans quoi une série dont le dernier
+    // tome ajouté est coché "dernier" reste "en cours" et se fait aussitôt
+    // signaler par l'outil « Vérification des mangas ».
+    if ($is_last && ($data[$series_index]['status'] ?? 'en cours') === 'en cours') {
+        $data[$series_index]['status'] = 'terminée';
+    }
+
     replace_series_volumes($series_id, $data[$series_index]['volumes']);
+    upsert_series_row($data[$series_index]);
 
     return ['success' => true, 'data' => $data];
 }
