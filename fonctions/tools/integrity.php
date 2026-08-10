@@ -1,6 +1,6 @@
 <?php
 // ────────────────────────────────────────────────────────────────────────────
-// fonctions/tools/integrity.php — Outil « Vérification d'intégrité »
+// fonctions/tools/integrity.php — Outil « Vérification d'intégrité du site »
 //
 // Compare l'instance locale au dépôt Gitea, au TAG correspondant à la version
 // installée (SITE_VERSION). Pour chaque fichier versionné : présence + contenu

@@ -1,6 +1,6 @@
 <?php
 // ────────────────────────────────────────────────────────────────────────────
-// fonctions/tools/coherence.php — Outil « Incohérences »
+// fonctions/tools/coherence.php — Outil « Vérification des mangas »
 //
 // Analyse des anomalies internes de la collection (doublons, numéros
 // manquants, mauvais tag « dernier tome », statut divergent de MangaUpdates,
@@ -514,7 +514,7 @@ function anime_coherence_has_fixable(array $problems): bool {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Édition rapide d'une série animée depuis l'outil « Incohérences »
+// Édition rapide d'une série animée depuis l'outil « Vérification des mangas »
 // ────────────────────────────────────────────────────────────────────────────
 // Volontairement plus étroit que coherence_quick_edit() (mangas) : seuls le
 // statut de visionnage et la date de chaque épisode sont modifiables. Aucun
@@ -557,7 +557,7 @@ function coherence_quick_edit_anime(array &$data, array $input): array {
     return ['success' => true, 'series' => $refound ? $refound['data'] : null];
 }
 
-// ── Édition rapide depuis l'outil « Incohérences » (mangas) ─────────────────
+// ── Édition rapide depuis l'outil « Vérification des mangas » ─────────────────
 // Applique en une passe : statut de publication, « lue ailleurs », suppressions
 // de tomes (par index), mises à jour de tomes existants et ajouts de tomes.
 // Retourne la série mise à jour pour permettre un rafraîchissement sans rechargement.

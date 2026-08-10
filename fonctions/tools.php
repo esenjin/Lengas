@@ -12,7 +12,7 @@
 //   mangaupdates_assoc.php → Association des fiches et des genres MangaUpdates
 //   incomplete.php          → Séries incomplètes (tomes manquants)
 //   babengas-helpers.php   → Vérification du décompte VF via Babelio (Babengas)
-//   coherence.php          → Incohérences de la collection
+//   coherence.php          → Vérification des mangas
 //   anilist_import.php     → Import de masse de la liste Anilist
 //   anilist_sync.php       → Synchronisation automatique Anilist
 //   anilist_recheck.php    → Vérification manuelle des animés

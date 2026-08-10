@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────
-// assets/js/admin/tools/integrity.js — Outil « Vérification d'intégrité »
+// assets/js/admin/tools/integrity.js — Outil « Vérification d'intégrité du site »
 //
 // Compare l'instance au dépôt Gitea (au tag de la version installée) :
 // présence ET contenu (hash git-blob) de chaque fichier versionné, fichiers
@@ -501,7 +501,7 @@ function displayIntegrityResults(results) {
     }
 }
 
-// Vérification d'intégrité : bouton de la section dédiée de la page « Outils »
+// Vérification d'intégrité du site : bouton de la section dédiée de la page « Outils »
 document.addEventListener('click', (e) => {
     if (!e.target.closest('#check-integrity-btn')) return;
     const button   = document.getElementById('check-integrity-btn');

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────
-// assets/js/admin/tools/coherence.js — Outil « Incohérences »
+// assets/js/admin/tools/coherence.js — Outil « Vérification des mangas »
 //
 // Analyse des anomalies de la collection, rendu de la liste des problèmes,
 // filtres par type et modale d'édition rapide d'une série.
@@ -265,7 +265,7 @@ function renderCoherences(issues) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Modale d'édition rapide depuis Incohérences
+// Modale d'édition rapide depuis Vérification des mangas
 // ──────────────────────────────────────────────────────────────────────────────
 
 // Délégation : clic sur un bouton « Modifier » dans la liste des incohérences
@@ -551,7 +551,7 @@ function applyCoherenceFilter(_filter) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Modale d'édition rapide « animé » depuis l'outil « Incohérences »
+// Modale d'édition rapide « animé » depuis l'outil « Vérification des mangas »
 // ──────────────────────────────────────────────────────────────────────────────
 // Volontairement plus étroite que la modale manga : seuls le statut de
 // visionnage et sa date se corrigent ici. Pas d'ajout/suppression d'épisode,
