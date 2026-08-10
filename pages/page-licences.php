@@ -8,6 +8,7 @@ require 'config.php';
 require 'includes/auth.php';
 require 'includes/helpers.php';
 require 'includes/themes.php';
+require_once 'includes/opengraph.php';
 require 'fonctions/series.php';
 require 'fonctions/options.php';
 require 'fonctions/licenses.php';
@@ -96,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['license_action'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Licences — <?= htmlspecialchars($options['site_name'] ?? 'Lengas') ?></title>
     <meta name="description" content="Regroupement de séries sous une même licence.">
+    <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
     <link rel="stylesheet" href="../assets/css/main.css">
     <?= theme_link_tag($options) ?>

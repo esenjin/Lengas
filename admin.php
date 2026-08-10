@@ -17,6 +17,7 @@ require 'fonctions/tools.php';
 require 'fonctions/reviews.php';
 require 'includes/custom_icons.php';
 require 'includes/themes.php';
+require_once 'includes/opengraph.php';
 require_once 'vestikan/vestikan.php';
 
 // Rétro-compatibilité V4 : type 'manga' pour les séries héritées (une seule fois).
@@ -803,7 +804,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
     // dès que son cache local a expiré, ce qui rendrait le simple affichage de
     // la liste bien plus lent — pouvant aller jusqu'à une requête HTTP par
     // série de la page, en série. Ce contrôle reste disponible à la demande
-    // dans l'outil « Incohérences » (page Outils), qui reste le bon endroit
+    // dans l'outil « Vérification des mangas » (page Outils), qui reste le bon endroit
     // pour ce genre de vérification ponctuelle.
     if ($light_mode) {
         $loaned_by_series = loans_by_series(load_loans());
@@ -970,7 +971,7 @@ if ($search_term) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($options['admin_page_title']) ?></title>
     <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
-    <meta property="og:image" content="assets/img/logo.png">
+    <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
     <?= theme_link_tag($options) ?>

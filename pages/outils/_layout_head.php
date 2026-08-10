@@ -17,6 +17,7 @@ $tool_subtitle = $tool_subtitle ?? '';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($tool_title) ?> — <?= htmlspecialchars($options['site_name'] ?? 'Lengas') ?></title>
     <meta name="description" content="Outils de maintenance et de vérification de la collection.">
+    <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="../../assets/img/favicon.ico">
     <link rel="stylesheet" href="../../assets/css/main.css">
     <?= theme_link_tag($options) ?>

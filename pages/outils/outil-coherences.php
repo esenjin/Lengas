@@ -1,6 +1,6 @@
 <?php
 // ────────────────────────────────────────────────────────────────────────────
-// pages/outils/outil-coherences.php — Outil « Incohérences »
+// pages/outils/outil-coherences.php — Outil « Vérification des mangas »
 //
 // Repère les anomalies de la collection (doublons, numéros manquants, mauvais
 // tag « dernier tome »/« dernier épisode », statut différent de MangaUpdates
@@ -15,7 +15,7 @@ require __DIR__ . '/_bootstrap.php';
 // ENDPOINTS
 // ============================================================================
 
-// ── Outils « Incohérences » : actions POST ────────────────────────────────────
+// ── Outils « Vérification des mangas » : actions POST ─────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
     $response = ['success' => false, 'message' => 'Action inconnue.'];
 
@@ -38,13 +38,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
     exit;
 }
 
-$tool_title    = 'Incohérences de la collection';
+$tool_title    = 'Vérification des mangas';
 $tool_subtitle = 'Repère les anomalies internes de vos séries et propose une correction rapide.';
 require __DIR__ . '/_layout_head.php';
 ?>
 
         <div class="tools-section">
-            <h2>Incohérences de la collection</h2>
+            <h2>Vérification des mangas</h2>
             <p>Vérification des incohérences internes de vos séries (doublons, numéros manquants, mauvais tag « dernier tome », prêts orphelins…). Cet outil exploite aussi le statut de publication MangaUpdates mis en cache.</p>
             <?php if (!empty(series_of_type($data, 'anime'))): ?>
             <p class="hint">Couvre aussi l'Animethèque : épisodes manquants ou en double, mauvais tag « dernier épisode », épisode terminé sans date, vignette Anilist introuvable, série sans identifiant Anilist. Les anomalies qui viennent d'Anilist (statut de diffusion, fiche incomplète…) ne se corrigent pas ici : le rapport renvoie vers la fiche Anilist. Seules celles qui sont purement locales (statut et date de visionnage) proposent un bouton « Corriger ».</p>
@@ -62,7 +62,7 @@ $tm_coherence_edit       = true;
 $tm_anime_coherence_edit = true;
 require __DIR__ . '/_tools-modals.php';
 
-// Données de la collection utilisées par l'outil « Incohérences »
+// Données de la collection utilisées par l'outil « Vérification des mangas »
 // (édition rapide d'une série sans rechargement de la page).
 $series_with_status = array_map(function ($series) {
     $status = $series['status'] ?? 'en cours';

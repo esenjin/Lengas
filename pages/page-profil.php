@@ -26,6 +26,7 @@ require 'fonctions/series.php';
 require 'fonctions/options.php';
 require 'fonctions/reviews.php';       // pour review_render_markdown() (aperçu bio)
 require 'includes/custom_icons.php';   // icônes + couleurs (liens sociaux)
+require_once 'includes/opengraph.php';
 
 $options = load_options();
 $data    = load_data(); // pour le sélecteur de la « Mise en lumière »
@@ -180,6 +181,7 @@ foreach (series_type_keys() as $__t) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profil — <?= htmlspecialchars($options['site_name'] ?? 'Lengas') ?></title>
     <meta name="description" content="Profil de l'administrateur du site.">
+    <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
     <link rel="stylesheet" href="../assets/css/main.css">
     <?= theme_link_tag($options) ?>

@@ -4,6 +4,7 @@ require_once 'fonctions/reviews.php';
 require_once 'fonctions/licenses.php';
 require_once 'includes/themes.php';
 require_once 'includes/helpers.php';
+require_once 'includes/opengraph.php';
 // Anilist : uniquement pour anilist_format_label(), utilisé par
 // decorate_series_for_display() sur les séries animées.
 require_once 'includes/anilist.php';
@@ -28,6 +29,7 @@ if ($history_hidden) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title><?= htmlspecialchars($page_title) ?></title>
         <meta name="description" content="<?= htmlspecialchars($options['site_description'] ?? '') ?>">
+        <?= opengraph_tags($options) ?>
         <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
         <link rel="stylesheet" href="assets/css/main.css">
         <?= theme_link_tag($options) ?>
@@ -335,6 +337,7 @@ $has_more = $total_days > $days_per_page;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($page_title) ?></title>
     <meta name="description" content="<?= htmlspecialchars($options['site_description'] ?? '') ?>">
+    <?= opengraph_tags($options, ['title' => $page_title, 'data' => $data, 'public' => true]) ?>
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
     <?= theme_link_tag($options) ?>

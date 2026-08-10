@@ -33,6 +33,7 @@ require 'fonctions/read.php';
 require 'fonctions/options.php';
 require 'fonctions/tools.php';
 require 'includes/themes.php';
+require_once 'includes/opengraph.php';
 
 $data    = load_data();
 $options = load_options();

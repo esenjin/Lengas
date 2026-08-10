@@ -1,6 +1,8 @@
 <?php
 require 'config.php';
 require 'includes/themes.php';
+require_once 'includes/helpers.php';
+require_once 'includes/opengraph.php';
 require 'vestikan/vestikan.php';
 $options = load_options();
 
@@ -27,6 +29,7 @@ $sso_error = isset($_GET['sso_error']);
     <meta charset="UTF-8">
     <title>Connexion</title>
     <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
+    <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="assets/css/main.css">
     <?= theme_link_tag($options) ?>

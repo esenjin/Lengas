@@ -1,6 +1,6 @@
 <?php
 // ────────────────────────────────────────────────────────────────────────────
-// pages/outils/outil-integrite.php — Outil « Vérification d'intégrité »
+// pages/outils/outil-integrite.php — Outil « Vérification d'intégrité du site »
 //
 // Compare l'instance au dépôt Gitea (au tag correspondant à la version
 // installée), vérifie la structure de la base de données, les modules
@@ -43,13 +43,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
     exit;
 }
 
-$tool_title    = "Vérification d'intégrité";
+$tool_title    = "Vérification d'intégrité du site";
 $tool_subtitle = 'Compare votre instance au dépôt et vérifie la structure de vos données.';
 require __DIR__ . '/_layout_head.php';
 ?>
 
         <div class="tools-section">
-            <h2>Vérification d'intégrité</h2>
+            <h2>Vérification d'intégrité du site</h2>
             <p>Vérifie l'intégrité de votre site et de vos données (fichiers, permissions, structure de la base, thèmes personnalisés, fichiers Vestikan, API MangaUpdates, API Anilist…).</p>
             <button id="check-integrity-btn" class="button button-oas">
                 <span id="check-integrity-text">Vérifier l'intégrité</span>

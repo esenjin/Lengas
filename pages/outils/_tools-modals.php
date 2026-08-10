@@ -26,7 +26,7 @@ $tm_add_mu_url           = $tm_add_mu_url           ?? false;
 $tm_add_babelio_url      = $tm_add_babelio_url      ?? false;
 ?>
 
-<!-- Édition rapide depuis l'outil « Incohérences » -->
+<!-- Édition rapide depuis l'outil « Vérification des mangas » -->
 <?php if ($tm_coherence_edit): ?>
 <div class="modal" id="coherence-edit-modal">
     <div class="modal-content modal-content--wide">
@@ -98,7 +98,7 @@ $tm_add_babelio_url      = $tm_add_babelio_url      ?? false;
 </div>
 <?php endif; ?>
 
-<!-- Édition rapide d'une série animée depuis l'outil « Incohérences » -->
+<!-- Édition rapide d'une série animée depuis l'outil « Vérification des mangas » -->
 <!-- Volontairement plus étroite que la modale manga ci-dessus : seuls le statut de
      visionnage et sa date sont modifiables (pas d'ajout/suppression d'épisode, pas de
      case « dernier épisode » — Anilist est la seule source, le tag se réévalue seul). -->

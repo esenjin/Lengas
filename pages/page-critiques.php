@@ -8,6 +8,7 @@ require 'config.php';
 require 'includes/auth.php';
 require 'includes/helpers.php';
 require 'includes/themes.php';
+require_once 'includes/opengraph.php';
 require 'fonctions/series.php';
 require 'fonctions/options.php';
 require 'fonctions/reviews.php';
@@ -103,6 +104,7 @@ $eligible = array_map(function ($s) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Critiques — <?= htmlspecialchars($options['site_name'] ?? 'Lengas') ?></title>
     <meta name="description" content="Gestion des critiques de séries.">
+    <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
     <link rel="stylesheet" href="../assets/css/main.css">
     <?= theme_link_tag($options) ?>
