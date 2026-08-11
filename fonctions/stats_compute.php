@@ -744,7 +744,15 @@ if (!function_exists('compute_anime_stats')) {
         $completed_series = 0; // entièrement visionnée
         $started_not_done = 0;
 
+        // Série la plus longue à VISIONNER (nombre d'épisodes vus, pas le
+        // nombre total d'épisodes de la série) : un épisode compte ici dès
+        // que son statut est "terminé", qu'il ait ou non déjà pu être ajouté
+        // sans être visionné (import Anilist en avance sur le visionnage).
         $longest_series = ['name' => null, 'episodes' => 0];
+
+        // ── Fun facts temporels (pendants animés des fun facts mangas) ──────────
+        $most_recently_watched = ['name' => null, 'date' => null];
+        $longest_to_watch      = ['name' => null, 'days' => -1, 'first' => null, 'last' => null];
 
         // Time series (par mois), même logique que compute_stats()
         $added_by_month = [];
@@ -755,8 +763,15 @@ if (!function_exists('compute_anime_stats')) {
             $ecount   = count($episodes);
             $total_episodes += $ecount;
 
-            if ($ecount > $longest_series['episodes']) {
-                $longest_series = ['name' => $series['name'], 'episodes' => $ecount];
+            // Épisodes réellement VUS de cette série (statut "terminé") : sert
+            // au fun fact « Série la plus longue » (visionnage, pas le total
+            // brut d'épisodes de la fiche Anilist).
+            $watched_ecount = 0;
+            foreach ($episodes as $__ep) {
+                if (($__ep['status'] ?? 'à voir') === 'terminé') $watched_ecount++;
+            }
+            if ($watched_ecount > $longest_series['episodes']) {
+                $longest_series = ['name' => $series['name'], 'episodes' => $watched_ecount];
             }
 
             // ── Statut de diffusion ──────────────────────────────────────────
@@ -832,6 +847,12 @@ if (!function_exists('compute_anime_stats')) {
             $has_watched    = false;
             $has_unwatched  = false;
 
+            // Suivi des dates pour les fun facts temporels (pendant animé de
+            // ce qui est fait côté mangas avec added_at/read_at des tomes).
+            $first_ep_read  = null; // read_at de l'épisode n°1
+            $last_ep_read   = null; // read_at de l'épisode tagué "dernier"
+            $series_max_read = null; // read_at le plus récent de la série
+
             foreach ($episodes as $ep) {
                 $estatus = $ep['status'] ?? 'à voir';
                 if (!isset($episode_status_counts[$estatus])) $episode_status_counts[$estatus] = 0;
@@ -850,6 +871,20 @@ if (!function_exists('compute_anime_stats')) {
 
                 $added   = $ep['added_at'] ?? '';
                 $read_at = $ep['read_at']  ?? '';
+                $is_date = fn($d) => is_string($d) && strlen($d) >= 10 && $d[4] === '-' && $d[7] === '-';
+                $enum    = (int) ($ep['number'] ?? 0);
+
+                if ($enum === 1 && $is_date($read_at)) {
+                    $first_ep_read = $read_at;
+                }
+                if (!empty($ep['last']) && $is_date($read_at)) {
+                    $last_ep_read = $read_at;
+                }
+                if ($estatus === 'terminé' && $is_date($read_at)) {
+                    if ($series_max_read === null || $read_at > $series_max_read) {
+                        $series_max_read = $read_at;
+                    }
+                }
 
                 if (is_string($added) && strlen($added) >= 7 && $added[4] === '-') {
                     $month = substr($added, 0, 7);
@@ -866,6 +901,28 @@ if (!function_exists('compute_anime_stats')) {
             if ($has_last)                      $complete_series++;
             if ($has_last && $last_completed)   $completed_series++;
             if ($has_watched && $has_unwatched) $started_not_done++;
+
+            // ── Fun fact : série la plus récemment vue ────────────────────────
+            if ($series_max_read !== null) {
+                if ($most_recently_watched['date'] === null || $series_max_read > $most_recently_watched['date']) {
+                    $most_recently_watched = ['name' => $series['name'], 'date' => $series_max_read];
+                }
+            }
+
+            // ── Fun fact : série la plus longue à visionner ───────────────────
+            // Écart entre le visionnage du 1er épisode et du dernier épisode
+            // (tagué "dernier"), même logique que longest_to_read côté mangas.
+            if ($has_last && $first_ep_read !== null && $last_ep_read !== null) {
+                $days = (strtotime($last_ep_read) - strtotime($first_ep_read)) / 86400;
+                if ($days >= 0 && $days > $longest_to_watch['days']) {
+                    $longest_to_watch = [
+                        'name'  => $series['name'],
+                        'days'  => $days,
+                        'first' => $first_ep_read,
+                        'last'  => $last_ep_read,
+                    ];
+                }
+            }
         }
 
         // ── Pourcentages ──────────────────────────────────────────────────────
@@ -929,6 +986,23 @@ if (!function_exists('compute_anime_stats')) {
             $watched_growth[] = ['month' => $month, 'value' => $running_w];
         }
 
+        // ── Indice de diversité de Shannon (sur les studios, en épisodes) ────────
+        // Pendant du calcul manga (sur les auteurs, en tomes) : plus l'indice est
+        // élevé, moins la collection dépend d'un nombre restreint de studios.
+        $shannon = 0.0;
+        if ($total_episodes > 0) {
+            foreach ($studios_sorted as $st) {
+                $p = $st['episodes'] / $total_episodes;
+                if ($p > 0) $shannon -= $p * log($p);
+            }
+            $shannon = round($shannon, 2);
+        }
+        $n_studios = count($studios_sorted);
+        $shannon_even = $n_studios > 1 ? round($shannon / log($n_studios), 2) : ($n_studios === 1 ? 0.0 : null);
+
+        // Normalisation des fun facts temporels (sentinelle -1 → null)
+        if ($longest_to_watch['days'] < 0) $longest_to_watch = ['name' => null, 'days' => null, 'first' => null, 'last' => null];
+
         return [
             // KPI collection
             'total_series'   => $total_series,
@@ -979,6 +1053,12 @@ if (!function_exists('compute_anime_stats')) {
             // Séries
             'longest_series' => $longest_series,
 
+            // Fun facts temporels
+            'most_recently_watched' => $most_recently_watched,
+            'longest_to_watch'      => $longest_to_watch,
+            'shannon'               => $shannon,
+            'shannon_even'          => $shannon_even,
+
             // Temporel
             'added_by_month'   => $added_series,
             'growth'           => $growth,
@@ -987,6 +1067,77 @@ if (!function_exists('compute_anime_stats')) {
 
             // Réglages effectifs (pour l'affichage de la note explicative)
             'settings' => $anime_settings,
+        ];
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fun fact « Licence la plus conséquente » (affiché côté Animethèque)
+// ─────────────────────────────────────────────────────────────────────────────
+// Une licence peut mélanger séries mangas et animées (cf. fonctions/licenses.php) :
+// son « poids » retenu ici est le total COMBINÉ tomes+épisodes et séries des
+// deux collections, jamais seulement sa part animée — une licence composée
+// d'un long manga et d'un court animé doit pouvoir ressortir devant une
+// licence 100% animée mais plus courte. Nécessite fonctions/licenses.php
+// (get_series_license_map()) chargé par l'appelant.
+//
+// Scindé en deux classements, comme les autres fun facts « double » (auteur,
+// éditeur, studio) : par tomes/épisodes et par séries, chacun pouvant
+// désigner une licence différente.
+//
+// $all_data : TOUTES les séries (mangas + animés), non filtrées par type —
+// à l'image de list_licenses().
+if (!function_exists('compute_top_license')) {
+    function compute_top_license(array $all_data): array {
+        $empty = [
+            'items_name' => null, 'items_items' => 0, 'items_series' => 0,
+            'series_name' => null, 'series_series' => 0, 'series_items' => 0,
+        ];
+
+        if (!function_exists('get_series_license_map')) {
+            return $empty;
+        }
+
+        $license_map = get_series_license_map(); // series_id => ['license_id'=>, 'license_name'=>]
+        if (empty($license_map)) {
+            return $empty;
+        }
+
+        // license_id => ['name'=>.., 'series'=>n, 'items'=>n (tomes+épisodes combinés)]
+        $totals = [];
+        foreach ($all_data as $series) {
+            $lic = $license_map[$series['id']] ?? null;
+            if ($lic === null) continue;
+
+            $lid = $lic['license_id'];
+            if (!isset($totals[$lid])) {
+                $totals[$lid] = ['name' => $lic['license_name'], 'series' => 0, 'items' => 0];
+            }
+            $totals[$lid]['series'] += 1;
+            $totals[$lid]['items']  += count($series['volumes'] ?? []);
+        }
+
+        if (empty($totals)) {
+            return $empty;
+        }
+
+        // Classement par tomes/épisodes
+        $by_items = array_values($totals);
+        usort($by_items, fn($a, $b) => $b['items'] <=> $a['items']);
+        $top_items = $by_items[0];
+
+        // Classement par séries
+        $by_series = array_values($totals);
+        usort($by_series, fn($a, $b) => $b['series'] <=> $a['series']);
+        $top_series = $by_series[0];
+
+        return [
+            'items_name'   => $top_items['name'],
+            'items_items'  => $top_items['items'],
+            'items_series' => $top_items['series'],
+            'series_name'   => $top_series['name'],
+            'series_series' => $top_series['series'],
+            'series_items'  => $top_series['items'],
         ];
     }
 }

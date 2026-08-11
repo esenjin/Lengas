@@ -87,6 +87,12 @@ $anime_def_minutes     = $anime_stats['settings']['default'];
 $anime_format_settings = $anime_stats['settings']['formats']; // [FORMAT => minutes]
 $has_anime_format_settings = count($anime_format_settings) > 0;
 
+// Fun fact « Licence la plus conséquente » (Animethèque) : poids combiné
+// tomes+épisodes et séries manga+anime de toute la licence — cf. commentaire
+// de tête de compute_top_license(). $all_data (non filtré par type) est
+// requis pour voir les deux collections d'une même licence mixte.
+$anime_stats['top_license'] = compute_top_license($all_data);
+
 // Formate un nombre sans zéros inutiles (40.0 → "40", 7.50 → "7,5")
 $fmt_num = function ($n, $dec = 2) {
     $s = number_format((float) $n, $dec, ',', ' ');
@@ -908,10 +914,26 @@ $anime_chart_payload = [
         <!-- ══ 8. FUN FACTS ═════════════════════════════════════════════════ -->
         <section class="stats-section">
             <div class="section-eyebrow">Fun facts</div>
+            <?php
+            $anime_even = $anime_stats['shannon_even'];
+            if ($anime_even === null)      $anime_shannon_word = '';
+            elseif ($anime_even >= 0.85)   $anime_shannon_word = 'collection très variée';
+            elseif ($anime_even >= 0.6)    $anime_shannon_word = 'bonne diversité';
+            elseif ($anime_even >= 0.35)   $anime_shannon_word = 'diversité modérée';
+            else                           $anime_shannon_word = 'quelques studios dominent';
+            $amrw = $anime_stats['most_recently_watched'];
+            $altw = $anime_stats['longest_to_watch'];
+            $atl  = $anime_stats['top_license'];
+            // Accord du mot composé « tome/épisode » : $plural() se contente
+            // d'ajouter un « s » final, ce qui donne « tome/épisodes » au
+            // pluriel au lieu de « tomes/épisodes ». On accorde ici chaque
+            // moitié séparément.
+            $plural_items = fn($n) => $n . ' ' . ($n > 1 ? 'tomes/épisodes' : 'tome/épisode');
+            ?>
             <div class="funfact-grid">
                 <div class="funfact">
                     <span class="funfact-label">Série la plus longue</span>
-                    <span class="funfact-value"><?= htmlspecialchars($anime_stats['longest_series']['name'] ?? '—') ?><?php if ($anime_stats['longest_series']['name']): ?> <em>(<?= $plural($anime_stats['longest_series']['episodes'], 'épisode') ?>)</em><?php endif; ?></span>
+                    <span class="funfact-value"><?= htmlspecialchars($anime_stats['longest_series']['name'] ?? '—') ?><?php if ($anime_stats['longest_series']['name']): ?> <em>(<?= $plural($anime_stats['longest_series']['episodes'], 'épisode') ?> vus)</em><?php endif; ?></span>
                 </div>
                 <div class="funfact">
                     <span class="funfact-label">Revisionnages cumulés</span>
@@ -919,12 +941,43 @@ $anime_chart_payload = [
                     <span class="funfact-note">Nombre total de revisionnages déclarés, toutes séries confondues.</span>
                 </div>
                 <div class="funfact">
-                    <span class="funfact-label">Studio dominant</span>
-                    <span class="funfact-value"><?= htmlspecialchars($anime_stats['studios'][0]['name'] ?? '—') ?><?php if (!empty($anime_stats['studios'][0]['name'])): ?> <em>(<?= $plural($anime_stats['studios'][0]['episodes'], 'épisode') ?>, <?= $plural($anime_stats['studios'][0]['series'], 'série') ?>)</em><?php endif; ?></span>
+                    <span class="funfact-label">Studio le plus représenté</span>
+                    <span class="funfact-split">
+                        <span class="funfact-line"><span class="funfact-tag">Épisodes</span> <?= htmlspecialchars($anime_stats['studios'][0]['name'] ?? '—') ?><?php if (!empty($anime_stats['studios'][0]['name'])): ?> <em>(<?= $plural($anime_stats['studios'][0]['episodes'], 'épisode') ?>, <?= $plural($anime_stats['studios'][0]['series'], 'série') ?>)</em><?php endif; ?></span>
+                        <?php
+                        $anime_studios_by_series = $anime_stats['studios'];
+                        usort($anime_studios_by_series, fn($a, $b) => $b['series'] <=> $a['series']);
+                        $top_studio_s = $anime_studios_by_series[0] ?? null;
+                        ?>
+                        <span class="funfact-line"><span class="funfact-tag">Séries</span> <?= htmlspecialchars($top_studio_s['name'] ?? '—') ?><?php if (!empty($top_studio_s['name'])): ?> <em>(<?= $plural($top_studio_s['series'], 'série') ?>, <?= $plural($top_studio_s['episodes'], 'épisode') ?>)</em><?php endif; ?></span>
+                    </span>
                 </div>
                 <div class="funfact">
                     <span class="funfact-label">Format dominant</span>
                     <span class="funfact-value"><?= htmlspecialchars($anime_stats['formats'][0]['name'] ?? '—') ?><?php if (!empty($anime_stats['formats'][0]['name'])): ?> <em>(<?= $plural($anime_stats['formats'][0]['series'], 'série') ?>)</em><?php endif; ?></span>
+                </div>
+                <div class="funfact">
+                    <span class="funfact-label">Série la plus récemment vue</span>
+                    <span class="funfact-value"><?= htmlspecialchars($amrw['name'] ?? '—') ?><?php if ($amrw['name'] !== null): ?> <em>(<?= $fmt_date($amrw['date']) ?>)</em><?php endif; ?></span>
+                    <?php if ($amrw['name'] !== null): ?><span class="funfact-note">Date de l'épisode le plus récemment marqué comme « vu ».</span><?php endif; ?>
+                </div>
+                <div class="funfact">
+                    <span class="funfact-label">Série la plus longue à visionner</span>
+                    <span class="funfact-value"><?= htmlspecialchars($altw['name'] ?? '—') ?><?php if ($altw['name'] !== null): ?> <em>(<?= $fmt_days($altw['days']) ?>)</em><?php endif; ?></span>
+                    <?php if ($altw['name'] !== null): ?><span class="funfact-note">Du 1er au dernier épisode vu (<?= $fmt_date($altw['first']) ?> → <?= $fmt_date($altw['last']) ?>).</span><?php endif; ?>
+                </div>
+                <div class="funfact">
+                    <span class="funfact-label">Indice de diversité (Shannon)</span>
+                    <span class="funfact-value"><?= $anime_stats['shannon'] ?><?php if ($anime_even !== null): ?> <em>(<?= $anime_shannon_word ?>)</em><?php endif; ?></span>
+                    <span class="funfact-note">Plus l'indice est élevé, moins la collection dépend d'un nombre restreint de studios.</span>
+                </div>
+                <div class="funfact">
+                    <span class="funfact-label">Licence la plus conséquente</span>
+                    <span class="funfact-split">
+                        <span class="funfact-line"><span class="funfact-tag">Tomes/épisodes</span> <?= htmlspecialchars($atl['items_name'] ?? '—') ?><?php if ($atl['items_name'] !== null): ?> <em>(<?= $plural_items($atl['items_items']) ?>, <?= $plural($atl['items_series'], 'série') ?>)</em><?php endif; ?></span>
+                        <span class="funfact-line"><span class="funfact-tag">Séries</span> <?= htmlspecialchars($atl['series_name'] ?? '—') ?><?php if ($atl['series_name'] !== null): ?> <em>(<?= $plural($atl['series_series'], 'série') ?>, <?= $plural_items($atl['series_items']) ?>)</em><?php endif; ?></span>
+                    </span>
+                    <span class="funfact-note">Toutes collections confondues (mangas et animés) : une licence peut regrouper les deux.</span>
                 </div>
             </div>
         </section>
