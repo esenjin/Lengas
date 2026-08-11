@@ -281,6 +281,55 @@
     flex-wrap: wrap;
 }
 
+/* ── Scission « Liens » / « Tags » (admin comme public) ──────────────────────
+   Deux rangées .series-badges successives : la première (--links) porte les
+   badges de liens externes (MangaUpdates, Babelio, Anilist, éditions
+   physiques), la seconde (--tags) tout le reste (statut, notation, mature…).
+   Une rangée --links vide (aucun lien connu) ne réserve aucun espace :
+   :empty s'applique bien ici, tous ses enfants étant des expressions
+   conditionnelles côté JS/PHP qui peuvent toutes s'évaluer à chaîne vide. */
+.series-badges--links:empty {
+    display: none;
+    margin-top: 0;
+}
+
+.series-badges--links {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.series-badges--tags {
+    margin-top: 6px;
+}
+
+/* ── Champs multi-valeurs tronqués (admin) : "premier élément +N" ──────────── */
+.list-more-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.6em;
+    padding: 0 6px;
+    margin-left: 2px;
+    border-radius: 20px;
+    background: rgba(192, 132, 252, 0.12);
+    border: 1px solid rgba(192, 132, 252, 0.25);
+    color: var(--primary-color);
+    font-size: 0.75em;
+    font-weight: 600;
+    line-height: 1.6;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.list-more-toggle:hover {
+    background: rgba(192, 132, 252, 0.22);
+}
+
+.list-more-expanded {
+    color: var(--text-gray);
+}
+
 .series-status-badge {
     display: inline-flex;
     align-items: center;
