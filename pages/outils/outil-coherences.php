@@ -47,7 +47,6 @@ require __DIR__ . '/_layout_head.php';
             <h2>Vérification des mangas</h2>
             <p>Vérification des incohérences internes de vos séries (doublons, numéros manquants, mauvais tag « dernier tome », prêts orphelins…). Cet outil exploite aussi le statut de publication MangaUpdates mis en cache.</p>
             <?php if (!empty(series_of_type($data, 'anime'))): ?>
-            <p class="hint">Couvre aussi l'Animethèque : épisodes manquants ou en double, mauvais tag « dernier épisode », épisode terminé sans date, vignette Anilist introuvable, série sans identifiant Anilist. Les anomalies qui viennent d'Anilist (statut de diffusion, fiche incomplète…) ne se corrigent pas ici : le rapport renvoie vers la fiche Anilist. Seules celles qui sont purement locales (statut et date de visionnage) proposent un bouton « Corriger ».</p>
             <?php endif; ?>
             <div class="tools-actions">
                 <button id="reload-coherences-btn" class="button button-opt">Relancer l'analyse</button>
