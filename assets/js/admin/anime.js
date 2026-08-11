@@ -72,16 +72,18 @@ function createAnimeSeriesCard(series) {
             <h2>${animeEscape(series.name)}</h2>
             <p><strong>Studios :</strong> ${series.studios_text ? animeEscape(series.studios_text) : '<em>inconnus</em>'}</p>
             <p><strong>Catégorie :</strong> ${animeEscape(series.format_label || '')}</p>
-            <p><strong>Genres :</strong> ${formatList(series.genres)}</p>
-            <div class="series-badges">
+            <p><strong>Genres :</strong> ${formatListCollapsed(series.genres)}</p>
+            <div class="series-badges series-badges--links">
+                ${animeEditionsBadgeHtml(series)}
+                ${animeAnilistBadgeHtml(series)}
+            </div>
+            <div class="series-badges series-badges--tags">
                 ${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}
                 ${series.watching_abandoned ? '<span class="watching-abandoned-badge">📕 visionnage abandonné</span>' : ''}
                 <span class="series-status-badge ${badge.cls}" data-anime-status-badge>${badge.icon}</span>
                 ${ratingBadgeHtml(series)}
                 ${rewatchBadgeHtml(series)}
                 ${series.has_review ? '<span class="review-badge">✏️ Critique</span>' : ''}
-                ${animeEditionsBadgeHtml(series)}
-                ${animeAnilistBadgeHtml(series)}
                 <span class="anime-sync-badge" data-anime-sync-badge hidden></span>
             </div>
             <div class="volumes-container" data-series-id="${series.id}" data-loaded="true">${series.volumes_html || ''}</div>

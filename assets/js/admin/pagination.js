@@ -15,13 +15,40 @@ function readStatusFilter() {
     if (root && typeof root.__sfRead === 'function') {
         return root.__sfRead();
     }
-    return { filter: '', mode: 'or' };
+    return { filter: '', mode: 'and' };
 }
 
 // Fragment d'URL pour le filtre de statuts.
 function statusFilterQuery() {
     const st = readStatusFilter();
     return `&status_filter=${encodeURIComponent(st.filter)}&status_mode=${encodeURIComponent(st.mode)}`;
+}
+
+// Lit l'état du widget « Affiner » (catégories + genres, mode OU/ET).
+function readRefineFilter() {
+    const root = document.getElementById('refine-filter');
+    if (root && typeof root.__sfReadRefine === 'function') {
+        return root.__sfReadRefine();
+    }
+    return { categories: '', genres: '', mode: 'and' };
+}
+
+// Fragment d'URL pour le filtre « Affiner ».
+function refineFilterQuery() {
+    const rf = readRefineFilter();
+    return `&refine_categories=${encodeURIComponent(rf.categories)}` +
+           `&refine_genres=${encodeURIComponent(rf.genres)}` +
+           `&refine_mode=${encodeURIComponent(rf.mode)}`;
+}
+
+// Met à jour le compteur « Séries visibles : N » à partir de la réponse d'un
+// endpoint de pagination (champ `total`, déjà filtré/recherché/trié).
+function updateSeriesCount(total) {
+    const el = document.getElementById('series-count-value');
+    const wrap = document.getElementById('series-count');
+    if (!el) return;
+    el.textContent = (typeof total === 'number') ? total.toLocaleString('fr-FR') : '—';
+    if (wrap && typeof total === 'number') wrap.dataset.count = String(total);
 }
 
 // Fonction utilitaire pour "throttle"
@@ -69,9 +96,11 @@ async function loadMoreSeries() {
             `&type=${encodeURIComponent(seriesType)}` +
             `&search=${encodeURIComponent(searchTerm)}` +
             `&sort_by=${sortBy}&sort_order=${sortOrder}` +
-            statusFilterQuery()
+            statusFilterQuery() + refineFilterQuery()
         );
         const data = await response.json();
+
+        if (data.success) updateSeriesCount(data.total);
 
         if (data.success && data.series.length > 0) {
             data.series.forEach(series => {
@@ -150,18 +179,20 @@ function createLightSeriesCard(series) {
             <h2>${series.name}</h2>
             <p><strong>Auteur :</strong> ${series.author}</p>
             <p><strong>Éditeur :</strong> ${series.publisher}</p>
-            <p><strong>Autres contributeurs :</strong> ${formatList(series.other_contributors)}</p>
+            <p><strong>Autres contributeurs :</strong> ${formatListCollapsed(series.other_contributors)}</p>
             <p><strong>Catégories :</strong> ${series.categories ? series.categories.join(', ') : ''}</p>
-            <p><strong>Genres :</strong> ${formatList(series.genres)}</p>
-            <div class="series-badges">
+            <p><strong>Genres :</strong> ${formatListCollapsed(series.genres)}</p>
+            <div class="series-badges series-badges--links">
+                ${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}
+                ${series.babelio_url ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}
+            </div>
+            <div class="series-badges series-badges--tags">
                 ${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}
                 ${series.read_elsewhere ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}
                 <span class="series-status-badge ${statusClass}">${statusIcon}</span>
                 ${ratingBadgeHtml(series)}
                 ${rewatchBadgeHtml(series)}
                 ${series.has_review ? '<span class="review-badge">✏️ Critique</span>' : ''}
-                ${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}
-                ${series.babelio_url ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}
             </div>
             <div class="volumes-container" data-series-id="${series.id}" data-loaded="true">${series.volumes_html || ''}</div>
         </div>
@@ -175,6 +206,46 @@ function formatList(list) {
     const filtered = list ? list.filter(item => item && item.trim() !== '') : [];
     return filtered.length > 0 ? filtered.join(', ') : '<em>aucun</em>';
 }
+
+// Échappement HTML minimal, pour les valeurs insérées dans un attribut
+// (data-more) ou en tant que texte au sein des cartes admin.
+function pgEscape(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Affiche uniquement le premier élément d'une liste à choix multiples
+// (autres contributeurs, genres…) ; s'il y en a d'autres, un bouton « +N »
+// les révèle au clic (cf. délégation d'événement plus bas) — gagne de la
+// place sur la carte admin sans rien cacher définitivement.
+function formatListCollapsed(list) {
+    const filtered = list ? list.filter(item => item && item.trim() !== '') : [];
+    if (filtered.length === 0) return '<em>aucun</em>';
+    if (filtered.length === 1) return pgEscape(filtered[0]);
+
+    const rest = filtered.slice(1);
+    const restText = pgEscape(rest.join(', '));
+    return `${pgEscape(filtered[0])} ` +
+           `<button type="button" class="list-more-toggle" data-more="${restText}" data-more-count="${rest.length}">+${rest.length}</button>`;
+}
+
+// Délégation d'événement : clic sur un bouton « +N » -> dévoile le reste de
+// la liste à la place du bouton (remplacement en place, pas de tooltip —
+// reste lisible et accessible au clavier/tactile).
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.list-more-toggle');
+    if (!btn) return;
+    e.stopPropagation();
+    const rest = btn.dataset.more || '';
+    const span = document.createElement('span');
+    span.className = 'list-more-expanded';
+    span.textContent = ', ' + rest;
+    btn.replaceWith(span);
+});
 
 // Libellé pluriel de l'unité d'une série (« tomes » ou « épisodes »), lu dans
 // le registre de types exposé par le PHP (window.seriesTypes) — jamais écrit
@@ -353,6 +424,131 @@ document.getElementById('series-list').addEventListener('click', (e) => {
     }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Widget générique de filtre à cases à cocher regroupées (bascule OU/ET,
+// tout cocher/décocher, panneau dépliant). Partagé par « Statuts » et
+// « Affiner » (admin comme public) — seule la fonction de lecture de l'état
+// (installée sur root via `installReader`) diffère entre les deux.
+//
+// Comportement par défaut : AUCUNE case cochée, mode ET (« et ») — un critère
+// non coché ne filtre rien ; l'utilisateur choisit explicitement ce qu'il
+// veut voir apparaître.
+// ─────────────────────────────────────────────────────────────────────────────
+function initCheckboxFilterWidget(rootId, baseLabel, eventName, installReader) {
+    const root = document.getElementById(rootId);
+    if (!root || root.__sfInit) return;
+    root.__sfInit = true;
+
+    const panel   = root.querySelector('.status-filter-panel');
+    const toggle  = root.querySelector('.status-filter-toggle');
+    const modeSel = root.querySelector('.status-filter-mode');
+    const toggleAllBtn = root.querySelector('.status-filter-toggle-all');
+    const checkboxes = () => Array.from(root.querySelectorAll('.status-filter-cb'));
+    const groups = () => Array.from(root.querySelectorAll('.status-filter-group'));
+
+    function mode() { return modeSel && modeSel.value === 'or' ? 'or' : 'and'; }
+    root.__sfMode = mode;
+
+    // En mode ET, on interdit plusieurs cases dans une même catégorie multi :
+    // dès qu'une case est cochée dans le groupe, les autres sont grisées.
+    function applyAndConstraints() {
+        const isAnd = mode() === 'and';
+        groups().forEach(group => {
+            const multi = group.dataset.multi === '1';
+            const cbs = Array.from(group.querySelectorAll('.status-filter-cb'));
+            const anyChecked = cbs.some(cb => cb.checked);
+            cbs.forEach(cb => {
+                const disable = isAnd && multi && anyChecked && !cb.checked;
+                cb.disabled = disable;
+                cb.closest('.status-filter-option')?.classList.toggle('disabled', disable);
+            });
+        });
+    }
+
+    // Le libellé du bouton reflète l'état (nombre de cases cochées).
+    function refreshLabel() {
+        const label = root.querySelector('.status-filter-label');
+        if (!label) return;
+        const cbs = checkboxes();
+        const checked = cbs.filter(cb => cb.checked).length;
+        label.textContent = checked === 0 ? baseLabel : (baseLabel + ' (' + checked + ')');
+    }
+
+    // Le bouton "Tout cocher/décocher" reflète l'état courant plutôt que de
+    // garder un état interne : "Tout décocher" si au moins une case est
+    // cochée, sinon "Tout cocher".
+    function refreshToggleAllLabel() {
+        if (!toggleAllBtn) return;
+        const anyChecked = checkboxes().some(cb => cb.checked);
+        toggleAllBtn.textContent = anyChecked ? 'Tout décocher' : 'Tout cocher';
+        toggleAllBtn.dataset.state = anyChecked ? 'uncheck' : 'check';
+    }
+
+    installReader(root, checkboxes);
+
+    function emitChange() {
+        applyAndConstraints();
+        refreshLabel();
+        refreshToggleAllLabel();
+        root.dispatchEvent(new CustomEvent(eventName, { bubbles: true }));
+    }
+
+    // Ouverture / fermeture du panneau.
+    toggle?.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const open = panel.hasAttribute('hidden');
+        if (open) { panel.removeAttribute('hidden'); toggle.setAttribute('aria-expanded', 'true'); }
+        else      { panel.setAttribute('hidden', '');  toggle.setAttribute('aria-expanded', 'false'); }
+    });
+    document.addEventListener('click', function (e) {
+        if (!root.contains(e.target)) {
+            panel.setAttribute('hidden', '');
+            toggle?.setAttribute('aria-expanded', 'false');
+        }
+    });
+    panel?.addEventListener('click', e => e.stopPropagation());
+
+    // Cases à cocher.
+    checkboxes().forEach(cb => cb.addEventListener('change', emitChange));
+
+    // Bascule OU/ET : en repassant en ET, on garde au plus une case par
+    // catégorie multi (on décoche les surplus pour éviter un état incohérent).
+    modeSel?.addEventListener('change', function () {
+        root.dataset.statusMode = mode();
+        if (mode() === 'and') {
+            groups().forEach(group => {
+                if (group.dataset.multi !== '1') return;
+                let seen = false;
+                Array.from(group.querySelectorAll('.status-filter-cb')).forEach(cb => {
+                    if (cb.checked) {
+                        if (seen) cb.checked = false;
+                        else seen = true;
+                    }
+                });
+            });
+        }
+        emitChange();
+    });
+
+    // Tout cocher / tout décocher.
+    toggleAllBtn?.addEventListener('click', function () {
+        const cbs = checkboxes();
+        const shouldCheck = cbs.some(cb => !cb.checked); // s'il en reste des décochées -> tout cocher
+        if (shouldCheck && mode() === 'and') {
+            // En mode ET, "tout cocher" n'a pas de sens (une seule par catégorie).
+            // On repasse en OU pour cocher réellement tout.
+            if (modeSel) { modeSel.value = 'or'; root.dataset.statusMode = 'or'; }
+        }
+        cbs.forEach(cb => { cb.checked = shouldCheck; cb.disabled = false; cb.closest('.status-filter-option')?.classList.remove('disabled'); });
+        emitChange();
+    });
+
+    // État initial.
+    applyAndConstraints();
+    refreshLabel();
+    refreshToggleAllLabel();
+}
+
 // Écouteur de scroll avec throttle
 window.addEventListener('scroll', throttle(() => {
     const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
@@ -371,128 +567,29 @@ window.addEventListener('scroll', throttle(() => {
 // alors silencieusement ignoré au premier chargement. D'où un seul et même
 // bloc DOMContentLoaded, dans cet ordre précis.
 document.addEventListener('DOMContentLoaded', () => {
-    // ── Widget de filtre de statuts (cases à cocher regroupées + bascule OU/ET) ──
+    // ── Widget de filtre « Statuts » (cases à cocher regroupées + bascule OU/ET) ──
     // Fournit root.__sfRead() => { filter: "a,b,c", mode: "or"|"and" }
     // et déclenche un événement 'statusfilter:change' quand la sélection change.
-    (function () {
-        const root = document.getElementById('status-filter');
-        if (!root || root.__sfInit) return;
-        root.__sfInit = true;
-
-        const panel   = root.querySelector('.status-filter-panel');
-        const toggle  = root.querySelector('.status-filter-toggle');
-        const modeSel = root.querySelector('.status-filter-mode');
-        const toggleAllBtn = root.querySelector('.status-filter-toggle-all');
-        const checkboxes = () => Array.from(root.querySelectorAll('.status-filter-cb'));
-        const groups = () => Array.from(root.querySelectorAll('.status-filter-group'));
-
-        function mode() { return modeSel && modeSel.value === 'and' ? 'and' : 'or'; }
-
-        // En mode ET, on interdit plusieurs cases dans une même catégorie multi :
-        // dès qu'une case est cochée dans le groupe, les autres sont grisées.
-        function applyAndConstraints() {
-            const isAnd = mode() === 'and';
-            groups().forEach(group => {
-                const multi = group.dataset.multi === '1';
-                const cbs = Array.from(group.querySelectorAll('.status-filter-cb'));
-                const anyChecked = cbs.some(cb => cb.checked);
-                cbs.forEach(cb => {
-                    const disable = isAnd && multi && anyChecked && !cb.checked;
-                    cb.disabled = disable;
-                    cb.closest('.status-filter-option')?.classList.toggle('disabled', disable);
-                });
-            });
-        }
-
-        // Le libellé du bouton reflète l'état (nombre de cases cochées).
-        function refreshLabel() {
-            const label = root.querySelector('.status-filter-label');
-            if (!label) return;
-            const cbs = checkboxes();
-            const total = cbs.length;
-            const checked = cbs.filter(cb => cb.checked).length;
-            if (checked === 0 || checked === total) {
-                label.textContent = 'Statuts';
-            } else {
-                label.textContent = 'Statuts (' + checked + ')';
-            }
-        }
-
-        // Lecture de l'état -> chaîne pour l'URL.
-        // Tout coché OU rien coché => filtre vide (= tout afficher).
+    initCheckboxFilterWidget('status-filter', 'Statuts', 'statusfilter:change', function (root, checkboxes) {
         root.__sfRead = function () {
             const cbs = checkboxes();
-            const total = cbs.length;
             const checkedVals = cbs.filter(cb => cb.checked).map(cb => cb.value);
-            let filter = checkedVals.join(',');
-            if (checkedVals.length === 0 || checkedVals.length === total) {
-                filter = '';
-            }
-            return { filter: filter, mode: mode() };
+            return { filter: checkedVals.join(','), mode: root.__sfMode() };
         };
+    });
 
-        function emitChange() {
-            applyAndConstraints();
-            refreshLabel();
-            root.dispatchEvent(new CustomEvent('statusfilter:change', { bubbles: true }));
-        }
-
-        // Ouverture / fermeture du panneau.
-        toggle?.addEventListener('click', function (e) {
-            e.stopPropagation();
-            const open = panel.hasAttribute('hidden');
-            if (open) { panel.removeAttribute('hidden'); toggle.setAttribute('aria-expanded', 'true'); }
-            else      { panel.setAttribute('hidden', '');  toggle.setAttribute('aria-expanded', 'false'); }
-        });
-        document.addEventListener('click', function (e) {
-            if (!root.contains(e.target)) {
-                panel.setAttribute('hidden', '');
-                toggle?.setAttribute('aria-expanded', 'false');
-            }
-        });
-        panel?.addEventListener('click', e => e.stopPropagation());
-
-        // Cases à cocher.
-        checkboxes().forEach(cb => cb.addEventListener('change', emitChange));
-
-        // Bascule OU/ET : en repassant en ET, on garde au plus une case par
-        // catégorie multi (on décoche les surplus pour éviter un état incohérent).
-        modeSel?.addEventListener('change', function () {
-            root.dataset.statusMode = mode();
-            if (mode() === 'and') {
-                groups().forEach(group => {
-                    if (group.dataset.multi !== '1') return;
-                    let seen = false;
-                    Array.from(group.querySelectorAll('.status-filter-cb')).forEach(cb => {
-                        if (cb.checked) {
-                            if (seen) cb.checked = false;
-                            else seen = true;
-                        }
-                    });
-                });
-            }
-            emitChange();
-        });
-
-        // Tout cocher / tout décocher.
-        toggleAllBtn?.addEventListener('click', function () {
+    // ── Widget de filtre « Affiner » (Catégories / Genres) ──────────────────
+    // Même mécanique que « Statuts », mais deux champs distincts pour l'URL
+    // (refine_categories / refine_genres) selon le groupe d'origine de chaque
+    // case (attribut data-refine-field posé par render_refine_filter()).
+    initCheckboxFilterWidget('refine-filter', 'Affiner', 'refinefilter:change', function (root, checkboxes) {
+        root.__sfReadRefine = function () {
             const cbs = checkboxes();
-            const shouldCheck = cbs.some(cb => !cb.checked); // s'il en reste des décochées -> tout cocher
-            if (shouldCheck && mode() === 'and') {
-                // En mode ET, "tout cocher" n'a pas de sens (une seule par catégorie).
-                // On repasse en OU pour cocher réellement tout.
-                if (modeSel) { modeSel.value = 'or'; root.dataset.statusMode = 'or'; }
-            }
-            cbs.forEach(cb => { cb.checked = shouldCheck; cb.disabled = false; cb.closest('.status-filter-option')?.classList.remove('disabled'); });
-            toggleAllBtn.textContent = shouldCheck ? 'Tout décocher' : 'Tout cocher';
-            toggleAllBtn.dataset.state = shouldCheck ? 'uncheck' : 'check';
-            emitChange();
-        });
-
-        // État initial.
-        applyAndConstraints();
-        refreshLabel();
-    })();
+            const cats = cbs.filter(cb => cb.checked && cb.dataset.refineField === 'categories').map(cb => cb.value);
+            const genres = cbs.filter(cb => cb.checked && cb.dataset.refineField === 'genres').map(cb => cb.value);
+            return { categories: cats.join(','), genres: genres.join(','), mode: root.__sfMode() };
+        };
+    });
 
     // Synchronise l'état JS avec les contrôles / l'URL.
     const urlParams = new URLSearchParams(window.location.search);
@@ -513,6 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('sort-by')?.addEventListener('change', reloadAdminList);
     document.getElementById('sort-order')?.addEventListener('change', reloadAdminList);
     document.getElementById('status-filter')?.addEventListener('statusfilter:change', reloadAdminList);
+    document.getElementById('refine-filter')?.addEventListener('refinefilter:change', reloadAdminList);
 
     document.getElementById('series-list').innerHTML = '';
     currentPage = 0;

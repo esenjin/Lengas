@@ -767,7 +767,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
     $sort_order = $_GET['sort_order'] ?? 'asc';
     $light_mode = isset($_GET['light']) && $_GET['light'] === 'true';
     $status_filter = $_GET['status_filter'] ?? '';
-    $status_mode   = $_GET['status_mode'] ?? 'or';
+    $status_mode   = $_GET['status_mode'] ?? 'and';
+    $refine_categories = $_GET['refine_categories'] ?? '';
+    $refine_genres     = $_GET['refine_genres'] ?? '';
+    $refine_mode       = $_GET['refine_mode'] ?? 'and';
     $type_filter   = sanitize_series_type($_GET['type'] ?? '');
 
     // Copie d'affichage cloisonnée par type : recherche, tri et pagination ne
@@ -788,6 +791,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
         },
         $type_filter
     );
+    // Filtre « Affiner » (catégories / genres) : toujours combiné en ET avec
+    // le filtre de statuts ci-dessus (deux filtres indépendants successifs).
+    $filtered_data = apply_refine_filter($filtered_data, $refine_categories, $refine_genres, $refine_mode);
     sort_series($filtered_data, $sort_by, $sort_order);
 
     $offset = ($page - 1) * $per_page;
@@ -817,7 +823,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])
         echo json_encode([
             'success' => true,
             'series' => array_values($light_series),
-            'has_more' => ($offset + $per_page) < count($filtered_data)
+            'has_more' => ($offset + $per_page) < count($filtered_data),
+            // Nombre total de séries correspondant aux filtres actuels (toutes
+            // pages confondues) : alimente le compteur « Séries visibles ».
+            'total' => count($filtered_data)
         ]);
         exit;
     }
@@ -944,7 +953,10 @@ $sort_by = $_GET['sort_by'] ?? 'name';
 $sort_order = $_GET['sort_order'] ?? 'asc';
 $search_term = $_GET['search'] ?? '';
 $status_filter = $_GET['status_filter'] ?? '';
-$status_mode = $_GET['status_mode'] ?? 'or';
+$status_mode = $_GET['status_mode'] ?? 'and';
+$refine_categories = $_GET['refine_categories'] ?? '';
+$refine_genres = $_GET['refine_genres'] ?? '';
+$refine_mode = $_GET['refine_mode'] ?? 'and';
 
 // Copie d'affichage : jamais transmise à une fonction d'écriture, uniquement
 // au rendu et à window.seriesData.
@@ -1026,8 +1038,10 @@ if ($search_term) {
                         <option value="desc" <?= $sort_order === 'desc' ? 'selected' : '' ?>>Descendant</option>
                     </select>
                     <?php render_status_filter($status_filter, $status_mode, true, $current_type); ?>
+                    <?php render_refine_filter($refine_categories, $refine_genres, $refine_mode, series_of_type($data, $current_type)); ?>
                 </div>
             </form>
+            <p class="series-count" id="series-count" data-count="0">Séries visibles : <span id="series-count-value">…</span></p>
         </div>
 
         <!-- Boutons déclencheurs de modales (cachés — crochet JS uniquement) -->

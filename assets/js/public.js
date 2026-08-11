@@ -179,17 +179,24 @@ function fillSeriesDetailModal(series) {
     document.getElementById('modal-series-stats').innerHTML = publicSeriesCount(series);
 
     const badge = publicStatusBadge(series);
-    document.getElementById('modal-series-badges').innerHTML =
+    // Scission « Liens » (MangaUpdates / Babelio / Anilist / éditions
+    // physiques) / « Tags » (statut, mature, notation, revisionnages…),
+    // deux rangées successives — cf. .series-badges--links/--tags (_series.css).
+    const linksHtml =
+        (isAnime ? publicEditionsBadgeHtml(series) : '') +
+        (isAnime ? publicAnilistBadgeHtml(series) : '') +
+        `${(!isAnime && series.mangaupdates_url) ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}` +
+        `${(!isAnime && series.babelio_url) ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}`;
+    const tagsHtml =
         `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
         `${(!isAnime && series.read_elsewhere) ? '<span class="read-elsewhere-badge">📖 lue ailleurs</span>' : ''}` +
         `<span class="series-status-badge ${badge.cls}">${badge.icon}</span>` +
         ratingBadgeHtml(series) +
         rewatchBadgeHtml(series) +
-        reviewBadgeHtml(series) +
-        (isAnime ? publicEditionsBadgeHtml(series) : '') +
-        (isAnime ? publicAnilistBadgeHtml(series) : '') +
-        `${(!isAnime && series.mangaupdates_url) ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}` +
-        `${(!isAnime && series.babelio_url) ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}`;
+        reviewBadgeHtml(series);
+    document.getElementById('modal-series-badges').innerHTML =
+        `<div class="series-badges series-badges--links">${linksHtml}</div>` +
+        `<div class="series-badges series-badges--tags">${tagsHtml}</div>`;
 
     const volumesTitle = document.getElementById('modal-volumes-title');
     if (volumesTitle) volumesTitle.textContent = isAnime ? 'Liste des épisodes :' : 'Liste des tomes :';
@@ -222,7 +229,7 @@ let currentSearchTerm = '';
 let currentSortBy = 'name';
 let currentSortOrder = 'asc';
 let currentStatusFilter = '';
-let currentStatusMode = 'or';
+let currentStatusMode = 'and';
 
 // Lit l'état du widget de filtre de statuts (cases + mode OU/ET).
 function readStatusFilter() {
@@ -230,7 +237,7 @@ function readStatusFilter() {
     if (root && typeof root.__sfRead === 'function') {
         return root.__sfRead();
     }
-    return { filter: currentStatusFilter || '', mode: currentStatusMode || 'or' };
+    return { filter: currentStatusFilter || '', mode: currentStatusMode || 'and' };
 }
 
 // Construit le fragment d'URL pour le filtre de statuts.
@@ -239,6 +246,33 @@ function statusFilterQuery() {
     currentStatusFilter = st.filter;
     currentStatusMode = st.mode;
     return `&status_filter=${encodeURIComponent(st.filter)}&status_mode=${encodeURIComponent(st.mode)}`;
+}
+
+// Lit l'état du widget « Affiner » (catégories + genres, mode OU/ET).
+function readRefineFilter() {
+    const root = document.getElementById('refine-filter');
+    if (root && typeof root.__sfReadRefine === 'function') {
+        return root.__sfReadRefine();
+    }
+    return { categories: '', genres: '', mode: 'and' };
+}
+
+// Construit le fragment d'URL pour le filtre « Affiner ».
+function refineFilterQuery() {
+    const rf = readRefineFilter();
+    return `&refine_categories=${encodeURIComponent(rf.categories)}` +
+           `&refine_genres=${encodeURIComponent(rf.genres)}` +
+           `&refine_mode=${encodeURIComponent(rf.mode)}`;
+}
+
+// Met à jour le compteur « Séries visibles : N » à partir de la réponse d'un
+// endpoint de pagination (champ `total`, déjà filtré/recherché/trié).
+function updateSeriesCount(total) {
+    const el = document.getElementById('series-count-value');
+    const wrap = document.getElementById('series-count');
+    if (!el) return;
+    el.textContent = (typeof total === 'number') ? total.toLocaleString('fr-FR') : '—';
+    if (wrap && typeof total === 'number') wrap.dataset.count = String(total);
 }
 
 // Fonction pour normaliser une chaîne de caractères
@@ -357,9 +391,10 @@ function loadMoreSeries() {
     const sortBy = currentSortBy || urlParams.get('sort_by') || 'name';
     const sortOrder = currentSortOrder || urlParams.get('sort_order') || 'asc';
 
-    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=${INITIAL_PUBLIC_PER_PAGE}&type=${encodeURIComponent(publicSeriesType())}&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}` + statusFilterQuery())
+    fetch(`index.php?get_paginated_series=true&page=${currentPage + 1}&per_page=${INITIAL_PUBLIC_PER_PAGE}&type=${encodeURIComponent(publicSeriesType())}&search=${encodeURIComponent(searchTerm)}&sort_by=${sortBy}&sort_order=${sortOrder}` + statusFilterQuery() + refineFilterQuery())
         .then(response => response.json())
         .then(data => {
+            if (data.success) updateSeriesCount(data.total);
             if (data.success && data.series && data.series.length > 0) {
                 const seriesList = document.getElementById('series-list');
                 data.series.forEach((series) => {
@@ -421,11 +456,12 @@ document.querySelector('.filters form')?.addEventListener('submit', function(e) 
     document.getElementById('series-list').innerHTML = '<p>Chargement des résultats...</p>';
 
     // Charge les résultats via AJAX
-    fetch(`index.php?get_paginated_series=true&page=1&per_page=${INITIAL_PUBLIC_PER_PAGE}&type=${encodeURIComponent(publicSeriesType())}&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}` + statusFilterQuery())
+    fetch(`index.php?get_paginated_series=true&page=1&per_page=${INITIAL_PUBLIC_PER_PAGE}&type=${encodeURIComponent(publicSeriesType())}&search=${encodeURIComponent(currentSearchTerm)}&sort_by=${currentSortBy}&sort_order=${currentSortOrder}` + statusFilterQuery() + refineFilterQuery())
         .then(response => response.json())
         .then(data => {
             const seriesList = document.getElementById('series-list');
             seriesList.innerHTML = ''; // Vide la liste
+            if (data.success) updateSeriesCount(data.total);
 
             if (data.success && data.series && data.series.length > 0) {
                 data.series.forEach((series, index) => {
@@ -498,8 +534,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('sort-by')?.addEventListener('change', triggerPublicReload);
     document.getElementById('sort-order')?.addEventListener('change', triggerPublicReload);
 
-    // Filtre de statuts : application en direct à chaque changement de sélection.
+    // Filtre de statuts / Affiner : application en direct à chaque changement.
     document.getElementById('status-filter')?.addEventListener('statusfilter:change', triggerPublicReload);
+    document.getElementById('refine-filter')?.addEventListener('refinefilter:change', triggerPublicReload);
 });
 
 // ── Autocomplétion de la barre de recherche publique ──────────────────────
@@ -887,12 +924,12 @@ function setModalLicenseBtn(series) {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function () {
-// ── Widget de filtre de statuts (cases à cocher regroupées + bascule OU/ET) ──
-// Fournit window.StatusFilter.read() => { filter: "a,b,c", mode: "or"|"and" }
-// et déclenche un événement 'statusfilter:change' quand la sélection change.
-(function () {
-    const root = document.getElementById('status-filter');
+// Widget générique de filtre à cases à cocher regroupées (bascule OU/ET,
+// tout cocher/décocher, panneau dépliant). Partagé par « Statuts » et
+// « Affiner ». Comportement par défaut : aucune case cochée, mode ET.
+// ─────────────────────────────────────────────────────────────────────────────
+function initCheckboxFilterWidget(rootId, baseLabel, eventName, installReader) {
+    const root = document.getElementById(rootId);
     if (!root || root.__sfInit) return;
     root.__sfInit = true;
 
@@ -903,7 +940,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const checkboxes = () => Array.from(root.querySelectorAll('.status-filter-cb'));
     const groups = () => Array.from(root.querySelectorAll('.status-filter-group'));
 
-    function mode() { return modeSel && modeSel.value === 'and' ? 'and' : 'or'; }
+    function mode() { return modeSel && modeSel.value === 'or' ? 'or' : 'and'; }
+    root.__sfMode = mode;
 
     // En mode ET, on interdit plusieurs cases dans une même catégorie multi :
     // dès qu'une case est cochée dans le groupe, les autres sont grisées.
@@ -926,32 +964,25 @@ document.addEventListener('DOMContentLoaded', function () {
         const label = root.querySelector('.status-filter-label');
         if (!label) return;
         const cbs = checkboxes();
-        const total = cbs.length;
         const checked = cbs.filter(cb => cb.checked).length;
-        if (checked === 0 || checked === total) {
-            label.textContent = 'Statuts';
-        } else {
-            label.textContent = 'Statuts (' + checked + ')';
-        }
+        label.textContent = checked === 0 ? baseLabel : (baseLabel + ' (' + checked + ')');
     }
 
-    // Lecture de l'état -> chaîne pour l'URL.
-    // Tout coché OU rien coché => filtre vide (= tout afficher).
-    root.__sfRead = function () {
-        const cbs = checkboxes();
-        const total = cbs.length;
-        const checkedVals = cbs.filter(cb => cb.checked).map(cb => cb.value);
-        let filter = checkedVals.join(',');
-        if (checkedVals.length === 0 || checkedVals.length === total) {
-            filter = '';
-        }
-        return { filter: filter, mode: mode() };
-    };
+    // Le bouton "Tout cocher/décocher" reflète l'état courant.
+    function refreshToggleAllLabel() {
+        if (!toggleAllBtn) return;
+        const anyChecked = checkboxes().some(cb => cb.checked);
+        toggleAllBtn.textContent = anyChecked ? 'Tout décocher' : 'Tout cocher';
+        toggleAllBtn.dataset.state = anyChecked ? 'uncheck' : 'check';
+    }
+
+    installReader(root, checkboxes);
 
     function emitChange() {
         applyAndConstraints();
         refreshLabel();
-        root.dispatchEvent(new CustomEvent('statusfilter:change', { bubbles: true }));
+        refreshToggleAllLabel();
+        root.dispatchEvent(new CustomEvent(eventName, { bubbles: true }));
     }
 
     // Ouverture / fermeture du panneau.
@@ -1001,13 +1032,34 @@ document.addEventListener('DOMContentLoaded', function () {
             if (modeSel) { modeSel.value = 'or'; root.dataset.statusMode = 'or'; }
         }
         cbs.forEach(cb => { cb.checked = shouldCheck; cb.disabled = false; cb.closest('.status-filter-option')?.classList.remove('disabled'); });
-        toggleAllBtn.textContent = shouldCheck ? 'Tout décocher' : 'Tout cocher';
-        toggleAllBtn.dataset.state = shouldCheck ? 'uncheck' : 'check';
         emitChange();
     });
 
     // État initial.
     applyAndConstraints();
     refreshLabel();
-})();
+    refreshToggleAllLabel();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Fournit root.__sfRead() => { filter: "a,b,c", mode: "or"|"and" }
+    // et déclenche un événement 'statusfilter:change' quand la sélection change.
+    initCheckboxFilterWidget('status-filter', 'Statuts', 'statusfilter:change', function (root, checkboxes) {
+        root.__sfRead = function () {
+            const cbs = checkboxes();
+            const checkedVals = cbs.filter(cb => cb.checked).map(cb => cb.value);
+            return { filter: checkedVals.join(','), mode: root.__sfMode() };
+        };
+    });
+
+    // ── Widget « Affiner » (Catégories / Genres), même mécanique que « Statuts »,
+    // se combine toujours en ET avec lui.
+    initCheckboxFilterWidget('refine-filter', 'Affiner', 'refinefilter:change', function (root, checkboxes) {
+        root.__sfReadRefine = function () {
+            const cbs = checkboxes();
+            const cats = cbs.filter(cb => cb.checked && cb.dataset.refineField === 'categories').map(cb => cb.value);
+            const genres = cbs.filter(cb => cb.checked && cb.dataset.refineField === 'genres').map(cb => cb.value);
+            return { categories: cats.join(','), genres: genres.join(','), mode: root.__sfMode() };
+        };
+    });
 });

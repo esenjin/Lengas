@@ -112,14 +112,17 @@ if (isset($_GET['get_paginated_series'])) {
     $sort_by = $_GET['sort_by'] ?? 'name';
     $sort_order = $_GET['sort_order'] ?? 'asc';
     $status_filter = $_GET['status_filter'] ?? '';
-    $status_mode   = $_GET['status_mode'] ?? 'or';
+    $status_mode   = $_GET['status_mode'] ?? 'and';
+    $refine_categories = $_GET['refine_categories'] ?? '';
+    $refine_genres     = $_GET['refine_genres'] ?? '';
+    $refine_mode       = $_GET['refine_mode'] ?? 'and';
     $type_filter   = sanitize_series_type($_GET['type'] ?? '');
 
     // Collection privée : masquage total, aucune série ne remonte (endpoint
     // interrogé même si la page HTML affiche déjà le message de collection privée).
     if (is_private_mode($options, $type_filter)) {
         header('Content-Type: application/json');
-        echo json_encode(['success' => true, 'series' => [], 'has_more' => false]);
+        echo json_encode(['success' => true, 'series' => [], 'has_more' => false, 'total' => 0]);
         exit;
     }
 
@@ -151,6 +154,9 @@ if (isset($_GET['get_paginated_series'])) {
         },
         $type_filter
     );
+    // Filtre « Affiner » (catégories / genres) : toujours combiné en ET avec
+    // le filtre de statuts ci-dessus.
+    $filtered_data = apply_refine_filter($filtered_data, $refine_categories, $refine_genres, $refine_mode);
 
     // Trie les résultats filtrés
     sort_series($filtered_data, $sort_by, $sort_order);
@@ -176,7 +182,8 @@ if (isset($_GET['get_paginated_series'])) {
     echo json_encode([
         'success' => true,
         'series' => $paginated_data,
-        'has_more' => ($offset + $per_page) < count($filtered_data)
+        'has_more' => ($offset + $per_page) < count($filtered_data),
+        'total' => count($filtered_data)
     ]);
     exit;
 }
@@ -330,7 +337,15 @@ $sort_by = $_GET['sort_by'] ?? 'name';
 $sort_order = $_GET['sort_order'] ?? 'asc';
 $search_term = $_GET['search'] ?? '';
 $status_filter = $_GET['status_filter'] ?? '';
-$status_mode = $_GET['status_mode'] ?? 'or';
+$status_mode = $_GET['status_mode'] ?? 'and';
+$refine_categories = $_GET['refine_categories'] ?? '';
+$refine_genres = $_GET['refine_genres'] ?? '';
+$refine_mode = $_GET['refine_mode'] ?? 'and';
+
+// Pool pour les options du widget « Affiner » : la collection affichée avant
+// tout filtrage de statut/affinage (mais après mode privé / masquage mature),
+// pour proposer toutes les catégories/genres réellement présents.
+$refine_pool = $data;
 
 function sort_series(&$data, $sort_by, $sort_order) {
     usort($data, function($a, $b) use ($sort_by, $sort_order) {
@@ -385,6 +400,10 @@ $data = array_values(apply_status_filter(
     },
     $current_type
 ));
+
+// Filtre « Affiner » (catégories / genres) : toujours combiné en ET avec le
+// filtre de statuts ci-dessus.
+$data = array_values(apply_refine_filter($data, $refine_categories, $refine_genres, $refine_mode));
 ?>
 
 <!DOCTYPE html>
@@ -448,13 +467,15 @@ $data = array_values(apply_status_filter(
                         <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Ascendant</option>
                         <option value="desc" <?= $sort_order === 'desc' ? 'selected' : '' ?>>Descendant</option>
                     </select>
-                    <?php render_status_filter($status_filter, $status_mode ?? 'or', $reviews_public, $current_type); ?>
+                    <?php render_status_filter($status_filter, $status_mode ?? 'and', $reviews_public, $current_type); ?>
+                    <?php render_refine_filter($refine_categories, $refine_genres, $refine_mode, $refine_pool); ?>
                 </div>
 
                 <?php if ($hide_mature): ?>
                     <p style="color: var(--status-mature);">🔞 Les séries matures sont masquées.</p>
                 <?php endif; ?>
             </form>
+            <p class="series-count" id="series-count" data-count="<?= count($data) ?>">Séries visibles : <span id="series-count-value"><?= count($data) ?></span></p>
         </div>
         <?php endif; ?>
 

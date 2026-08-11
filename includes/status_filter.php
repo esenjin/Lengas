@@ -243,13 +243,17 @@ function apply_status_filter($data, $raw, $mode, callable $has_review_fn, $type 
 }
 
 // Rendu du widget de filtre (cases à cocher regroupées + bascule OU/ET).
-// $raw : "a,b,c" (cases initialement cochées) ; vide => TOUT coché par défaut.
+// $raw : "a,b,c" (cases initialement cochées) ; vide => TOUT décoché par défaut
+// (aucun critère sélectionné = aucun filtrage = tout est affiché).
 // $type : type de série affiché (conditionne les catégories proposées).
 function render_status_filter($raw, $mode, $reviews_public, $type = null) {
     $tokens = array_filter(array_map('trim', explode(',', (string)$raw)), 'strlen');
-    $all_default = empty($tokens); // rien fourni => tout coché
     $checked = array_fill_keys($tokens, true);
-    $mode = ($mode === 'and') ? 'and' : 'or';
+    // Par défaut (aucun paramètre fourni dans l'URL), le mode est "et" et
+    // aucune case n'est cochée : $raw === '' et $mode === '' distinguent ce
+    // cas initial d'un état explicitement choisi par l'utilisateur (qui, lui,
+    // peut tout à fait avoir tout décoché en mode "ou").
+    $mode = ($mode === 'or') ? 'or' : 'and';
     $cats = status_filter_categories($type);
     ?>
     <div class="status-filter" id="status-filter" data-status-mode="<?= $mode ?>">
@@ -266,7 +270,7 @@ function render_status_filter($raw, $mode, $reviews_public, $type = null) {
                         <option value="and" <?= $mode === 'and' ? 'selected' : '' ?>>ET (toutes)</option>
                     </select>
                 </label>
-                <button type="button" class="status-filter-toggle-all" data-state="uncheck">Tout décocher</button>
+                <button type="button" class="status-filter-toggle-all" data-state="check">Tout cocher</button>
             </div>
             <div class="status-filter-groups">
                 <?php foreach ($cats as $cat => $def):
@@ -274,9 +278,147 @@ function render_status_filter($raw, $mode, $reviews_public, $type = null) {
                     <fieldset class="status-filter-group" data-cat="<?= htmlspecialchars($cat) ?>" data-multi="<?= !empty($def['multi']) ? '1' : '0' ?>">
                         <legend><?= htmlspecialchars($def['label']) ?></legend>
                         <?php foreach ($def['items'] as $value => $text):
-                            $is_checked = $all_default ? true : !empty($checked[$value]); ?>
+                            $is_checked = !empty($checked[$value]); ?>
                             <label class="status-filter-option">
                                 <input type="checkbox" class="status-filter-cb" value="<?= htmlspecialchars($value) ?>" <?= $is_checked ? 'checked' : '' ?>>
+                                <span><?= htmlspecialchars($text) ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </fieldset>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Filtre « Affiner » : Catégories / Genres, à côté de « Statuts ».
+// Même mécanique (cases à cocher regroupées, mode OU/ET, tout décoché par
+// défaut), mais les options sont calculées dynamiquement à partir des séries
+// réellement présentes dans la collection affichée plutôt que d'une liste
+// figée — catégories et genres sont des champs libres. Se combine TOUJOURS en
+// ET avec le filtre « Statuts » (deux filtres indépendants), chacun gardant
+// son propre mode OU/ET interne entre ses catégories.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Liste triée (insensible à la casse) des valeurs distinctes d'un champ liste
+// (categories ou genres) présentes dans $data.
+function refine_filter_values(array $data, string $field): array {
+    $values = [];
+    foreach ($data as $series) {
+        foreach ((array)($series[$field] ?? []) as $v) {
+            $v = trim((string)$v);
+            if ($v === '') continue;
+            if (!isset($values[$v])) $values[$v] = true;
+        }
+    }
+    $out = array_keys($values);
+    natcasesort($out);
+    return array_values($out);
+}
+
+// Catégories du widget « Affiner », au même format que status_filter_categories() :
+// clé => ['label'=>.., 'multi'=>true, 'items'=>[valeur => libellé]].
+// Les valeurs elles-mêmes servent à la fois de clé technique et de libellé
+// affiché (contrairement aux jetons de statuts, un nom de catégorie/genre
+// n'a pas de jeton court dédié).
+function refine_filter_categories(array $data): array {
+    $cats = [
+        'refine_categories' => [
+            'label' => 'Catégories',
+            'multi' => true,
+            'items' => [],
+        ],
+        'refine_genres' => [
+            'label' => 'Genres',
+            'multi' => true,
+            'items' => [],
+        ],
+    ];
+    foreach (refine_filter_values($data, 'categories') as $v) {
+        $cats['refine_categories']['items'][$v] = $v;
+    }
+    foreach (refine_filter_values($data, 'genres') as $v) {
+        $cats['refine_genres']['items'][$v] = $v;
+    }
+    return $cats;
+}
+
+// Applique le filtre « Affiner » à un tableau de séries.
+// $raw_categories / $raw_genres : "a,b,c" (valeurs cochées) ; vide => aucun
+// filtrage sur ce champ. Les deux champs se combinent toujours en ET l'un
+// avec l'autre (chacun en OU en interne, sauf si $mode = 'and').
+function apply_refine_filter(array $data, string $raw_categories, string $raw_genres, string $mode): array {
+    $cat_tokens = array_filter(array_map('trim', explode(',', $raw_categories)), 'strlen');
+    $genre_tokens = array_filter(array_map('trim', explode(',', $raw_genres)), 'strlen');
+    if (empty($cat_tokens) && empty($genre_tokens)) return $data;
+
+    $mode = ($mode === 'or') ? 'or' : 'and';
+
+    $matches_list = function ($series_values, $tokens, $op) {
+        if (empty($tokens)) return null; // champ non filtré : ignoré du calcul
+        $series_values = array_map('trim', (array)$series_values);
+        $hits = 0;
+        foreach ($tokens as $t) {
+            if (in_array($t, $series_values, true)) $hits++;
+        }
+        return $op === 'and' ? ($hits === count($tokens)) : ($hits > 0);
+    };
+
+    return array_filter($data, function ($series) use ($cat_tokens, $genre_tokens, $mode, $matches_list) {
+        $results = [];
+        $c = $matches_list($series['categories'] ?? [], $cat_tokens, $mode);
+        if ($c !== null) $results[] = $c;
+        $g = $matches_list($series['genres'] ?? [], $genre_tokens, $mode);
+        if ($g !== null) $results[] = $g;
+        if (empty($results)) return true;
+        if ($mode === 'and') return !in_array(false, $results, true);
+        return in_array(true, $results, true);
+    });
+}
+
+// Rendu du widget « Affiner » (même structure visuelle que « Statuts »).
+// $raw_categories / $raw_genres : valeurs cochées ("a,b,c") ; vide => tout
+// décoché. $pool : séries (déjà filtrées sur le type affiché) sur lesquelles
+// calculer les options disponibles (catégories/genres réellement présents) —
+// sert uniquement à énumérer ces valeurs, jamais à un filtrage réel (fait par
+// apply_refine_filter()).
+function render_refine_filter($raw_categories, $raw_genres, $mode, array $pool = []) {
+    $cats = refine_filter_categories($pool);
+
+    $checked_cats   = array_fill_keys(array_filter(array_map('trim', explode(',', (string)$raw_categories)), 'strlen'), true);
+    $checked_genres = array_fill_keys(array_filter(array_map('trim', explode(',', (string)$raw_genres)), 'strlen'), true);
+    $mode = ($mode === 'or') ? 'or' : 'and';
+    ?>
+    <div class="status-filter refine-filter" id="refine-filter" data-status-mode="<?= $mode ?>">
+        <button type="button" class="status-filter-toggle" aria-expanded="false">
+            <span class="status-filter-label">Affiner</span>
+            <span class="status-filter-caret">▾</span>
+        </button>
+        <div class="status-filter-panel" hidden>
+            <div class="status-filter-head">
+                <label class="status-filter-mode-switch" title="OU : au moins une valeur. ET : toutes les valeurs.">
+                    <span>Combinaison :</span>
+                    <select class="status-filter-mode">
+                        <option value="or"  <?= $mode === 'or'  ? 'selected' : '' ?>>OU (au moins une)</option>
+                        <option value="and" <?= $mode === 'and' ? 'selected' : '' ?>>ET (toutes)</option>
+                    </select>
+                </label>
+                <button type="button" class="status-filter-toggle-all" data-state="check">Tout cocher</button>
+            </div>
+            <div class="status-filter-groups">
+                <?php foreach ($cats as $cat => $def): ?>
+                    <fieldset class="status-filter-group" data-cat="<?= htmlspecialchars($cat) ?>" data-multi="1">
+                        <legend><?= htmlspecialchars($def['label']) ?></legend>
+                        <?php if (empty($def['items'])): ?>
+                            <p class="hint">Aucune valeur disponible.</p>
+                        <?php endif; ?>
+                        <?php foreach ($def['items'] as $value => $text):
+                            $checked_map = ($cat === 'refine_categories') ? $checked_cats : $checked_genres;
+                            $is_checked = !empty($checked_map[$value]); ?>
+                            <label class="status-filter-option">
+                                <input type="checkbox" class="status-filter-cb" data-refine-field="<?= $cat === 'refine_categories' ? 'categories' : 'genres' ?>" value="<?= htmlspecialchars($value) ?>" <?= $is_checked ? 'checked' : '' ?>>
                                 <span><?= htmlspecialchars($text) ?></span>
                             </label>
                         <?php endforeach; ?>
