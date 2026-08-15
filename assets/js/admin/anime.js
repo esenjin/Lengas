@@ -95,24 +95,108 @@ function createAnimeSeriesCard(series) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Synchronisation automatique
 //
-// Déclenchée à l'affichage de chaque carte animée éligible (diffusion ET
-// visionnage « en cours », verrou de 24h écoulé — sync_due calculé côté
-// serveur). La page reste utilisable pendant l'appel : seul un petit badge
-// discret apparaît sur la carte concernée, remplacé par le résultat une fois
-// la réponse reçue. Aucune alerte bloquante, aucun rechargement de page.
+// Déclenchée une seule fois par visite, via l'endpoint dédié
+// get_anime_sync_due_ids (pages/admin.php) qui renvoie la liste des IDs de
+// séries dues — indépendamment de ce qui est effectivement chargé/visible
+// dans le DOM à cet instant. Ancienne approche : scanner les cartes déjà
+// présentes dans #series-list ; problème, sur une collection triée par nom,
+// une série due mais loin dans l'alphabet n'était jamais traitée tant que
+// l'utilisateur n'avait pas scrollé manuellement jusqu'à elle (le défilement
+// infini ne charge les pages suivantes qu'à la demande). L'approche par ID
+// traite toutes les séries dues dès le chargement de la page, que leur carte
+// soit déjà affichée ou non — si elle apparaît plus tard (scroll), elle sera
+// simplement déjà à jour, `sync_due` recalculé côté serveur bloquant alors
+// toute re-synchronisation inutile.
+//
+// La page reste utilisable pendant l'appel : seul un petit badge discret
+// apparaît sur la carte concernée SI ELLE EST DÉJÀ AFFICHÉE, remplacé par le
+// résultat une fois la réponse reçue. Aucune alerte bloquante, aucun
+// rechargement de page.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Nombre de synchronisations déjà déclenchées lors de cette visite : une
-// protection de confort, qui évite de déclencher plus d'appels que nécessaire
-// si beaucoup de cartes éligibles s'affichent d'un coup (défilement rapide,
-// tri...). Repart de zéro à chaque chargement complet de page.
-//
-// Le VRAI plafond, celui qui compte, est appliqué côté serveur
-// (anilist_sync_visit_quota_*, fonctions/tools/anilist_sync.php) sur une
-// fenêtre glissante de 10 minutes — il ne dépend donc pas d'un rechargement
-// de page et ne peut pas être contourné en rechargeant simplement l'onglet.
-let animeSyncTriggeredCount = 0;
-const ANIME_SYNC_MAX_PER_VISIT = 5; // doit rester ≤ à anilist_sync_max_per_visit() côté PHP
+// Délai entre deux appels de synchronisation (file séquentielle ci-dessous) :
+// par respect pour l'API Anilist, même si son quota (90 req/min, voir
+// includes/anilist.php) laisserait largement la place à des appels en
+// parallèle. 1 à 2 secondes aléatoires, pour éviter un rythme parfaitement
+// régulier.
+function animeSyncDelayMs() {
+    return 1000 + Math.floor(Math.random() * 1000);
+}
+
+// File d'attente séquentielle : les IDs dus sont empilés ici plutôt que
+// synchronisés tous en même temps. animeSyncProcessQueue() les traite un par
+// un, avec une pause entre chaque, tant que la file n'est pas vide.
+const animeSyncQueue = [];
+let animeSyncQueueRunning = false;
+let animeSyncStarted = false; // garde-fou : un seul lancement par visite
+
+async function animeSyncProcessQueue() {
+    if (animeSyncQueueRunning) return; // déjà en cours, une seule boucle à la fois
+    animeSyncQueueRunning = true;
+
+    while (animeSyncQueue.length > 0) {
+        const seriesId = animeSyncQueue.shift();
+        await animeSyncSeries(seriesId);
+        if (animeSyncQueue.length > 0) {
+            await new Promise(resolve => setTimeout(resolve, animeSyncDelayMs()));
+        }
+    }
+
+    animeSyncQueueRunning = false;
+}
+
+// ── Bandeau global de progression ───────────────────────────────────────────
+// Complète les badges par carte (ci-dessous) d'un état d'ensemble, visible dès
+// l'arrivée sur la page sans avoir à repérer une carte en particulier.
+// data-due-initial (posé par admin.php) donne le nombre de séries dues au
+// chargement ; animeSyncBannerSettled compte les tentatives réellement
+// abouties (synced/unchanged/error/skipped).
+let animeSyncBannerSettled = 0;
+let animeSyncBannerErrors = 0;
+
+function animeSyncBannerEl() {
+    return document.getElementById('anime-sync-banner');
+}
+
+// Appelée une fois par tentative de synchro effectivement terminée. Met à
+// jour le compteur et, une fois le total initial atteint, bascule le
+// bandeau en état « terminé » puis l'estompe après quelques secondes — sauf
+// s'il reste des échecs à signaler.
+function animeSyncBannerNotifySettled(hadError) {
+    const banner = animeSyncBannerEl();
+    if (!banner) return;
+
+    const total = parseInt(banner.dataset.dueInitial || '0', 10);
+    if (!total) return; // bandeau en état "idle" dès le départ : rien à faire
+
+    animeSyncBannerSettled++;
+    if (hadError) animeSyncBannerErrors++;
+
+    const countEl = document.getElementById('anime-sync-banner-count');
+    if (countEl) countEl.textContent = String(Math.min(animeSyncBannerSettled, total));
+
+    if (animeSyncBannerSettled >= total) {
+        const textEl = document.getElementById('anime-sync-banner-text');
+        const spinner = document.getElementById('anime-sync-banner-spinner');
+        if (spinner) spinner.hidden = true;
+
+        if (animeSyncBannerErrors > 0) {
+            banner.className = 'anime-sync-banner anime-sync-banner--error';
+            if (textEl) {
+                textEl.textContent = animeSyncBannerErrors === 1
+                    ? "Actualisation des épisodes terminée — 1 série n'a pas pu être synchronisée."
+                    : `Actualisation des épisodes terminée — ${animeSyncBannerErrors} séries n'ont pas pu être synchronisées.`;
+            }
+            // Un échec reste affiché : pas d'estompage automatique, comme le
+            // badge par carte (.anime-sync-badge.is-error) qui reste visible
+            // jusqu'à ce que l'utilisateur comprenne qu'il y a un souci.
+        } else {
+            banner.className = 'anime-sync-banner anime-sync-banner--done';
+            if (textEl) textEl.textContent = 'Épisodes à jour — actualisation terminée.';
+            setTimeout(() => { banner.hidden = true; }, 5000);
+        }
+    }
+}
 
 function animeSyncBadgeEl(card) {
     return card.querySelector('[data-anime-sync-badge]');
@@ -126,36 +210,57 @@ function animeSyncSetBadge(card, html, cls) {
     el.hidden = !html;
 }
 
+// La carte peut ne pas encore être dans le DOM (série pas encore chargée par
+// le défilement infini) : toutes les fonctions ci-dessous acceptent
+// `card = null` et ignorent simplement l'affichage local dans ce cas — la
+// donnée, elle, est mise à jour dans window.seriesData, donc la carte
+// affichera l'état à jour dès qu'elle sera effectivement créée.
+
 // Recharge la liste des épisodes (toujours affichée) et met à jour le badge
 // de statut de diffusion, pour que les nouveaux épisodes diffusés apparaissent
 // sans que l'utilisateur ait à recharger la page lui-même.
 function animeSyncRefreshCard(card, seriesId, result) {
-    const badge = animeStatusBadge(result.anime_status);
-    const statusBadgeEl = card.querySelector('[data-anime-status-badge]');
-    if (statusBadgeEl) {
-        statusBadgeEl.className = 'series-status-badge ' + badge.cls;
-        statusBadgeEl.textContent = badge.icon;
-    }
+    if (card) {
+        const badge = animeStatusBadge(result.anime_status);
+        const statusBadgeEl = card.querySelector('[data-anime-status-badge]');
+        if (statusBadgeEl) {
+            statusBadgeEl.className = 'series-status-badge ' + badge.cls;
+            statusBadgeEl.textContent = badge.icon;
+        }
 
-    if (typeof refreshSeriesVolumes === 'function') {
-        refreshSeriesVolumes(seriesId);
+        if (typeof refreshSeriesVolumes === 'function') {
+            refreshSeriesVolumes(seriesId);
+        }
     }
 
     // window.seriesData reflète aussi ce que verrait une nouvelle carte créée
-    // ensuite (tri, changement de page) : on le tient à jour pour éviter un
-    // badge de statut périmé après un rafraîchissement partiel de la liste.
+    // ensuite (scroll, tri, changement de page) : on le tient à jour pour
+    // que toute carte pas encore affichée arrive déjà synchronisée.
     if (Array.isArray(window.seriesData)) {
         const s = window.seriesData.find(s => s && s.id === seriesId);
         if (s) {
             s.status = result.anime_status;
             s.volumes_count = result.volumes_count;
             s.anilist_synced_at = result.anilist_synced_at;
+            s.sync_due = false;
         }
     }
 }
 
-async function animeSyncCard(card, seriesId) {
-    animeSyncSetBadge(card, '<span class="spinner"></span> Synchronisation…', 'is-loading');
+async function animeSyncSeries(seriesId) {
+    // La carte peut ne pas encore exister dans le DOM : on la (re)cherche à
+    // chaque appel plutôt que de la recevoir en paramètre, pour rester
+    // correct même si elle apparaît en cours de traitement (scroll pendant
+    // la synchro).
+    const card = document.querySelector(`.series-card--anime[data-series-id="${CSS.escape(seriesId)}"]`);
+
+    if (card) {
+        animeSyncSetBadge(card, '<span class="spinner"></span> Synchronisation…', 'is-loading');
+    }
+
+    const banner = animeSyncBannerEl();
+    const bannerSpinner = document.getElementById('anime-sync-banner-spinner');
+    if (banner && bannerSpinner) bannerSpinner.hidden = false;
 
     try {
         const response = await fetch('admin.php', {
@@ -167,70 +272,85 @@ async function animeSyncCard(card, seriesId) {
 
         if (result.status === 'synced') {
             animeSyncRefreshCard(card, seriesId, result);
-            animeSyncSetBadge(card, '✓ Synchronisée', 'is-done');
-            setTimeout(() => animeSyncSetBadge(card, '', ''), 4000);
+            if (card) {
+                animeSyncSetBadge(card, '✓ Synchronisée', 'is-done');
+                setTimeout(() => animeSyncSetBadge(card, '', ''), 4000);
+            }
+            animeSyncBannerNotifySettled(false);
         } else if (result.status === 'unchanged') {
             if (Array.isArray(window.seriesData)) {
                 const s = window.seriesData.find(s => s && s.id === seriesId);
-                if (s) s.anilist_synced_at = result.anilist_synced_at;
+                if (s) {
+                    s.anilist_synced_at = result.anilist_synced_at;
+                    s.sync_due = false;
+                }
             }
-            animeSyncSetBadge(card, '', '');
+            if (card) animeSyncSetBadge(card, '', '');
+            animeSyncBannerNotifySettled(false);
         } else if (result.status === 'error') {
-            animeSyncSetBadge(card, '⚠️ Échec de la synchronisation', 'is-error');
-            card.querySelector('[data-anime-sync-badge]')?.setAttribute(
-                'data-title', result.message || "Erreur inconnue."
-            );
+            if (card) {
+                animeSyncSetBadge(card, '⚠️ Échec de la synchronisation', 'is-error');
+                card.querySelector('[data-anime-sync-badge]')?.setAttribute(
+                    'data-title', result.message || "Erreur inconnue."
+                );
+            }
+            animeSyncBannerNotifySettled(true);
         } else {
-            // 'skipped' : non éligible, verrou non écoulé, ou quota de
-            // synchronisations par visite déjà atteint (vérifiés côté
-            // serveur, qui reste seul juge malgré le sync_due du front).
-            // Rien à montrer : ce n'est pas un échec, juste rien à faire
-            // maintenant — la carte sera reprise à une prochaine visite.
-            animeSyncSetBadge(card, '', '');
+            // 'skipped' : verrou non écoulé, ou série devenue inéligible
+            // entre-temps (vérifiés côté serveur, qui reste seul juge
+            // malgré la liste due obtenue au chargement). Rien à montrer
+            // sur la carte : ce n'est pas un échec, juste rien à faire
+            // maintenant — la série sera reprise à une prochaine visite.
+            if (card) animeSyncSetBadge(card, '', '');
+            animeSyncBannerNotifySettled(false);
         }
     } catch (error) {
         console.error('Erreur de synchronisation Anilist :', error);
-        animeSyncSetBadge(card, '⚠️ Échec de la synchronisation', 'is-error');
+        if (card) animeSyncSetBadge(card, '⚠️ Échec de la synchronisation', 'is-error');
+        animeSyncBannerNotifySettled(true);
     }
 }
 
-// Parcourt les cartes animées visibles à l'instant T et déclenche la synchro
-// pour celles marquées `sync_due` par le serveur, dans la limite du plafond
-// de visite. Appelée après chaque insertion de nouvelles cartes (chargement
-// de page, changement de tri/filtre, pagination infinie).
-function animeSyncScanVisibleCards() {
-    if (animeSyncTriggeredCount >= ANIME_SYNC_MAX_PER_VISIT) return;
-    if (!Array.isArray(window.seriesData)) return;
+// Estompe le bandeau après quelques secondes quand il n'y a rien à faire
+// (aucune série due au chargement, ou l'endpoint de liste a échoué) — sans
+// ça, le message "Épisodes à jour" restait affiché indéfiniment, alors que
+// l'état "terminé avec succès" (après une synchro réelle) s'estompait déjà
+// automatiquement. Ne s'applique qu'au cas idle : un échec avec erreur
+// réelle (animeSyncBannerNotifySettled) reste volontairement affiché.
+function animeSyncBannerFadeIdle() {
+    const banner = animeSyncBannerEl();
+    if (!banner) return;
+    setTimeout(() => { banner.hidden = true; }, 5000);
+}
+
+// Récupère la liste des séries dues côté serveur (indépendamment de ce qui
+// est chargé/visible dans le DOM) et lance la file d'attente séquentielle.
+// Appelée une seule fois par chargement de page (voir IIFE plus bas) : la
+// pagination infinie et le tri n'ont plus besoin de redéclencher quoi que ce
+// soit, la file couvre déjà toutes les séries dues de la visite.
+async function animeSyncStart() {
+    if (animeSyncStarted) return;
+    animeSyncStarted = true;
+
     if (window.currentSeriesType !== 'anime') return;
 
-    document.querySelectorAll('.series-card--anime[data-series-id]').forEach(card => {
-        if (animeSyncTriggeredCount >= ANIME_SYNC_MAX_PER_VISIT) return;
-        if (card.dataset.syncTriggered === '1') return;
+    try {
+        const response = await fetch('admin.php?get_anime_sync_due_ids=1');
+        const result = await response.json();
+        if (!result.success || !Array.isArray(result.ids) || result.ids.length === 0) {
+            animeSyncBannerFadeIdle();
+            return;
+        }
 
-        const seriesId = card.dataset.seriesId;
-        const s = window.seriesData.find(s => s && s.id === seriesId);
-        if (!s || !s.sync_due) return;
-
-        card.dataset.syncTriggered = '1';
-        animeSyncTriggeredCount++;
-        animeSyncCard(card, seriesId);
-    });
+        result.ids.forEach(id => animeSyncQueue.push(id));
+        animeSyncProcessQueue();
+    } catch (error) {
+        console.error('Erreur lors de la récupération des séries à synchroniser :', error);
+        animeSyncBannerFadeIdle();
+    }
 }
-window.animeSyncScanVisibleCards = animeSyncScanVisibleCards;
 
-// Nouvelles cartes ajoutées par la pagination infinie (assets/js/admin/
-// pagination.js) : on observe l'apparition de cartes dans #series-list plutôt
-// que de modifier loadMoreSeries() directement, pour rester sans dépendance
-// d'ordre de chargement entre les deux fichiers.
-(function watchAnimeCardsInsertion() {
-    const list = document.getElementById('series-list');
-    if (!list || typeof MutationObserver === 'undefined') return;
-
-    const observer = new MutationObserver(() => animeSyncScanVisibleCards());
-    observer.observe(list, { childList: true });
-
-    document.addEventListener('DOMContentLoaded', () => animeSyncScanVisibleCards());
-})();
+document.addEventListener('DOMContentLoaded', () => animeSyncStart());
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Rendu d'un résultat de recherche Anilist (fiche normalisée allégée) — commun

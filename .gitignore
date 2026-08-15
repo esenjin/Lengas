@@ -3,3 +3,4 @@ saves/
 
 # Config Vestikan : contient le client_secret, ne jamais versionner.
 vestikan/vestikan-config.php
+nommage_versions.md

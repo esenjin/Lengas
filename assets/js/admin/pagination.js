@@ -103,6 +103,25 @@ async function loadMoreSeries() {
         if (data.success) updateSeriesCount(data.total);
 
         if (data.success && data.series.length > 0) {
+            // Alimente window.seriesData au fil de la pagination infinie : ce
+            // tableau n'est peuplé côté PHP qu'avec la première page (voir
+            // admin.php, window.seriesData = ...). Sans cet ajout, toute
+            // série chargée ensuite ici resterait introuvable par son id
+            // pour les fonctions qui la recherchent dans window.seriesData
+            // (modale d'édition, badges de carte...). N'est plus utilisé par
+            // la synchro automatique elle-même, qui traite désormais les
+            // séries dues par ID via un endpoint dédié
+            // (get_anime_sync_due_ids), indépendamment de ce qui est déjà
+            // chargé dans le DOM — voir assets/js/admin/anime.js,
+            // animeSyncStart().
+            if (Array.isArray(window.seriesData)) {
+                data.series.forEach(series => {
+                    if (!window.seriesData.some(s => s && s.id === series.id)) {
+                        window.seriesData.push(series);
+                    }
+                });
+            }
+
             data.series.forEach(series => {
                 const seriesCard = createLightSeriesCard(series);
                 seriesList.appendChild(seriesCard);

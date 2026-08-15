@@ -18,7 +18,7 @@
 // Le moteur ci-dessous (anilist_sync_series_now) est le SEUL point d'écriture
 // d'une synchronisation. Il est appelé par deux entrées distinctes :
 //   • l'endpoint AJAX d'admin.php (pages/admin.php), une série à la fois — le
-//     quota de séries par visite et le verrou de 24h y sont vérifiés
+//     quota de séries par visite et le verrou d'1h y sont vérifiés
 //     directement autour de l'appel ;
 //   • anilist_sync_run_batch(), utilisée par le sous-onglet « Vérification
 //     via Anilist » de la page Outils (bouton de forçage : verrous ignorés,
@@ -36,84 +36,34 @@
 // 1. Réglages du verrou
 // ────────────────────────────────────────────────────────────────────────────
 
-// Verrou normal après une synchronisation réussie : 24 heures, par série.
+// Verrou normal après une synchronisation réussie : 1 heure, par série.
+// Anciennement 24h ; réduit car l'API Anilist supporte largement une
+// fréquence de vérification plus élevée, et le nombre de séries en cours de
+// diffusion ET de visionnage simultanément reste toujours limité en
+// pratique (jamais des centaines) — le coût en requêtes reste négligeable.
 function anilist_sync_lock_seconds(): int {
-    return 24 * 3600;
-}
-
-// Report du verrou après un échec API : 1 heure seulement, pour retenter
-// bientôt sans pour autant marteler l'API à chaque page vue.
-function anilist_sync_retry_lock_seconds(): int {
     return 3600;
 }
 
-// Nombre maximal de séries synchronisées par visite (plafond de la feuille de
-// route « plafond du nombre de séries synchronisées par visite »). Une visite
-// peut afficher beaucoup de cartes éligibles ; on ne veut pas déclencher des
-// dizaines de requêtes Anilist d'un coup pour une seule page vue.
-function anilist_sync_max_per_visit(): int {
-    return 5;
-}
-
-// Durée de la fenêtre considérée comme « une visite », pour le quota
-// ci-dessus. Couvre le chargement de page ET la pagination infinie qui suit
-// (défilement, tri, changement de filtre) sans repartir de zéro à chaque
-// appel AJAX — mais se réinitialise d'elle-même après une pause suffisante,
-// sans qu'il soit nécessaire de détecter un « nouveau chargement de page ».
-function anilist_sync_visit_window_seconds(): int {
-    return 10 * 60; // 10 minutes
+// Report du verrou après un échec API : 15 minutes, pour retenter bientôt
+// sans pour autant marteler l'API à chaque page vue en cas de panne.
+function anilist_sync_retry_lock_seconds(): int {
+    return 15 * 60;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// 2. Quota de séries synchronisées par visite (protection SERVEUR)
+// 2. Quota de séries synchronisées par visite — SUPPRIMÉ
 // ────────────────────────────────────────────────────────────────────────────
-// Le plafond côté front (assets/js/admin/anime.js) évite de déclencher des
-// appels inutiles, mais reste contournable (autre onglet, appel direct) : la
-// limite qui compte réellement est ici, sur la session PHP. Une « visite »
-// est une fenêtre glissante de anilist_sync_visit_window_seconds() : le
-// compteur repart de zéro tout seul après une pause suffisante, sans avoir à
-// détecter explicitement un nouveau chargement de page.
-//
-// Nécessite une session déjà démarrée (includes/auth.php le fait avant tout
-// endpoint d'admin.php).
-
-// Le quota est-il encore disponible pour CETTE visite ? Ne consomme rien.
-function anilist_sync_visit_quota_available(): bool {
-    if (!isset($_SESSION)) return true; // pas de session : pas de limite imposable
-    $window = anilist_sync_visit_window_seconds();
-    $now    = time();
-    $started = (int)($_SESSION['anilist_sync_visit_started_at'] ?? 0);
-    $count   = (int)($_SESSION['anilist_sync_visit_count'] ?? 0);
-
-    if ($started <= 0 || ($now - $started) >= $window) {
-        return true; // nouvelle fenêtre, quota entier disponible
-    }
-    return $count < anilist_sync_max_per_visit();
-}
-
-// Consomme une unité de quota pour la visite en cours (à appeler UNE fois par
-// synchronisation réellement tentée, succès ou échec — un échec compte aussi,
-// pour éviter qu'une série en erreur permanente ne consomme le quota en boucle
-// sans jamais être comptée). Renvoie false si le quota était déjà épuisé (la
-// tentative n'aurait pas dû avoir lieu).
-function anilist_sync_visit_quota_consume(): bool {
-    if (!isset($_SESSION)) return true;
-    $window = anilist_sync_visit_window_seconds();
-    $now    = time();
-    $started = (int)($_SESSION['anilist_sync_visit_started_at'] ?? 0);
-
-    if ($started <= 0 || ($now - $started) >= $window) {
-        $_SESSION['anilist_sync_visit_started_at'] = $now;
-        $_SESSION['anilist_sync_visit_count']      = 0;
-    }
-
-    $count = (int)($_SESSION['anilist_sync_visit_count'] ?? 0);
-    if ($count >= anilist_sync_max_per_visit()) {
-        return false;
-    }
-    $_SESSION['anilist_sync_visit_count'] = $count + 1;
-    return true;
-}
+// Un plafond par visite existait ici (5, puis 200). Retiré : le connecteur
+// Anilist (includes/anilist.php) respecte déjà le quota de l'API (90
+// requêtes/minute) avec sa propre fenêtre glissante, et le front
+// (assets/js/admin/anime.js) espace ses appels d'1 à 2 secondes par égard
+// pour Anilist — ces deux mécanismes suffisent, un plafond par visite
+// supplémentaire n'apportait qu'un risque de blocage silencieux (une série
+// dont le sync_due n'était pas correctement propagé pouvait rester bloquée
+// à 'skipped' sans jamais avancer) pour un bénéfice nul en pratique : une
+// collection compte rarement, voire jamais, des centaines de séries à la
+// fois en diffusion ET en visionnage « en cours ».
 
 // ────────────────────────────────────────────────────────────────────────────
 // 3. Éligibilité
@@ -350,7 +300,7 @@ function anilist_sync_eligible_series_ids(array $data): array {
     return $ids;
 }
 
-// Parmi les séries éligibles, celles dont le verrou de 24h est écoulé (ce que
+// Parmi les séries éligibles, celles dont le verrou d'1h est écoulé (ce que
 // la synchro automatique traiterait réellement sans forçage).
 function anilist_sync_due_series_ids(array $data): array {
     $ids = [];

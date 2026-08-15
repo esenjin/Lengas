@@ -495,12 +495,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_next_episode']))
     exit;
 }
 
+// ── Endpoint AJAX : liste des séries dues pour la synchro automatique ───────
+// Indépendant de la pagination/tri/recherche affichés : le front l'appelle
+// une fois au chargement de la page Animethèque pour connaître le
+// périmètre RÉEL à traiter, sans dépendre des cartes effectivement
+// présentes dans le DOM à cet instant (voir assets/js/admin/anime.js).
+// Avant ce endpoint, la synchro ne portait que sur les cartes déjà
+// chargées/visibles : une série due mais triée loin dans la liste (au-delà
+// des cartes chargées par le défilement infini) n'était jamais traitée tant
+// que l'utilisateur n'avait pas scrollé jusqu'à elle.
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_anime_sync_due_ids'])) {
+    header('Content-Type: application/json');
+    $due_ids = ($current_type === 'anime') ? anilist_sync_due_series_ids($data) : [];
+    echo json_encode(['success' => true, 'ids' => array_values($due_ids)]);
+    exit;
+}
+
 // ── Endpoint AJAX : synchronisation automatique d'une carte animée ──────────
 // Déclenché par le front à l'affichage d'une carte éligible (diffusion ET
-// visionnage « en cours »), une par une. La page s'affiche donc immédiatement,
-// la synchro part ensuite en arrière-plan : voir assets/js/admin/anime.js.
+// visionnage « en cours »), une par une, espacées d'1 à 2 secondes (voir
+// assets/js/admin/anime.js). La page s'affiche donc immédiatement, la
+// synchro part ensuite en arrière-plan.
 //
-// Verrou de 24h par série (sauf contournement déjà écoulé), respecté ici même
+// Verrou d'1h par série (sauf contournement déjà écoulé), respecté ici même
 // si le front ne rappelle que des cartes qu'il croit dues : la vérité reste
 // celle du serveur. Échec API : report du verrou à 1h, jamais de fatale.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sync_anime_series'])) {
@@ -514,31 +531,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sync_anime_series']))
         exit;
     }
 
-    // Quota de séries synchronisées par visite (protection SERVEUR : le
-    // plafond côté front n'est qu'un confort, celui-ci est la vraie limite).
-    // Un dépassement n'est pas une erreur : la carte concernée sera reprise
-    // à la prochaine visite, ou au sous-onglet « Vérification via Anilist »
-    // de la page Outils, qui n'a lui aucun plafond (action explicite).
-    if (!anilist_sync_visit_quota_available()) {
-        echo json_encode([
-            'success'   => false,
-            'status'    => 'skipped',
-            'message'   => "Quota de synchronisations automatiques atteint pour cette visite.",
-            'series_id' => $series_id,
-        ]);
-        exit;
-    }
-
     $result = anilist_sync_series_now($data, $series_id, false);
     $data   = $result['data'];
-
-    // Le quota n'est consommé QUE pour une tentative réelle (synced/unchanged/
-    // error) : un 'skipped' renvoyé par le moteur (verrou non écoulu, série
-    // devenue inéligible entre-temps) ne coûte rien, il n'y a pas eu d'appel
-    // à Anilist.
-    if (in_array($result['status'], ['synced', 'unchanged', 'error'], true)) {
-        anilist_sync_visit_quota_consume();
-    }
 
     if ($result['status'] === 'error' && !empty($result['retry_lock'])) {
         $data = anilist_sync_apply_retry_lock($data, $series_id);
@@ -974,6 +968,18 @@ if ($search_term) {
 // (Édition d'une entrée de la liste d'envies : gérée par
 // pages/page-wishlist.php, cf. commentaire plus haut.)
 
+// ── Bandeau d'actualisation automatique des épisodes (Anilist) ─────────────
+// Décompte, sur TOUTE l'Animethèque (indépendamment du filtre/tri affiché),
+// des séries dues pour la synchronisation automatique à l'instant du
+// chargement de la page. Sert uniquement à afficher un état initial correct
+// avant que le JS (assets/js/admin/anime.js) ne prenne le relais au fil des
+// synchros réellement déclenchées. N'est montré que côté Animethèque : la
+// synchro ne concerne jamais la Mangathèque.
+$anime_sync_due_count = 0;
+if ($current_type === 'anime') {
+    $anime_sync_due_count = count(anilist_sync_due_series_ids($data));
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -1043,6 +1049,23 @@ if ($search_term) {
             </form>
             <p class="series-count" id="series-count" data-count="0">Séries visibles : <span id="series-count-value">…</span></p>
         </div>
+
+        <!-- Bandeau d'actualisation automatique des épisodes (Animethèque) -->
+        <?php if ($current_type === 'anime'): ?>
+            <div class="anime-sync-banner<?= $anime_sync_due_count > 0 ? '' : ' anime-sync-banner--idle' ?>"
+                 id="anime-sync-banner"
+                 data-due-initial="<?= (int)$anime_sync_due_count ?>"
+                 role="status" aria-live="polite">
+                <span class="spinner" id="anime-sync-banner-spinner" hidden></span>
+                <span id="anime-sync-banner-text">
+                    <?php if ($anime_sync_due_count > 0): ?>
+                        Actualisation des épisodes en cours… (<span id="anime-sync-banner-count">0</span> / <?= (int)$anime_sync_due_count ?> série<?= $anime_sync_due_count > 1 ? 's' : '' ?>)
+                    <?php else: ?>
+                        Épisodes à jour — aucune série à actualiser pour l'instant.
+                    <?php endif; ?>
+                </span>
+            </div>
+        <?php endif; ?>
 
         <!-- Boutons déclencheurs de modales (cachés — crochet JS uniquement) -->
         <div id="modal-triggers" style="display:none">
@@ -1507,6 +1530,14 @@ if ($search_term) {
                 : '';
             $series['editions']     = series_edition_comments($series);
             $series['alt_titles']   = series_alt_titles($series);
+            // sync_due : conservé pour l'affichage local (badge de statut de
+            // la carte, si elle est déjà chargée) et pour d'éventuelles
+            // lectures futures côté front. La synchro automatique elle-même
+            // ne s'appuie plus sur ce champ : elle interroge l'endpoint
+            // dédié get_anime_sync_due_ids au chargement de la page (voir
+            // assets/js/admin/anime.js, animeSyncStart()), qui reste correct
+            // même pour une série pas encore chargée dans le DOM.
+            $series['sync_due']     = is_anime($series) && anilist_sync_is_due($series, false);
             return $series;
         }, array_values($filtered_data));
     ?>

@@ -55,6 +55,45 @@
    Le style de base (.anilist-badge / .anilist-logo) vit déjà dans _series.css,
    aux côtés de ceux de MangaUpdates et Babelio : rien à redéfinir ici. */
 
+/* ── Bandeau d'actualisation automatique des épisodes ─────────────────────
+   Informe l'utilisateur, sur la page Animethèque, de l'avancée de la
+   synchronisation automatique déclenchée en arrière-plan à l'affichage des
+   cartes (voir assets/js/admin/anime.js). Discret, non bloquant : reste sous
+   la barre de filtres, se met à jour en direct puis se referme seule une
+   fois toutes les séries dues traitées. */
+.anime-sync-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin: 10px 0 0;
+    padding: 8px 14px;
+    border-radius: var(--border-radius);
+    font-size: 0.85em;
+    color: var(--primary-color);
+    background: var(--background-medium);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.anime-sync-banner--idle,
+.anime-sync-banner--done {
+    color: var(--text-muted);
+}
+
+.anime-sync-banner--error {
+    color: var(--error-color);
+    background: var(--error-subtle);
+    border-color: rgba(248, 113, 113, 0.25);
+}
+
+.anime-sync-banner[hidden] {
+    display: none;
+}
+
+.anime-sync-banner .spinner {
+    margin-left: 0;
+}
+
 /* ── Badge de synchronisation automatique (V4 bloc 9) ─────────────────────
    Discret par nature : la synchro se déroule en arrière-plan pendant que la
    page reste utilisable. Vide et masqué (`hidden`) le reste du temps ; ne
