@@ -10,7 +10,24 @@
     flex-direction: column;
     justify-content: center;
     min-width: 0;
+    /* Sans flex:1, cette colonne ne s'étirait pas jusqu'au bord de la
+       modale (contrairement à .series-info côté admin, en grid-column
+       1fr) : elle restait à la largeur de son propre contenu, ce qui
+       empêchait la ligne pointillée de .series-badges--links de s'étendre
+       sur toute la longueur disponible, comme sur la carte admin. */
+    flex: 1;
 }
+
+/* #modal-series-badges (index.php/historique.php) ne porte plus la classe
+   .series-badges : elle en faisait un troisième conteneur flex EN LIGNE
+   englobant les deux vraies rangées (.series-badges--links puis --tags,
+   injectées par public.js), qui se retrouvaient donc côte à côte au lieu
+   d'empilées verticalement — la ligne pointillée du haut n'entourait plus
+   qu'un seul bloc fusionné, avec tout l'espace inutilisé visible à droite.
+   #modal-series-badges reste un <div> neutre en flux normal, dans lequel
+   chacune des deux rangées (elles, bien en .series-badges, display:flex)
+   prend naturellement toute la largeur et s'empile sous l'autre — exactement
+   comme .series-info côté admin. */
 
 #modal-series-title {
     color: var(--series-title-color);

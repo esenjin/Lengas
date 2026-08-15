@@ -131,15 +131,30 @@
 }
 
 /* ── Modale de détail d'une licence ─────────────────────────────────────── */
+/* Hauteur FIXE (plutôt qu'un min-height/max-height combinés à du flex, plus
+   fragile) : la modale a toujours exactement cette hauteur ; header et champ
+   d'ajout restent fixes en haut, .license-series-list ci-dessous récupère
+   tout l'espace restant et porte SEULE le défilement — jamais la modale
+   entière — quel que soit le nombre de séries dans la licence. */
 #license-detail-modal .modal-content {
     max-width: 620px;
-    /* Hauteur confortable même à vide (liste de séries encore vide, résultats
-       de recherche à peine ouverts) : évite une modale ratatinée autour du
-       seul champ de recherche, où le dropdown de résultats se retrouve coupé
-       par le overflow-y du modal-content. */
-    min-height: 480px;
+    height: 560px;
+    max-height: 82vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    /* Nécessaire pour repositionner .close-modal en absolu ci-dessous : le
+       float:right d'origine (cf. _modals.css) n'a plus d'effet une fois ce
+       conteneur passé en display:flex (colonne), le bouton se retrouvait
+       donc coincé dans le flux normal en haut à gauche plutôt qu'en haut à
+       droite. */
+    position: relative;
+}
+#license-detail-modal .close-modal {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    float: none;
 }
 .license-detail-header {
     display: flex;
@@ -147,6 +162,10 @@
     gap: 10px;
     margin-bottom: 4px;
     flex-shrink: 0;
+    /* Laisse la place au bouton fermer positionné en absolu à droite
+       (cf. #license-detail-modal .close-modal), pour que le champ nom /
+       bouton Supprimer ne passe pas dessous. */
+    padding-right: 44px;
 }
 .license-detail-name-input {
     flex: 1;
@@ -235,14 +254,34 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    /* Occupe l'espace restant de la modale (flex) plutôt qu'une hauteur fixe :
-       avec min-height sur .modal-content, la liste s'étire naturellement même
-       quand elle est vide, au lieu de laisser un grand vide sous le champ de
-       recherche puis de se retrouver comprimée une fois des séries ajoutées. */
-    flex: 1;
-    min-height: 160px;
-    max-height: 340px;
+    /* .modal-content a maintenant une hauteur FIXE (voir plus haut) : cette
+       liste occupe tout l'espace restant sous le header et le champ d'ajout
+       (flex:1) et porte SEULE le défilement (overflow-y ci-dessous),
+       jamais le reste de la modale. min-height:0 est ce qui permet à un
+       enfant flex d'accepter d'être contraint par la hauteur du parent
+       plutôt que de grandir avec son contenu — sans lui, la liste aurait
+       poussé la modale à grandir indéfiniment avec le nombre de séries,
+       et .modal-content (overflow:hidden) aurait fini par rogner le bas
+       de la liste au lieu de la faire défiler. */
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(192, 132, 252, 0.3) transparent;
+}
+.license-series-list::-webkit-scrollbar {
+    width: 6px;
+}
+.license-series-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.license-series-list::-webkit-scrollbar-thumb {
+    background: rgba(192, 132, 252, 0.3);
+    border-radius: 3px;
+}
+.license-series-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(192, 132, 252, 0.5);
 }
 .license-series-row {
     display: flex;
@@ -252,6 +291,15 @@
     background: var(--background-medium);
     border: var(--border-subtle);
     border-radius: var(--border-radius-sm);
+    /* Empêche flexbox (colonne) de comprimer chaque ligne pour faire tenir
+       toutes les séries dans l'espace disponible : c'était la cause du
+       rendu "tout tassé" avec beaucoup de séries — désormais la liste
+       défile (overflow-y ci-dessus) plutôt que d'écraser ses lignes. */
+    flex-shrink: 0;
+    /* Hauteur minimale garantie (vignette 44px + padding 8px x2) : une ligne
+       ne doit jamais apparaître plus basse que sa vignette, quel que soit le
+       nombre de séries dans la liste. */
+    min-height: 60px;
 }
 .license-series-row-thumb {
     width: 44px;
@@ -365,6 +413,22 @@
     gap: 8px;
     max-height: 60vh;
     overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(192, 132, 252, 0.3) transparent;
+}
+.license-public-list::-webkit-scrollbar {
+    width: 6px;
+}
+.license-public-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.license-public-list::-webkit-scrollbar-thumb {
+    background: rgba(192, 132, 252, 0.3);
+    border-radius: 3px;
+}
+.license-public-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(192, 132, 252, 0.5);
 }
 .license-public-row {
     display: flex;
@@ -378,6 +442,19 @@
     transition: var(--transition-fast);
     text-align: left;
     width: 100%;
+    /* .license-public-row est un <button> (accessibilité : navigable au
+       clavier, sémantique cliquable) — mais la règle générique `button` de
+       _base.css lui impose overflow:hidden. Comme le sous-titre (meta) peut
+       passer sur deux lignes, cet overflow empêchait la ligne de grandir
+       pour contenir tout son texte : le texte débordait alors visuellement
+       par-dessus la ligne suivante au lieu d'agrandir son propre cadre.
+       On neutralise cet héritage explicitement. */
+    overflow: visible;
+    /* Empêche flexbox (colonne, .license-public-list) de comprimer chaque
+       ligne pour faire tenir toutes les séries dans l'espace disponible :
+       la liste défile (overflow-y ci-dessus) plutôt que d'écraser ses
+       lignes ou de les faire chevaucher. */
+    flex-shrink: 0;
 }
 .license-public-row:hover {
     border-color: rgba(167, 139, 250, 0.4);
@@ -420,6 +497,12 @@
 @media (max-width: 768px) {
     .licenses-list-container { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
     .license-card-thumb { width: 76px; height: 76px; }
-    #license-detail-modal .modal-content { min-height: 0; }
-    .license-series-list { min-height: 120px; }
+    /* Sur mobile, .modal-content--wide passe déjà en pleine largeur/hauteur
+       fluide (cf. _responsive.css) : la hauteur fixe fixée pour desktop
+       (560px) laisserait un vide ou déborderait selon l'écran, donc on
+       repasse ici sur une hauteur bornée par le viewport plutôt que fixe. */
+    #license-detail-modal .modal-content {
+        height: auto;
+        max-height: 90vh;
+    }
 }

@@ -568,24 +568,139 @@ document.addEventListener('DOMContentLoaded', function () {
     // sans recalculer les valeurs suivantes : pour les courbes cumulées
     // (growth/reading_growth/watched_growth), la progression à partir du 2e
     // point reste juste, seul le point de départ n'est plus tracé.
+    //
+    // Largeur minimale réservée à chaque mois sur l'axe des abscisses. Les
+    // libellés de mois (« 2024-03 ») sont affichés presque à la verticale
+    // (rotate: -80, cf. plus bas) pour rester lisibles même serrés ; ce
+    // nombre de pixels par point est le minimum en dessous duquel deux
+    // libellés voisins se chevaucheraient malgré cette rotation.
+    const MONTH_PX = 40;
+
+    // ApexCharts dessine l'axe des ordonnées DANS le même SVG que la courbe :
+    // un conteneur scrollable classique ferait donc défiler l'échelle avec
+    // le reste, la faisant disparaître du cadre visible. On construit donc
+    // DEUX graphiques par courbe :
+    //   - un graphique "axe" (id + '-axis'), étroit et fixe, qui ne montre
+    //     que l'échelle Y (courbe transparente, axe X masqué) ;
+    //   - le graphique complet, large et scrollable, avec son échelle Y
+    //     masquée (yaxis.show:false) pour ne jamais la dupliquer visuellement.
+    // Les deux partagent un min/max Y calculés une seule fois et forcés à
+    // l'identique (yaxis.min/max), pour que leurs échelles coïncident
+    // parfaitement — sans ça, ApexCharts pourrait arrondir chaque graphique
+    // différemment et désynchroniser visuellement l'axe fixe de la courbe.
     function lineChart(el, series, name, color, annotation) {
-        if (!document.getElementById(el) || !series.length) return;
+        const container = document.getElementById(el);
+        const axisContainer = document.getElementById(el + '-axis');
+        if (!container || !series.length) return;
         // Exclut le premier point (mois de création) : ne garde que la suite,
         // pour ne pas fausser l'échelle du graphique avec un import massif.
         const trimmed = series.length > 1 ? series.slice(1) : series;
         if (!trimmed.length) return;
-        const opts = {
-            ...apexBase,
-            chart: { ...apexBase.chart, type: 'area', height: 280, zoom: { enabled: false } },
-            series: [{ name, data: trimmed.map(p => p.value) }],
-            xaxis: { categories: trimmed.map(p => p.month), labels: { style: { colors: C.textGray }, rotate: -45, rotateAlways: false, hideOverlappingLabels: true } },
-            stroke: { curve: 'smooth', width: 2.5 },
-            fill: { type: 'gradient', gradient: { shadeIntensity: 0.4, opacityFrom: 0.45, opacityTo: 0.05 } },
-            colors: [color],
-            dataLabels: { enabled: false },
-            markers: { size: 0, hover: { size: 4 } }
-        };
-        new ApexCharts(document.getElementById(el), opts).render();
+
+        const values = trimmed.map(p => p.value);
+        const dataMin = Math.min(0, ...values);
+        const dataMax = Math.max(...values);
+        // Une petite marge au-dessus du maximum, comme le ferait ApexCharts
+        // automatiquement — mais calculée à la main pour être certain que
+        // les deux graphiques (axe + plot) retiennent exactement la même
+        // valeur, plutôt que de laisser chacun l'arrondir séparément.
+        const yMax = dataMax === dataMin ? dataMin + 1 : dataMax + Math.ceil((dataMax - dataMin) * 0.1);
+        const yMin = dataMin;
+
+        // Le rendu effectif (largeur réelle vs mesure du conteneur, qui peut
+        // valoir 0 tant que le panel est dans un onglet caché — cf. la
+        // vérification hiddenPanel plus bas) est isolé dans doRender() pour
+        // être rejouable une fois l'onglet affiché.
+        function doRender() {
+            container.innerHTML = '';
+            if (axisContainer) axisContainer.innerHTML = '';
+
+            const chartWidth = trimmed.length * MONTH_PX;
+
+            const plotOpts = {
+                ...apexBase,
+                chart: { ...apexBase.chart, type: 'area', height: 280, width: chartWidth, zoom: { enabled: false }, toolbar: { show: false } },
+                series: [{ name, data: values }],
+                xaxis: {
+                    categories: trimmed.map(p => p.month),
+                    labels: {
+                        style: { colors: C.textGray, fontSize: '11px' },
+                        // Quasi-vertical (légèrement oblique) plutôt qu'à 45°,
+                        // pour rester lisible mois par mois sans qu'un
+                        // libellé n'empiète sur son voisin.
+                        rotate: -80,
+                        rotateAlways: true,
+                        hideOverlappingLabels: false,
+                        trim: false
+                    }
+                },
+                yaxis: { min: yMin, max: yMax, show: false },
+                stroke: { curve: 'smooth', width: 2.5 },
+                fill: { type: 'gradient', gradient: { shadeIntensity: 0.4, opacityFrom: 0.45, opacityTo: 0.05 } },
+                colors: [color],
+                dataLabels: { enabled: false },
+                markers: { size: 0, hover: { size: 4 } },
+                grid: { ...apexBase.grid, padding: { left: 4, right: 4 } }
+            };
+            const chart = new ApexCharts(container, plotOpts);
+            chart.render().then(() => {
+                // Place le défilement tout à droite (dates les plus
+                // récentes), le sens de lecture naturel pour une courbe
+                // d'évolution : sans ça, un conteneur scrollable s'ouvre à
+                // gauche (mois les plus anciens) par défaut.
+                container.scrollLeft = container.scrollWidth;
+            }).catch(() => {});
+
+            if (axisContainer) {
+                const axisOpts = {
+                    ...apexBase,
+                    chart: { ...apexBase.chart, type: 'area', height: 280, width: '100%', zoom: { enabled: false }, toolbar: { show: false }, sparkline: { enabled: false } },
+                    series: [{ name, data: values }],
+                    xaxis: {
+                        categories: trimmed.map(p => p.month),
+                        // Labels invisibles (opacity:0) plutôt que show:false :
+                        // ApexCharts réserve alors la même hauteur de zone
+                        // sous l'axe X que le graphique large (qui, lui,
+                        // affiche vraiment ses libellés pivotés), ce qui
+                        // maintient les deux tracés Y strictement à la même
+                        // échelle verticale — show:false aurait réduit cette
+                        // zone à zéro et légèrement désaligné les deux axes.
+                        labels: { style: { colors: 'transparent' }, rotate: -80, rotateAlways: true },
+                        axisTicks: { show: false },
+                        axisBorder: { show: false }
+                    },
+                    yaxis: { min: yMin, max: yMax, show: true, labels: { style: { colors: C.textGray, fontSize: '11px' } } },
+                    stroke: { curve: 'smooth', width: 0 },
+                    fill: { type: 'solid', opacity: 0 },
+                    colors: [color],
+                    dataLabels: { enabled: false },
+                    markers: { size: 0 },
+                    tooltip: { enabled: false },
+                    grid: { show: false, padding: { left: 0, right: 0 } },
+                    legend: { show: false }
+                };
+                new ApexCharts(axisContainer, axisOpts).render().catch(() => {});
+            }
+        }
+
+        // Si le panel est dans un onglet actuellement caché (display:none,
+        // cf. .stats-tab-panel), le rendre maintenant produirait un
+        // graphique à largeur nulle, cassé de façon persistante même après
+        // affichage de l'onglet (limitation connue d'ApexCharts). On diffère
+        // alors le rendu jusqu'au premier affichage de cet onglet.
+        const hiddenPanel = container.closest('.stats-tab-panel:not(.stats-tab-panel--active)');
+        if (hiddenPanel) {
+            const onShow = () => {
+                if (hiddenPanel.classList.contains('stats-tab-panel--active')) {
+                    doRender();
+                    observer.disconnect();
+                }
+            };
+            const observer = new MutationObserver(onShow);
+            observer.observe(hiddenPanel, { attributes: true, attributeFilter: ['class'] });
+        } else {
+            doRender();
+        }
     }
     lineChart('line-purchases', S.purchases || [], 'Tomes ajoutés', C.primary);
     lineChart('line-growth', S.growth || [], 'Total cumulé', C.teal);

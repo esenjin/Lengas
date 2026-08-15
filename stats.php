@@ -574,21 +574,39 @@ $anime_chart_payload = [
         <section class="stats-section">
             <div class="section-eyebrow">Évolution dans le temps</div>
             <div class="panel">
-                <div class="panel-head"><h3>Tomes ajoutés par mois</h3></div>
-                <div id="line-purchases" class="apex-chart"></div>
+                <div class="panel-head">
+                    <h3>Tomes ajoutés par mois</h3>
+                    <span class="panel-avg">Moyenne : <?= $fmt_num($stats['purchases_avg'] ?? 0, 1) ?> / mois</span>
+                </div>
+                <div class="timeline-chart-wrap">
+                    <div id="line-purchases-axis" class="apex-chart apex-chart--timeline-axis"></div>
+                    <div id="line-purchases" class="apex-chart apex-chart--timeline"></div>
+                </div>
             </div>
             <div class="panel">
                 <div class="panel-head"><h3>Croissance de la collection</h3></div>
-                <div id="line-growth" class="apex-chart"></div>
+                <div class="timeline-chart-wrap">
+                    <div id="line-growth-axis" class="apex-chart apex-chart--timeline-axis"></div>
+                    <div id="line-growth" class="apex-chart apex-chart--timeline"></div>
+                </div>
             </div>
             <?php if (!empty($stats['reads_by_month']) && count($stats['reads_by_month']) > 1): ?>
             <div class="panel">
-                <div class="panel-head"><h3>Tomes lus par mois</h3></div>
-                <div id="line-reads" class="apex-chart"></div>
+                <div class="panel-head">
+                    <h3>Tomes lus par mois</h3>
+                    <span class="panel-avg">Moyenne : <?= $fmt_num($stats['reads_avg'] ?? 0, 1) ?> / mois</span>
+                </div>
+                <div class="timeline-chart-wrap">
+                    <div id="line-reads-axis" class="apex-chart apex-chart--timeline-axis"></div>
+                    <div id="line-reads" class="apex-chart apex-chart--timeline"></div>
+                </div>
             </div>
             <div class="panel">
                 <div class="panel-head"><h3>Progression des lectures (cumulé)</h3></div>
-                <div id="line-reading-growth" class="apex-chart"></div>
+                <div class="timeline-chart-wrap">
+                    <div id="line-reading-growth-axis" class="apex-chart apex-chart--timeline-axis"></div>
+                    <div id="line-reading-growth" class="apex-chart apex-chart--timeline"></div>
+                </div>
             </div>
             <?php endif; ?>
         </section>
@@ -863,20 +881,35 @@ $anime_chart_payload = [
             <div class="section-eyebrow">Évolution dans le temps</div>
             <div class="panel">
                 <div class="panel-head"><h3>Épisodes ajoutés par mois</h3></div>
-                <div id="anime-line-added" class="apex-chart"></div>
+                <div class="timeline-chart-wrap">
+                    <div id="anime-line-added-axis" class="apex-chart apex-chart--timeline-axis"></div>
+                    <div id="anime-line-added" class="apex-chart apex-chart--timeline"></div>
+                </div>
             </div>
             <div class="panel">
                 <div class="panel-head"><h3>Croissance de la collection</h3></div>
-                <div id="anime-line-growth" class="apex-chart"></div>
+                <div class="timeline-chart-wrap">
+                    <div id="anime-line-growth-axis" class="apex-chart apex-chart--timeline-axis"></div>
+                    <div id="anime-line-growth" class="apex-chart apex-chart--timeline"></div>
+                </div>
             </div>
             <?php if (!empty($anime_stats['watched_by_month']) && count($anime_stats['watched_by_month']) > 1): ?>
             <div class="panel">
-                <div class="panel-head"><h3>Épisodes vus par mois</h3></div>
-                <div id="anime-line-watched" class="apex-chart"></div>
+                <div class="panel-head">
+                    <h3>Épisodes vus par mois</h3>
+                    <span class="panel-avg">Moyenne : <?= $fmt_num($anime_stats['watched_avg'] ?? 0, 1) ?> / mois</span>
+                </div>
+                <div class="timeline-chart-wrap">
+                    <div id="anime-line-watched-axis" class="apex-chart apex-chart--timeline-axis"></div>
+                    <div id="anime-line-watched" class="apex-chart apex-chart--timeline"></div>
+                </div>
             </div>
             <div class="panel">
                 <div class="panel-head"><h3>Progression du visionnage (cumulé)</h3></div>
-                <div id="anime-line-watched-growth" class="apex-chart"></div>
+                <div class="timeline-chart-wrap">
+                    <div id="anime-line-watched-growth-axis" class="apex-chart apex-chart--timeline-axis"></div>
+                    <div id="anime-line-watched-growth" class="apex-chart apex-chart--timeline"></div>
+                </div>
             </div>
             <?php endif; ?>
         </section>

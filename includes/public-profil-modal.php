@@ -40,6 +40,16 @@ if (!isset($profil_highlights)) {
     $__profil_source = $profil_data ?? $all_data ?? $data ?? [];
     $profil_highlights = profil_highlighted_series($__profil_source, $options, true);
 }
+// Lectures / visionnages du moment : séries actuellement « en cours »,
+// tous types confondus, les plus récemment avancées en premier — visibles
+// par les visiteurs au même titre que la mise en lumière ci-dessus, mais
+// calculées automatiquement (rien à choisir côté admin). Respecte les mêmes
+// réglages de visibilité (mode privé / masquage mature par collection) que
+// la mise en lumière, via $visible_only=true.
+if (!isset($profil_in_progress)) {
+    $__profil_source = $profil_data ?? $all_data ?? $data ?? [];
+    $profil_in_progress = profil_in_progress_series($__profil_source, 10, $options, true);
+}
 if (!isset($has_profil)) {
     $has_profil = ($profil_pseudo !== '' || trim($profil_bio) !== '' ||
                    $profil_has_avatar || !empty($profil_social) ||
@@ -90,6 +100,22 @@ if (!isset($has_profil)) {
                         </div>
                     </div>
                 <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($profil_in_progress)): ?>
+            <div class="profil-modal-highlights profil-modal-inprogress">
+                <h3 class="profil-modal-section-title">Lectures / visionnages du moment</h3>
+                <div class="profil-highlights-row">
+                    <?php foreach ($profil_in_progress as $__s):
+                        $__color = type_color($__s['type']);
+                    ?>
+                        <button type="button" class="profil-highlight-card" data-series-id="<?= htmlspecialchars($__s['id']) ?>" style="--type-color: <?= htmlspecialchars($__color) ?>" title="<?= htmlspecialchars($__s['name']) ?>">
+                            <img class="profil-highlight-thumb" src="<?= htmlspecialchars($__s['thumbnail']) ?>" alt="" loading="lazy">
+                            <span class="profil-highlight-name"><?= htmlspecialchars($__s['name']) ?></span>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
             </div>
         <?php endif; ?>
 

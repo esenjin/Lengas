@@ -219,6 +219,17 @@
 
 .panel-head h3 { margin-bottom: 16px; }
 
+/* Moyenne mensuelle affichée à côté du titre d'un panel "par mois"
+   (Tomes ajoutés / lus, Épisodes vus) : même registre visuel discret que
+   .panel-note, mais sur la ligne du titre plutôt qu'en dessous du graphique. */
+.panel-avg {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 16px;
+    white-space: nowrap;
+}
+
 .panel-note {
     font-size: 0.8em;
     color: var(--text-muted);
@@ -317,6 +328,75 @@
 .apex-chart .apexcharts-canvas,
 .apex-chart svg {
     max-width: 100% !important;
+}
+
+/* ── Courbes temporelles (bloc 9 « Évolution dans le temps ») ────────────────
+   À la différence des autres .apex-chart (donuts, barres…), ces courbes
+   gagnent en lisibilité avec un point fixe par mois plutôt qu'une compression
+   de tous les mois dans la largeur du panel : au-delà d'un certain nombre de
+   mois, le graphique devient scrollable horizontalement plutôt que de tasser
+   ses libellés.
+   Un simple conteneur scrollable ne suffit pas : ApexCharts dessine l'axe des
+   ordonnées DANS le même SVG que la courbe, donc faire défiler ce conteneur
+   fait défiler l'échelle avec le reste — elle disparaît du cadre dès qu'on
+   scrolle. La solution consiste à séparer les deux : un mini-graphique fixe,
+   à gauche, qui ne montre que l'échelle (courbe invisible), et le graphique
+   complet, à droite, dans une zone scrollable, avec sa propre échelle
+   masquée. Les deux partagent le même axe Y (mêmes valeurs), donnant
+   l'illusion d'une échelle fixe pendant que seule la courbe défile — voir
+   lineChart() dans assets/js/stats.js pour la construction des deux
+   graphiques. */
+.timeline-chart-wrap {
+    display: flex;
+    align-items: stretch;
+}
+
+/* Mini-graphique fixe, ne montrant que l'axe Y (courbe et axe X masqués côté
+   JS via opacité/labels vides) : largeur étroite, jamais de défilement. */
+.apex-chart--timeline-axis {
+    flex: 0 0 auto;
+    width: 54px;
+    overflow: hidden;
+}
+
+.apex-chart--timeline-axis .apexcharts-canvas,
+.apex-chart--timeline-axis svg {
+    max-width: none !important;
+}
+
+.apex-chart--timeline {
+    flex: 1 1 auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(192, 132, 252, 0.35) transparent;
+    -webkit-overflow-scrolling: touch;
+}
+
+.apex-chart--timeline::-webkit-scrollbar {
+    height: 8px;
+}
+
+.apex-chart--timeline::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.apex-chart--timeline::-webkit-scrollbar-thumb {
+    background: rgba(192, 132, 252, 0.35);
+    border-radius: 4px;
+}
+
+.apex-chart--timeline::-webkit-scrollbar-thumb:hover {
+    background: rgba(192, 132, 252, 0.55);
+}
+
+/* Le SVG généré par ApexCharts reçoit une largeur explicite (calculée en JS,
+   pouvant dépasser 100% du panel) : la contrainte max-width:100% générale
+   ci-dessus ne doit pas s'appliquer ici, sous peine d'annuler le défilement
+   qu'on vient d'activer en recompressant le graphique dans le panel. */
+.apex-chart--timeline .apexcharts-canvas,
+.apex-chart--timeline svg {
+    max-width: none !important;
 }
 
 /* ── Toggles ── */

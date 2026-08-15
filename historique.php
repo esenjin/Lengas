@@ -274,6 +274,14 @@ function history_render_day(array $day): string {
                     $items  = $entry['items'];
                     $vocab = type_vocab($series['type']);
                     $numbers = array_map(fn($v) => $v['number'], $items);
+                    // Le dernier tome/épisode de la série (marqué "last", cf.
+                    // fonctions/volumes.php et fonctions/episodes.php) fait
+                    // partie de cette entrée du journal : la série est donc
+                    // terminée à cette date, ce qu'on signale par « (fin) ».
+                    $reaches_end = false;
+                    foreach ($items as $__v) {
+                        if (!empty($__v['last'])) { $reaches_end = true; break; }
+                    }
                 ?>
                     <div class="history-card <?= $is_anime ? 'history-card--anime' : '' ?>"
                          data-series-id="<?= htmlspecialchars($series['id']) ?>"
@@ -285,6 +293,9 @@ function history_render_day(array $day): string {
                                 <?= count($items) > 1 ? htmlspecialchars(ucfirst($vocab['items'])) : htmlspecialchars(ucfirst($vocab['item'])) ?>
                                 <?= htmlspecialchars(history_format_numbers($numbers)) ?>
                                 <?= count($items) > 1 ? htmlspecialchars($vocab['done_short'] === 'lu' ? 'lus' : 'vus') : htmlspecialchars($vocab['done_short']) ?>
+                                <?php if ($reaches_end): ?>
+                                    <span class="history-card-end-badge">fin</span>
+                                <?php endif; ?>
                             </p>
                         </div>
                     </div>
@@ -413,7 +424,7 @@ $has_more = $total_days > $days_per_page;
                             <p id="modal-row-categories"><strong id="modal-label-categories">Catégories :</strong> <span id="modal-series-categories"></span></p>
                             <p><strong>Genres :</strong> <span id="modal-series-genres"></span></p>
                             <div class="series-stats" id="modal-series-stats"></div>
-                            <div class="series-badges" id="modal-series-badges"></div>
+                            <div id="modal-series-badges"></div>
                         </div>
                     </div>
                     <h3 id="modal-volumes-title">Liste des tomes :</h3>

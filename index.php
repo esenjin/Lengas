@@ -458,7 +458,7 @@ $data = array_values(apply_refine_filter($data, $refine_categories, $refine_genr
                         <option value="author" <?= $sort_by === 'author' ? 'selected' : '' ?>>Trier par auteur</option>
                         <option value="publisher" <?= $sort_by === 'publisher' ? 'selected' : '' ?>>Trier par éditeur</option>
                         <option value="categories" <?= $sort_by === 'categories' ? 'selected' : '' ?>>Trier par catégories</option>
-                        <option value="volumes" <?= $sort_by === 'volumes' ? 'selected' : '' ?>>Trier par nombre de <?= htmlspecialchars(type_vocab($current_type, 'items')) ?></option>
+                        <option value="volumes" <?= $sort_by === 'volumes' ? 'selected' : '' ?>>Trier par nombre <?= htmlspecialchars(french_de_word(type_vocab($current_type, 'items'))) ?></option>
                         <option value="rereads" <?= $sort_by === 'rereads' ? 'selected' : '' ?>>Trier par nombre de <?= htmlspecialchars(is_anime($current_type) ? 'revisionnages' : 'relectures') ?></option>
                         <option value="added_at" <?= $sort_by === 'added_at' ? 'selected' : '' ?>>Trier par date d'ajout</option>
                         <option value="read_at" <?= $sort_by === 'read_at' ? 'selected' : '' ?>>Trier par date de lecture</option>
@@ -548,7 +548,7 @@ $data = array_values(apply_refine_filter($data, $refine_categories, $refine_genr
                             <p id="modal-row-categories"><strong id="modal-label-categories">Catégories :</strong> <span id="modal-series-categories"></span></p>
                             <p><strong>Genres :</strong> <span id="modal-series-genres"></span></p>
                             <div class="series-stats" id="modal-series-stats"></div>
-                            <div class="series-badges" id="modal-series-badges"></div>
+                            <div id="modal-series-badges"></div>
                         </div>
                     </div>
                     <h3 id="modal-volumes-title">Liste des tomes :</h3>

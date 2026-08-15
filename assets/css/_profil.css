@@ -211,13 +211,24 @@
 
 .highlights-slot {
     display: flex;
-    align-items: center;
+    /* Alignement en haut plutôt qu'au centre : avec align-items:center, la
+       vignette d'un titre tenant sur une seule ligne se retrouvait décalée
+       verticalement par rapport à celle d'un titre sur deux lignes (chaque
+       ligne ayant une hauteur différente, son centre aussi) — la liste
+       paraissait alors désalignée d'une ligne à l'autre. Le haut, lui, ne
+       dépend pas du nombre de lignes du titre. */
+    align-items: flex-start;
     gap: 10px;
     padding: 6px 8px;
     background: var(--background-card);
     border: var(--border-subtle);
     border-radius: var(--border-radius-sm);
     min-width: 0; /* autorise les enfants flex à rétrécir sous leur contenu */
+    /* Hauteur minimale uniforme : la vignette (46px) plus le padding vertical
+       (6px x2), pour que les lignes à titre court gardent la même hauteur de
+       bloc que celles à titre long — l'ensemble de la liste reste net et
+       régulier plutôt que de "respirer" différemment selon les titres. */
+    min-height: 58px;
 }
 
 .highlights-slot-thumb {
@@ -232,6 +243,7 @@
 .highlights-slot-name {
     flex: 1;
     min-width: 0; /* empêche le texte de forcer la largeur du slot */
+    align-self: center;
     font-size: 0.88rem;
     line-height: 1.25;
     color: var(--text-color);
@@ -240,6 +252,15 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     word-break: break-word;
+}
+
+/* Le groupe de boutons ▲▼✕ (.custom-link-actions, partagé avec les liens
+   personnalisés) doit rester centré verticalement même si .highlights-slot
+   est désormais aligné en haut (voir ci-dessus) : sans cette règle, il
+   suivrait le même flex-start que la vignette et se retrouverait collé au
+   sommet du slot plutôt qu'à hauteur du titre. */
+.highlights-slot > .custom-link-actions {
+    align-self: center;
 }
 
 .highlights-empty {
@@ -270,6 +291,15 @@
     margin-top: 16px;
 }
 
+/* Deux sections consécutives (« Séries coup de cœur » suivie de « Lectures /
+   visionnages du moment ») ont chacune leur .profil-modal-section-title :
+   un espacement cohérent entre les deux, similaire à celui d'un groupe de
+   mise en lumière au suivant. */
+.profil-modal-highlights + .profil-modal-highlights {
+    border-top: none;
+    padding-top: 0;
+}
+
 .profil-highlights-title {
     display: flex;
     align-items: center;
@@ -281,12 +311,20 @@
 
 .profil-highlights-row {
     display: flex;
+    align-items: flex-start;
     gap: 12px;
     overflow-x: auto;
     padding-bottom: 4px;
 }
 
 .profil-highlight-card {
+    display: flex;
+    flex-direction: column;
+    /* Ancrage explicite en haut : un titre sur une ligne ne doit jamais
+       décaler la vignette par rapport à un titre sur deux lignes dans la
+       même rangée. Rendu explicite plutôt que de dépendre du flux normal du
+       bouton (fragile selon les agents utilisateurs). */
+    align-items: flex-start;
     flex: 0 0 auto;
     width: 92px;
     cursor: pointer;
@@ -294,6 +332,11 @@
     border: none;
     padding: 0;
     text-align: left;
+    /* .profil-highlight-card est un <button> : la règle générique `button`
+       de _base.css lui impose overflow:hidden, ce qui pourrait rogner le
+       nom de la série sur sa deuxième ligne (-webkit-line-clamp s'en charge
+       déjà proprement) ou empêcher la carte de s'ajuster à son contenu. */
+    overflow: visible;
 }
 
 /* Neutralise le style générique `button:hover` (_base.css), qui appliquerait
@@ -315,6 +358,7 @@
     border: var(--border-subtle);
     transition: var(--transition-fast);
     display: block;
+    flex-shrink: 0;
 }
 
 .profil-highlight-card:hover .profil-highlight-thumb {

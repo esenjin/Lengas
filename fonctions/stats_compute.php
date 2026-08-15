@@ -57,6 +57,30 @@ if (!function_exists('stats_format_value')) {
     }
 }
 
+if (!function_exists('stats_monthly_average')) {
+    /**
+     * Moyenne mensuelle d'une série temporelle au format
+     * [['month' => 'YYYY-MM', 'value' => n], …] (ex. $purchases_series,
+     * $reads_series, $watched_series).
+     *
+     * Exclut systématiquement le premier point : il correspond souvent au
+     * mois de création de la bibliothèque (import initial de toute la
+     * collection d'un coup), ce qui fausserait la moyenne exactement comme
+     * il fausse l'échelle du graphique associé côté front (cf. lineChart()
+     * dans assets/js/stats.js, qui applique la même exclusion). Les deux
+     * doivent rester cohérents : la moyenne affichée doit correspondre aux
+     * points effectivement tracés sur le graphique.
+     *
+     * Renvoie 0.0 s'il ne reste aucun point après cette exclusion.
+     */
+    function stats_monthly_average(array $series): float {
+        $trimmed = count($series) > 1 ? array_slice($series, 1) : $series;
+        if (empty($trimmed)) return 0.0;
+        $sum = array_sum(array_column($trimmed, 'value'));
+        return $sum / count($trimmed);
+    }
+}
+
 if (!function_exists('stats_clean_list')) {
     /**
      * Nettoie une liste de chaînes (catégories, genres, contributeurs) :
@@ -533,6 +557,11 @@ if (!function_exists('compute_stats')) {
         foreach ($purchases_by_month as $month => $n) {
             $purchases_series[] = ['month' => $month, 'value' => $n];
         }
+        // Moyenne mensuelle de tomes ajoutés (excluant le premier mois, cf.
+        // note du front stats.js : ce mois correspond souvent à l'import
+        // initial de toute la collection d'un coup, et fausserait la moyenne
+        // autant qu'il fausse l'échelle du graphique).
+        $purchases_avg = stats_monthly_average($purchases_series);
 
         // ── Lectures par mois & progression cumulée des lectures ────────────────
         ksort($reads_by_month);
@@ -540,6 +569,7 @@ if (!function_exists('compute_stats')) {
         foreach ($reads_by_month as $month => $n) {
             $reads_series[] = ['month' => $month, 'value' => $n];
         }
+        $reads_avg = stats_monthly_average($reads_series);
         $reading_growth = [];
         $running_reads  = 0;
         foreach ($reads_by_month as $month => $n) {
@@ -649,8 +679,10 @@ if (!function_exists('compute_stats')) {
 
             // Temporel
             'purchases_by_month'=> $purchases_series,
+            'purchases_avg'     => $purchases_avg,
             'growth'            => $growth,
             'reads_by_month'    => $reads_series,
+            'reads_avg'         => $reads_avg,
             'reading_growth'    => $reading_growth,
 
             // Séries
@@ -985,6 +1017,7 @@ if (!function_exists('compute_anime_stats')) {
             $watched_series[] = ['month' => $month, 'value' => $n];
             $watched_growth[] = ['month' => $month, 'value' => $running_w];
         }
+        $watched_avg = stats_monthly_average($watched_series);
 
         // ── Indice de diversité de Shannon (sur les studios, en épisodes) ────────
         // Pendant du calcul manga (sur les auteurs, en tomes) : plus l'indice est
@@ -1063,6 +1096,7 @@ if (!function_exists('compute_anime_stats')) {
             'added_by_month'   => $added_series,
             'growth'           => $growth,
             'watched_by_month' => $watched_series,
+            'watched_avg'      => $watched_avg,
             'watched_growth'   => $watched_growth,
 
             // Réglages effectifs (pour l'affichage de la note explicative)

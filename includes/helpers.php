@@ -181,6 +181,85 @@ function anime_watching_status(array $series): string {
     return 'in_progress';
 }
 
+// ── Statut d'avancement d'une série manga ────────────────────────────────────
+// Équivalent manga de anime_watching_status() : mêmes clés en sortie
+// ('not_started' / 'in_progress' / 'completed' / 'abandoned'), calculées à
+// partir des tomes. Logique reprise telle quelle de build_light_series()
+// (fonctions/series.php), extraite ici pour être réutilisable ailleurs sans
+// reconstruire une série "light" complète (ex. section "Lectures /
+// visionnages du moment" de la modale publique « Qui suis-je ? »).
+function manga_reading_status(array $series): string {
+    if (!empty($series['reading_abandoned'])) {
+        return 'abandoned';
+    }
+    $volumes = $series['volumes'] ?? [];
+    $read_count  = 0;
+    $total_count = 0;
+    $has_last    = false;
+    foreach ($volumes as $volume) {
+        $total_count++;
+        if (($volume['status'] ?? '') === 'terminé') $read_count++;
+        if (!empty($volume['last'])) $has_last = true;
+    }
+    if ($total_count > 0 && $read_count === $total_count && $has_last) {
+        return 'completed';
+    }
+    if ($read_count > 0) {
+        return 'in_progress';
+    }
+    return 'not_started';
+}
+
+// Statut d'avancement d'une série, quel que soit son type (délègue à
+// manga_reading_status() ou anime_watching_status()) — mêmes clés en sortie
+// dans les deux cas.
+function series_reading_status(array $series): string {
+    return is_anime($series) ? anime_watching_status($series) : manga_reading_status($series);
+}
+
+// Séries "en cours de lecture/visionnage" (statut in_progress), triées par
+// date de dernière activité décroissante (dernier tome/épisode marqué
+// terminé le plus récemment), pour la section "Lectures/visionnages du
+// moment" de la modale publique « Qui suis-je ? ». $limit borne le nombre de
+// séries renvoyées.
+//
+// $options et $visible_only fonctionnent comme pour profil_highlighted_series()
+// : quand $visible_only vaut true, les séries d'une collection en mode privé
+// ou masquées (mature) sont exclues, exactement comme sur le reste du site
+// public — cette section respecte donc les mêmes réglages de visibilité que
+// la mise en lumière juste au-dessus d'elle dans la modale.
+function profil_in_progress_series(array $data, int $limit = 10, ?array $options = null, bool $visible_only = false): array {
+    $candidates = [];
+    foreach ($data as $series) {
+        if (series_reading_status($series) !== 'in_progress') continue;
+        if ($visible_only && $options !== null) {
+            $t = series_type($series);
+            if (is_private_mode($options, $t)) continue;
+            if (is_hide_mature($options, $t) && !empty($series['mature'])) continue;
+        }
+
+        $last_activity = '';
+        foreach ($series['volumes'] ?? [] as $volume) {
+            $read_at = trim((string)($volume['read_at'] ?? ''));
+            if ($read_at !== '' && $read_at > $last_activity) {
+                $last_activity = $read_at;
+            }
+        }
+        $candidates[] = [
+            'series'        => $series,
+            'last_activity' => $last_activity,
+        ];
+    }
+
+    usort($candidates, fn($a, $b) => strcmp($b['last_activity'], $a['last_activity']));
+
+    $out = [];
+    foreach (array_slice($candidates, 0, $limit) as $c) {
+        $out[] = decorate_series_for_display($c['series']);
+    }
+    return $out;
+}
+
 // Libellé affichable d'un type. $plural = true pour la forme au pluriel.
 function type_label($type, bool $plural = false): string {
     $def = series_type_registry()[series_type($type)];
@@ -205,6 +284,22 @@ function type_vocab($type, ?string $key = null) {
         return $vocab;
     }
     return $vocab[$key] ?? '';
+}
+
+// Élision française de « de » devant un mot commençant par une voyelle (ou un
+// h muet) : « de tomes » mais « d'épisodes ». Utilisé partout où un libellé
+// combine "nombre de" avec type_vocab(..., 'items') ou 'item', puisque ce mot
+// varie selon le type de série (tomes / épisodes) — sans quoi le pluriel
+// animé produisait la faute « nombre de épisodes ».
+function french_de_elided(string $word): string {
+    return preg_match('/^[aeiouyhàâäéèêëïîôöùûü]/i', $word) ? "d'" : 'de ';
+}
+
+// Combine directement l'élision et le mot : french_de_elided('épisodes') .
+// 'épisodes' en un seul appel, pour les libellés du type "nombre {de
+// tomes|d'épisodes}".
+function french_de_word(string $word): string {
+    return french_de_elided($word) . $word;
 }
 
 // ── Filtrage par type ─────────────────────────────────────────────────────────
