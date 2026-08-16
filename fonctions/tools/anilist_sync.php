@@ -129,7 +129,7 @@ function anilist_sync_series_now(array $data, string $series_id, bool $force = f
     }
 
     if (!$force && !anilist_sync_is_due($series, false)) {
-        return ['status' => 'skipped', 'data' => $data, 'message' => "Verrou de 24 h non écoulé.", 'series' => $series, 'retry_lock' => false];
+        return ['status' => 'skipped', 'data' => $data, 'message' => "Verrou de 1h non écoulé.", 'series' => $series, 'retry_lock' => false];
     }
 
     // Anilist fait autorité : on force toujours le contournement du cache de

@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'processed' => 0,
             'message'   => $force
                 ? "Aucune série animée éligible (diffusion et visionnage « en cours »)."
-                : "Aucune série à synchroniser pour le moment (verrous de 24h non écoulés).",
+                : "Aucune série à synchroniser pour le moment (verrous de 1h non écoulés).",
         ]);
         exit;
     }
@@ -80,11 +80,11 @@ require __DIR__ . '/_layout_head.php';
             <h2>Synchronisation via Anilist</h2>
             <p>Tient à jour les séries animées dont la diffusion <strong>et</strong> le visionnage sont tous les deux « en cours » : nouveaux épisodes diffusés et statut de diffusion. C'est la même synchronisation qui se déclenche automatiquement, en arrière-plan, à l'affichage de l'Animethèque — cet outil permet de la lancer à la demande, ou de la forcer en ignorant le verrou habituel.</p>
             <p class="hint">⚠️ Limitations : seuls les épisodes et le statut de diffusion sont concernés. Les studios, genres, format, titres alternatifs ou la vignette Anilist ne sont vérifiés que par l'outil de revérification (« Vérification des animés »), qui demande une validation avant toute écriture. Les personnalisations (titre choisi, vignette personnelle, note, coches, éditions physiques) ne sont jamais affectées, ici comme ailleurs.</p>
-            <p class="hint">Un verrou de 24 h protège chaque série contre des vérifications trop rapprochées ; en cas d'échec de l'API pour une série, ce délai est ramené à 1 h avant une nouvelle tentative.</p>
+            <p class="hint">Un verrou de 1h protège chaque série contre des vérifications trop rapprochées ; en cas d'échec de l'API pour une série, ce délai est ramené à 15min avant une nouvelle tentative.</p>
 
             <div class="tools-actions">
                 <button id="anilist-sync-launch" class="button">Synchroniser les séries éligibles</button>
-                <button id="anilist-sync-launch-force" class="button button-opt" title="Synchronise toutes les séries animées éligibles (diffusion et visionnage « en cours »), en ignorant le verrou de 24 h">Forcer toutes les séries éligibles</button>
+                <button id="anilist-sync-launch-force" class="button button-opt" title="Synchronise toutes les séries animées éligibles (diffusion et visionnage « en cours »), en ignorant le verrou de 1 h">Forcer toutes les séries éligibles</button>
             </div>
 
             <div id="anilist-sync-progress"></div>
