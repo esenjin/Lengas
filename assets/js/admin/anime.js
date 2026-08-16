@@ -335,7 +335,7 @@ async function animeSyncStart() {
     if (window.currentSeriesType !== 'anime') return;
 
     try {
-        const response = await fetch('admin.php?get_anime_sync_due_ids=1');
+        const response = await fetch('admin.php?get_anime_sync_due_ids=1&type=anime');
         const result = await response.json();
         if (!result.success || !Array.isArray(result.ids) || result.ids.length === 0) {
             animeSyncBannerFadeIdle();
