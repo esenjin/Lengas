@@ -143,8 +143,8 @@ $eligible = array_map(function ($s) {
                     <option value="date" selected>Trier par date</option>
                 </select>
                 <select id="reviews-sort-order" class="reviews-sort-select" title="Ordre">
-                    <option value="asc">Ascendant</option>
-                    <option value="desc" selected>Descendant</option>
+                    <option value="asc">Asc.</option>
+                    <option value="desc" selected>Desc.</option>
                 </select>
                 <button type="button" id="new-review-btn" class="button button-aos">
                     <img src="https://api.iconify.design/mdi/pencil-plus.svg?color=%23ffffff" width="18" height="18" alt="">

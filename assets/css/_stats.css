@@ -678,7 +678,7 @@
 
 .apexcharts-legend-text { color: var(--text-color) !important; }
 
-/* Tooltip personnalisé (treemaps auteurs/éditeurs) */
+/* Tooltip personnalisé (graphiques ApexCharts : barres top N, genres, etc.) */
 .apex-tip {
     padding: 8px 12px;
     font-family: 'Inter', system-ui, sans-serif;

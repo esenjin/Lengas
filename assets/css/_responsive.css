@@ -63,7 +63,9 @@
         gap: 8px;
     }
 
-    .sort-options select {
+    .sort-options select,
+    .sort-options select#sort-by,
+    .sort-options select#sort-order {
         width: 100%;
         min-width: 0;
         margin-bottom: 0;

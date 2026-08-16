@@ -130,8 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['license_action'])) {
                     <option value="count">Trier par nombre de séries</option>
                 </select>
                 <select name="sort_order" id="licenses-sort-order">
-                    <option value="desc" selected>Descendant</option>
-                    <option value="asc">Ascendant</option>
+                    <option value="desc" selected>Desc.</option>
+                    <option value="asc">Asc.</option>
                 </select>
             </div>
             <button type="button" id="new-license-btn" class="button button-aos">

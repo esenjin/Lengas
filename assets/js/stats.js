@@ -1,8 +1,7 @@
 /* ════════════════════════════════════════════════════════════════════════════
    stats.js — Dashboard statistiques Lengas
    Chart.js  → donuts (statut, temps, complétude)
-   ApexCharts → treemaps (auteurs/éditeurs), barres top N, genres, catégories,
-                valeur, courbes temporelles
+   ApexCharts → barres top N, genres, catégories, valeur, courbes temporelles
    ════════════════════════════════════════════════════════════════════════════ */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -38,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const isMobile = window.matchMedia('(max-width: 600px)').matches;
     const yAxisMaxWidth = (full) => isMobile ? Math.min(full, 110) : full;
 
-    // Couleurs dégradées pour les listes (treemaps, barres)
+    // Couleurs dégradées pour les listes (genres, catégories, barres)
     const RAMP = ['#c084fc', '#a855f7', '#8b5cf6', '#7c6df2', '#6d8bf2', '#38bdf8', '#34d399', '#5ad1a8', '#fbbf24', '#fb923c'];
     function rampColor(i, total) {
         return RAMP[i % RAMP.length];
@@ -308,50 +307,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const charts = {}; // registre pour mises à jour (toggles)
 
-    // ── 4. Treemap auteurs (toggle tomes/séries) ──────────────────────────────
-    function treemapSeries(list, metric) {
-        return [{
-            data: list.map(d => ({ x: d.x, y: metric === 'series' ? d.series : d.y }))
-        }];
-    }
-    if (S.authors && S.authors.length && document.getElementById('treemap-authors')) {
-        const authSeriesByName = {};
-        S.authors.forEach(a => { authSeriesByName[a.x] = a.series; });
-        charts._authSeriesByName = authSeriesByName;
-        charts._authMetric = 'series';
-
-        charts.authorsTree = new ApexCharts(document.getElementById('treemap-authors'), {
-            ...apexBase,
-            chart: { ...apexBase.chart, type: 'treemap', height: 380 },
-            series: treemapSeries(S.authors, 'series'),
-            legend: { show: false },
-            colors: [C.primary],
-            plotOptions: {
-                treemap: {
-                    distributed: true,
-                    enableShades: true, shadeIntensity: 0.55,
-                    colorScale: { ranges: [] }
-                }
-            },
-            dataLabels: { enabled: true, style: { fontSize: '12px', colors: ['#fff'] } },
-            tooltip: {
-                theme: 'dark',
-                custom: function ({ seriesIndex, dataPointIndex, w }) {
-                    const pt = w.config.series[seriesIndex].data[dataPointIndex];
-                    const series = authSeriesByName[pt.x] ?? 0;
-                    const metric = charts._authMetric || 'series';
-                    const main = metric === 'series' ? `${fmtInt(pt.y)} série(s)` : `${fmtInt(pt.y)} tomes`;
-                    const second = metric === 'series' ? '' : ` · ${fmtInt(series)} série(s)`;
-                    return `<div class="apex-tip"><b>${pt.x}</b><br>${main}${second}</div>`;
-                }
-            }
-        });
-        charts.authorsTree.render();
-    }
-
-    // ── 4b. Barres top 10 auteurs ─────────────────────────────────────────────
-    function horizontalBar(el, list, key, color, unit) {
-        const top = list.slice(0, 10);
+    // ── 4. Barres top 20 auteurs (toggle tomes/séries) ────────────────────────
+    function horizontalBar(el, list, key, color, unit, limit = 20) {
+        const top = list.slice(0, limit);
         const c = new ApexCharts(document.getElementById(el), {
             ...apexBase,
             chart: { ...apexBase.chart, type: 'bar', height: Math.max(220, top.length * 38) },
@@ -367,44 +325,14 @@ document.addEventListener('DOMContentLoaded', function () {
         return c;
     }
     if (S.authors && S.authors.length) {
-        const top = S.authors.slice().sort((a, b) => b.series - a.series).slice(0, 10)
+        const top = S.authors.slice().sort((a, b) => b.series - a.series).slice(0, 20)
             .map(a => ({ name: a.x, volumes: a.y, series: a.series }));
         charts.authorsBar = horizontalBar('bar-authors', top, 'series', C.primary, 'Séries');
     }
 
-    // ── 5. Treemap + barres éditeurs ──────────────────────────────────────────
-    if (S.publishers && S.publishers.length && document.getElementById('treemap-publishers')) {
-        // Index nom -> nb séries, pour des tooltips indépendants de l'ordre/de la métrique
-        const pubSeriesByName = {};
-        S.publishers.forEach(p => { pubSeriesByName[p.x] = p.series; });
-        charts._pubSeriesByName = pubSeriesByName;
-        charts._pubMetric = 'series';
-
-        charts.publishersTree = new ApexCharts(document.getElementById('treemap-publishers'), {
-            ...apexBase,
-            chart: { ...apexBase.chart, type: 'treemap', height: 360 },
-            series: [{ data: S.publishers.map(d => ({ x: d.x, y: d.series })) }],
-            legend: { show: false },
-            colors: [C.sky],
-            plotOptions: { treemap: { distributed: true, enableShades: true, shadeIntensity: 0.5 } },
-            dataLabels: { enabled: true, style: { fontSize: '12px', colors: ['#fff'] } },
-            tooltip: { theme: 'dark', custom: function ({ seriesIndex, dataPointIndex, w }) {
-                const pt = w.config.series[seriesIndex].data[dataPointIndex];
-                const series = pubSeriesByName[pt.x] ?? 0;
-                const metric = charts._pubMetric || 'series';
-                const main = metric === 'series'
-                    ? `${fmtInt(pt.y)} série(s)`
-                    : `${fmtInt(pt.y)} tomes`;
-                const second = metric === 'series'
-                    ? '' // en mode séries, pt.y EST déjà le nb de séries
-                    : ` · ${fmtInt(series)} série(s)`;
-                return `<div class="apex-tip"><b>${pt.x}</b><br>${main}${second}</div>`;
-            } }
-        });
-        charts.publishersTree.render();
-    }
+    // ── 5. Barres top 20 éditeurs ──────────────────────────────────────────────
     if (S.publishers && S.publishers.length) {
-        const top = S.publishers.slice().sort((a, b) => b.series - a.series).slice(0, 10)
+        const top = S.publishers.slice().sort((a, b) => b.series - a.series).slice(0, 20)
             .map(p => ({ name: p.x, volumes: p.y, series: p.series }));
         charts.publishersBar = horizontalBar('bar-publishers', top, 'series', C.sky, 'Séries');
     }
@@ -516,8 +444,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (S.contributors && S.contributors.length && document.getElementById('bar-contributors')) {
         function contribOpts(metric) {
             const valOf = c => metric === 'series' ? c.series : c.volumes;
-            // Tri selon la métrique puis top 10
-            const list = S.contributors.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 10);
+            // Tri selon la métrique puis top 20
+            const list = S.contributors.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 20);
             return {
                 ...apexBase,
                 chart: { ...apexBase.chart, type: 'bar', height: Math.max(220, list.length * 34) },
@@ -813,11 +741,11 @@ document.addEventListener('DOMContentLoaded', function () {
         animeCharts._buildFormats = buildAnimeFormats;
     }
 
-    // ── Top studios (toggle épisodes / séries) ────────────────────────────────
+    // ── Top 20 studios (toggle épisodes / séries) ─────────────────────────────
     if (A.studios && A.studios.length && document.getElementById('anime-bar-studios')) {
         function studiosOpts(metric) {
             const valOf = s => metric === 'series' ? s.series : s.volumes;
-            const list = A.studios.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 10);
+            const list = A.studios.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 20);
             return {
                 ...apexBase,
                 chart: { ...apexBase.chart, type: 'bar', height: Math.max(220, list.length * 34) },
@@ -896,7 +824,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const metric = this.dataset.metric;
             if (animeCharts.studios && animeCharts._studiosOpts) {
                 const valOf = s => metric === 'series' ? s.series : s.volumes;
-                const list = A.studios.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 10);
+                const list = A.studios.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 20);
                 animeCharts.studios.updateOptions({
                     chart: { height: Math.max(220, list.length * 34) },
                     xaxis: { categories: list.map(s => s.name) },
@@ -920,20 +848,15 @@ document.addEventListener('DOMContentLoaded', function () {
             this.classList.add('is-active');
             const metric = this.dataset.metric;
             const valOf = d => metric === 'series' ? d.series : d.y;
-            charts._authMetric = metric;
 
             // Re-trier selon la métrique active (du plus grand au plus petit)
             const sorted = S.authors.slice().sort((a, b) => valOf(b) - valOf(a));
 
-            if (charts.authorsTree) {
-                charts.authorsTree.updateSeries([{
-                    data: sorted.map(d => ({ x: d.x, y: valOf(d) }))
-                }]);
-            }
             if (charts.authorsBar) {
-                const top = sorted.slice(0, 10);
+                const top = sorted.slice(0, 20);
                 // updateOptions réordonne les libellés (catégories) + les valeurs ensemble
                 charts.authorsBar.updateOptions({
+                    chart: { height: Math.max(220, top.length * 38) },
                     xaxis: { categories: top.map(d => d.x) },
                     series: [{ name: metric === 'series' ? 'Séries' : 'Tomes', data: top.map(valOf) }]
                 });
@@ -948,18 +871,13 @@ document.addEventListener('DOMContentLoaded', function () {
             this.classList.add('is-active');
             const metric = this.dataset.metric;
             const valOf = d => metric === 'series' ? d.series : d.y;
-            charts._pubMetric = metric;
 
             const sorted = S.publishers.slice().sort((a, b) => valOf(b) - valOf(a));
 
-            if (charts.publishersTree) {
-                charts.publishersTree.updateSeries([{
-                    data: sorted.map(d => ({ x: d.x, y: valOf(d) }))
-                }]);
-            }
             if (charts.publishersBar) {
-                const top = sorted.slice(0, 10);
+                const top = sorted.slice(0, 20);
                 charts.publishersBar.updateOptions({
+                    chart: { height: Math.max(220, top.length * 38) },
                     xaxis: { categories: top.map(d => d.x) },
                     series: [{ name: metric === 'series' ? 'Séries' : 'Tomes', data: top.map(valOf) }]
                 });
@@ -967,7 +885,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Contributeurs : par tomes / par séries (top 10 dans chaque cas)
+    // Contributeurs : par tomes / par séries (top 20 dans chaque cas)
     document.querySelectorAll('.toggle-group[data-target="contributors-view"] .toggle-btn').forEach(btn => {
         btn.addEventListener('click', function () {
             document.querySelectorAll('.toggle-group[data-target="contributors-view"] .toggle-btn').forEach(b => b.classList.remove('is-active'));
@@ -975,7 +893,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const metric = this.dataset.metric;
             if (charts.contrib && charts._contribOpts) {
                 const valOf = c => metric === 'series' ? c.series : c.volumes;
-                const list = S.contributors.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 10);
+                const list = S.contributors.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 20);
                 charts.contrib.updateOptions({
                     chart: { height: Math.max(220, list.length * 34) },
                     xaxis: { categories: list.map(c => c.name) },

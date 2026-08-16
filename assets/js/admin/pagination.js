@@ -248,7 +248,7 @@ function formatListCollapsed(list) {
 
     const rest = filtered.slice(1);
     const restText = pgEscape(rest.join(', '));
-    return `${pgEscape(filtered[0])} ` +
+    return `${pgEscape(filtered[0])}` +
            `<button type="button" class="list-more-toggle" data-more="${restText}" data-more-count="${rest.length}">+${rest.length}</button>`;
 }
 

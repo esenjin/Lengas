@@ -1040,8 +1040,8 @@ if ($current_type === 'anime') {
                         <option value="read_at" <?= $sort_by === 'read_at' ? 'selected' : '' ?>>Trier par date de <?= htmlspecialchars(type_vocab($current_type, 'activity')) ?></option>
                     </select>
                     <select name="sort_order" id="sort-order">
-                        <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Ascendant</option>
-                        <option value="desc" <?= $sort_order === 'desc' ? 'selected' : '' ?>>Descendant</option>
+                        <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Asc.</option>
+                        <option value="desc" <?= $sort_order === 'desc' ? 'selected' : '' ?>>Desc.</option>
                     </select>
                     <?php render_status_filter($status_filter, $status_mode, true, $current_type); ?>
                     <?php render_refine_filter($refine_categories, $refine_genres, $refine_mode, series_of_type($data, $current_type)); ?>

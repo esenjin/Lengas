@@ -441,17 +441,11 @@ $anime_chart_payload = [
             </div>
             <div class="panel">
                 <div class="panel-head">
-                    <h3>Cartographie des auteurs</h3>
+                    <h3>Top 20 auteurs</h3>
                     <div class="toggle-group" data-target="authors">
                         <button class="toggle-btn" data-metric="volumes">Par tomes</button>
                         <button class="toggle-btn is-active" data-metric="series">Par séries</button>
                     </div>
-                </div>
-                <div id="treemap-authors" class="apex-chart"></div>
-            </div>
-            <div class="panel">
-                <div class="panel-head">
-                    <h3>Top 10 auteurs</h3>
                 </div>
                 <div id="bar-authors" class="apex-chart"></div>
             </div>
@@ -467,16 +461,12 @@ $anime_chart_payload = [
             </div>
             <div class="panel">
                 <div class="panel-head">
-                    <h3>Cartographie des éditeurs</h3>
+                    <h3>Top 20 éditeurs</h3>
                     <div class="toggle-group" data-target="publishers">
                         <button class="toggle-btn" data-metric="volumes">Par tomes</button>
                         <button class="toggle-btn is-active" data-metric="series">Par séries</button>
                     </div>
                 </div>
-                <div id="treemap-publishers" class="apex-chart"></div>
-            </div>
-            <div class="panel">
-                <div class="panel-head"><h3>Top 10 éditeurs</h3></div>
                 <div id="bar-publishers" class="apex-chart"></div>
             </div>
         </section>
@@ -519,7 +509,7 @@ $anime_chart_payload = [
             </div>
             <div class="panel">
                 <div class="panel-head">
-                    <h3>Top contributeurs</h3>
+                    <h3>Top 20 contributeurs</h3>
                     <div class="toggle-group" data-target="contributors-view">
                         <button class="toggle-btn" data-metric="volumes">Par tomes</button>
                         <button class="toggle-btn is-active" data-metric="series">Par séries</button>
@@ -855,7 +845,7 @@ $anime_chart_payload = [
             <?php if ($anime_stats['total_studios'] > 0): ?>
             <div class="panel">
                 <div class="panel-head">
-                    <h3>Top studios</h3>
+                    <h3>Top 20 studios</h3>
                     <div class="toggle-group" data-target="anime-studios">
                         <button class="toggle-btn" data-metric="volumes">Par épisodes</button>
                         <button class="toggle-btn is-active" data-metric="series">Par séries</button>

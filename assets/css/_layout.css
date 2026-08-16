@@ -72,6 +72,21 @@
     margin-bottom: 0;
 }
 
+/* Le champ "trier par" peut contenir des libellés longs (ex. "Trier par
+   nombre de revisionnages") : il doit pouvoir s'élargir pour les afficher
+   entièrement. Le sens (asc/desc) reste court et n'a pas besoin d'autant
+   de place. */
+.sort-options select#sort-by {
+    flex: 1 1 auto;
+    min-width: 220px;
+}
+
+.sort-options select#sort-order {
+    flex: 0 0 auto;
+    min-width: 0;
+    width: 130px;
+}
+
 /* ── Barre de recherche + bouton Appliquer ───────────────────────────────── */
 /* Conteneur créé dynamiquement par autocomplete.js autour des champs à
    suggestions. Il doit rester transparent pour la mise en page : sans

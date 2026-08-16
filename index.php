@@ -75,6 +75,15 @@ $profil_has_avatar = ($profil_avatar !== '' && file_exists($profil_avatar));
 // (avant tout filtrage de $data par $current_type) car une mise en lumière
 // peut mélanger manga et animé.
 $profil_highlights = profil_highlighted_series($data, $options, true);
+// $data est réassigné plus bas par la recherche, le tri et les filtres de
+// cette page (type, statut, catégories/genres…) : la modale « Qui suis-je ? »
+// doit continuer à voir la collection COMPLÈTE (comme $profil_highlights
+// ci-dessus), sous peine de faire disparaître ses sections « Lectures /
+// visionnages du moment » et « Récemment terminées » dès qu'un filtre est
+// actif (ex. depuis les boutons « Critiques mangas/animés » du menu, qui
+// appliquent status_filter=has_review). $profil_data fige donc la collection
+// telle qu'elle est à cet instant, avant tout filtrage.
+$profil_data = $data;
 $has_profil = ($profil_pseudo !== '' || trim($profil_bio) !== '' ||
                $profil_has_avatar || !empty($profil_social) ||
                !empty($profil_highlights['manga']) || !empty($profil_highlights['anime']));
@@ -464,8 +473,8 @@ $data = array_values(apply_refine_filter($data, $refine_categories, $refine_genr
                         <option value="read_at" <?= $sort_by === 'read_at' ? 'selected' : '' ?>>Trier par date de lecture</option>
                     </select>
                     <select name="sort_order" id="sort-order">
-                        <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Ascendant</option>
-                        <option value="desc" <?= $sort_order === 'desc' ? 'selected' : '' ?>>Descendant</option>
+                        <option value="asc" <?= $sort_order === 'asc' ? 'selected' : '' ?>>Asc.</option>
+                        <option value="desc" <?= $sort_order === 'desc' ? 'selected' : '' ?>>Desc.</option>
                     </select>
                     <?php render_status_filter($status_filter, $status_mode ?? 'and', $reviews_public, $current_type); ?>
                     <?php render_refine_filter($refine_categories, $refine_genres, $refine_mode, $refine_pool); ?>
@@ -648,8 +657,10 @@ $data = array_values(apply_refine_filter($data, $refine_categories, $refine_genr
     // Modale « Qui suis-je ? » (profil de l'admin). $profil_data, $profil_avatar,
     // $profil_pseudo, $profil_bio, $profil_social, $profil_has_avatar,
     // $profil_highlights et $has_profil sont déjà calculés plus haut dans cette
-    // page (cf. bloc « Profil de l'administrateur ») : le fragment partagé les
-    // réutilise tels quels (gardes isset()) plutôt que de les recalculer.
+    // page (cf. bloc « Profil de l'administrateur »), AVANT que $data ne soit
+    // filtré par la recherche/le tri/les filtres de la page : le fragment
+    // partagé les réutilise tels quels (gardes isset()) plutôt que de les
+    // recalculer sur un $data éventuellement restreint.
     require 'includes/public-profil-modal.php';
     ?>
 

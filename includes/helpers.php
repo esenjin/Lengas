@@ -260,6 +260,49 @@ function profil_in_progress_series(array $data, int $limit = 10, ?array $options
     return $out;
 }
 
+// Séries "récemment terminées" (statut completed), triées par date du
+// dernier tome/épisode marqué terminé décroissante (le tome/épisode tagué
+// « dernier » compris), pour la section "Récemment terminées" de la modale
+// publique « Qui suis-je ? ». Mangas et animés confondus, comme pour
+// profil_in_progress_series() dont elle reprend le fonctionnement — seul le
+// statut filtré change. $limit borne le nombre de séries renvoyées.
+//
+// $options et $visible_only fonctionnent comme pour profil_in_progress_series()
+// : quand $visible_only vaut true, les séries d'une collection en mode privé
+// ou masquées (mature) sont exclues, exactement comme sur le reste du site
+// public.
+function profil_recently_completed_series(array $data, int $limit = 10, ?array $options = null, bool $visible_only = false): array {
+    $candidates = [];
+    foreach ($data as $series) {
+        if (series_reading_status($series) !== 'completed') continue;
+        if ($visible_only && $options !== null) {
+            $t = series_type($series);
+            if (is_private_mode($options, $t)) continue;
+            if (is_hide_mature($options, $t) && !empty($series['mature'])) continue;
+        }
+
+        $last_activity = '';
+        foreach ($series['volumes'] ?? [] as $volume) {
+            $read_at = trim((string)($volume['read_at'] ?? ''));
+            if ($read_at !== '' && $read_at > $last_activity) {
+                $last_activity = $read_at;
+            }
+        }
+        $candidates[] = [
+            'series'        => $series,
+            'last_activity' => $last_activity,
+        ];
+    }
+
+    usort($candidates, fn($a, $b) => strcmp($b['last_activity'], $a['last_activity']));
+
+    $out = [];
+    foreach (array_slice($candidates, 0, $limit) as $c) {
+        $out[] = decorate_series_for_display($c['series']);
+    }
+    return $out;
+}
+
 // Libellé affichable d'un type. $plural = true pour la forme au pluriel.
 function type_label($type, bool $plural = false): string {
     $def = series_type_registry()[series_type($type)];

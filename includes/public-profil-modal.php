@@ -50,6 +50,12 @@ if (!isset($profil_in_progress)) {
     $__profil_source = $profil_data ?? $all_data ?? $data ?? [];
     $profil_in_progress = profil_in_progress_series($__profil_source, 10, $options, true);
 }
+// Séries récemment terminées : mêmes règles de visibilité et même source de
+// données que la section "Lectures / visionnages du moment" ci-dessus.
+if (!isset($profil_recently_completed)) {
+    $__profil_source = $profil_data ?? $all_data ?? $data ?? [];
+    $profil_recently_completed = profil_recently_completed_series($__profil_source, 10, $options, true);
+}
 if (!isset($has_profil)) {
     $has_profil = ($profil_pseudo !== '' || trim($profil_bio) !== '' ||
                    $profil_has_avatar || !empty($profil_social) ||
@@ -108,6 +114,22 @@ if (!isset($has_profil)) {
                 <h3 class="profil-modal-section-title">Lectures / visionnages du moment</h3>
                 <div class="profil-highlights-row">
                     <?php foreach ($profil_in_progress as $__s):
+                        $__color = type_color($__s['type']);
+                    ?>
+                        <button type="button" class="profil-highlight-card" data-series-id="<?= htmlspecialchars($__s['id']) ?>" style="--type-color: <?= htmlspecialchars($__color) ?>" title="<?= htmlspecialchars($__s['name']) ?>">
+                            <img class="profil-highlight-thumb" src="<?= htmlspecialchars($__s['thumbnail']) ?>" alt="" loading="lazy">
+                            <span class="profil-highlight-name"><?= htmlspecialchars($__s['name']) ?></span>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($profil_recently_completed)): ?>
+            <div class="profil-modal-highlights profil-modal-recently-completed">
+                <h3 class="profil-modal-section-title">Récemment terminées</h3>
+                <div class="profil-highlights-row">
+                    <?php foreach ($profil_recently_completed as $__s):
                         $__color = type_color($__s['type']);
                     ?>
                         <button type="button" class="profil-highlight-card" data-series-id="<?= htmlspecialchars($__s['id']) ?>" style="--type-color: <?= htmlspecialchars($__color) ?>" title="<?= htmlspecialchars($__s['name']) ?>">

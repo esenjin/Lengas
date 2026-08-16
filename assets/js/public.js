@@ -741,7 +741,7 @@ function setModalLicenseBtn(series) {
         // d'affichage, source différente (le champ `author`/`publisher` reste
         // vide côté serveur pour un animé, `studios_text` le remplace).
         document.getElementById('review-modal-title').textContent = series.name || '';
-        document.getElementById('review-modal-thumb').src = series.image || 'assets/img/logo.png';
+        document.getElementById('review-modal-thumb').src = publicThumbnail(series);
         const authorEl    = document.getElementById('review-modal-author');
         const publisherEl = document.getElementById('review-modal-publisher');
         if (series.type === 'anime') {
