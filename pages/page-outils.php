@@ -103,6 +103,14 @@ $tools = [
         'color'       => 'pink',
     ],
     [
+        'icon'        => 'cloud-sync-outline',
+        'name'        => 'Synchronisation Syngas',
+        'description' => "Envoyez et récupérez des fiches avec la base commune des mangathèques Lengas.",
+        'href'        => 'outils/outil-syngas.php',
+        'visible'     => true,
+        'color'       => 'pink',
+    ],
+    [
         'icon'        => 'source-merge',
         'name'        => 'Groupage de licences',
         'description' => "Suggère des séries sans licence qui semblent appartenir à la même œuvre, à regrouper en un clic.",

@@ -73,6 +73,8 @@ function build_light_series(array $series, array $review_series_ids, array $loan
         'reading_abandoned'          => (bool)($series['reading_abandoned'] ?? false),
         'rating'                     => $series['rating'] ?? '',
         'has_review'                 => isset($review_series_ids[$series['id']]),
+        // ── Intégration Syngas (Mangathèque uniquement) ──────────────────
+        'syngas_uid'                 => $series['syngas_uid'] ?? '',
         'reread_count'               => (int)($series['reread_count'] ?? 0),
         'reread_last_date'           => $series['reread_last_date'] ?? '',
         // ── Champs animé (vides ou nuls sur un manga) ────────────────
@@ -113,7 +115,10 @@ function build_light_series(array $series, array $review_series_ids, array $loan
 // Ajouter une série
 // $type : clé du registre de types (includes/helpers.php). Par défaut 'manga',
 // la modale d'ajout de cette page ne créant que des mangas et light-novels.
-function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours', $read_elsewhere = false, $reading_abandoned = false, $rating = '', $type = 'manga', $reread_count = 0) {
+// $syngas_uid : posé automatiquement quand la création suit une correspondance
+// Syngas validée dans la modale d'ajout (jamais saisi à la main) — voir
+// includes/syngas.php et l'endpoint syngas_validate de admin.php.
+function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours', $read_elsewhere = false, $reading_abandoned = false, $rating = '', $type = 'manga', $reread_count = 0, $syngas_uid = '') {
     $volumes = [];
     for ($i = 1; $i <= $volumes_count; $i++) {
         $volumes[] = [
@@ -168,6 +173,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         'read_elsewhere' => (bool)$read_elsewhere,
         'reading_abandoned' => (bool)$reading_abandoned,
         'rating' => sanitize_rating($rating),
+        'syngas_uid' => trim((string)$syngas_uid),
         'reread_count' => max(0, (int)$reread_count),
         // Un nombre de relectures renseigné dès la création (import manuel
         // d'une série déjà relue par le passé) n'a pas de date réelle connue :

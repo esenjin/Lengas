@@ -1,0 +1,305 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   _syngas.css — Intégration Syngas (base commune des mangathèques Lengas)
+
+   Trois zones couvertes :
+   1. Section « Recherche Syngas » des modales d'ajout/édition de série
+      (includes/syngas_search_section.php + assets/js/admin/syngas-search.js)
+   2. Bannière de bannissement (section 6.5 du cahier des charges), partagée
+      entre la section recherche et l'outil de synchronisation.
+   3. Outil « Synchronisation Syngas » (pages/outils/outil-syngas.php),
+      calqué visuellement sur l'outil « Association MangaUpdates »
+      (.mu-associate-* dans _admin.css) pour rester cohérent.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── 1. Section « Recherche Syngas » (modales) ─────────────────────────────── */
+
+.syngas-search-section {
+    margin: 14px 0 20px;
+    padding: 14px 16px;
+    background-color: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius);
+}
+
+.syngas-search-title {
+    margin: 0 0 4px;
+    font-size: 1em;
+    color: var(--text-white);
+}
+
+.syngas-search-section > .hint {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.syngas-search-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.syngas-search-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.syngas-search-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.syngas-search-spinner {
+    width: 14px;
+    height: 14px;
+}
+
+.syngas-search-spinner[hidden] {
+    display: none;
+}
+
+.syngas-search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.syngas-result {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background-color: var(--background-darker);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius-sm);
+}
+
+.syngas-result-thumb {
+    width: 40px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+    background-color: var(--background-medium);
+}
+
+.syngas-result-thumb--empty {
+    display: block;
+}
+
+.syngas-result-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.syngas-result-name {
+    color: var(--text-color);
+    font-size: 0.92em;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.syngas-result-meta {
+    color: var(--text-muted);
+    font-size: 0.8em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.syngas-result-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.syngas-result-link {
+    color: var(--primary-color);
+    font-size: 0.8em;
+    text-decoration: none;
+    opacity: 0.85;
+    white-space: nowrap;
+}
+
+.syngas-result-link:hover {
+    text-decoration: underline;
+    opacity: 1;
+}
+
+.syngas-result-validate {
+    white-space: nowrap;
+}
+
+/* ── 2. Bannière de bannissement (section 6.5) ─────────────────────────────── */
+/* Persistante tant que le statut n'a pas changé — affichée à la fois dans la
+   section recherche et sur la page de l'outil de synchronisation. */
+
+.syngas-search-banned-banner,
+.syngas-banned-banner {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    background-color: rgba(248, 113, 113, 0.12);
+    border: 1px solid var(--error-color);
+    border-radius: var(--border-radius-sm);
+    color: var(--error-color);
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+/* Un `display` explicite dans une feuille de style d'auteur prime sur le
+   comportement par défaut de l'attribut HTML `hidden` (qui vient d'une
+   feuille de style utilisateur-agent, moins prioritaire) : sans cette
+   règle, le bandeau restait visible en permanence dès le chargement de la
+   page, même quand JS ne l'affichait jamais explicitement. */
+.syngas-search-banned-banner[hidden],
+.syngas-banned-banner[hidden] {
+    display: none;
+}
+
+.syngas-search-banned-reason,
+.syngas-banned-reason {
+    font-weight: 400;
+    opacity: 0.9;
+}
+
+.syngas-banned-recheck-btn {
+    align-self: flex-start;
+    margin-top: 4px;
+}
+
+/* ── 3. Outil « Synchronisation Syngas » ───────────────────────────────────── */
+/* Calqué sur .mu-associate-* (_admin.css) pour la cohérence visuelle entre
+   outils de la même famille (associations/synchronisation par validation). */
+
+.syngas-sync-form {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.syngas-sync-series {
+    background-color: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius);
+    padding: 14px 16px;
+}
+
+.syngas-sync-series-name {
+    font-weight: 600;
+    color: var(--text-white);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.syngas-sync-series-name small {
+    font-weight: 400;
+    color: var(--text-gray);
+}
+
+.syngas-sync-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.syngas-sync-checkbox-row input[type="checkbox"] {
+    accent-color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.syngas-sync-diff {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.syngas-sync-diff-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: var(--border-radius-sm);
+    background-color: var(--background-darker);
+    font-size: 0.86em;
+}
+
+.syngas-sync-diff-field {
+    color: var(--text-gray);
+    font-weight: 600;
+}
+
+.syngas-sync-diff-values {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.syngas-sync-diff-old {
+    color: var(--text-muted);
+    text-decoration: line-through;
+    overflow-wrap: break-word;
+}
+
+.syngas-sync-diff-new {
+    color: var(--success-color);
+    overflow-wrap: break-word;
+}
+
+.syngas-sync-empty {
+    color: var(--text-gray);
+    font-size: 0.92em;
+}
+
+.syngas-sync-excluded {
+    color: var(--text-muted);
+    font-size: 0.85em;
+    font-style: italic;
+    margin: 8px 0;
+}
+
+.syngas-sync-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.72em;
+    font-weight: 600;
+}
+
+.syngas-sync-status-badge--en_attente {
+    background-color: rgba(251, 191, 36, 0.15);
+    color: var(--warning-color);
+}
+
+.syngas-sync-status-badge--creee,
+.syngas-sync-status-badge--fusionnee {
+    background-color: rgba(52, 211, 153, 0.15);
+    color: var(--success-color);
+}
+
+.syngas-sync-status-badge--rejetee {
+    background-color: rgba(248, 113, 113, 0.15);
+    color: var(--error-color);
+}
+
+#syngas-sync-save-btn,
+#syngas-receive-save-btn {
+    align-self: flex-start;
+}

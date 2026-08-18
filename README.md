@@ -11,6 +11,7 @@
 - [Mise à jour depuis d'anciennes versions majeures](#mise-à-jour-depuis-danciennes-versions-majeures)
 - [Importer une base de données](#importer-une-base-de-données)
 - [Comment vérifier les sorties françaises avec Babengas](#comment-vérifier-les-sorties-françaises-avec-babengas)
+- [Comment utiliser Syngas](#comment-utiliser-syngas)
 - [Comment se connecter avec Vestikan](#comment-se-connecter-avec-vestikan)
 - [Structure des fichiers](#structure-des-fichiers)
 - [Crédits](#crédits)
@@ -33,6 +34,7 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 - Activer un mode privé pour cacher votre bibliothèque, réglable séparément pour chaque collection
 - Choisir un thème (clair, sombre ou personnalisé)
 - Vérifier le nombre de tomes parus en France avec Babengas (Babelio, facultatif)
+- Pré-remplir et mutualiser vos fiches mangas/light-novels avec **Syngas**, la base commune des mangathèques Lengas
 - Vous connecter avec Vestikan (SSO facultatif)
 
 ---
@@ -68,6 +70,7 @@ Depuis la version 4.0, chaque série porte un **type** : `manga` (regroupant aus
 - Association à une fiche MangaUpdates (URL) pour le suivi du nombre de tomes et du statut de publication
 - Remplissage automatique des URL MangaUpdates en masse via l'outil « Association MangaUpdates » (recherche par titre + auteur), avec possibilité d'exclure une ou plusieurs catégories de la recherche (ex. les light-novels, dont la publication FR ne suit pas MangaUpdates)
 - Association à une fiche Babelio (URL) pour connaître le nombre de tomes réellement parus en France, via le service Babengas
+- Recherche et liaison à une fiche **Syngas** (base commune des mangathèques Lengas) pour pré-remplir automatiquement une fiche, disponible à l'ajout et à l'édition — voir [Comment utiliser Syngas](#comment-utiliser-syngas)
 
 ### Gestion des séries (Animethèque)
 - Ajout d'un animé par recherche Anilist (titre (ou ID Anilist) → jusqu'à 10 résultats → sélection → import automatique complet des données)
@@ -166,8 +169,9 @@ Tous les outils du site sont accessibles depuis `pages/page-outils.php`, accessi
 - **Vérification des mangas** (`pages/outils/outil-coherences.php`) : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome »/« dernier épisode », statut différent de MangaUpdates ou d'Anilist, prêts orphelins, série animée sans identifiant Anilist, épisode terminé sans date, vignette Anilist introuvable, etc.) et propose une édition rapide de la série concernée ; les anomalies factuelles d'une série animée renvoient vers sa fiche Anilist pour correction à la source
 - **Sauvegardes** (`pages/outils/outil-sauvegardes.php`) : création et téléchargement d'archives de vos données, ainsi que l'export JSON complet (inclut les tables et les vignettes propres à l'Animethèque)
 - **Association MangaUpdates** (`pages/outils/outil-associations-mu.php`) : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement ; un second outil récupère de la même façon les genres manquants
+- **Synchronisation Syngas** (`pages/outils/outil-syngas.php`) : envoie vos séries mangas/light-novels non encore liées à Syngas (après récapitulatif et confirmation) et récupère les mises à jour des séries déjà liées (comparaison champ par champ, validation sélective) — voir [Comment utiliser Syngas](#comment-utiliser-syngas)
 - **Groupage de licences** (`pages/outils/outil-groupage-licences.php`) : repère les séries sans licence qui semblent appartenir à la même œuvre (comparaison du nom et, pour les animés, des titres alternatifs Anilist, avec bonus si deux mangas partagent le même auteur ou si deux animés partagent le même studio) et propose de les regrouper. Chaque suggestion se valide individuellement : création d'une nouvelle licence, rattachement à une licence existante détectée automatiquement (avec consultation de son contenu actuel avant de confirmer), rattachement à une autre licence choisie manuellement, ou ignorée. Seuil de similarité ajustable, avec un repère calculé sur le score moyen des licences déjà existantes. Analyse entièrement locale (aucun appel réseau)
-- **Vérification d'intégrité du site** (`pages/outils/outil-integrite.php`) : compare automatiquement votre instance au dépôt Gitea, **au tag correspondant à votre version installée** (si aucun tag ne correspond, la comparaison se fait avec la version la plus récente et le signale). Pour chaque fichier versionné, elle vérifie la **présence** ET le **contenu** (comparaison d'empreinte : « OK », « Modifié » ou « Manquant »). Elle repère aussi les **fichiers étrangers au dépôt** (présents sur l'instance mais absents du dépôt, hors données `uploads/` `saves/` `bdd/`, config Vestikan, thèmes personnalisés et photo de profil de l'admin), l'**état des modules facultatifs** Vestikan et Babengas (installés ? réellement activés ? service distant fonctionnel ?), la **connectivité à l'API Anilist**, les permissions, les fichiers interdits, les doublons, les images orphelines (la photo de profil de l'admin et les vignettes Anilist actives ne sont jamais considérées comme orphelines), l'accès externe aux dossiers sensibles, la structure de la base de données (y compris les tables et colonnes propres à l'Animethèque), les thèmes personnalisés présents
+- **Vérification d'intégrité du site** (`pages/outils/outil-integrite.php`) : compare automatiquement votre instance au dépôt Gitea, **au tag correspondant à votre version installée** (si aucun tag ne correspond, la comparaison se fait avec la version la plus récente et le signale). Pour chaque fichier versionné, elle vérifie la **présence** ET le **contenu** (comparaison d'empreinte : « OK », « Modifié » ou « Manquant »). Elle repère aussi les **fichiers étrangers au dépôt** (présents sur l'instance mais absents du dépôt, hors données `uploads/` `saves/` `bdd/`, config Vestikan, thèmes personnalisés et photo de profil de l'admin), l'**état des modules facultatifs** Vestikan et Babengas (installés ? réellement activés ? service distant fonctionnel ?), l'**état de Syngas** (service joignable ? clé API provisionnée ? bannissement éventuel signalé), la **connectivité à l'API Anilist**, les permissions, les fichiers interdits, les doublons, les images orphelines (la photo de profil de l'admin et les vignettes Anilist actives ne sont jamais considérées comme orphelines), l'accès externe aux dossiers sensibles, la structure de la base de données (y compris les tables et colonnes propres à l'Animethèque), les thèmes personnalisés présents
 
 ### Aperçu de lien (OpenGraph)
 Lorsqu'un lien du site est partagé (Discord, réseaux sociaux, messageries…), un aperçu (titre, description, vignette) est généré automatiquement via `includes/opengraph.php`, inclus dans le `<head>` de chaque page :
@@ -333,6 +337,55 @@ Pour installer Babengas sur son homelab :
 
 ---
 
+## Comment utiliser Syngas
+
+**Syngas** est une base de données communautaire de séries mangas/light-novels, mutualisée entre tous les utilisateurs de Lengas : une même série n'a besoin d'être documentée précisément qu'une seule fois pour bénéficier à tout le monde. Contrairement à Babengas ou Vestikan, Syngas est un service **centralisé unique** (hébergé par le développeur de Lengas) — il n'y a rien à installer ni à héberger soi-même, et **aucune option marche/arrêt** dans les Options du site : la fonctionnalité est simplement disponible dès que vous choisissez de vous en servir.
+
+Le lien avec Syngas est **entièrement consultatif** : contrairement à Anilist sur l'Animethèque, aucun champ n'est jamais verrouillé après liaison — vous gardez toujours la main sur vos fiches mangas.
+
+**Périmètre : Mangathèque uniquement** (mangas et light-novels). L'Animethèque n'est pas concernée — Syngas n'a pas de notion d'animé.
+
+> ⚠️ **Si Syngas est hébergé sur le même domaine que Lengas** (ex. `mondomaine.fr/lengas/` et `mondomaine.fr/syngas/`), pensez à appliquer le correctif de cookie de session décrit dans la note de version ci-dessous — sans lui, se connecter à l'un déconnecte l'autre.
+
+### Provisionnement automatique
+
+Au tout premier appel à Syngas (une recherche, ou l'outil de synchronisation, selon ce qui arrive en premier), Lengas s'enregistre automatiquement auprès de Syngas et reçoit une clé d'API, stockée localement. Aucune action de votre part n'est requise. Cette clé n'est plus jamais réaffichée par Syngas ensuite : la perdre (restauration d'une ancienne sauvegarde, par exemple) déclenchera simplement un nouveau provisionnement automatique au prochain appel.
+
+### Recherche Syngas (ajout et édition d'une série)
+
+Dans la modale d'ajout **et** la modale d'édition d'une série manga, une section « Recherche Syngas » vous permet de chercher si la série existe déjà sur Syngas. Saisissez un nom et cliquez sur « Chercher » (la recherche n'est jamais déclenchée au fil de la frappe) : jusqu'à 5 résultats s'affichent, chacun avec un lien « Voir sur Syngas » pour vérifier visuellement avant de valider.
+
+Au clic sur « Valider » un résultat : tous les champs non vides renvoyés par Syngas **remplacent intégralement** les champs Lengas correspondants (un champ vide côté Syngas ne touche jamais à votre valeur locale), la vignette est téléchargée et stockée localement, et la série est liée immédiatement — pas besoin de repasser par l'outil de synchronisation pour formaliser le lien.
+
+> 💡 Le champ « Catégories » doit contenir littéralement le mot **« manga »** ou **« light-novel »** pour qu'une série soit reconnue par Syngas — un texte d'aide le rappelle sous le champ concerné dans les modales.
+
+### Outil « Synchronisation Syngas »
+
+Accessible depuis la page Outils, cet outil comporte deux sections :
+
+- **Envoyer des séries à Syngas** : propose à Syngas chaque série manga/light-novel qui n'y est pas encore liée. Un récapitulatif liste les séries qui seront envoyées (avec possibilité de décocher celles à exclure) — rien n'est envoyé sans confirmation explicite. La détection de doublon se fait automatiquement côté Syngas : Lengas n'a pas besoin d'en chercher une lui-même. La série n'est liée que plus tard, une fois validée par la modération Syngas — soit automatiquement détecté à votre prochaine visite de cette page, soit en la retrouvant via la « Recherche Syngas ».
+- **Récupérer les mises à jour Syngas** : compare chaque série déjà liée à sa fiche Syngas actuelle, champ par champ, et vous laisse valider les changements avant enregistrement (case à cocher par série, ou tous à la fois). Une série sans aucun changement n'apparaît pas dans le récapitulatif.
+
+Le nombre de tomes VF renvoyé par Syngas vient compléter les outils de cohérence (priorité Syngas → Babengas → MangaUpdates pour la « meilleure référence », sans jamais rien supprimer des autres sources).
+
+### Bannissement
+
+Si Syngas signale que la connexion de votre instance a été suspendue (rare, décidé par la modération Syngas), un bandeau explicite apparaît à la fois dans la section « Recherche Syngas » des modales et sur la page de l'outil de synchronisation, avec la raison fournie. Le reste de Lengas continue de fonctionner normalement — même dégradation gracieuse qu'un Babengas ou un Vestikan indisponible.
+
+L'état de Syngas (service joignable, clé API provisionnée, éventuel bannissement) est visible dans l'outil de vérification d'intégrité.
+
+### Hébergement sur le même domaine que Syngas : cookie de session
+
+Si Syngas tourne sur le même nom de domaine que Lengas (deux sous-répertoires d'un même hébergement, par exemple), les deux applications se disputaient auparavant **le même cookie de session** : PHP nomme son cookie `PHPSESSID` par défaut, sans distinction entre applications, et sans `path` restreint, ce cookie est valable sur tout le domaine — se connecter à l'une déconnectait donc silencieusement l'autre. Cette version corrige le problème côté Lengas en donnant à son cookie un nom dédié (`LENGAS_SESSION`) et un `path` limité à son propre sous-répertoire, calculé automatiquement (aucune configuration à faire).
+
+**Si votre installation de Syngas est antérieure à cette correction**, le même correctif doit être appliqué de son côté (renommer son cookie et restreindre son `path`) pour que le problème disparaisse complètement — voir la fonction `register_session_handler()` de Syngas.
+
+⚠️ Ce changement invalide les sessions actives en cours : après mise à jour, une reconnexion sera nécessaire une fois sur chaque site.
+
+Le `path` du cookie de Lengas est calculé automatiquement à partir de l'emplacement réel de `config.php` sur le disque (comparé au dossier racine du serveur web), pas à partir de la page qui a démarré la session : ainsi, peu importe la profondeur du script concerné (racine, `pages/`, `pages/outils/`, `vestikan/`…), le `path` obtenu reste toujours identique et la session voyage correctement entre toutes les pages — y compris pendant le flux de connexion Vestikan, qui traverse plusieurs redirections avant de revenir sur `admin.php`.
+
+---
+
 ## Comment se connecter avec Vestikan
 
 Vestikan est un système de connexion SSO (« Se connecter avec Vestikan »). Son intégration à Lengas est **entièrement facultative** : sans les fichiers Vestikan ni le fichier `vestikan/vestikan-config.php`, le site reste **100 % fonctionnel** et la connexion se fait par mot de passe comme d'habitude.
@@ -379,6 +432,7 @@ lengas/
 │       ├── outil-coherences.php       # Vérification des mangas
 │       ├── outil-sauvegardes.php      # Sauvegardes et export JSON
 │       ├── outil-associations-mu.php  # Association MangaUpdates (fiches + genres)
+│       ├── outil-syngas.php           # Synchronisation Syngas (envoi/réception)
 │       ├── outil-groupage-licences.php # Groupage de licences (suggestions de regroupement)
 │       └── outil-integrite.php        # Vérification d'intégrité du site
 ├── vestikan/              # Connexion SSO Vestikan (facultatif, non versionné pour la config)
@@ -392,6 +446,7 @@ lengas/
 │   │   ├── _admin.css
 │   │   ├── _anime.css
 │   │   ├── _babengas.css
+│   │   ├── _syngas.css
 │   │   ├── _base.css
 │   │   ├── _buttons.css
 │   │   ├── _forms.css
@@ -422,6 +477,7 @@ lengas/
 │       │   ├── modals.js
 │       │   ├── autocomplete.js
 │       │   ├── series.js
+│       │   ├── syngas-search.js
 │       │   ├── volumes.js
 │       │   ├── anime.js
 │       │   ├── episodes.js
@@ -440,6 +496,7 @@ lengas/
 │       │       ├── babengas.js
 │       │       ├── backups.js
 │       │       ├── mangaupdates-assoc.js
+│       │       ├── syngas.js
 │       │       ├── integrity.js
 │       │       ├── anilist-import.js
 │       │       ├── anilist-sync.js
@@ -454,6 +511,8 @@ lengas/
 │   ├── mangaupdates.php      # API MangaUpdates (suivi des tomes et du statut)
 │   ├── anilist.php           # Connecteur API Anilist (GraphQL) : recherche, fiches, listes utilisateur
 │   ├── babengas.php          # Intégration du microservice Babengas
+│   ├── syngas.php            # Intégration Syngas (base commune des mangathèques Lengas)
+│   ├── syngas_search_section.php # Section « Recherche Syngas » partagée (modales manga)
 │   ├── sidebar.php           # Menu latéral à icônes de l'administration
 │   ├── public-sidebar.php    # Menu latéral à icônes des pages publiques (accueil, statistiques, historique)
 │   ├── public-profil-modal.php # Modale « Qui suis-je ? », partagée par les pages publiques ci-dessus
@@ -479,6 +538,7 @@ lengas/
 │       ├── integrity.php          # Vérification d'intégrité du site + infos serveur
 │       ├── cleanup.php            # Nettoyages (doublons, images orphelines, fichiers interdits)
 │       ├── mangaupdates_assoc.php # Association des fiches et des genres MangaUpdates
+│       ├── syngas.php             # Synchronisation Syngas (ciblage, envoi, réception)
 │       ├── babengas-helpers.php   # Helpers de l'outil Babengas
 │       ├── incomplete.php         # Séries incomplètes (tomes manquants)
 │       ├── coherence.php          # Vérification des mangas
@@ -504,3 +564,4 @@ lengas/
 - Icônes via [Iconify / Material Design Icons](https://iconify.design/)
 - Connexion SSO (facultative) via [Vestikan](https://git.crystalyx.net/Esenjin_Asakha/Vestikan)
 - Extension Docker (facultative) [Babengas](https://git.crystalyx.net/Esenjin_Asakha/Babengas)
+- Base commune des mangathèques Lengas : [Syngas](https://concepts.esenjin.xyz/syngas/)

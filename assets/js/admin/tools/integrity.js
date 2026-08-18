@@ -159,7 +159,7 @@ function displayIntegrityResults(results) {
                 stateText  = 'Non installé';
             } else if (!m.enabled) {
                 stateClass = 'warn';
-                stateText  = 'Installé mais désactivé';
+                stateText  = name === 'Syngas' ? 'Installé mais pas encore provisionné' : 'Installé mais désactivé';
             } else if (m.functional === true) {
                 stateClass = 'ok';
                 stateText  = 'Activé et fonctionnel';
@@ -170,11 +170,15 @@ function displayIntegrityResults(results) {
                 stateClass = 'warn';
                 stateText  = 'Activé (fonctionnement non testé)';
             }
+            if (name === 'Syngas' && m.banned) {
+                stateClass = 'error';
+                stateText  = 'Connexion suspendue (banni)';
+            }
             let extra = '';
             if (name === 'Vestikan' && m.base_url) {
                 extra = `<li>Serveur : <a href="${m.base_url}" target="_blank">${escHtml(m.base_url)}</a></li>`;
             }
-            if (name === 'Babengas' && m.version) {
+            if ((name === 'Babengas' || name === 'Syngas') && m.version) {
                 extra = `<li>Version du service : ${escHtml(m.version)}</li>`;
             }
             return `
@@ -191,10 +195,11 @@ function displayIntegrityResults(results) {
         html += `
             <div class="integrity-section">
                 <h3>Modules facultatifs — activation et fonctionnement</h3>
-                <p class="hint">Vérifie si Vestikan (SSO) et Babengas (décompte VF) sont installés, réellement activés, et — le cas échéant — si leur service distant répond.</p>
+                <p class="hint">Vérifie si Vestikan (SSO), Babengas (décompte VF) et Syngas (base commune des mangathèques) sont installés, réellement activés, et — le cas échéant — si leur service distant répond.</p>
                 <div class="file-categories">
                     ${renderModule('Vestikan', results.modules_status.vestikan)}
                     ${renderModule('Babengas', results.modules_status.babengas)}
+                    ${renderModule('Syngas', results.modules_status.syngas)}
                 </div>
             </div>
         `;

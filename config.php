@@ -1,7 +1,26 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '4.1.9');
+define('SITE_VERSION', '4.2.0');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
+
+// Syngas — base commune des mangathèques Lengas (voir includes/syngas.php).
+// URL fixe, codée en dur : il n'existe qu'un seul Syngas, centralisé, ce
+// n'est pas un service auto-hébergé par chaque utilisateur comme Babengas ou
+// Vestikan.
+define('SYNGAS_API_URL', 'https://concepts.esenjin.xyz/syngas/api/v1');
+
+// Durée de vie du flag local "bannissement actif" (secondes) : au-delà, il
+// n'est plus considéré comme fiable tel quel — syngas_is_banned() force une
+// revérification réseau avant de répondre plutôt que de rester bloqué
+// indéfiniment sur un état qui daterait d'un incident ponctuel déjà résolu.
+define('SYNGAS_BAN_FLAG_TTL', 5 * 60);
+
+// Nombre maximum de soumissions en attente résolues à chaque chargement de
+// la page « Synchronisation Syngas » (voir syngas_resolve_tracked_submissions()
+// dans fonctions/tools/syngas.php) — protège contre un aller-retour réseau
+// par soumission à CHAQUE simple visite de la page si le journal contient
+// beaucoup d'entrées encore en attente.
+define('SYNGAS_RESOLVE_BATCH_LIMIT', 15);
 
 // Chemin vers la base de données SQLite
 define('DB_FILE', 'bdd/lengas.db');
@@ -260,6 +279,41 @@ function init_db(PDO $pdo): void {
     } catch (Exception $e) { /* doublons préexistants : index non créé */ }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Intégration Syngas — base commune des mangathèques Lengas (Mangathèque
+    // uniquement, voir includes/syngas.php). Lien consultatif : aucun champ
+    // n'est verrouillé après liaison, l'utilisateur garde toujours la main.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    // ── Colonne syngas_uid (identifiant de la fiche Syngas liée) ───────────────
+    // Vide = série non liée. Posé automatiquement (jamais saisi à la main), à
+    // la validation d'une correspondance (recherche Syngas) ou à la réception
+    // via l'outil de synchronisation.
+    try {
+        $pdo->exec("ALTER TABLE series ADD COLUMN syngas_uid TEXT NOT NULL DEFAULT ''");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
+    // ── Garde-fou anti-doublon sur l'identifiant Syngas ─────────────────────────
+    // Même principe exact que idx_series_anilist_id ci-dessus : index PARTIEL,
+    // ne contraint que les séries effectivement liées.
+    try {
+        $pdo->exec("
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_series_syngas_uid
+            ON series(syngas_uid) WHERE syngas_uid <> ''
+        ");
+    } catch (Exception $e) { /* doublons préexistants : index non créé */ }
+
+    // ── Colonne syngas_volumes_count (nombre de tomes VF selon Syngas) ─────────
+    // Alimente coherence_reference_volumes() (section 6.4 du cahier des
+    // charges) SANS jamais écraser une donnée de la fiche série elle-même —
+    // simple cache local, rafraîchi uniquement à la recherche (section 4) ou
+    // à la réception (section 6.2), jamais interrogé à chaud dans une boucle
+    // de vérification. NULL = information non connue (jamais liée, ou pas
+    // encore de décompte fourni par Syngas pour cette série).
+    try {
+        $pdo->exec("ALTER TABLE series ADD COLUMN syngas_volumes_count INTEGER");
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Typage de la liste d'envies
     // ──────────────────────────────────────────────────────────────────────────
     // Une entrée de wishlist peut désormais être un manga (comportement inchangé,
@@ -309,6 +363,23 @@ function init_db(PDO $pdo): void {
             volumes      INTEGER,
             status_text  TEXT,
             timestamp    INTEGER NOT NULL
+        )
+    ");
+
+    // ── Soumissions Syngas en attente de résolution (section 6.1) ─────────────
+    // Une ligne par série envoyée via l'outil « Synchronisation Syngas » tant
+    // que le devenir (creee/fusionnee/rejetee) n'est pas connu. Permet à
+    // l'outil, une fois relancé, de résoudre automatiquement les soumissions
+    // déjà traitées côté Syngas (GET /submissions/{id}) sans que l'utilisateur
+    // ait à repasser par la « Recherche Syngas » pour chaque série. Purement
+    // un journal de suivi local : sa perte n'est jamais bloquante, elle ne
+    // fait que reporter la détection automatique (l'utilisateur retrouve
+    // toujours sa série via la recherche normale le cas échéant).
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS syngas_submissions (
+            submission_id TEXT PRIMARY KEY,
+            series_id     TEXT NOT NULL,
+            created_at    INTEGER NOT NULL
         )
     ");
 
@@ -402,6 +473,15 @@ function init_db(PDO $pdo): void {
             'babengas_url'                  => '',
             'babengas_key'                  => '',
             'babengas_enabled'              => '0',
+            // ── Syngas (base commune des mangathèques Lengas) ──
+            // Pas d'option marche/arrêt (cf. includes/syngas.php) : la clé
+            // est auto-provisionnée au premier appel. Vide = pas encore
+            // provisionnée. 'syngas_banned' distingue un bannissement actif
+            // (403 { error: banned }) pour l'affichage du bandeau persistant.
+            'syngas_api_key'                => '',
+            'syngas_banned'                 => '0',
+            'syngas_banned_reason'          => '',
+            'syngas_banned_at'              => '0',
         ];
         $stmt = $pdo->prepare("INSERT OR IGNORE INTO options (key, value) VALUES (?, ?)");
         foreach ($defaults as $k => $v) {
@@ -487,18 +567,76 @@ class SqliteSessionHandler implements SessionHandlerInterface {
 /**
  * A appeler avant tout session_start().
  * Configure le handler SQLite + les parametres du cookie (7 jours, HTTPS).
+ *
+ * Nom de cookie et `path` propres à Lengas (voir lengas_session_base_path()
+ * ci-dessous) : PHP nomme son cookie de session "PHPSESSID" par défaut, sans
+ * distinction entre applications — si Lengas et une autre appli PHP tournent
+ * sous le même domaine (ex. concepts.esenjin.xyz/lengas/ et
+ * concepts.esenjin.xyz/syngas/, comme avec l'intégration Syngas), les deux
+ * se disputent alors LE MÊME cookie "PHPSESSID" sur tout le domaine : se
+ * connecter à l'une déconnecte silencieusement l'autre, chacune écrasant le
+ * cookie de l'autre avec son propre identifiant de session. Un nom de
+ * cookie dédié et un `path` restreint au sous-répertoire de Lengas
+ * suppriment cette collision, quel que soit ce qui tourne par ailleurs sur
+ * le même domaine.
  */
 function register_session_handler(): void {
     $lifetime = 7 * 24 * 60 * 60; // 7 jours
     $handler  = new SqliteSessionHandler(get_db(), $lifetime);
     session_set_save_handler($handler, true);
+    session_name('LENGAS_SESSION');
     session_set_cookie_params([
         'lifetime' => $lifetime,
-        'path'     => '/',
+        'path'     => lengas_session_base_path(),
         'secure'   => true,
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
+}
+
+/**
+ * Sous-répertoire dans lequel Lengas est effectivement servi (ex. "/lengas"),
+ * déduit dynamiquement plutôt qu'écrit en dur : reste correct si l'instance
+ * est déplacée vers un autre sous-répertoire ou vers la racine du domaine,
+ * sans configuration supplémentaire. Sert de `path` de cookie pour
+ * cloisonner la session de Lengas de toute autre application PHP hébergée
+ * ailleurs sur le même domaine (voir register_session_handler()).
+ *
+ * Le `path` d'un cookie doit être IDENTIQUE quelle que soit la page qui
+ * l'émet, sans quoi le navigateur envoie des cookies différents selon la
+ * profondeur de la page visitée et une session ouverte depuis l'une
+ * resterait invisible depuis l'autre — c'est précisément ce qui s'est
+ * produit avec le sous-dossier vestikan/ (vestikan-login.php et
+ * vestikan-callback.php y démarrent la session pour tout le flux OAuth,
+ * mais posaient un `path` plus profond que celui utilisé par admin.php,
+ * rendant la session invisible au retour du SSO).
+ *
+ * Plutôt que d'énumérer un par un les sous-dossiers connus de Lengas
+ * (pages/, pages/outils/, vestikan/…) — fragile face à un sous-dossier non
+ * prévu ici — on ancre le calcul sur __DIR__, qui pointe TOUJOURS vers la
+ * racine du projet (là où vit ce fichier config.php) quel que soit le
+ * script qui l'a inclus, et on le compare à DOCUMENT_ROOT pour en déduire
+ * le chemin web correspondant. "/" en repli si l'un des deux n'est pas
+ * disponible ou si l'instance tourne déjà à la racine du domaine.
+ */
+function lengas_session_base_path(): string {
+    $doc_root = $_SERVER['DOCUMENT_ROOT'] ?? '';
+    if ($doc_root === '') {
+        return '/';
+    }
+    $doc_root  = rtrim(str_replace('\\', '/', $doc_root), '/');
+    $project_dir = rtrim(str_replace('\\', '/', __DIR__), '/');
+
+    if (strpos($project_dir, $doc_root) !== 0) {
+        // Racine du projet hors de DOCUMENT_ROOT (configuration atypique,
+        // alias Apache, lien symbolique…) : on ne peut pas déduire un
+        // chemin web fiable, mieux vaut ne rien restreindre que restreindre
+        // à un chemin erroné qui casserait la session partout.
+        return '/';
+    }
+
+    $path = substr($project_dir, strlen($doc_root));
+    return $path === '' ? '/' : $path;
 }
 
 /**
@@ -628,6 +766,10 @@ function load_data(): array {
             'read_elsewhere'         => (bool)($s['read_elsewhere'] ?? false),
             'reading_abandoned'      => (bool)($s['reading_abandoned'] ?? false),
             'rating'                 => $s['rating'] ?? '',
+            // ── Intégration Syngas (Mangathèque uniquement) ──────────────────
+            'syngas_uid'             => $s['syngas_uid'] ?? '',
+            'syngas_volumes_count'   => isset($s['syngas_volumes_count']) && $s['syngas_volumes_count'] !== null
+                                        ? (int)$s['syngas_volumes_count'] : null,
             // ── Champs animé (vides sur les mangas) ──────────────────────────
             'anilist_url'            => $s['anilist_url'] ?? '',
             'studios'                => $s['studios'] !== null && $s['studios'] !== ''
@@ -681,8 +823,8 @@ function load_data(): array {
 function upsert_series_row(array $series): void {
     $db = get_db();
     $stmt = $db->prepare("
-        INSERT INTO series (id, name, type, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, rewatch_last_date, anilist_synced_at, episode_duration, reread_count, reread_last_date)
-        VALUES (:id,:name,:type,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:rewatch_last_date,:anilist_synced_at,:episode_duration,:reread_count,:reread_last_date)
+        INSERT INTO series (id, name, type, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating, syngas_uid, syngas_volumes_count, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, rewatch_last_date, anilist_synced_at, episode_duration, reread_count, reread_last_date)
+        VALUES (:id,:name,:type,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating,:syngas_uid,:syngas_volumes_count,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:rewatch_last_date,:anilist_synced_at,:episode_duration,:reread_count,:reread_last_date)
         ON CONFLICT(id) DO UPDATE SET
             name=excluded.name, type=excluded.type,
             author=excluded.author, publisher=excluded.publisher,
@@ -693,6 +835,8 @@ function upsert_series_row(array $series): void {
             read_elsewhere=excluded.read_elsewhere,
             reading_abandoned=excluded.reading_abandoned,
             rating=excluded.rating,
+            syngas_uid=excluded.syngas_uid,
+            syngas_volumes_count=excluded.syngas_volumes_count,
             anilist_url=excluded.anilist_url, studios=excluded.studios,
             anime_format=excluded.anime_format, alt_titles=excluded.alt_titles,
             anilist_image=excluded.anilist_image,
@@ -725,6 +869,9 @@ function upsert_series_row(array $series): void {
         ':read_elsewhere'     => (int)($s['read_elsewhere'] ?? false),
         ':reading_abandoned'  => (int)($s['reading_abandoned'] ?? false),
         ':rating'             => $s['rating'] ?? '',
+        ':syngas_uid'         => $s['syngas_uid'] ?? '',
+        ':syngas_volumes_count' => isset($s['syngas_volumes_count']) && $s['syngas_volumes_count'] !== null
+                                    ? (int)$s['syngas_volumes_count'] : null,
         ':anilist_url'        => $s['anilist_url'] ?? '',
         ':studios'            => is_array($s['studios'] ?? null)
                                   ? implode(',', $s['studios'])

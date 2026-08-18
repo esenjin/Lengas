@@ -4,7 +4,7 @@
 //
 // Compare l'instance au dépôt Gitea (au tag correspondant à la version
 // installée), vérifie la structure de la base de données, les modules
-// facultatifs (Vestikan, Babengas), la connectivité Anilist, les permissions,
+// facultatifs (Vestikan, Babengas, Syngas), la connectivité Anilist, les permissions,
 // les fichiers interdits, les doublons et les images orphelines. Propose
 // aussi les nettoyages associés (doublons, images orphelines, fichiers
 // interdits).

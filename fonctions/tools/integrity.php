@@ -355,6 +355,57 @@ function integrity_check_babengas(): array {
     return $status;
 }
 
+// Syngas : base commune des mangathèques Lengas. Contrairement à Vestikan et
+// Babengas, pas d'option marche/arrêt — l'intégration fait partie de Lengas
+// lui-même (voir includes/syngas.php). « installed » vaut donc toujours vrai
+// si les fichiers sont là ; « enabled » reflète le PROVISIONNEMENT (clé API
+// obtenue), pas une case à cocher. Un bannissement actif (section 6.5) est
+// signalé distinctement, y compris si le service répond par ailleurs.
+function integrity_check_syngas(): array {
+    $status = [
+        'installed'  => false,
+        'enabled'    => false,
+        'functional' => null,
+        'detail'     => '',
+        'version'    => '',
+        'banned'     => false,
+    ];
+
+    $status['installed'] = is_file('includes/syngas.php');
+    if (!$status['installed']) {
+        $status['detail'] = 'Fichiers Syngas absents : intégration non installée.';
+        return $status;
+    }
+
+    if (!function_exists('syngas_api_key') || !function_exists('syngas_check_service')) {
+        $status['detail'] = 'Fichiers Syngas présents mais fonctions indisponibles.';
+        return $status;
+    }
+
+    $status['banned'] = function_exists('syngas_is_banned') && syngas_is_banned();
+    $status['enabled'] = syngas_api_key() !== '';
+
+    // Test de fonctionnement : sonde /sante, indépendante de la clé API
+    // (aucune authentification requise) — répond même si l'instance n'est
+    // pas encore provisionnée.
+    $health = syngas_check_service();
+    if (!empty($health['ok'])) {
+        $status['functional'] = true;
+        $status['version']    = (string)($health['version'] ?? '');
+        $detail = 'Service Syngas en ligne' . ($status['version'] !== '' ? ' (version ' . $status['version'] . ')' : '') . '.';
+        $detail .= $status['enabled'] ? ' Clé API enregistrée.' : ' Clé API pas encore provisionnée (se fera automatiquement au premier usage).';
+        if ($status['banned']) {
+            $detail .= ' ⚠️ Connexion actuellement suspendue' . (syngas_banned_reason() !== '' ? ' : ' . syngas_banned_reason() : '') . '.';
+        }
+        $status['detail'] = $detail;
+    } else {
+        $status['functional'] = false;
+        $status['detail']     = 'Service Syngas injoignable' . (!empty($health['error']) ? ' : ' . $health['error'] : '.');
+    }
+
+    return $status;
+}
+
 // Petite sonde HTTP générique : le serveur répond-il quoi que ce soit ?
 // Retourne ['reachable'=>bool, 'http'=>int, 'error'=>string].
 function integrity_http_probe(string $url, int $timeout = 8): array {
@@ -510,6 +561,7 @@ function check_site_integrity(array $data): array {
     $results['modules_status'] = [
         'vestikan' => integrity_check_vestikan(),
         'babengas' => integrity_check_babengas(),
+        'syngas'   => integrity_check_syngas(),
     ];
 
     // ── 5. Permissions ─────────────────────────────────────────────────────────

@@ -55,20 +55,35 @@ function generate_notifications(array $volumes, ?int $ref_volumes = null): array
     return $notifications;
 }
 
-// ── Décompte de tomes de référence pour une série (Babengas → MU) ─────────────
+// ── Décompte de tomes de référence pour une série (Syngas → Babengas → MU) ────
 // Renvoie la meilleure source disponible pour le NOMBRE DE TOMES paru :
-//   1. Babengas (décompte VF réellement paru, lu dans le cache Babelio — aucun
-//      appel réseau : les données proviennent des campagnes Babengas). Priorité,
-//      car c'est le décompte le plus fiable pour l'édition française.
-//   2. Fallback MangaUpdates (décompte souvent VO), issu du cache pré-chargé.
+//   1. Syngas (décompte VF mutualisé, lu dans le cache local
+//      syngas_volumes_count — aucun appel réseau : la valeur est alimentée
+//      par la recherche/réception, jamais interrogée à chaud ici). Priorité
+//      la plus haute pour une série liée : c'est la source la plus
+//      spécifiquement pensée pour le suivi VF (section 6.4 du cahier des
+//      charges Syngas).
+//   2. Babengas (décompte VF réellement paru, lu dans le cache Babelio — aucun
+//      appel réseau : les données proviennent des campagnes Babengas).
+//   3. Fallback MangaUpdates (décompte souvent VO), issu du cache pré-chargé.
 //
 // Un one-shot (fiche de TOME Babelio, /livres/…) n'a pas de décompte en cache
 // mais vaut par définition un tome ; on le renseigne localement.
 //
-// Retourne ['volumes'=>int, 'source'=>'babelio'|'babelio-oneshot'|'mangaupdates',
+// Retourne ['volumes'=>int, 'source'=>'syngas'|'babelio'|'babelio-oneshot'|'mangaupdates',
 //           'source_label'=>string] ou null si aucune référence exploitable.
 function coherence_reference_volumes(array $series, array $mu_cache_map = []): ?array {
-    // 1) Babengas / Babelio (VF) — prioritaire, s'il est configuré et disponible.
+    // 1) Syngas (VF mutualisée) — prioritaire, si la série y est liée et
+    // qu'un décompte est déjà connu localement.
+    if (!empty($series['syngas_uid']) && isset($series['syngas_volumes_count']) && $series['syngas_volumes_count'] !== null && (int)$series['syngas_volumes_count'] > 0) {
+        return [
+            'volumes'      => (int)$series['syngas_volumes_count'],
+            'source'       => 'syngas',
+            'source_label' => 'Syngas (VF mutualisée)',
+        ];
+    }
+
+    // 2) Babengas / Babelio (VF) — s'il est configuré et disponible.
     if (!function_exists('babengas_enabled') || babengas_enabled()) {
         $burl = trim((string)($series['babelio_url'] ?? ''));
         if ($burl !== '') {
@@ -98,7 +113,7 @@ function coherence_reference_volumes(array $series, array $mu_cache_map = []): ?
         }
     }
 
-    // 2) Fallback MangaUpdates (décompte souvent VO).
+    // 3) Fallback MangaUpdates (décompte souvent VO).
     if (!empty($series['mangaupdates_url']) && function_exists('mangaupdates_get_id_from_url')) {
         $mu_id = mangaupdates_get_id_from_url($series['mangaupdates_url']);
         if ($mu_id !== null) {

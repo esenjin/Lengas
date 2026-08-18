@@ -17,6 +17,7 @@
 //   anilist_sync.php       → Synchronisation automatique Anilist
 //   anilist_recheck.php    → Vérification manuelle des animés
 //   grouping.php           → Groupage de licences (suggestions de regroupement)
+//   syngas.php              → Synchronisation Syngas (envoi/réception)
 // ────────────────────────────────────────────────────────────────────────────
 
 require_once __DIR__ . '/tools/backups.php';
@@ -30,3 +31,4 @@ require_once __DIR__ . '/tools/anilist_import.php';
 require_once __DIR__ . '/tools/anilist_sync.php';
 require_once __DIR__ . '/tools/anilist_recheck.php';
 require_once __DIR__ . '/tools/grouping.php';
+require_once __DIR__ . '/tools/syngas.php';

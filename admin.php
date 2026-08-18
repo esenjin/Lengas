@@ -6,6 +6,7 @@ require_once 'includes/status_filter.php';
 require 'includes/mangaupdates.php';
 require_once 'includes/babengas.php';
 require_once 'includes/anilist.php';
+require_once 'includes/syngas.php';
 require 'fonctions/series.php';
 require 'fonctions/anime.php';
 require 'fonctions/volumes.php';
@@ -66,10 +67,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $reading_abandoned = !empty($_POST['reading_abandoned']);
     $rating = sanitize_rating($_POST['rating'] ?? '');
     $reread_count = max(0, (int)($_POST['reread_count'] ?? 0));
+    // Posé par la section « Recherche Syngas » de la modale d'ajout, quand une
+    // correspondance a été validée avant la soumission du formulaire (voir
+    // includes/syngas.php et l'endpoint syngas_validate).
+    $syngas_uid = trim($_POST['syngas_uid'] ?? '');
+    $syngas_volumes_count = trim($_POST['syngas_volumes_count'] ?? '');
+    $syngas_volumes_count = ($syngas_volumes_count !== '') ? (int)$syngas_volumes_count : null;
 
     // Initialiser $image à null par défaut
     $image = null;
     $error_message = null;
+
+    // Une vignette Syngas déjà téléchargée localement (validation avant
+    // soumission du formulaire) sert de repli si aucun fichier n'est
+    // explicitement téléversé par l'utilisateur.
+    $syngas_thumbnail_path = trim($_POST['syngas_thumbnail_path'] ?? '');
 
     // Si une image est uploadée, essayer de la traiter
     if (!empty($_FILES['image']['name'])) {
@@ -78,6 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
             $_SESSION['error_message'] = $error_message ?: "Erreur inconnue lors du téléversement de l'image.";
             // Ne pas bloquer l'ajout de la série si l'image échoue
         }
+    } elseif ($syngas_thumbnail_path !== '' && is_file($syngas_thumbnail_path)) {
+        $image = $syngas_thumbnail_path;
     }
 
     // Appeler add_series avec $image (qui peut être null)
@@ -87,7 +101,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     // (upsert_series_row() + replace_series_volumes()) au moment de
     // l'appel. $result['data'] ne sert qu'à réafficher la collection à
     // jour côté admin.
-    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned, $rating, 'manga', $reread_count);
+    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned, $rating, 'manga', $reread_count, $syngas_uid);
+
+    if ($result['success'] && $syngas_volumes_count !== null) {
+        // Cache local pour coherence_reference_volumes() (section 6.4) : la
+        // série vient d'être créée par add_series(), on complète sa ligne.
+        $created = end($result['data']);
+        if ($created !== false) {
+            $created['syngas_volumes_count'] = $syngas_volumes_count;
+            upsert_series_row($created);
+        }
+    }
 
     if ($result['success']) {
         // Réchauffer le cache MangaUpdates pour la nouvelle série
@@ -189,6 +213,147 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['anilist_lookup'])) {
 
     $known = anilist_known_ids($data);
     echo json_encode(['success' => true, 'results' => [anilist_result_payload($fetch['media'], $known)]]);
+    exit;
+}
+
+// ── Endpoint : recherche Syngas (section 4 du cahier des charges) ───────────
+// Mangathèque uniquement, appelée depuis la section « Recherche Syngas » des
+// modales d'ajout ET d'édition d'une série manga. Recherche EXPLICITE
+// uniquement (bouton « Chercher »), jamais au fil de la frappe. Au plus 5
+// résultats — la limite est déjà appliquée côté Syngas.
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['syngas_search'])) {
+    header('Content-Type: application/json');
+
+    $term = trim($_GET['q'] ?? '');
+    if ($term === '') {
+        echo json_encode(['success' => true, 'results' => []]);
+        exit;
+    }
+
+    // Libère le verrou de session avant l'appel réseau à Syngas : sans ça,
+    // toute autre requête authentifiée (autre onglet, rafraîchissement du
+    // menu latéral…) reste bloquée en attente tant que cette recherche n'a
+    // pas répondu. Rien n'est plus écrit en session dans cette branche.
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+
+    $res = syngas_search($term);
+    if (!$res['ok']) {
+        echo json_encode([
+            'success' => false,
+            'message' => $res['error'],
+            'banned'  => syngas_is_banned(),
+            'results' => [],
+        ]);
+        exit;
+    }
+
+    echo json_encode(['success' => true, 'results' => $res['results']]);
+    exit;
+}
+
+// ── Endpoint : validation d'une correspondance Syngas ───────────────────────
+// Au clic sur « Valider » d'un résultat de recherche (section 4) : les
+// champs Syngas non vides remplacent intégralement les champs Lengas
+// correspondants, syngas_uid est posé immédiatement. Fonctionne aussi bien
+// depuis la modale d'ajout (série pas encore créée : $_POST['series_id']
+// absent, on ne renvoie que les champs à pré-remplir côté client) que depuis
+// la modale d'édition (série existante : écriture ciblée immédiate).
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['syngas_validate'])) {
+    header('Content-Type: application/json');
+
+    $syngas_id = trim($_POST['syngas_id'] ?? '');
+    if ($syngas_id === '') {
+        echo json_encode(['success' => false, 'message' => "Identifiant Syngas manquant."]);
+        exit;
+    }
+
+    // Même raison que syngas_search ci-dessus : libère le verrou de session
+    // avant les appels réseau à Syngas (fiche + éventuel téléchargement de
+    // vignette). L'écriture en base de la série (upsert_series_row) qui suit
+    // n'a pas besoin de la session PHP.
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+
+    $fetch = syngas_get_series($syngas_id);
+    if (!$fetch['ok']) {
+        echo json_encode([
+            'success' => false,
+            'message' => $fetch['error'],
+            'banned'  => syngas_is_banned(),
+        ]);
+        exit;
+    }
+
+    $series_id = trim($_POST['series_id'] ?? '');
+    $local_categories = [];
+    $target_key = null;
+
+    if ($series_id !== '') {
+        $found = find_series_by_id($data, $series_id);
+        if (!$found) {
+            echo json_encode(['success' => false, 'message' => "Série introuvable."]);
+            exit;
+        }
+        $local_categories = $found['data']['categories'] ?? [];
+        $target_key = $found['key'];
+    }
+
+    $mapped = syngas_map_to_lengas_fields($fetch['series'], $local_categories);
+    $fields = $mapped['fields'];
+
+    // Vignette : téléchargée localement dès la validation (jamais différée,
+    // contrairement à l'envoi) — voir la note vignette de la section 4.
+    $thumbnail_path = '';
+    if ($mapped['thumbnail_url'] !== '') {
+        $dl = syngas_download_thumbnail($mapped['thumbnail_url']);
+        if ($dl['ok']) {
+            $thumbnail_path = $dl['path'];
+        }
+        // Échec de téléchargement : on ignore silencieusement ce champ,
+        // même principe que Syngas lui-même à la fusion d'une soumission.
+    }
+
+    if ($target_key !== null) {
+        // Série existante (modale d'édition) : écriture ciblée immédiate.
+        foreach ($fields as $k => $v) {
+            $data[$target_key][$k] = $v;
+        }
+        if ($thumbnail_path !== '') {
+            $old_image = $data[$target_key]['image'] ?? '';
+            if ($old_image !== '' && file_exists($old_image)) {
+                @unlink($old_image);
+            }
+            $data[$target_key]['image'] = $thumbnail_path;
+        }
+        $data[$target_key]['syngas_uid'] = $syngas_id;
+        // Cache local pour coherence_reference_volumes() (section 6.4) —
+        // jamais écrit dans le nombre de tomes réel de la série.
+        $data[$target_key]['syngas_volumes_count'] = $mapped['volumes_count'];
+
+        upsert_series_row($data[$target_key]);
+
+        if (!empty($fields['mangaupdates_url'])) {
+            $mu_id = mangaupdates_get_id_from_url($fields['mangaupdates_url']);
+            if ($mu_id !== null) @mangaupdates_get_volumes($mu_id, true);
+        }
+
+        $loaned_by_series = loans_by_series(load_loans());
+        echo json_encode([
+            'success' => true,
+            'series'  => build_light_series($data[$target_key], $review_series_ids, $loaned_by_series[$series_id] ?? []),
+        ]);
+        exit;
+    }
+
+    // Pas encore de série (modale d'ajout) : on renvoie juste les champs
+    // pré-remplis, la création se fera au clic sur « Ajouter » comme
+    // d'habitude — syngas_uid transite alors en champ caché du formulaire.
+    echo json_encode([
+        'success'        => true,
+        'fields'         => $fields,
+        'syngas_uid'     => $syngas_id,
+        'thumbnail_path' => $thumbnail_path,
+        'volumes_count'  => $mapped['volumes_count'],
+    ]);
     exit;
 }
 
@@ -1081,6 +1246,7 @@ if ($current_type === 'anime') {
                 <span class="close-modal" id="close-add-series-modal">&times;</span>
                 <h2>Ajouter une série</h2>
                 <form method="post" enctype="multipart/form-data">
+                    <?php require __DIR__ . '/includes/syngas_search_section.php'; ?>
                     <p>Nom :</p>
                     <input type="text" name="name" id="add-series-name" placeholder="Nom de la série (obligatoire)" autocomplete="off" required>
                     <p>Auteur :</p>
@@ -1091,8 +1257,10 @@ if ($current_type === 'anime') {
                     <input type="text" name="other_contributors" id="add-series-other-contributors" placeholder="Autres contributeurs (séparés par des virgules) (facultatif)" autocomplete="off">
                     <p>Catégories :</p>
                     <input type="text" name="categories" id="add-series-categories" placeholder="Catégories (séparées par des virgules) (obligatoire)" autocomplete="off" required>
+                    <p class="hint">Utilisez notamment "manga" ou "light-novel" pour identifier le type de publication — Syngas s'appuie sur ce tag pour reconnaître vos séries.</p>
                     <p>Genres :</p>
                     <input type="text" name="genres" id="add-series-genres" placeholder="Genres (séparés par des virgules) (facultatif)" autocomplete="off">
+                    <p class="hint">Les classifications comme Shonen, Seinen, Action, Romance… se saisissent ici, pas dans Catégories.</p>
                     <p>Nombre de tomes à créer :</p>
                     <input type="number" name="volumes_count" id="volumes_count" placeholder="Nombre de tomes" min="1" value="1" autocomplete="off">
                     <p>Statut des tomes :</p>
@@ -1144,6 +1312,11 @@ if ($current_type === 'anime') {
                     <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp">
                     <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
                     <input type="hidden" id="add-volume-series-id" name="series_id">
+                    <!-- Posés automatiquement par la section « Recherche Syngas » ci-dessus
+                         à la validation d'une correspondance — jamais saisis à la main. -->
+                    <input type="hidden" id="add-series-syngas-uid" name="syngas_uid" value="">
+                    <input type="hidden" id="add-series-syngas-thumbnail-path" name="syngas_thumbnail_path" value="">
+                    <input type="hidden" id="add-series-syngas-volumes-count" name="syngas_volumes_count" value="">
                     <button type="submit" name="add_series">Ajouter</button>
                 </form>
             </div>
@@ -1267,6 +1440,7 @@ if ($current_type === 'anime') {
                 <h2>Modifier la série</h2>
                 <form method="post" enctype="multipart/form-data" id="edit-series-form">
                     <input type="hidden" name="series_id" id="edit-series-id-input">
+                    <?php $__syngas_context = 'edit'; require __DIR__ . '/includes/syngas_search_section.php'; unset($__syngas_context); ?>
                     <p>Nom :</p>
                     <input type="text" name="edit_name" id="edit-series-name" placeholder="Nom de la série" autocomplete="off" required>
                     <p>Auteur :</p>
@@ -1277,8 +1451,10 @@ if ($current_type === 'anime') {
                     <input type="text" name="edit_other_contributors" id="edit-series-other-contributors" placeholder="Autres contributeurs (séparés par des virgules) (facultatif)" autocomplete="off">
                     <p>Catégories :</p>
                     <input type="text" name="edit_categories" id="edit-series-categories" placeholder="Catégories (séparées par des virgules)" autocomplete="off" required>
+                    <p class="hint">Utilisez notamment "manga" ou "light-novel" pour identifier le type de publication — Syngas s'appuie sur ce tag pour reconnaître vos séries.</p>
                     <p>Genres :</p>
                     <input type="text" name="edit_genres" id="edit-series-genres" placeholder="Genres (séparés par des virgules)" autocomplete="off">
+                    <p class="hint">Les classifications comme Shonen, Seinen, Action, Romance… se saisissent ici, pas dans Catégories.</p>
                     <p>URL MangaUpdates (facultatif) :</p>
                     <input type="text" name="edit_mangaupdates_url" id="edit-series-mangaupdates-url" placeholder="https://www.mangaupdates.com/series/xxxxxxx/nom-de-la-serie" autocomplete="off">
                     <p>URL Babelio (facultatif) :</p>
@@ -1555,6 +1731,7 @@ if ($current_type === 'anime') {
     <script src="assets/js/admin/modals.js"></script>
     <script src="assets/js/admin/autocomplete.js"></script>
     <script src="assets/js/admin/series.js"></script>
+    <script src="assets/js/admin/syngas-search.js"></script>
     <script src="assets/js/admin/anime.js"></script>
     <script src="assets/js/admin/volumes.js"></script>
     <script src="assets/js/admin/episodes.js"></script>

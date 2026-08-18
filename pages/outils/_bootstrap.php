@@ -23,6 +23,7 @@ require 'includes/helpers.php';
 require 'includes/mangaupdates.php';
 require_once 'includes/babengas.php';
 require_once 'includes/anilist.php';
+require_once 'includes/syngas.php';
 require 'fonctions/series.php';
 require 'fonctions/anime.php';
 require 'fonctions/episodes.php';
