@@ -30,5 +30,13 @@ $__syngas_prefix  = $__syngas_context === 'edit' ? 'edit-series-syngas' : 'add-s
             <span class="spinner syngas-search-spinner" hidden></span>
         </button>
     </div>
+    <button type="button" class="syngas-search-toggle-id" id="<?= htmlspecialchars($__syngas_prefix) ?>-toggle-id">Chercher par identifiant Syngas</button>
+    <div class="syngas-search-row syngas-search-row--id" id="<?= htmlspecialchars($__syngas_prefix) ?>-id-row" hidden>
+        <input type="text" class="syngas-search-input" id="<?= htmlspecialchars($__syngas_prefix) ?>-id-input" placeholder="Identifiant Syngas (ex. abc123)" autocomplete="off">
+        <button type="button" class="button button-opt syngas-search-btn" id="<?= htmlspecialchars($__syngas_prefix) ?>-id-btn">
+            <span class="syngas-search-btn-text">Chercher</span>
+            <span class="spinner syngas-search-spinner" hidden></span>
+        </button>
+    </div>
     <div class="syngas-search-results" id="<?= htmlspecialchars($__syngas_prefix) ?>-results"></div>
 </div>

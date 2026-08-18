@@ -221,8 +221,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['anilist_lookup'])) {
 // modales d'ajout ET d'édition d'une série manga. Recherche EXPLICITE
 // uniquement (bouton « Chercher »), jamais au fil de la frappe. Au plus 5
 // résultats — la limite est déjà appliquée côté Syngas.
+//
+// Recherche par identifiant ($_GET['id']) : alternative à la recherche par
+// nom ($_GET['q']), utile quand l'utilisateur a directement l'identifiant
+// Syngas d'une fiche (ex. partagé par un autre utilisateur, ou trouvé via
+// « Voir sur Syngas ↗ »). Repose sur syngas_get_series() (GET /series/{id})
+// plutôt que sur /series/search : ce n'est donc pas une recherche à
+// proprement parler mais une résolution directe, reformatée ici en un
+// tableau `results` à un seul élément pour que le JS existant
+// (syngasRenderResults()) puisse la restituer sans traitement particulier.
+// Les deux paramètres sont mutuellement exclusifs ; $_GET['id'] est
+// prioritaire s'il est fourni.
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['syngas_search'])) {
     header('Content-Type: application/json');
+
+    $id = trim($_GET['id'] ?? '');
+
+    if ($id !== '') {
+        // Libère le verrou de session avant l'appel réseau à Syngas — même
+        // raison que pour la recherche par nom ci-dessous.
+        if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+
+        $fetch = syngas_get_series($id);
+        if (!$fetch['ok']) {
+            echo json_encode([
+                'success' => false,
+                'message' => $fetch['error'],
+                'banned'  => syngas_is_banned(),
+                'results' => [],
+            ]);
+            exit;
+        }
+
+        $s = $fetch['series'];
+        echo json_encode(['success' => true, 'results' => [[
+            'id'             => $id,
+            'name'           => $s['name'] ?? '',
+            'author'         => $s['author'] ?? '',
+            'publisher'      => $s['publisher'] ?? '',
+            'thumbnail_url'  => $s['thumbnail_url'] ?? '',
+            'public_url'     => $s['public_url'] ?? '',
+        ]]]);
+        exit;
+    }
 
     $term = trim($_GET['q'] ?? '');
     if ($term === '') {

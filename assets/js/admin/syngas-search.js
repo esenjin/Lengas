@@ -61,17 +61,29 @@ function syngasResetSection(prefix) {
     if (results) results.innerHTML = '';
     const banned = document.getElementById(`${prefix}-banned`);
     if (banned) banned.hidden = true;
+    const idRow = document.getElementById(`${prefix}-id-row`);
+    if (idRow) idRow.hidden = true;
+    const idInput = document.getElementById(`${prefix}-id-input`);
+    if (idInput) idInput.value = '';
     const hiddenUid = document.getElementById('add-series-syngas-uid');
     if (prefix === 'add-series-syngas' && hiddenUid) hiddenUid.value = '';
     const hiddenThumb = document.getElementById('add-series-syngas-thumbnail-path');
     if (prefix === 'add-series-syngas' && hiddenThumb) hiddenThumb.value = '';
 }
 
-// Délégation des clics « Chercher » et « Valider » pour les deux contextes.
+// Délégation des clics « Chercher » (nom ET identifiant), « Valider » et
+// « Chercher par identifiant Syngas » (bascule d'affichage) pour les deux
+// contextes.
 document.addEventListener('click', (e) => {
     SYNGAS_CONTEXTS.forEach(prefix => {
         if (e.target.closest(`#${prefix}-btn`)) {
             syngasRunSearch(prefix);
+        }
+        if (e.target.closest(`#${prefix}-id-btn`)) {
+            syngasRunSearchById(prefix);
+        }
+        if (e.target.closest(`#${prefix}-toggle-id`)) {
+            syngasToggleIdRow(prefix);
         }
         const validateBtn = e.target.closest(`[data-syngas-validate][data-syngas-prefix="${prefix}"]`);
         if (validateBtn) {
@@ -80,7 +92,8 @@ document.addEventListener('click', (e) => {
     });
 });
 
-// Recherche également déclenchable via Entrée dans le champ texte.
+// Recherche également déclenchable via Entrée dans les champs texte (nom ET
+// identifiant).
 document.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     SYNGAS_CONTEXTS.forEach(prefix => {
@@ -88,23 +101,69 @@ document.addEventListener('keydown', (e) => {
             e.preventDefault();
             syngasRunSearch(prefix);
         }
+        if (e.target.id === `${prefix}-id-input`) {
+            e.preventDefault();
+            syngasRunSearchById(prefix);
+        }
     });
 });
+
+// Affiche/masque la ligne de recherche par identifiant. Repliée par défaut :
+// la recherche par nom reste le cas d'usage principal (section 4).
+function syngasToggleIdRow(prefix) {
+    const row = document.getElementById(`${prefix}-id-row`);
+    if (!row) return;
+    row.hidden = !row.hidden;
+    if (!row.hidden) {
+        document.getElementById(`${prefix}-id-input`)?.focus();
+    }
+}
 
 function syngasRunSearch(prefix) {
     const input   = document.getElementById(`${prefix}-input`);
     const btn     = document.getElementById(`${prefix}-btn`);
+    if (!input) return;
+
+    const query = input.value.trim();
+    if (query === '') {
+        const results = document.getElementById(`${prefix}-results`);
+        if (results) results.innerHTML = '<p class="hint">Saisissez un nom de série avant de chercher.</p>';
+        return;
+    }
+
+    syngasFetchResults(prefix, btn, 'q=' + encodeURIComponent(query));
+}
+
+// Recherche par identifiant Syngas direct : résout une seule fiche via
+// GET /series/{id} côté serveur (syngas_get_series()), plutôt qu'une
+// recherche par mots-clés — voir le commentaire de l'endpoint dans
+// admin.php. Le résultat est restitué dans le même format qu'une recherche
+// par nom, donc syngasRenderResults()/syngasValidateResult() n'ont besoin
+// d'aucune adaptation.
+function syngasRunSearchById(prefix) {
+    const input = document.getElementById(`${prefix}-id-input`);
+    const btn   = document.getElementById(`${prefix}-id-btn`);
+    if (!input) return;
+
+    const id = input.value.trim();
+    if (id === '') {
+        const results = document.getElementById(`${prefix}-results`);
+        if (results) results.innerHTML = '<p class="hint">Saisissez un identifiant Syngas avant de chercher.</p>';
+        return;
+    }
+
+    syngasFetchResults(prefix, btn, 'id=' + encodeURIComponent(id));
+}
+
+// Appel réseau commun aux deux modes de recherche (nom / identifiant) :
+// mêmes états de chargement, mêmes cas d'erreur (bannissement, échec réseau),
+// même rendu des résultats. Seul le paramètre de requête change.
+function syngasFetchResults(prefix, btn, queryString) {
     const spinner = btn ? btn.querySelector('.syngas-search-spinner') : null;
     const text    = btn ? btn.querySelector('.syngas-search-btn-text') : null;
     const results = document.getElementById(`${prefix}-results`);
     const banned  = document.getElementById(`${prefix}-banned`);
-    if (!input || !results) return;
-
-    const query = input.value.trim();
-    if (query === '') {
-        results.innerHTML = '<p class="hint">Saisissez un nom de série avant de chercher.</p>';
-        return;
-    }
+    if (!results) return;
 
     if (btn) btn.disabled = true;
     if (spinner) spinner.hidden = false;
@@ -112,7 +171,7 @@ function syngasRunSearch(prefix) {
     results.innerHTML = '';
     if (banned) banned.hidden = true;
 
-    fetch('admin.php?syngas_search=1&q=' + encodeURIComponent(query))
+    fetch('admin.php?syngas_search=1&' + queryString)
         .then(r => r.json())
         .then(data => {
             if (!data.success) {
