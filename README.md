@@ -345,8 +345,6 @@ Le lien avec Syngas est **entièrement consultatif** : contrairement à Anilist 
 
 **Périmètre : Mangathèque uniquement** (mangas et light-novels). L'Animethèque n'est pas concernée — Syngas n'a pas de notion d'animé.
 
-> ⚠️ **Si Syngas est hébergé sur le même domaine que Lengas** (ex. `mondomaine.fr/lengas/` et `mondomaine.fr/syngas/`), pensez à appliquer le correctif de cookie de session décrit dans la note de version ci-dessous — sans lui, se connecter à l'un déconnecte l'autre.
-
 ### Provisionnement automatique
 
 Au tout premier appel à Syngas (une recherche, ou l'outil de synchronisation, selon ce qui arrive en premier), Lengas s'enregistre automatiquement auprès de Syngas et reçoit une clé d'API, stockée localement. Aucune action de votre part n'est requise. Cette clé n'est plus jamais réaffichée par Syngas ensuite : la perdre (restauration d'une ancienne sauvegarde, par exemple) déclenchera simplement un nouveau provisionnement automatique au prochain appel.
@@ -373,16 +371,6 @@ Le nombre de tomes VF renvoyé par Syngas vient compléter les outils de cohére
 Si Syngas signale que la connexion de votre instance a été suspendue (rare, décidé par la modération Syngas), un bandeau explicite apparaît à la fois dans la section « Recherche Syngas » des modales et sur la page de l'outil de synchronisation, avec la raison fournie. Le reste de Lengas continue de fonctionner normalement — même dégradation gracieuse qu'un Babengas ou un Vestikan indisponible.
 
 L'état de Syngas (service joignable, clé API provisionnée, éventuel bannissement) est visible dans l'outil de vérification d'intégrité.
-
-### Hébergement sur le même domaine que Syngas : cookie de session
-
-Si Syngas tourne sur le même nom de domaine que Lengas (deux sous-répertoires d'un même hébergement, par exemple), les deux applications se disputaient auparavant **le même cookie de session** : PHP nomme son cookie `PHPSESSID` par défaut, sans distinction entre applications, et sans `path` restreint, ce cookie est valable sur tout le domaine — se connecter à l'une déconnectait donc silencieusement l'autre. Cette version corrige le problème côté Lengas en donnant à son cookie un nom dédié (`LENGAS_SESSION`) et un `path` limité à son propre sous-répertoire, calculé automatiquement (aucune configuration à faire).
-
-**Si votre installation de Syngas est antérieure à cette correction**, le même correctif doit être appliqué de son côté (renommer son cookie et restreindre son `path`) pour que le problème disparaisse complètement — voir la fonction `register_session_handler()` de Syngas.
-
-⚠️ Ce changement invalide les sessions actives en cours : après mise à jour, une reconnexion sera nécessaire une fois sur chaque site.
-
-Le `path` du cookie de Lengas est calculé automatiquement à partir de l'emplacement réel de `config.php` sur le disque (comparé au dossier racine du serveur web), pas à partir de la page qui a démarré la session : ainsi, peu importe la profondeur du script concerné (racine, `pages/`, `pages/outils/`, `vestikan/`…), le `path` obtenu reste toujours identique et la session voyage correctement entre toutes les pages — y compris pendant le flux de connexion Vestikan, qui traverse plusieurs redirections avant de revenir sur `admin.php`.
 
 ---
 
