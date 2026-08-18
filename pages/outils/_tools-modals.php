@@ -9,21 +9,16 @@
 // correspondante :
 //
 //   $tm_coherence_edit       (bool) modale « Corriger la série » (mangas)
-//   $tm_anime_coherence_edit (bool) modale « Corriger le visionnage » (animés)
 //   $tm_add_mu_url           (bool) modale « Ajouter une URL MangaUpdates »
 //   $tm_add_babelio_url      (bool) modale « Ajouter une URL Babelio »
 //
 // Les alertes/confirmations personnalisées (#custom-alert-modal et
 // #custom-confirm-modal) sont toujours incluses : page.js s'appuie dessus
 // (showCustomAlert/showCustomConfirm) sur toutes les pages outils.
-//
-// Requiert que _bootstrap.php ait déjà été inclus ($data doit exister si
-// $tm_anime_coherence_edit est utilisé).
 // ────────────────────────────────────────────────────────────────────────────
-$tm_coherence_edit       = $tm_coherence_edit       ?? false;
-$tm_anime_coherence_edit = $tm_anime_coherence_edit ?? false;
-$tm_add_mu_url           = $tm_add_mu_url           ?? false;
-$tm_add_babelio_url      = $tm_add_babelio_url      ?? false;
+$tm_coherence_edit  = $tm_coherence_edit  ?? false;
+$tm_add_mu_url      = $tm_add_mu_url      ?? false;
+$tm_add_babelio_url = $tm_add_babelio_url ?? false;
 ?>
 
 <!-- Édition rapide depuis l'outil « Vérification des mangas » -->
@@ -94,51 +89,6 @@ $tm_add_babelio_url      = $tm_add_babelio_url      ?? false;
             </button>
         </div>
         <p id="cedit-feedback" class="cedit-feedback"></p>
-    </div>
-</div>
-<?php endif; ?>
-
-<!-- Édition rapide d'une série animée depuis l'outil « Vérification des mangas » -->
-<!-- Volontairement plus étroite que la modale manga ci-dessus : seuls le statut de
-     visionnage et sa date sont modifiables (pas d'ajout/suppression d'épisode, pas de
-     case « dernier épisode » — Anilist est la seule source, le tag se réévalue seul). -->
-<?php if ($tm_anime_coherence_edit && !empty(series_of_type($data, 'anime'))): ?>
-<div class="modal" id="anime-coherence-edit-modal">
-    <div class="modal-content modal-content--wide">
-        <span class="close-modal" id="close-anime-coherence-edit-modal">&times;</span>
-        <h2>Corriger le visionnage</h2>
-
-        <input type="hidden" id="acedit-series-id">
-
-        <div class="cedit-info-grid">
-            <div class="cedit-info-item">
-                <span class="cedit-info-label">Titre</span>
-                <span class="cedit-info-value" id="acedit-name"></span>
-            </div>
-            <div class="cedit-info-item">
-                <span class="cedit-info-label">Statut de diffusion</span>
-                <span class="cedit-info-value" id="acedit-status"></span>
-            </div>
-        </div>
-
-        <p class="hint">Seuls le statut de visionnage et sa date se corrigent ici. Le titre, les studios, le format, les genres et le statut de diffusion viennent d'Anilist : une erreur constatée sur ces champs se corrige à la source, via le lien Anilist de la fiche.</p>
-
-        <hr class="cedit-divider">
-
-        <div class="cedit-volumes-header">
-            <span class="cedit-label">Épisodes</span>
-        </div>
-        <div id="acedit-episodes-list" class="cedit-volumes-list">
-            <!-- Épisodes injectés dynamiquement -->
-        </div>
-
-        <div class="modal-actions cedit-actions">
-            <button type="button" class="button button-ats" id="acedit-save-btn">
-                <span id="acedit-save-text">Enregistrer</span>
-                <span id="acedit-save-spinner" class="spinner" style="display:none;"></span>
-            </button>
-        </div>
-        <p id="acedit-feedback" class="cedit-feedback"></p>
     </div>
 </div>
 <?php endif; ?>

@@ -877,8 +877,7 @@ html:has(body.modal-open) {
 
 /* ── Modale d'édition rapide Incohérences ────────────────────────────────── */
 
-#coherence-edit-modal .modal-content--wide,
-#anime-coherence-edit-modal .modal-content--wide {
+#coherence-edit-modal .modal-content--wide {
     max-width: 640px;
 }
 
@@ -959,13 +958,6 @@ html:has(body.modal-open) {
 .cedit-select--sm {
     padding: 4px 8px;
     font-size: 0.8rem;
-}
-
-/* Date de visionnage d'un épisode (modale animé, V4 bloc 11) : même apparence
-   que .cedit-select, mais un input[type=date] n'a pas vocation à afficher un
-   curseur "pointer" comme un <select>. */
-.acedit-vol-date {
-    cursor: text;
 }
 
 /* Header tomes */
@@ -1079,8 +1071,8 @@ html:has(body.modal-open) {
 }
 
 /* Le nom de la série occupe l'espace disponible, les badges/boutons suivants
-   (type, MU, Babelio, Anilist, Modifier/Corriger) se tassent à droite sans
-   jamais s'écraser entre eux, même à plusieurs sur la même ligne (V4). */
+   (MU, Babelio, Modifier) se tassent à droite sans jamais s'écraser entre
+   eux, même à plusieurs sur la même ligne. */
 .coherence-series-name > span:first-child {
     flex: 1 1 auto;
     min-width: 0;
@@ -1089,8 +1081,7 @@ html:has(body.modal-open) {
     white-space: nowrap;
 }
 
-.cedit-open-btn,
-.acedit-open-btn {
+.cedit-open-btn {
     font-size: 0.72rem;
     padding: 2px 10px;
     flex-shrink: 0;
@@ -1102,50 +1093,10 @@ html:has(body.modal-open) {
     border-radius: var(--border-radius-sm);
 }
 
-.cedit-open-btn:hover,
-.acedit-open-btn:hover {
+.cedit-open-btn:hover {
     opacity: 1;
     background: var(--primary-subtle);
     transform: none;
-    box-shadow: none;
-}
-
-/* Badge de type sur une ligne d'incohérence (réutilise .suggestion-type-badge,
-   déjà défini dans _forms.css — même apparence que la wishlist et
-   l'autocomplétion). */
-.coherence-type-badge {
-    flex-shrink: 0;
-}
-
-/* Filtre par TYPE DE SÉRIE (manga / animé) : rangée distincte, au-dessus du
-   filtre par type de problème, même apparence que .filter-btn. */
-.coherences-type-filters {
-    margin-bottom: 0.6rem;
-}
-
-.filter-type-btn {
-    font-size: 0.78rem;
-    padding: 4px 12px;
-    opacity: 0.55;
-    transition: var(--transition);
-    border-radius: 20px;
-    font-weight: 600;
-    background: var(--background-medium);
-    color: var(--text-gray);
-    border: 1px solid transparent;
-}
-
-.filter-type-btn:hover {
-    opacity: 0.85;
-    transform: none;
-    box-shadow: none;
-}
-
-.filter-type-btn.active {
-    opacity: 1;
-    background: var(--primary-subtle);
-    color: var(--primary-color);
-    border-color: rgba(192, 132, 252, 0.3);
     box-shadow: none;
 }
 

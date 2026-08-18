@@ -58,14 +58,6 @@ const modals = {
         modal:    document.getElementById('coherence-edit-modal'),
         closeBtn: document.getElementById('close-coherence-edit-modal')
     },
-    // Absente si la page ne l'a pas incluse (ex. $tm_anime_coherence_edit
-    // à false, ou collection sans animé — cf. pages/outils/_tools-modals.php) :
-    // les deux valent alors null, sans que cela ne gêne
-    // Object.values(modals).forEach ci-dessous.
-    'anime-coherence-edit': {
-        modal:    document.getElementById('anime-coherence-edit-modal'),
-        closeBtn: document.getElementById('close-anime-coherence-edit-modal')
-    },
     'add-mu-url': {
         modal:    document.getElementById('add-mu-url-modal'),
         closeBtn: document.getElementById('close-add-mu-url-modal')
@@ -81,7 +73,7 @@ const modals = {
 function closeToolModal(modal) {
     modal.classList.remove('modal-active');
 
-    const isCoherenceModal = (modal.id === 'coherence-edit-modal' || modal.id === 'anime-coherence-edit-modal');
+    const isCoherenceModal = (modal.id === 'coherence-edit-modal');
     if (isCoherenceModal && window.coherenceEditDirty) {
         window.coherenceEditDirty = false;
         if (typeof loadCoherences === 'function') loadCoherences();

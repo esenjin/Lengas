@@ -5,6 +5,11 @@
 // Analyse des anomalies internes de la collection (doublons, numéros
 // manquants, mauvais tag « dernier tome », statut divergent de MangaUpdates,
 // prêts orphelins…) et génération des notifications par série.
+//
+// Périmètre : Mangathèque uniquement. L'Animethèque dispose de son propre
+// outil dédié, « Vérification des animés » (pages/outils/outil-anilist-
+// recheck.php, fonctions/tools/anilist_recheck.php) — rien ici ne la
+// concerne.
 // ────────────────────────────────────────────────────────────────────────────
 
 // Générer les notifications pour une série
@@ -134,15 +139,12 @@ function coherence_reference_volumes(array $series, array $mu_cache_map = []): ?
 
 // Vérification des incohérences de la collection
 //
-// Couvre désormais les deux types : les règles mangas (ci-dessous) restent
-// strictement inchangées, appliquées à la seule Mangathèque ; les règles
-// animés (check_anime_coherence()) sont calculées séparément puis fusionnées.
-// Chaque ligne du résultat porte un tag 'type' ('manga' ou 'anime'), lu par
-// le front pour le badge et le filtre par type.
+// Périmètre : Mangathèque uniquement (voir la note d'en-tête de ce fichier).
+// Chaque ligne du résultat porte un tag 'type' => 'manga', conservé pour que
+// le front (badge, filtre par type) reste inchangé même en présence d'une
+// seule collection.
 function check_collection_coherence(array $data): array {
-    $manga_issues = check_manga_coherence($data);
-    $anime_issues = check_anime_coherence($data);
-    return array_merge($manga_issues, $anime_issues);
+    return check_manga_coherence($data);
 }
 
 // ── Règles mangas (inchangées depuis avant la V4) ────────────────────────────
@@ -365,211 +367,6 @@ function check_manga_coherence(array $data): array {
     unset($issue);
 
     return $issues;
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Règles animés
-// ────────────────────────────────────────────────────────────────────────────
-// Périmètre disjoint des mangas : numéro d'épisode manquant/doublon (même
-// logique que les tomes), mauvais tag « dernier épisode », statut de diffusion
-// divergent d'Anilist, série sans anilist_id, épisode terminé sans date,
-// vignette Anilist introuvable. Aucune anomalie MangaUpdates/Babelio/prêts/
-// collector : ces notions n'ont pas de sens pour un animé.
-//
-// Toute correction reste soumise aux mêmes règles que le reste du site : ce
-// qui vient d'Anilist se corrige à la source (le rapport renvoie vers la
-// fiche Anilist, jamais de saisie manuelle) ; seuls le statut de visionnage et
-// sa date, de nature purement locale, sont proposés à la correction via la
-// modale dédiée (cf. coherence_quick_edit_anime()).
-function check_anime_coherence(array $data): array {
-    $data = series_of_type($data, 'anime');
-
-    $issues = [];
-
-    foreach ($data as $series) {
-        $series_issues = [];
-        $name     = $series['name'] ?? '(sans nom)';
-        $episodes = $series['volumes'] ?? [];
-
-        // ── Série sans identifiant Anilist ───────────────────────────────────
-        // Un animé s'importe toujours depuis Anilist : sans identifiant, la
-        // série ne peut plus être ni synchronisée, ni revérifiée. Purement
-        // informatif : rien à corriger localement, l'anomalie vient d'une
-        // absence de source, pas d'une divergence avec elle.
-        $anilist_id = (int)($series['anilist_id'] ?? 0);
-        if ($anilist_id <= 0) {
-            $series_issues[] = [
-                'type'    => 'anime_no_anilist_id',
-                'message' => "Cette série animée n'a aucun identifiant Anilist : elle ne peut plus être synchronisée ni revérifiée.",
-            ];
-        }
-
-        if (empty($episodes)) {
-            if (!empty($series_issues)) {
-                $issues[] = [
-                    'series'     => $name,
-                    'series_id'  => $series['id'],
-                    'anilist_id' => $anilist_id,
-                    'anilist_url'=> $series['anilist_url'] ?? '',
-                    'problems'   => $series_issues,
-                ];
-            }
-            continue;
-        }
-
-        $numbers      = array_map(fn($e) => (int)$e['number'], $episodes);
-        $max          = max($numbers);
-        $min          = min($numbers);
-        $last_episodes = array_values(array_filter($episodes, fn($e) => !empty($e['last'])));
-
-        // ── Doublons / manquants dans la séquence (localement corrigible : le
-        // numéro d'un épisode ne se change pas, mais le signalement aide à
-        // repérer un import corrompu qu'un ré-import ou une revérification
-        // résoudra). ──────────────────────────────────────────────────────────
-        $missing = [];
-        for ($i = $min; $i <= $max; $i++) {
-            if (!in_array($i, $numbers, true)) $missing[] = $i;
-        }
-        if (!empty($missing)) {
-            $series_issues[] = ['type' => 'anime_missing_episodes', 'message' => 'Épisode(s) manquant(s) dans la séquence : ' . implode(', ', $missing) . '.'];
-        }
-
-        $duplicates = array_keys(array_filter(array_count_values($numbers), fn($c) => $c > 1));
-        if (!empty($duplicates)) {
-            $series_issues[] = ['type' => 'anime_duplicate_episodes', 'message' => 'Numéro(s) d\'épisode en double : ' . implode(', ', $duplicates) . '.'];
-        }
-
-        // ── Tag « dernier épisode » mal placé (localement corrigible : la
-        // synchronisation ou la modale dédiée réévaluent ce tag). ────────────
-        if (count($last_episodes) > 1) {
-            $last_nums = array_map(fn($e) => $e['number'], $last_episodes);
-            $series_issues[] = [
-                'type'    => 'anime_multiple_last',
-                'message' => 'Plusieurs épisodes sont tagués comme dernier : épisode(s) ' . implode(', ', $last_nums) . '.',
-                'fixable' => true,
-            ];
-        }
-        foreach ($last_episodes as $le) {
-            if ((int)$le['number'] !== $max) {
-                $series_issues[] = [
-                    'type'    => 'anime_wrong_last',
-                    'message' => 'L\'épisode ' . $le['number'] . ' est tagué dernier mais l\'épisode le plus élevé est le ' . $max . '.',
-                    'fixable' => true,
-                ];
-            }
-        }
-
-        // ── Épisode « terminé » sans date de visionnage (localement
-        // corrigible : la modale dédiée permet de renseigner une date). ──────
-        $done = function_exists('episode_status_done') ? episode_status_done() : 'terminé';
-        $watched_without_date = array_values(array_filter($episodes, fn($e) => ($e['status'] ?? '') === $done && trim((string)($e['read_at'] ?? '')) === ''));
-        if (!empty($watched_without_date)) {
-            $nums = array_map(fn($e) => $e['number'], $watched_without_date);
-            $series_issues[] = [
-                'type'    => 'anime_done_without_date',
-                'message' => count($nums) === 1
-                    ? "L'épisode " . $nums[0] . " est marqué terminé mais n'a aucune date de visionnage."
-                    : "Les épisodes " . implode(', ', $nums) . " sont marqués terminés mais n'ont aucune date de visionnage.",
-                'fixable' => true,
-            ];
-        }
-
-        // ── Statut de diffusion divergent d'Anilist ──────────────────────────
-        // Purement informatif ici : la comparaison fine (avec appel réseau et
-        // cache 24h) relève de l'outil de revérification et de la
-        // synchronisation automatique. On se contente de signaler les
-        // cas structurellement incohérents, sans aucun appel réseau :
-        //   • diffusion marquée terminée sans le moindre épisode tagué dernier ;
-        //   • un épisode est tagué dernier mais la diffusion n'est ni terminée,
-        //     ni en pause, ni abandonnée.
-        $status = $series['status'] ?? '';
-        if ($status === 'terminée' && empty($last_episodes)) {
-            $series_issues[] = ['type' => 'anime_finished_no_last', 'message' => "La diffusion est marquée comme terminée mais aucun épisode n'est tagué dernier."];
-        }
-        if (!empty($last_episodes) && !in_array($status, ['terminée', 'abandonnée', 'en pause'], true)) {
-            $series_issues[] = ['type' => 'anime_last_but_not_finished', 'message' => "Un épisode est tagué dernier mais la diffusion n'est pas marquée comme terminée."];
-        }
-
-        // ── Vignette Anilist introuvable ──────────────────────────────────────
-        // Le champ est renseigné mais le fichier a disparu du serveur (purge
-        // manuelle, restauration partielle…). Purement informatif : se corrige
-        // via une revérification, pas de saisie manuelle possible.
-        $anilist_image = trim((string)($series['anilist_image'] ?? ''));
-        if ($anilist_image !== '' && !file_exists($anilist_image)) {
-            $series_issues[] = ['type' => 'anime_cover_missing', 'message' => "La vignette Anilist enregistrée est introuvable sur le serveur."];
-        }
-
-        if (!empty($series_issues)) {
-            $issues[] = [
-                'series'      => $name,
-                'series_id'   => $series['id'],
-                'anilist_id'  => $anilist_id,
-                'anilist_url' => $series['anilist_url'] ?? '',
-                'problems'    => $series_issues,
-            ];
-        }
-    }
-
-    foreach ($issues as &$issue) {
-        $issue['type'] = 'anime';
-    }
-    unset($issue);
-
-    return $issues;
-}
-
-// Une série animée a-t-elle au moins une anomalie « localement corrigible » ?
-// Sert à décider, côté front, si le bouton « Corriger » doit être proposé en
-// plus du badge Anilist (toujours présent, lui, dès qu'un anilist_id existe).
-function anime_coherence_has_fixable(array $problems): bool {
-    foreach ($problems as $p) {
-        if (!empty($p['fixable'])) return true;
-    }
-    return false;
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Édition rapide d'une série animée depuis l'outil « Vérification des mangas »
-// ────────────────────────────────────────────────────────────────────────────
-// Volontairement plus étroit que coherence_quick_edit() (mangas) : seuls le
-// statut de visionnage et la date de chaque épisode sont modifiables. Aucun
-// ajout ni suppression d'épisode (Anilist en est la seule source), aucune
-// case « dernier épisode » (le tag se réévalue tout seul, cf.
-// anime_refresh_last_episode() dans fonctions/episodes.php).
-//
-// Format attendu : $input['series_id'], $input['episodes_updates'] (JSON :
-// [{ "index": int, "status": "à voir"|"en cours"|"terminé", "watched_at": "" }]).
-//
-// Écriture ciblée : update_episode() écrit elle-même les épisodes de la
-// série en base via replace_series_volumes() à chaque itération — aucune
-// réécriture supplémentaire n'est nécessaire ici.
-function coherence_quick_edit_anime(array &$data, array $input): array {
-    $series_id = trim($input['series_id'] ?? '');
-    $found     = find_series_by_id($data, $series_id);
-    if (!$found) {
-        return ['success' => false, 'message' => 'Série introuvable.'];
-    }
-    if (!is_anime($found['data'])) {
-        return ['success' => false, 'message' => "Cette série n'est pas une série animée."];
-    }
-
-    $updates = json_decode($input['episodes_updates'] ?? '[]', true);
-    if (!is_array($updates)) $updates = [];
-
-    foreach ($updates as $u) {
-        $index      = (int)($u['index'] ?? -1);
-        $status     = (string)($u['status'] ?? '');
-        $watched_at = isset($u['watched_at']) ? (string)$u['watched_at'] : null;
-        if ($index < 0) continue;
-
-        $result = update_episode($data, $series_id, $index, $status, $watched_at);
-        if (!empty($result['success'])) {
-            $data = $result['data'];
-        }
-    }
-
-    $refound = find_series_by_id($data, $series_id);
-    return ['success' => true, 'series' => $refound ? $refound['data'] : null];
 }
 
 // ── Édition rapide depuis l'outil « Vérification des mangas » ─────────────────

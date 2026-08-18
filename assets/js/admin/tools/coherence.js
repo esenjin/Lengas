@@ -1,8 +1,9 @@
 // ──────────────────────────────────────────────────────────────────────────
 // assets/js/admin/tools/coherence.js — Outil « Vérification des mangas »
 //
-// Analyse des anomalies de la collection, rendu de la liste des problèmes,
-// filtres par type et modale d'édition rapide d'une série.
+// Analyse des anomalies de la Mangathèque, rendu de la liste des problèmes,
+// filtre par type de problème et modale d'édition rapide d'une série.
+// Périmètre : Mangathèque uniquement (voir coherence.php).
 // ──────────────────────────────────────────────────────────────────────────
 
 // La page « Outils » lance l'analyse dès son chargement, et propose de la relancer.
@@ -51,16 +52,6 @@ const COHERENCE_LABELS = {
     ref_more_volumes:           { icon: '📦', label: 'Plus de tomes que la référence' },
     loan_deleted_series:        { icon: '👻', label: 'Prêt — série supprimée' },
     loan_read_elsewhere:        { icon: '📤', label: 'Prêt — lue ailleurs' },
-    // ── Animés ────────────────────────────────────────────────────────────────
-    anime_no_anilist_id:        { icon: '🆔', label: 'Sans identifiant Anilist' },
-    anime_missing_episodes:     { icon: '🕳️', label: 'Épisodes manquants' },
-    anime_duplicate_episodes:   { icon: '👯', label: 'Doublons' },
-    anime_multiple_last:        { icon: '🔁', label: 'Plusieurs « derniers »' },
-    anime_wrong_last:           { icon: '🏷️', label: 'Dernier mal placé' },
-    anime_done_without_date:    { icon: '📅', label: 'Terminé sans date' },
-    anime_finished_no_last:     { icon: '🏁', label: 'Terminée sans dernier' },
-    anime_last_but_not_finished:{ icon: '🔖', label: 'Dernier sans fin' },
-    anime_cover_missing:        { icon: '🖼️', label: 'Vignette introuvable' },
 };
 
 function renderCoherences(issues) {
@@ -82,38 +73,6 @@ function renderCoherences(issues) {
         <strong>${totalProblems}</strong> incohérence(s) au total.
     </p>`;
     container.appendChild(summaryDiv);
-
-    // Filtre par TYPE DE SÉRIE (manga / animé), seulement s'il y a les deux.
-    const seriesTypesPresent = [...new Set(issues.map(s => s.type || 'manga'))];
-    if (seriesTypesPresent.length > 1) {
-        const typeFilterDiv = document.createElement('div');
-        typeFilterDiv.className = 'coherences-filters coherences-type-filters';
-
-        const allTypeBtn = document.createElement('button');
-        allTypeBtn.className = 'button button-sm filter-type-btn active';
-        allTypeBtn.dataset.filterType = 'all';
-        allTypeBtn.textContent = 'Tous types';
-        typeFilterDiv.appendChild(allTypeBtn);
-
-        seriesTypesPresent.forEach(t => {
-            const btn = document.createElement('button');
-            btn.className = 'button button-sm filter-type-btn';
-            btn.dataset.filterType = t;
-            const meta = (window.seriesTypes && window.seriesTypes[t]) || { plural: t };
-            btn.textContent = meta.plural || t;
-            typeFilterDiv.appendChild(btn);
-        });
-
-        typeFilterDiv.addEventListener('click', e => {
-            const btn = e.target.closest('.filter-type-btn');
-            if (!btn) return;
-            typeFilterDiv.querySelectorAll('.filter-type-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            applyCoherenceTypeFilter(btn.dataset.filterType);
-        });
-
-        container.appendChild(typeFilterDiv);
-    }
 
     const allTypes = [...new Set(issues.flatMap(s => s.problems.map(p => p.type)))];
     if (allTypes.length > 1) {
@@ -154,7 +113,6 @@ function renderCoherences(issues) {
         block.className = 'coherence-series-block';
         block.dataset.types = item.problems.map(p => p.type).join(' ');
         block.dataset.seriesId = item.series_id || '';
-        block.dataset.seriesType = item.type || 'manga';
 
         const header = document.createElement('div');
         header.className = 'coherence-series-name';
@@ -162,17 +120,6 @@ function renderCoherences(issues) {
         const nameSpan = document.createElement('span');
         nameSpan.textContent = item.series;
         header.appendChild(nameSpan);
-
-        // Badge de type (manga rose / animé bleu), lisible via window.seriesTypes
-        // (registre central injecté par includes/helpers.php).
-        if (window.seriesTypes && window.seriesTypes[item.type]) {
-            const meta = window.seriesTypes[item.type];
-            const typeBadge = document.createElement('span');
-            typeBadge.className = 'suggestion-type-badge coherence-type-badge';
-            typeBadge.style.setProperty('--type-color', meta.color);
-            typeBadge.textContent = meta.label;
-            header.appendChild(typeBadge);
-        }
 
         if (item.mangaupdates_url) {
             const muBadge = document.createElement('a');
@@ -196,34 +143,7 @@ function renderCoherences(issues) {
             header.appendChild(babelioBadge);
         }
 
-        // Animés : lien vers la fiche Anilist, toujours présent dès qu'un
-        // anilist_id existe — l'essentiel des anomalies factuelles se corrige
-        // à la source, jamais dans Lengas.
-        if (item.type === 'anime' && item.anilist_url) {
-            const anilistBadge = document.createElement('a');
-            anilistBadge.href = item.anilist_url;
-            anilistBadge.target = '_blank';
-            anilistBadge.rel = 'noopener';
-            anilistBadge.className = 'mu-badge';
-            anilistBadge.title = 'Voir sur Anilist';
-            anilistBadge.textContent = 'Anilist ↗';
-            header.appendChild(anilistBadge);
-        }
-
-        if (item.type === 'anime') {
-            // Bouton « Corriger » seulement si au moins une anomalie de cette
-            // série est du ressort local (statut/date de visionnage, tag
-            // dernier épisode) — jamais pour ce qui ne vient que d'Anilist.
-            const hasFixable = item.problems.some(p => p.fixable);
-            if (hasFixable && item.series_id) {
-                const fixBtn = document.createElement('button');
-                fixBtn.type = 'button';
-                fixBtn.className = 'button button-sm acedit-open-btn';
-                fixBtn.dataset.seriesId = item.series_id;
-                fixBtn.textContent = 'Corriger';
-                header.appendChild(fixBtn);
-            }
-        } else if (item.series_id) {
+        if (item.series_id) {
             // Issues exclusivement liées aux prêts → lien vers page-prets
             const loanTypes = new Set(['loan_deleted_series', 'loan_read_elsewhere']);
             const isLoanIssue = item.problems.every(p => loanTypes.has(p.type));
@@ -524,168 +444,22 @@ document.getElementById('cedit-save-btn').addEventListener('click', () => {
     });
 });
 
-// Les deux filtres (type de série, type de problème) se combinent : un bloc ne
-// s'affiche que s'il satisfait les deux à la fois.
+// Filtre par type de problème, seul filtre restant (voir renderCoherences ci-
+// dessus) : un bloc ne s'affiche que s'il satisfait le filtre actif.
 function currentActiveFilter(selector, dataAttr) {
     const btn = document.querySelector(selector + '.active');
     return btn ? btn.dataset[dataAttr] : 'all';
 }
 
 function applyCoherenceFilters() {
-    const typeFilter    = currentActiveFilter('.filter-type-btn', 'filterType');
     const problemFilter = currentActiveFilter('.filter-btn', 'filter');
 
     document.querySelectorAll('#coherences-list .coherence-series-block').forEach(block => {
-        const matchesType    = (typeFilter === 'all') || (block.dataset.seriesType === typeFilter);
         const matchesProblem = (problemFilter === 'all') || block.dataset.types.split(' ').includes(problemFilter);
-        block.style.display = (matchesType && matchesProblem) ? '' : 'none';
+        block.style.display = matchesProblem ? '' : 'none';
     });
-}
-
-function applyCoherenceTypeFilter(_filterType) {
-    applyCoherenceFilters();
 }
 
 function applyCoherenceFilter(_filter) {
     applyCoherenceFilters();
 }
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Modale d'édition rapide « animé » depuis l'outil « Vérification des mangas »
-// ──────────────────────────────────────────────────────────────────────────────
-// Volontairement plus étroite que la modale manga : seuls le statut de
-// visionnage et sa date se corrigent ici. Pas d'ajout/suppression d'épisode,
-// pas de case « dernier épisode » — Anilist est la seule source, et le tag se
-// réévalue tout seul côté serveur (anime_refresh_last_episode()).
-
-document.getElementById('coherences-results').addEventListener('click', (e) => {
-    const btn = e.target.closest('.acedit-open-btn');
-    if (!btn) return;
-    openAnimeCoherenceEdit(btn.dataset.seriesId);
-});
-
-function openAnimeCoherenceEdit(seriesId) {
-    const series = (window.seriesData || []).find(s => s.id === seriesId);
-    if (!series) {
-        showErrorModal('Données de la série introuvables. Veuillez recharger la page.');
-        return;
-    }
-
-    document.getElementById('acedit-series-id').value = seriesId;
-    document.getElementById('acedit-name').textContent = series.name || '';
-    document.getElementById('acedit-status').textContent = series.status
-        ? series.status.charAt(0).toUpperCase() + series.status.slice(1)
-        : '—';
-    document.getElementById('acedit-feedback').textContent = '';
-
-    buildAceditEpisodesList(series.volumes || []);
-
-    modals['anime-coherence-edit'].modal.classList.add('modal-active');
-}
-
-function buildAceditEpisodesList(episodes) {
-    const container = document.getElementById('acedit-episodes-list');
-    container.innerHTML = '';
-
-    if (!episodes || episodes.length === 0) {
-        container.innerHTML = '<p class="cedit-no-volumes">Aucun épisode dans cette série.</p>';
-        return;
-    }
-
-    const sorted = [...episodes].sort((a, b) => a.number - b.number);
-
-    sorted.forEach(ep => {
-        const realIndex = episodes.indexOf(ep);
-
-        const row = document.createElement('div');
-        row.className = 'cedit-volume-row';
-        row.dataset.volIndex = realIndex;
-        row.dataset.volNumber = ep.number;
-
-        const numLabel = document.createElement('span');
-        numLabel.className = 'cedit-vol-num';
-        numLabel.textContent = `Épisode ${ep.number}` + (ep.last ? ' (dernier)' : '');
-        row.appendChild(numLabel);
-
-        const statusSel = document.createElement('select');
-        statusSel.className = 'cedit-select cedit-select--sm cedit-vol-status';
-        ['à voir', 'en cours', 'terminé'].forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = s;
-            opt.textContent = s.charAt(0).toUpperCase() + s.slice(1);
-            if (ep.status === s) opt.selected = true;
-            statusSel.appendChild(opt);
-        });
-        row.appendChild(statusSel);
-
-        const dateInput = document.createElement('input');
-        dateInput.type = 'date';
-        dateInput.className = 'cedit-select cedit-select--sm acedit-vol-date';
-        dateInput.value = ep.read_at || '';
-        row.appendChild(dateInput);
-
-        container.appendChild(row);
-    });
-}
-
-document.getElementById('acedit-save-btn')?.addEventListener('click', () => {
-    const seriesId = document.getElementById('acedit-series-id').value;
-    if (!seriesId) return;
-
-    const saveBtn     = document.getElementById('acedit-save-btn');
-    const saveText    = document.getElementById('acedit-save-text');
-    const saveSpinner = document.getElementById('acedit-save-spinner');
-    const feedback    = document.getElementById('acedit-feedback');
-
-    saveBtn.disabled = true;
-    saveText.textContent = 'Enregistrement…';
-    saveSpinner.style.display = 'inline-block';
-    feedback.textContent = '';
-
-    const episodesUpdates = [];
-    document.querySelectorAll('#acedit-episodes-list .cedit-volume-row').forEach(row => {
-        const idx    = parseInt(row.dataset.volIndex, 10);
-        const status = row.querySelector('.cedit-vol-status')?.value || 'à voir';
-        const date   = row.querySelector('.acedit-vol-date')?.value || '';
-        episodesUpdates.push({ index: idx, status, watched_at: date });
-    });
-
-    const params = new URLSearchParams({
-        tool_action:       'coherence_quick_edit_anime',
-        series_id:         seriesId,
-        episodes_updates:  JSON.stringify(episodesUpdates),
-    });
-
-    fetch('outil-coherences.php', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body:    params.toString(),
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            if (data.series && window.seriesData) {
-                const idx = window.seriesData.findIndex(s => s.id === seriesId);
-                if (idx !== -1) window.seriesData[idx] = data.series;
-            }
-            window.coherenceEditDirty = true;
-            feedback.style.color = 'var(--success-color)';
-            feedback.textContent = '✓ Modifications enregistrées.';
-            if (data.series && data.series.volumes) {
-                buildAceditEpisodesList(data.series.volumes);
-            }
-        } else {
-            feedback.style.color = 'var(--error-color)';
-            feedback.textContent = data.message || 'Une erreur est survenue.';
-        }
-    })
-    .catch(() => {
-        feedback.style.color = 'var(--error-color)';
-        feedback.textContent = 'Erreur réseau. Veuillez réessayer.';
-    })
-    .finally(() => {
-        saveBtn.disabled = false;
-        saveText.textContent = 'Enregistrer';
-        saveSpinner.style.display = 'none';
-    });
-});

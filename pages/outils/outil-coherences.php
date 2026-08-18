@@ -2,11 +2,12 @@
 // ────────────────────────────────────────────────────────────────────────────
 // pages/outils/outil-coherences.php — Outil « Vérification des mangas »
 //
-// Repère les anomalies de la collection (doublons, numéros manquants, mauvais
-// tag « dernier tome »/« dernier épisode », statut différent de MangaUpdates
-// ou d'Anilist, prêts orphelins, série animée sans identifiant Anilist,
-// épisode terminé sans date, vignette Anilist introuvable, etc.) et propose
-// une édition rapide de la série concernée.
+// Repère les anomalies de la Mangathèque (doublons, numéros manquants,
+// mauvais tag « dernier tome », statut différent de MangaUpdates, prêts
+// orphelins…) et propose une édition rapide de la série concernée.
+//
+// Périmètre : Mangathèque uniquement. L'Animethèque dispose de son propre
+// outil dédié, « Vérification des animés ».
 // ────────────────────────────────────────────────────────────────────────────
 
 require __DIR__ . '/_bootstrap.php';
@@ -27,10 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
         case 'coherence_quick_edit':
             $response = coherence_quick_edit($data, $_POST);
             break;
-
-        case 'coherence_quick_edit_anime':
-            $response = coherence_quick_edit_anime($data, $_POST);
-            break;
     }
 
     header('Content-Type: application/json');
@@ -46,8 +43,6 @@ require __DIR__ . '/_layout_head.php';
         <div class="tools-section">
             <h2>Vérification des mangas</h2>
             <p>Vérification des incohérences internes de vos séries (doublons, numéros manquants, mauvais tag « dernier tome », prêts orphelins…). Cet outil exploite aussi le statut de publication MangaUpdates mis en cache.</p>
-            <?php if (!empty(series_of_type($data, 'anime'))): ?>
-            <?php endif; ?>
             <div class="tools-actions">
                 <button id="reload-coherences-btn" class="button button-opt">Relancer l'analyse</button>
             </div>
@@ -57,12 +52,13 @@ require __DIR__ . '/_layout_head.php';
         </div>
 
 <?php
-$tm_coherence_edit       = true;
-$tm_anime_coherence_edit = true;
+$tm_coherence_edit = true;
 require __DIR__ . '/_tools-modals.php';
 
 // Données de la collection utilisées par l'outil « Vérification des mangas »
-// (édition rapide d'une série sans rechargement de la page).
+// (édition rapide d'une série sans rechargement de la page). Mangathèque
+// uniquement : la Mangathèque est le seul périmètre de cet outil, voir
+// l'en-tête de ce fichier.
 $series_with_status = array_map(function ($series) {
     $status = $series['status'] ?? 'en cours';
     if (empty($series['status'])) {
@@ -75,11 +71,10 @@ $series_with_status = array_map(function ($series) {
     }
     $series['status'] = $status;
     return $series;
-}, array_values($data));
+}, array_values(series_of_type($data, 'manga')));
 ?>
 <script>
-    window.seriesData  = <?= json_encode($series_with_status) ?>;
-    window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
+    window.seriesData = <?= json_encode($series_with_status) ?>;
 </script>
 <?php
 $tool_scripts = ['coherence.js'];
