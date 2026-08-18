@@ -1,7 +1,7 @@
 /* ──────────────────────────────────────────────────────────────────────────
    _syngas.css — Intégration Syngas (base commune des mangathèques Lengas)
 
-   Trois zones couvertes :
+   Quatre zones couvertes :
    1. Section « Recherche Syngas » des modales d'ajout/édition de série
       (includes/syngas_search_section.php + assets/js/admin/syngas-search.js)
    2. Bannière de bannissement (section 6.5 du cahier des charges), partagée
@@ -9,7 +9,32 @@
    3. Outil « Synchronisation Syngas » (pages/outils/outil-syngas.php),
       calqué visuellement sur l'outil « Association MangaUpdates »
       (.mu-associate-* dans _admin.css) pour rester cohérent.
+   4. Badge de lien Syngas (carte admin + modale de détails publique),
+      calqué sur .babelio-badge/.babelio-logo (_babengas.css).
    ────────────────────────────────────────────────────────────────────────── */
+
+/* ── 0. Badge de lien « Voir sur Syngas » (carte admin + modale publique) ─── */
+/* Même comportement que .mu-badge/.babelio-badge : s'insère dans la même
+   barre .series-badges--links, même opacité au survol. */
+
+.syngas-badge {
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.65;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+}
+
+.syngas-badge:hover {
+    opacity: 1;
+}
+
+.syngas-logo {
+    height: 16px;
+    width: auto;
+    display: block;
+    border-radius: 50%;
+}
 
 /* ── 1. Section « Recherche Syngas » (modales) ─────────────────────────────── */
 
@@ -56,24 +81,18 @@
     height: 14px;
 }
 
-.syngas-search-toggle-id {
-    display: inline-block;
-    margin-top: 8px;
-    padding: 0;
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 0.85em;
+/* Lien d'accès direct au site Syngas, dans le texte d'aide de la section
+   (remplace l'ancien bouton « Chercher par identifiant Syngas », qui n'était
+   qu'une bascule d'affichage repliable — jamais un lien de navigation, d'où
+   la confusion possible). */
+.syngas-search-site-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.syngas-search-site-link:hover {
     text-decoration: underline;
-    cursor: pointer;
-}
-
-.syngas-search-toggle-id:hover {
-    color: var(--text-white);
-}
-
-.syngas-search-row--id {
-    margin-top: 8px;
 }
 
 .syngas-search-spinner[hidden] {

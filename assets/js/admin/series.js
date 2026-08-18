@@ -35,6 +35,8 @@ document.addEventListener('click', function(e) {
             document.getElementById('edit-series-mangaupdates-url').value = series.mangaupdates_url || '';
             const babelioField = document.getElementById('edit-series-babelio-url');
             if (babelioField) babelioField.value = series.babelio_url || '';
+            const editSyngasUid = document.getElementById('edit-series-syngas-uid');
+            if (editSyngasUid) editSyngasUid.value = series.syngas_uid || '';
             document.getElementById('edit-series-new-volumes-count').value = 0;
             document.getElementById('edit-series-new-volumes-status').value = 'à lire';
             document.querySelector('#edit-series-form [name="new_volumes_collector"]').checked = false;

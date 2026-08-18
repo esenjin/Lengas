@@ -194,11 +194,48 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
     return ['success' => true, 'data' => $data, 'message' => $message];
 }
 
+// Recherche une série par son UID Syngas (colonne `syngas_uid`, index unique
+// partiel idx_series_syngas_uid — voir config.php). Utilisée pour valider
+// l'unicité AVANT écriture quand l'UID est saisi/modifié à la main (modale
+// d'édition, outil ajout_syngas_uid.php) : un UID en double, laissé tel
+// quel jusqu'à upsert_series_row(), ferait échouer l'écriture avec une
+// PDOException brute plutôt qu'un message compréhensible.
+// $exclude_series_id : ignore la série elle-même (cas d'une édition qui
+// laisse l'UID inchangé).
+function find_series_by_syngas_uid($data, string $syngas_uid, string $exclude_series_id = ''): ?array {
+    $syngas_uid = trim($syngas_uid);
+    if ($syngas_uid === '') return null;
+    foreach ($data as $s) {
+        if ($s['id'] === $exclude_series_id) continue;
+        if (trim((string)($s['syngas_uid'] ?? '')) === $syngas_uid) {
+            return $s;
+        }
+    }
+    return null;
+}
+
 // Mettre à jour une série
-function update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null, $new_status = null, $read_elsewhere = null, $reading_abandoned = null, $rating = null, $reread_count = null) {
+// $syngas_uid : null = champ non fourni, ne touche pas à la valeur actuelle
+// (repli conforme aux autres paramètres optionnels de cette fonction) ;
+// chaîne (même vide) = valeur explicite à appliquer, après vérification
+// d'unicité — voir find_series_by_syngas_uid() ci-dessus. Modifiable à la
+// main depuis la modale d'édition (jamais verrouillé, cohérent avec le
+// principe général de l'intégration Syngas : un lien consultatif, jamais
+// autoritaire).
+function update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null, $new_status = null, $read_elsewhere = null, $reading_abandoned = null, $rating = null, $reread_count = null, $syngas_uid = null) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
         return ['success' => false, 'message' => "Série introuvable."];
+    }
+
+    if ($syngas_uid !== null) {
+        $syngas_uid = trim($syngas_uid);
+        if ($syngas_uid !== '') {
+            $duplicate = find_series_by_syngas_uid($data, $syngas_uid, $series_id);
+            if ($duplicate !== null) {
+                return ['success' => false, 'message' => 'Cet UID Syngas est déjà utilisé par la série « ' . $duplicate['name'] . ' ».'];
+            }
+        }
     }
 
     $series_key = $series['key'];  // Utilise la clé associative
@@ -256,6 +293,15 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
         if ($new_reread_count > $previous_reread_count) {
             $data[$series_key]['reread_last_date'] = date('Y-m-d');
         }
+    }
+    if ($syngas_uid !== null) {
+        $data[$series_key]['syngas_uid'] = $syngas_uid;
+        // Un UID effacé/changé à la main rend l'ancien cache de nombre de
+        // tomes VF Syngas potentiellement obsolète (il appartenait à une
+        // autre fiche, ou à aucune) — coherence_reference_volumes() (section
+        // 6.4) ne doit plus s'y fier tant qu'une nouvelle synchronisation ne
+        // l'a pas confirmé.
+        $data[$series_key]['syngas_volumes_count'] = null;
     }
 
     // Gestion de l'image

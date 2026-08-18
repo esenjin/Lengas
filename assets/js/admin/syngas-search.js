@@ -21,6 +21,15 @@ function syngasEscHtml(s) {
     return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Un identifiant Syngas est un UUID v4 standard (generate_uuid(), voir
+// config-sample.php côté Syngas) : 36 caractères hexadécimaux avec tirets,
+// jamais un nom de série humain ne prend cette forme. Cette détection
+// permet à un seul champ de recherche de servir aussi bien pour un nom que
+// pour un identifiant collé directement — l'endpoint syngas_search
+// d'admin.php accepte déjà les deux paramètres (q= ou id=), seul le choix
+// du bon paramètre était à faire ici.
+const SYNGAS_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const SYNGAS_CONTEXTS = ['add-series-syngas', 'edit-series-syngas'];
 
 // Pré-remplit le champ de recherche avec le nom déjà saisi dans le formulaire
@@ -61,29 +70,17 @@ function syngasResetSection(prefix) {
     if (results) results.innerHTML = '';
     const banned = document.getElementById(`${prefix}-banned`);
     if (banned) banned.hidden = true;
-    const idRow = document.getElementById(`${prefix}-id-row`);
-    if (idRow) idRow.hidden = true;
-    const idInput = document.getElementById(`${prefix}-id-input`);
-    if (idInput) idInput.value = '';
     const hiddenUid = document.getElementById('add-series-syngas-uid');
     if (prefix === 'add-series-syngas' && hiddenUid) hiddenUid.value = '';
     const hiddenThumb = document.getElementById('add-series-syngas-thumbnail-path');
     if (prefix === 'add-series-syngas' && hiddenThumb) hiddenThumb.value = '';
 }
 
-// Délégation des clics « Chercher » (nom ET identifiant), « Valider » et
-// « Chercher par identifiant Syngas » (bascule d'affichage) pour les deux
-// contextes.
+// Délégation des clics « Chercher » et « Valider » pour les deux contextes.
 document.addEventListener('click', (e) => {
     SYNGAS_CONTEXTS.forEach(prefix => {
         if (e.target.closest(`#${prefix}-btn`)) {
             syngasRunSearch(prefix);
-        }
-        if (e.target.closest(`#${prefix}-id-btn`)) {
-            syngasRunSearchById(prefix);
-        }
-        if (e.target.closest(`#${prefix}-toggle-id`)) {
-            syngasToggleIdRow(prefix);
         }
         const validateBtn = e.target.closest(`[data-syngas-validate][data-syngas-prefix="${prefix}"]`);
         if (validateBtn) {
@@ -92,8 +89,7 @@ document.addEventListener('click', (e) => {
     });
 });
 
-// Recherche également déclenchable via Entrée dans les champs texte (nom ET
-// identifiant).
+// Recherche également déclenchable via Entrée dans le champ texte.
 document.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     SYNGAS_CONTEXTS.forEach(prefix => {
@@ -101,23 +97,8 @@ document.addEventListener('keydown', (e) => {
             e.preventDefault();
             syngasRunSearch(prefix);
         }
-        if (e.target.id === `${prefix}-id-input`) {
-            e.preventDefault();
-            syngasRunSearchById(prefix);
-        }
     });
 });
-
-// Affiche/masque la ligne de recherche par identifiant. Repliée par défaut :
-// la recherche par nom reste le cas d'usage principal (section 4).
-function syngasToggleIdRow(prefix) {
-    const row = document.getElementById(`${prefix}-id-row`);
-    if (!row) return;
-    row.hidden = !row.hidden;
-    if (!row.hidden) {
-        document.getElementById(`${prefix}-id-input`)?.focus();
-    }
-}
 
 function syngasRunSearch(prefix) {
     const input   = document.getElementById(`${prefix}-input`);
@@ -127,32 +108,15 @@ function syngasRunSearch(prefix) {
     const query = input.value.trim();
     if (query === '') {
         const results = document.getElementById(`${prefix}-results`);
-        if (results) results.innerHTML = '<p class="hint">Saisissez un nom de série avant de chercher.</p>';
+        if (results) results.innerHTML = '<p class="hint">Saisissez un nom de série ou un identifiant Syngas avant de chercher.</p>';
         return;
     }
 
-    syngasFetchResults(prefix, btn, 'q=' + encodeURIComponent(query));
-}
-
-// Recherche par identifiant Syngas direct : résout une seule fiche via
-// GET /series/{id} côté serveur (syngas_get_series()), plutôt qu'une
-// recherche par mots-clés — voir le commentaire de l'endpoint dans
-// admin.php. Le résultat est restitué dans le même format qu'une recherche
-// par nom, donc syngasRenderResults()/syngasValidateResult() n'ont besoin
-// d'aucune adaptation.
-function syngasRunSearchById(prefix) {
-    const input = document.getElementById(`${prefix}-id-input`);
-    const btn   = document.getElementById(`${prefix}-id-btn`);
-    if (!input) return;
-
-    const id = input.value.trim();
-    if (id === '') {
-        const results = document.getElementById(`${prefix}-results`);
-        if (results) results.innerHTML = '<p class="hint">Saisissez un identifiant Syngas avant de chercher.</p>';
-        return;
-    }
-
-    syngasFetchResults(prefix, btn, 'id=' + encodeURIComponent(id));
+    // Recherche par nom OU par UID depuis le même champ : un identifiant
+    // Syngas collé directement (ex. depuis l'URL d'une fiche) est détecté
+    // automatiquement plutôt que de forcer un second champ dédié.
+    const paramName = SYNGAS_UUID_PATTERN.test(query) ? 'id' : 'q';
+    syngasFetchResults(prefix, btn, paramName + '=' + encodeURIComponent(query));
 }
 
 // Appel réseau commun aux deux modes de recherche (nom / identifiant) :
@@ -281,6 +245,11 @@ function syngasValidateResult(prefix, syngasId, btn) {
                 const idx = seriesData.findIndex(s => s.id === seriesId);
                 if (idx !== -1) seriesData[idx] = Object.assign({}, seriesData[idx], data.series);
             }
+            // Champ visible « UID Syngas » du formulaire : tenu à jour même si
+            // la modale reste affichée un court instant avant sa fermeture
+            // ci-dessous (cohérence si un autre script lit sa valeur entre-temps).
+            const editSyngasUidField = document.getElementById('edit-series-syngas-uid');
+            if (editSyngasUidField) editSyngasUidField.value = data.series?.syngas_uid || '';
             if (typeof modals !== 'undefined' && modals['edit-series']) {
                 modals['edit-series'].modal.classList.remove('modal-active');
             }
@@ -335,8 +304,11 @@ function syngasApplyFieldsToAddForm(fields, syngasUid, thumbnailPath, volumesCou
         }
     }
 
-    const hiddenUid = document.getElementById('add-series-syngas-uid');
-    if (hiddenUid) hiddenUid.value = syngasUid;
+    // id="add-series-syngas-uid" : depuis peu un champ TEXTE visible (avant un
+    // input hidden), mais l'identifiant DOM n'a pas changé — rien d'autre à
+    // adapter ici.
+    const uidField = document.getElementById('add-series-syngas-uid');
+    if (uidField) uidField.value = syngasUid;
     const hiddenThumb = document.getElementById('add-series-syngas-thumbnail-path');
     if (hiddenThumb) hiddenThumb.value = thumbnailPath;
     const hiddenVolumes = document.getElementById('add-series-syngas-volumes-count');

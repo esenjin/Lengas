@@ -48,6 +48,31 @@
 
 // ── Configuration ───────────────────────────────────────────────────────────
 
+// Racine publique du SITE Syngas (pas l'API) — ex. « https://…/syngas/ » à
+// partir de SYNGAS_API_URL = « https://…/syngas/api/v1 ». Utilisée pour
+// construire un lien "Voir sur Syngas" générique (page d'accueil) quand on
+// n'a pas d'URL publique de fiche déjà fournie par l'API (public_url, voir
+// syngas_search()/syngas_get_series()) — par exemple dans les badges de
+// liens, à partir du seul syngas_uid stocké localement.
+function syngas_site_url(): string {
+    $api = rtrim(SYNGAS_API_URL, '/');
+    // Retire le dernier segment "/api/v1" (ou toute variante de version
+    // future, "/api/v2"…) : on ne peut pas supposer "/api/v1" littéral pour
+    // rester correct si Syngas fait évoluer sa version d'API un jour.
+    $site = preg_replace('#/api/v\d+$#', '', $api);
+    return rtrim($site, '/') . '/';
+}
+
+// URL publique d'une fiche Syngas à partir de son seul UID — même format que
+// series_public_url() côté Syngas (includes/helpers.php : "serie.php?id=…").
+// Utilisée quand seul syngas_uid est disponible localement (badges de liens,
+// section recherche des modales), sans repasser par un appel réseau.
+function syngas_series_public_url(string $syngas_uid): string {
+    $syngas_uid = trim($syngas_uid);
+    if ($syngas_uid === '') return '';
+    return syngas_site_url() . 'serie.php?id=' . rawurlencode($syngas_uid);
+}
+
 // Clé API stockée localement ('' si pas encore provisionnée).
 function syngas_api_key(): string {
     $opts = function_exists('load_options') ? load_options() : [];
@@ -373,6 +398,35 @@ function syngas_check_service(): array {
     return ['ok' => true, 'http' => $res['http'], 'version' => (string)($data['version'] ?? ''), 'error' => ''];
 }
 
+// ── Liste des genres acceptés par Syngas ────────────────────────────────────
+//
+// Syngas ne reconnaît qu'une liste FERMÉE de genres (table `genres`, amorcée
+// à l'identique de mangaupdates_genre_translation_map() côté Lengas — voir
+// config-sample.php::syngas_genre_list() du dépôt Syngas). Un genre saisi
+// hors de cette liste n'est pas rejeté (Lengas garde toujours la main sur sa
+// propre fiche), mais Syngas l'ignorera silencieusement à l'envoi
+// (sanitize_genres_list() côté Syngas) — d'où l'intérêt d'un rappel visible
+// dans les modales d'ajout/édition plutôt que de laisser deviner.
+//
+// Dérivée de mangaupdates_genre_translation_map() (includes/mangaupdates.php)
+// plutôt que dupliquée en dur ici : les valeurs FRANÇAISES (celles que Syngas
+// reconnaît) sont déjà cette liste, une seule source de vérité pour les deux
+// usages (traduction MangaUpdates ET rappel Syngas).
+function syngas_accepted_genres(): array {
+    if (!function_exists('mangaupdates_genre_translation_map')) return [];
+    return array_values(mangaupdates_genre_translation_map());
+}
+
+// Texte du hint survolable, prêt pour l'attribut data-hint des modales
+// d'ajout/édition (voir la note « Genres » dans admin.php). Liste triée pour
+// une lecture plus confortable qu'un ordre de déclaration arbitraire.
+function syngas_accepted_genres_hint(): string {
+    $genres = syngas_accepted_genres();
+    sort($genres, SORT_STRING | SORT_FLAG_CASE);
+    if (empty($genres)) return "Genres reconnus par Syngas : liste indisponible.";
+    return "Genres reconnus par Syngas : " . implode(', ', $genres) . ". Un genre saisi hors de cette liste reste conservé dans Lengas mais sera ignoré par Syngas.";
+}
+
 // ── Dérivation du type Syngas depuis les catégories Lengas ──────────────────
 //
 // Syngas type = 'manga' | 'light-novel', un typage qui lui est propre (sans
@@ -451,7 +505,13 @@ function syngas_map_to_lengas_fields(array $syngas_series, $local_categories = [
     $set_if_not_empty('author', $syngas_series['author'] ?? null);
     $set_if_not_empty('publisher', $syngas_series['publisher'] ?? null);
     $set_if_not_empty('other_contributors', $syngas_series['other_contributors'] ?? null);
-    $set_if_not_empty('status', $syngas_series['status'] ?? null);
+    // Conversion inverse de syngas_status_from_lengas() : Syngas renvoie "En
+    // cours"/"Terminée"/… (majuscule initiale), le <select> de Lengas
+    // n'accepte que "en cours"/"terminée"/… en minuscules — sans cette
+    // conversion, la valeur ne correspondrait à aucune option et serait
+    // silencieusement ignorée côté formulaire (add), ou signalée comme un
+    // faux changement à chaque comparaison (outil de synchronisation).
+    $set_if_not_empty('status', syngas_status_to_lengas((string)($syngas_series['status'] ?? '')));
     $set_if_not_empty('mangaupdates_url', $syngas_series['mangaupdates_url'] ?? null);
     $set_if_not_empty('babelio_url', $syngas_series['babelio_url'] ?? null);
 
@@ -603,6 +663,46 @@ function syngas_get_series(string $syngas_id, int $timeout = 15): array {
     return ['ok' => true, 'series' => $res['data'], 'error' => ''];
 }
 
+// ── Conversion du statut de publication Lengas → Syngas ─────────────────────
+//
+// Lengas stocke le statut de publication tout en minuscules ('en cours',
+// 'en pause', 'terminée', 'abandonnée' — voir sanitize_series_type() et le
+// <select> des modales), tandis que Syngas attend une valeur EXACTE avec
+// majuscule initiale ('En cours', 'En pause', 'Terminée', 'Abandonnée' — un
+// <select> fermé, voir includes/series_fields_form.php côté Syngas). Sans
+// cette conversion, Syngas reçoit un statut qu'il ne reconnaît jamais parmi
+// ses options, ce qui l'affiche comme "différent" à chaque comparaison côté
+// outil de synchronisation alors qu'il s'agit de la même valeur.
+//
+// Toute valeur non reconnue est renvoyée telle quelle (jamais bloquant) :
+// mieux vaut transmettre un statut imprévu tel quel que le faire disparaître
+// silencieusement.
+function syngas_status_from_lengas(string $status): string {
+    $map = [
+        'en cours'    => 'En cours',
+        'terminée'    => 'Terminée',
+        'en pause'    => 'En pause',
+        'abandonnée'  => 'Abandonnée',
+    ];
+    $key = mb_strtolower(trim($status));
+    return $map[$key] ?? $status;
+}
+
+// Conversion inverse (Syngas → Lengas), utilisée par
+// syngas_map_to_lengas_fields() aussi bien pour la recherche/validation
+// (section 4) que pour la réception de mises à jour (outil de
+// synchronisation, section 6.2). Une valeur non reconnue est renvoyée telle
+// quelle (jamais bloquant), même logique que le sens aller.
+function syngas_status_to_lengas(string $status): string {
+    $map = [
+        'En cours'    => 'en cours',
+        'Terminée'    => 'terminée',
+        'En pause'    => 'en pause',
+        'Abandonnée'  => 'abandonnée',
+    ];
+    return $map[trim($status)] ?? $status;
+}
+
 // ── Soumission d'une nouvelle série (section 6.1) ───────────────────────────
 // $series : fiche Lengas complète. Construit le payload attendu par
 // POST /series/submit à partir du mapping inverse (Lengas → Syngas).
@@ -626,7 +726,7 @@ function syngas_submit_series(array $series, int $timeout = 15): array {
         'genres'             => is_array($series['genres'] ?? null)
                                   ? implode(',', array_filter($series['genres']))
                                   : (string)($series['genres'] ?? ''),
-        'status'             => (string)($series['status'] ?? ''),
+        'status'             => syngas_status_from_lengas((string)($series['status'] ?? '')),
         'mangaupdates_url'   => (string)($series['mangaupdates_url'] ?? ''),
         'babelio_url'        => (string)($series['babelio_url'] ?? ''),
         'mature'             => (bool)($series['mature'] ?? false),
@@ -637,15 +737,34 @@ function syngas_submit_series(array $series, int $timeout = 15): array {
         $payload['volumes_count'] = $volumes_count;
     }
 
-    // Vignette : on transmet l'URL locale résolue (perso ou Anilist n'a pas
-    // lieu d'être ici, Mangathèque uniquement) — Syngas la télécharge lui-même
-    // à titre d'aperçu, seulement si la soumission est validée par un
-    // modérateur (voir la note SSRF du document « Création de Syngas »).
-    // Une vignette purement locale (fichier sur ce serveur, jamais publié
-    // ailleurs) n'est pas exploitable par Syngas depuis l'extérieur : on ne
-    // l'envoie donc que si elle ressemble à une URL absolue.
+    // Vignette : Syngas la télécharge lui-même à titre d'aperçu depuis l'URL
+    // fournie, seulement si la soumission est validée par un modérateur (voir
+    // la note SSRF du document « Création de Syngas ») — il lui faut donc une
+    // URL absolue et PUBLIQUEMENT accessible, jamais un chemin local.
+    //
+    // series_thumbnail() ne renvoie que le chemin relatif sur le disque du
+    // serveur Lengas (ex. "uploads/abcd1234.jpg"), jamais une URL absolue :
+    // c'est vrai aussi bien pour une vignette perso qu'une vignette Anilist
+    // (toutes deux stockées localement dans uploads/, contrairement à ce que
+    // suggère leur origine). Un simple test "commence par http(s)://" échoue
+    // donc SYSTÉMATIQUEMENT sur ce chemin, et thumbnail_source_url n'était en
+    // conséquence jamais transmis à Syngas — ni dans uploads/pending côté
+    // Syngas (rien n'était téléchargé), ni sur la fiche une fois la
+    // soumission validée par un modérateur.
+    //
+    // og_absolute_url() (includes/opengraph.php) résout déjà ce même besoin
+    // pour les balises OpenGraph (og:image) : construire une URL absolue
+    // publique à partir d'un chemin relatif à la racine du site. On la
+    // réutilise ici plutôt que de dupliquer le calcul scheme+host+base_path.
     $local_thumb = function_exists('series_thumbnail') ? series_thumbnail($series, '') : ($series['image'] ?? '');
-    if ($local_thumb !== '' && preg_match('#^https?://#i', $local_thumb)) {
+    if ($local_thumb !== '' && function_exists('og_absolute_url')) {
+        $payload['thumbnail_source_url'] = og_absolute_url($local_thumb);
+    } elseif ($local_thumb !== '' && preg_match('#^https?://#i', $local_thumb)) {
+        // Repli si includes/opengraph.php n'est pas chargé pour une raison
+        // quelconque (défense en profondeur, ne devrait pas se produire :
+        // admin.php et fonctions/tools.php le chargent tous deux) : on
+        // n'envoie alors que ce qui ressemble déjà à une URL absolue,
+        // exactement le comportement d'avant ce correctif.
         $payload['thumbnail_source_url'] = $local_thumb;
     }
 
@@ -659,6 +778,88 @@ function syngas_submit_series(array $series, int $timeout = 15): array {
         'submission_id' => (string)($res['data']['submission_id'] ?? ''),
         'status'        => (string)($res['data']['status'] ?? 'en_attente'),
         'error'         => '',
+    ];
+}
+
+// ── Proposition de modification sur une fiche existante (Lengas → Syngas) ──
+//
+// Contrairement à syngas_submit_series() (nouvelle fiche, modération dans
+// « Séries en attente »), cette fonction cible une fiche Syngas DÉJÀ liée
+// (syngas_uid connu) et dépose une proposition de modification dans
+// « Propositions de modification » côté Syngas — révisée par un modérateur
+// avant application, jamais écrite directement.
+//
+// $syngas_uid : identifiant de la fiche Syngas ciblée.
+// $fields     : UNIQUEMENT les champs Lengas qui diffèrent réellement de la
+// fiche Syngas actuelle (le diff est calculé par l'appelant — voir
+// syngas_sync_send_updates_targets() dans fonctions/tools/syngas.php —
+// jamais recalculé ici) ; mêmes clés que syngas_submit_series() (name,
+// author, publisher, other_contributors, genres, status, mangaupdates_url,
+// babelio_url, mature, volumes_count). $thumbnail_changed : si true, la
+// vignette locale actuelle est jointe en tant que thumbnail_source_url (même
+// principe et mêmes contraintes que syngas_submit_series() — voir sa note
+// détaillée sur og_absolute_url()).
+//
+// Nécessite une route API dédiée côté Syngas (POST /series/{id}/propose-edit,
+// authentifiée par clé d'instance), absente du Syngas initial : edit_proposals
+// n'acceptait jusqu'ici que des comptes web connectés (proposer.php). Voir le
+// patch Syngas fourni avec cette fonctionnalité — sans lui, cet appel échoue
+// en 404.
+//
+// Retourne ['ok'=>bool, 'proposal_id'=>string, 'error'=>string].
+function syngas_propose_edit(string $syngas_uid, array $fields, bool $thumbnail_changed, array $series, int $timeout = 15): array {
+    $syngas_uid = trim($syngas_uid);
+    if ($syngas_uid === '') {
+        return ['ok' => false, 'proposal_id' => '', 'error' => 'Identifiant Syngas manquant.'];
+    }
+    if (empty($fields) && !$thumbnail_changed) {
+        return ['ok' => false, 'proposal_id' => '', 'error' => 'Aucun changement à proposer.'];
+    }
+
+    $payload = [];
+    foreach ($fields as $key => $value) {
+        if ($key === 'status') {
+            $payload['status'] = syngas_status_from_lengas((string)$value);
+            continue;
+        }
+        if (in_array($key, ['other_contributors', 'genres'], true)) {
+            $payload[$key] = is_array($value) ? implode(',', array_filter($value)) : (string)$value;
+            continue;
+        }
+        if ($key === 'mature') {
+            $payload['mature'] = (bool)$value;
+            continue;
+        }
+        $payload[$key] = (string)$value;
+    }
+
+    // Nombre de tomes VF : jamais recalculé ici — repris tel quel du volumes
+    // fourni par l'appelant s'il fait partie du diff (même logique que le
+    // reste des champs, voir la note ci-dessus).
+    if (isset($fields['volumes_count'])) {
+        $payload['volumes_count'] = (int)$fields['volumes_count'];
+    }
+
+    // Vignette : même repli/raison que syngas_submit_series() — voir sa note
+    // détaillée sur og_absolute_url() plus haut dans ce fichier.
+    if ($thumbnail_changed) {
+        $local_thumb = function_exists('series_thumbnail') ? series_thumbnail($series, '') : ($series['image'] ?? '');
+        if ($local_thumb !== '' && function_exists('og_absolute_url')) {
+            $payload['thumbnail_source_url'] = og_absolute_url($local_thumb);
+        } elseif ($local_thumb !== '' && preg_match('#^https?://#i', $local_thumb)) {
+            $payload['thumbnail_source_url'] = $local_thumb;
+        }
+    }
+
+    $res = syngas_request('POST', '/series/' . rawurlencode($syngas_uid) . '/propose-edit', $payload, $timeout);
+    if (!$res['ok']) {
+        return ['ok' => false, 'proposal_id' => '', 'error' => $res['error']];
+    }
+
+    return [
+        'ok'          => true,
+        'proposal_id' => (string)($res['data']['proposal_id'] ?? ''),
+        'error'       => '',
     ];
 }
 

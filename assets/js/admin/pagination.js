@@ -204,6 +204,7 @@ function createLightSeriesCard(series) {
             <div class="series-badges series-badges--links">
                 ${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}
                 ${series.babelio_url ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}
+                ${series.syngas_uid ? `<a class="syngas-badge" href="${syngasPublicUrl(series.syngas_uid)}" target="_blank" rel="noopener" title="Voir sur Syngas"><img src="assets/img/synlogo.png" alt="Syngas" class="syngas-logo"></a>` : ''}
             </div>
             <div class="series-badges series-badges--tags">
                 ${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}

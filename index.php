@@ -14,6 +14,11 @@ require_once 'includes/anilist.php';
 // recherche publique conserve donc exactement son comportement.
 require_once 'includes/helpers.php';
 require_once 'includes/opengraph.php';
+// Uniquement pour syngas_site_url() (badge de lien "Voir sur Syngas" de la
+// modale de détails publique) — aucun appel réseau à Syngas n'est fait
+// depuis cette page, cette fonction ne fait que dériver une URL d'affichage
+// à partir de la constante SYNGAS_API_URL.
+require_once 'includes/syngas.php';
 
 $data = load_data();
 $options = load_options();
@@ -722,6 +727,10 @@ $data = array_values(apply_refine_filter($data, $refine_categories, $refine_genr
         // Contexte de typage (collection affichée + registre allégé).
         window.currentSeriesType = <?= json_encode($current_type) ?>;
         window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
+        // Racine publique de Syngas — voir la même variable dans admin.php
+        // pour le détail (badge de lien "Voir sur Syngas" de la modale de
+        // détails, public.js).
+        window.syngasSiteUrl = <?= json_encode(syngas_site_url()) ?>;
         // Taille du lot initial rendu server-side ci-dessus (cf. $per_page_public
         // en tête de fichier). public.js s'aligne dessus pour son scroll infini :
         // sans cela, un $per_page_public modifié ici sans toucher au JS ferait

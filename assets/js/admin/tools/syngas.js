@@ -94,6 +94,10 @@ document.addEventListener('click', (e) => {
         syLoadReceive();
     } else if (e.target.closest('#syngas-receive-save-btn')) {
         syReceiveSaveAll();
+    } else if (e.target.closest('#syngas-send-updates-btn')) {
+        sySendUpdatesLoad();
+    } else if (e.target.closest('#syngas-send-updates-confirm-btn')) {
+        sySendUpdatesConfirm();
     }
 });
 
@@ -420,4 +424,239 @@ function syReceiveSaveAll() {
         showErrorModal('Une erreur est survenue.');
         if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Enregistrer les modifications cochées'; }
     });
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Envoi de mises à jour (Lengas → Syngas, « Propositions de modification »)
+//
+// Même schéma en deux temps que la réception : flux SSE de comparaison
+// (syngas_send_updates_stream) qui construit le récapitulatif avec case à
+// cocher par série, puis un second flux SSE d'envoi effectif
+// (syngas_send_updates_apply_stream) une fois la sélection confirmée —
+// jamais d'écriture avant cette confirmation explicite, même principe que
+// l'envoi de nouvelles séries.
+// ──────────────────────────────────────────────────────────────────────────
+
+let syngasSendUpdatesSource = null;
+const syngasSendUpdatesDiffs = {}; // series_id -> diff_info complet (voir syngas_sync_compute_reverse_diff)
+
+function sySendUpdatesLoad() {
+    const btn      = document.getElementById('syngas-send-updates-btn');
+    const textEl   = document.getElementById('syngas-send-updates-text');
+    const spinner  = document.getElementById('syngas-send-updates-spinner');
+    const progress = document.getElementById('syngas-send-updates-progress');
+    const results  = document.getElementById('syngas-send-updates-results');
+    if (!results || !progress) return;
+
+    if (syngasSendUpdatesSource) { syngasSendUpdatesSource.close(); syngasSendUpdatesSource = null; }
+    Object.keys(syngasSendUpdatesDiffs).forEach(k => delete syngasSendUpdatesDiffs[k]);
+
+    if (btn) btn.disabled = true;
+    if (textEl) textEl.textContent = 'Vérification en cours...';
+    if (spinner) spinner.style.display = 'inline-block';
+
+    results.innerHTML = '<div class="syngas-sync-form" id="syngas-send-updates-form"></div>';
+
+    let current = 0, total = 0, currentName = '';
+    const renderProgress = () => {
+        const countText = total > 0 ? `${current} / ${total}` : `${current}`;
+        progress.innerHTML =
+            `<p class="analysis-progress"><span class="progress-spinner"></span>` +
+            `Vérification : <strong>${syEscHtml(currentName) || '…'}</strong> ` +
+            `<span class="progress-count">(${countText})</span></p>`;
+    };
+    renderProgress();
+
+    let anyMatch = false;
+    const source = new EventSource('outil-syngas.php?action=syngas_send_updates_stream');
+    syngasSendUpdatesSource = source;
+
+    source.addEventListener('progress', (ev) => {
+        const d = JSON.parse(ev.data);
+        current = d.current; total = d.total; currentName = d.name;
+        renderProgress();
+    });
+
+    source.addEventListener('banned', (ev) => {
+        const d = JSON.parse(ev.data);
+        syShowBannedBanner(d.message, d.reason);
+    });
+
+    source.addEventListener('match', (ev) => {
+        const d = JSON.parse(ev.data);
+        if (d.series) { syAppendSendUpdatesSeries(d.series); anyMatch = true; }
+    });
+
+    source.addEventListener('done', (ev) => {
+        source.close(); syngasSendUpdatesSource = null;
+        progress.innerHTML = '';
+        syFinalizeSendUpdates(anyMatch);
+        if (btn) btn.disabled = false;
+        if (textEl) textEl.textContent = 'Relancer la vérification';
+        if (spinner) spinner.style.display = 'none';
+    });
+
+    source.onerror = () => {
+        source.close(); syngasSendUpdatesSource = null;
+        progress.innerHTML = '';
+        if (!anyMatch) results.innerHTML = '<p class="error-text">La vérification a été interrompue. Veuillez réessayer.</p>';
+        if (btn) btn.disabled = false;
+        if (textEl) textEl.textContent = 'Vérifier les différences';
+        if (spinner) spinner.style.display = 'none';
+    };
+}
+
+function syAppendSendUpdatesSeries(series) {
+    const form = document.getElementById('syngas-send-updates-form');
+    if (!form) return;
+
+    // Mémorisé pour l'envoi final (évite de reconstruire le diff à partir
+    // d'un nouvel appel réseau à Syngas au moment de confirmer).
+    syngasSendUpdatesDiffs[series.series_id] = series;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'syngas-sync-series';
+    wrap.dataset.seriesId = series.series_id;
+
+    let html = `
+        <label class="syngas-sync-checkbox-row">
+            <input type="checkbox" class="syngas-send-updates-checkbox" checked>
+            <span class="syngas-sync-series-name">${syEscHtml(series.name)}</span>
+        </label>
+        <div class="syngas-sync-diff">
+    `;
+    Object.keys(series.diff).forEach(field => {
+        const label = SYNGAS_DIFF_LABELS[field] || field;
+        const entry = series.diff[field];
+        const isThumb = field === 'thumbnail';
+        html += `
+            <div class="syngas-sync-diff-row">
+                <span class="syngas-sync-diff-field">${syEscHtml(label)}</span>
+                <span class="syngas-sync-diff-values">
+                    <span class="syngas-sync-diff-old">${isThumb ? (entry.old && entry.old !== '(aucune)' ? 'Vignette Syngas actuelle' : '(aucune)') : syEscHtml(entry.old || '(vide côté Syngas)')}</span>
+                    <span class="syngas-sync-diff-new">${isThumb ? syEscHtml(entry.new) : syEscHtml(entry.new)}</span>
+                </span>
+            </div>
+        `;
+    });
+    html += `</div>`;
+    wrap.innerHTML = html;
+    form.appendChild(wrap);
+}
+
+function syFinalizeSendUpdates(anyMatch) {
+    const results = document.getElementById('syngas-send-updates-results');
+    if (!results) return;
+
+    if (!anyMatch) {
+        results.innerHTML = '<p class="mu-associate-empty">Aucune différence à proposer — vos séries liées à Syngas sont déjà à jour côté Syngas. ✅</p>';
+        return;
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'tools-actions';
+    actions.innerHTML = `
+        <button type="button" id="syngas-send-updates-toggle-all" class="button button-opt">Tout décocher</button>
+        <button type="button" id="syngas-send-updates-confirm-btn" class="button button-ats">Envoyer les propositions cochées</button>
+    `;
+    results.appendChild(actions);
+}
+
+// Bouton « Tout cocher / tout décocher » du récapitulatif de mises à jour
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#syngas-send-updates-toggle-all');
+    if (!btn) return;
+    const checkboxes = document.querySelectorAll('#syngas-send-updates-form .syngas-send-updates-checkbox');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => { cb.checked = !allChecked; });
+    btn.textContent = allChecked ? 'Tout cocher' : 'Tout décocher';
+});
+
+// Étape 2 : envoi effectif des propositions cochées, via flux SSE — même
+// principe que syConfirmSend() (envoi de nouvelles séries), mais vers
+// syngas_send_updates_apply_stream et avec les diffs déjà calculés transmis
+// en paramètre (jamais recalculés côté serveur à cette étape).
+let syngasSendUpdatesApplySource = null;
+function sySendUpdatesConfirm() {
+    const blocks = document.querySelectorAll('#syngas-send-updates-form .syngas-sync-series');
+    const selections = {};
+    let count = 0;
+
+    blocks.forEach(block => {
+        const id = block.dataset.seriesId;
+        const checkbox = block.querySelector('.syngas-send-updates-checkbox');
+        if (checkbox && checkbox.checked) {
+            selections[id] = true;
+            count++;
+        }
+    });
+
+    if (count === 0) {
+        showCustomAlert('Information', 'Aucune série cochée.');
+        return;
+    }
+
+    const progress = document.getElementById('syngas-send-updates-progress');
+    const results  = document.getElementById('syngas-send-updates-results');
+    if (!progress || !results) return;
+
+    if (syngasSendUpdatesApplySource) { syngasSendUpdatesApplySource.close(); syngasSendUpdatesApplySource = null; }
+    results.innerHTML = '';
+
+    let current = 0, total = 0, currentName = '';
+    const renderProgress = () => {
+        const countText = total > 0 ? `${current} / ${total}` : `${current}`;
+        progress.innerHTML =
+            `<p class="analysis-progress"><span class="progress-spinner"></span>` +
+            `Envoi : <strong>${syEscHtml(currentName) || '…'}</strong> ` +
+            `<span class="progress-count">(${countText})</span></p>`;
+    };
+    renderProgress();
+
+    const params = new URLSearchParams();
+    params.set('action', 'syngas_send_updates_apply_stream');
+    params.set('selections', JSON.stringify(selections));
+    // EventSource ne peut faire que des requêtes GET : diffs transite donc en
+    // paramètre d'URL plutôt qu'en corps de requête POST (comme syngas_receive_save,
+    // qui lui n'a pas cette contrainte SSE). Reste réaliste pour ce volume :
+    // seules les séries COCHÉES sont incluses (pas toute la sélection
+    // affichée), quelques champs texte courts chacune — largement sous les
+    // limites d'URL habituelles (~8000 caractères) même pour plusieurs
+    // dizaines de séries. Un envoi par lots serait à envisager si ce
+    // plafond devenait un problème réel en pratique.
+    params.set('diffs', JSON.stringify(syngasSendUpdatesDiffs));
+    const source = new EventSource(`outil-syngas.php?${params.toString()}`);
+    syngasSendUpdatesApplySource = source;
+
+    source.addEventListener('progress', (ev) => {
+        const d = JSON.parse(ev.data);
+        current = d.current; total = d.total; currentName = d.name;
+        renderProgress();
+    });
+
+    source.addEventListener('banned', (ev) => {
+        const d = JSON.parse(ev.data);
+        syShowBannedBanner(d.message, d.reason);
+    });
+
+    source.addEventListener('done', (ev) => {
+        const d = JSON.parse(ev.data);
+        source.close(); syngasSendUpdatesApplySource = null;
+        progress.innerHTML = '';
+
+        let html = `<p class="hint ok">✔️ ${d.sent} proposition(s) envoyée(s) vers « Propositions de modification » sur Syngas. Elles seront appliquées après validation d'un modérateur.</p>`;
+        if (d.failed && d.failed.length > 0) {
+            html += `<details class="mu-associate-noresults mu-associate-failed">
+                <summary>⚠️ ${d.failed.length} série(s) en échec</summary>
+                <ul>${d.failed.map(f => `<li>${syEscHtml(f.name)} — ${syEscHtml(f.error)}</li>`).join('')}</ul>
+            </details>`;
+        }
+        results.innerHTML = html;
+    });
+
+    source.onerror = () => {
+        source.close(); syngasSendUpdatesApplySource = null;
+        progress.innerHTML = '';
+        results.innerHTML = '<p class="error-text">L\'envoi a été interrompu. Rechargez la page pour voir où il s\'est arrêté.</p>';
+    };
 }

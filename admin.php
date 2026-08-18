@@ -815,6 +815,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $edit_reading_abandoned = !empty($_POST['edit_reading_abandoned']);
     $edit_rating = sanitize_rating($_POST['edit_rating'] ?? '');
     $edit_reread_count = max(0, (int)($_POST['edit_reread_count'] ?? 0));
+    // isset() plutôt que ?? '' : un champ absent (formulaire non régénéré
+    // côté client après une mise à jour) ne doit jamais écraser l'UID Syngas
+    // existant — seule une valeur explicitement soumise (même vide, pour
+    // délier la série) doit être prise en compte. Voir update_series().
+    $edit_syngas_uid = isset($_POST['edit_syngas_uid']) ? trim($_POST['edit_syngas_uid']) : null;
 
     // Requête AJAX (édition sans rechargement de page) : la réponse devient
     // du JSON contenant la carte "light" à jour, plutôt qu'une redirection.
@@ -843,7 +848,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     // (upsert_series_row() + replace_series_volumes()) au moment de
     // l'appel. $result['data'] ne sert qu'à réafficher la collection à
     // jour côté admin.
-    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned, $edit_rating, $edit_reread_count);
+    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned, $edit_rating, $edit_reread_count, $edit_syngas_uid);
     if ($result['success']) {
         // Réchauffer le cache MangaUpdates pour la série modifiée
         if ($mangaupdates_url !== '') {
@@ -1301,7 +1306,7 @@ if ($current_type === 'anime') {
                     <p class="hint">Utilisez notamment "manga" ou "light-novel" pour identifier le type de publication — Syngas s'appuie sur ce tag pour reconnaître vos séries.</p>
                     <p>Genres :</p>
                     <input type="text" name="genres" id="add-series-genres" placeholder="Genres (séparés par des virgules) (facultatif)" autocomplete="off">
-                    <p class="hint">Les classifications comme Shonen, Seinen, Action, Romance… se saisissent ici, pas dans Catégories.</p>
+                    <p class="hint">Les classifications comme Shonen, Seinen, Action, Romance… se saisissent ici, pas dans Catégories. <a tabindex="0" data-hint="<?= htmlspecialchars(syngas_accepted_genres_hint()) ?>">Genres reconnus par Syngas</a></p>
                     <p>Nombre de tomes à créer :</p>
                     <input type="number" name="volumes_count" id="volumes_count" placeholder="Nombre de tomes" min="1" value="1" autocomplete="off">
                     <p>Statut des tomes :</p>
@@ -1326,6 +1331,9 @@ if ($current_type === 'anime') {
                     <p>URL Babelio :</p>
                     <input type="text" name="babelio_url" placeholder="https://www.babelio.com/serie/… (ou …/livres/… pour un one-shot)" autocomplete="off">
                     <p class="hint"><a tabindex="0" data-hint="L'URL Babelio permet de connaître le nombre de tomes réellement parus en France, via le service Babengas (onglet « Vérification Babelio » de la page Outils). Sur babelio.com, ouvrez la fiche SÉRIE (adresse en /serie/…) et copiez l'URL complète. Pour un one-shot (un seul tome, sans fiche série), collez l'adresse de la fiche du tome (/livres/…).">À quoi ça sert ? Où la trouver ?</a></p>
+                    <p>UID Syngas :</p>
+                    <input type="text" name="syngas_uid" id="add-series-syngas-uid" placeholder="Identifiant de la fiche Syngas liée (facultatif)" autocomplete="off">
+                    <p class="hint">Rempli automatiquement par la « Recherche Syngas » ci-dessus à la validation d'un résultat — modifiable ou effaçable à la main si besoin.</p>
                     <label>
                         <input type="checkbox" name="mature"> Contenu mature 🔞
                     </label>
@@ -1353,9 +1361,12 @@ if ($current_type === 'anime') {
                     <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp">
                     <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
                     <input type="hidden" id="add-volume-series-id" name="series_id">
-                    <!-- Posés automatiquement par la section « Recherche Syngas » ci-dessus
-                         à la validation d'une correspondance — jamais saisis à la main. -->
-                    <input type="hidden" id="add-series-syngas-uid" name="syngas_uid" value="">
+                    <!-- syngas_uid a désormais son propre champ visible plus haut (juste
+                         après la section « Recherche Syngas ») — toujours posé
+                         automatiquement à la validation d'un résultat, mais modifiable à
+                         la main si besoin. Ces deux-ci restent cachés : la vignette et le
+                         nombre de tomes VF Syngas n'ont pas de raison d'être modifiés à la
+                         main indépendamment d'une validation de correspondance. -->
                     <input type="hidden" id="add-series-syngas-thumbnail-path" name="syngas_thumbnail_path" value="">
                     <input type="hidden" id="add-series-syngas-volumes-count" name="syngas_volumes_count" value="">
                     <button type="submit" name="add_series">Ajouter</button>
@@ -1495,11 +1506,14 @@ if ($current_type === 'anime') {
                     <p class="hint">Utilisez notamment "manga" ou "light-novel" pour identifier le type de publication — Syngas s'appuie sur ce tag pour reconnaître vos séries.</p>
                     <p>Genres :</p>
                     <input type="text" name="edit_genres" id="edit-series-genres" placeholder="Genres (séparés par des virgules)" autocomplete="off">
-                    <p class="hint">Les classifications comme Shonen, Seinen, Action, Romance… se saisissent ici, pas dans Catégories.</p>
+                    <p class="hint">Les classifications comme Shonen, Seinen, Action, Romance… se saisissent ici, pas dans Catégories. <a tabindex="0" data-hint="<?= htmlspecialchars(syngas_accepted_genres_hint()) ?>">Genres reconnus par Syngas</a></p>
                     <p>URL MangaUpdates (facultatif) :</p>
                     <input type="text" name="edit_mangaupdates_url" id="edit-series-mangaupdates-url" placeholder="https://www.mangaupdates.com/series/xxxxxxx/nom-de-la-serie" autocomplete="off">
                     <p>URL Babelio (facultatif) :</p>
                     <input type="text" name="edit_babelio_url" id="edit-series-babelio-url" placeholder="https://www.babelio.com/serie/… (ou …/livres/… pour un one-shot)" autocomplete="off">
+                    <p>UID Syngas :</p>
+                    <input type="text" name="edit_syngas_uid" id="edit-series-syngas-uid" placeholder="Identifiant de la fiche Syngas liée (facultatif)" autocomplete="off">
+                    <p class="hint">Rempli automatiquement par la « Recherche Syngas » ci-dessus à la validation d'un résultat — modifiable ou effaçable à la main si besoin.</p>
                     <p>Nombre de nouveaux tomes à créer :</p>
                     <input type="number" name="new_volumes_count" id="edit-series-new-volumes-count" placeholder="Nombre de nouveaux tomes" min="0" value="0" autocomplete="off">
                     <p>Statut des nouveaux tomes :</p>
@@ -1764,6 +1778,11 @@ if ($current_type === 'anime') {
         // couleur de chaque type), pour les badges de l'autocomplétion.
         window.currentSeriesType = <?= json_encode($current_type) ?>;
         window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
+        // Racine publique de Syngas (site web, pas l'API) — dérivée de
+        // SYNGAS_API_URL (config.php) en retirant le segment "/api/v1", pour
+        // construire les liens "Voir sur Syngas" des badges de liens et de la
+        // section « Recherche Syngas » sans dupliquer l'URL en dur côté JS.
+        window.syngasSiteUrl = <?= json_encode(syngas_site_url()) ?>;
         // Plafonds des éditions physiques, lus depuis le PHP pour qu'ils ne
         // soient définis qu'à un seul endroit (includes/helpers.php).
         window.animeEditionsMax = <?= json_encode(series_editions_max()) ?>;

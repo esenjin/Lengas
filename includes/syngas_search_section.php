@@ -16,24 +16,20 @@
 $__syngas_context = $__syngas_context ?? 'add';
 $__syngas_prefix  = $__syngas_context === 'edit' ? 'edit-series-syngas' : 'add-series-syngas';
 ?>
+
 <div class="syngas-search-section" id="<?= htmlspecialchars($__syngas_prefix) ?>-section" data-context="<?= htmlspecialchars($__syngas_context) ?>">
     <h3 class="syngas-search-title">🔎 Recherche Syngas</h3>
-    <p class="hint">Cherchez si cette série existe déjà sur Syngas pour pré-remplir sa fiche automatiquement.</p>
+    <p class="hint">
+        Cherchez si cette série existe déjà sur Syngas pour pré-remplir sa fiche automatiquement — par nom, ou en collant directement un identifiant Syngas.
+        <a class="syngas-search-site-link" href="<?= htmlspecialchars(syngas_site_url()) ?>" target="_blank" rel="noopener">Accéder à Syngas ↗</a>
+    </p>
     <div class="syngas-search-banned-banner" id="<?= htmlspecialchars($__syngas_prefix) ?>-banned" hidden>
         La connexion de ce site à Syngas a été suspendue.
         <span class="syngas-search-banned-reason"></span>
     </div>
     <div class="syngas-search-row">
-        <input type="text" class="syngas-search-input" id="<?= htmlspecialchars($__syngas_prefix) ?>-input" placeholder="Nom de la série sur Syngas" autocomplete="off">
+        <input type="text" class="syngas-search-input" id="<?= htmlspecialchars($__syngas_prefix) ?>-input" placeholder="Nom de la série, ou identifiant Syngas" autocomplete="off">
         <button type="button" class="button button-opt syngas-search-btn" id="<?= htmlspecialchars($__syngas_prefix) ?>-btn">
-            <span class="syngas-search-btn-text">Chercher</span>
-            <span class="spinner syngas-search-spinner" hidden></span>
-        </button>
-    </div>
-    <button type="button" class="syngas-search-toggle-id" id="<?= htmlspecialchars($__syngas_prefix) ?>-toggle-id">Chercher par identifiant Syngas</button>
-    <div class="syngas-search-row syngas-search-row--id" id="<?= htmlspecialchars($__syngas_prefix) ?>-id-row" hidden>
-        <input type="text" class="syngas-search-input" id="<?= htmlspecialchars($__syngas_prefix) ?>-id-input" placeholder="Identifiant Syngas (ex. abc123)" autocomplete="off">
-        <button type="button" class="button button-opt syngas-search-btn" id="<?= htmlspecialchars($__syngas_prefix) ?>-id-btn">
             <span class="syngas-search-btn-text">Chercher</span>
             <span class="spinner syngas-search-spinner" hidden></span>
         </button>

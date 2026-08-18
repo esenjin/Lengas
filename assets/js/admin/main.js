@@ -1,3 +1,14 @@
+// URL publique d'une fiche Syngas à partir de son seul UID (syngas_uid),
+// pour le badge de lien "Voir sur Syngas" (carte admin, pagination.js, et
+// modale de détails publique, public.js). window.syngasSiteUrl est exposé
+// par admin.php ET index.php (dérivé de SYNGAS_API_URL côté serveur, voir
+// includes/syngas.php::syngas_site_url()) — même format d'URL que
+// series_public_url() côté Syngas ("serie.php?id=…").
+function syngasPublicUrl(syngasUid) {
+    if (!syngasUid || !window.syngasSiteUrl) return '';
+    return window.syngasSiteUrl.replace(/\/$/, '') + '/serie.php?id=' + encodeURIComponent(syngasUid);
+}
+
 // Notation subjective d'une série → badge emoji (texte au survol).
 // Renvoie '' si la série n'a pas de note.
 function ratingBadgeHtml(series) {

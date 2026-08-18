@@ -351,20 +351,31 @@ Au tout premier appel à Syngas (une recherche, ou l'outil de synchronisation, s
 
 ### Recherche Syngas (ajout et édition d'une série)
 
-Dans la modale d'ajout **et** la modale d'édition d'une série manga, une section « Recherche Syngas » vous permet de chercher si la série existe déjà sur Syngas. Saisissez un nom et cliquez sur « Chercher » (la recherche n'est jamais déclenchée au fil de la frappe) : jusqu'à 5 résultats s'affichent, chacun avec un lien « Voir sur Syngas » pour vérifier visuellement avant de valider.
+Dans la modale d'ajout **et** la modale d'édition d'une série manga, une section « Recherche Syngas » vous permet de chercher si la série existe déjà sur Syngas. Saisissez un nom et cliquez sur « Chercher » (la recherche n'est jamais déclenchée au fil de la frappe) : jusqu'à 5 résultats s'affichent, chacun avec un lien « Voir sur Syngas » pour vérifier visuellement avant de valider. Un lien « Accéder à Syngas ↗ » en haut de cette section ouvre directement le site Syngas dans un nouvel onglet.
 
 Au clic sur « Valider » un résultat : tous les champs non vides renvoyés par Syngas **remplacent intégralement** les champs Lengas correspondants (un champ vide côté Syngas ne touche jamais à votre valeur locale), la vignette est téléchargée et stockée localement, et la série est liée immédiatement — pas besoin de repasser par l'outil de synchronisation pour formaliser le lien.
 
-> 💡 Le champ « Catégories » doit contenir littéralement le mot **« manga »** ou **« light-novel »** pour qu'une série soit reconnue par Syngas — un texte d'aide le rappelle sous le champ concerné dans les modales.
+Le champ « UID Syngas » (visible dans les deux modales, sous la section de recherche) montre l'identifiant de la fiche Syngas actuellement liée, s'il y en a une. Il est rempli automatiquement à la validation d'une correspondance, mais reste **modifiable ou effaçable à la main** si besoin — le lien Syngas n'est jamais verrouillé. Un UID déjà utilisé par une autre série de votre collection est refusé avec un message explicite.
+
+> 💡 Le champ « Catégories » doit contenir littéralement le mot **« manga »** ou **« light-novel »** pour qu'une série soit reconnue par Syngas — un texte d'aide le rappelle sous le champ concerné dans les modales. Un lien survolable « Genres reconnus par Syngas », à côté du champ Genres, rappelle la liste fermée des genres que Syngas accepte réellement — un genre saisi hors de cette liste reste conservé dans Lengas mais sera ignoré par Syngas à l'envoi.
+
+### Badges de liens
+
+Comme MangaUpdates et Babelio, une série liée à Syngas affiche un badge cliquable vers sa fiche Syngas — sur la carte admin et dans la modale de détails publique.
 
 ### Outil « Synchronisation Syngas »
 
-Accessible depuis la page Outils, cet outil comporte deux sections :
+Accessible depuis la page Outils, cet outil comporte trois sections :
 
 - **Envoyer des séries à Syngas** : propose à Syngas chaque série manga/light-novel qui n'y est pas encore liée. Un récapitulatif liste les séries qui seront envoyées (avec possibilité de décocher celles à exclure) — rien n'est envoyé sans confirmation explicite. La détection de doublon se fait automatiquement côté Syngas : Lengas n'a pas besoin d'en chercher une lui-même. La série n'est liée que plus tard, une fois validée par la modération Syngas — soit automatiquement détecté à votre prochaine visite de cette page, soit en la retrouvant via la « Recherche Syngas ».
 - **Récupérer les mises à jour Syngas** : compare chaque série déjà liée à sa fiche Syngas actuelle, champ par champ, et vous laisse valider les changements avant enregistrement (case à cocher par série, ou tous à la fois). Une série sans aucun changement n'apparaît pas dans le récapitulatif.
+- **Envoyer des mises à jour à Syngas** : le sens inverse — compare chaque série déjà liée à sa fiche Syngas actuelle et signale les champs qui diffèrent côté Lengas (donc que Syngas ne connaît pas encore). Un récapitulatif liste les séries avec différences, case à cocher par série ou toutes à la fois. Contrairement à l'envoi d'une nouvelle série, ceci dépose une **proposition de modification** sur la fiche existante — visible côté Syngas dans « Propositions de modification » (jamais dans « Séries en attente ») — qui attend la validation d'un modérateur avant d'être appliquée.
 
 Le nombre de tomes VF renvoyé par Syngas vient compléter les outils de cohérence (priorité Syngas → Babengas → MangaUpdates pour la « meilleure référence », sans jamais rien supprimer des autres sources).
+
+### Association en masse des anciennes séries (`ajout_syngas_uid.php`)
+
+Si votre collection existait déjà avant l'intégration Syngas, un script à usage unique — `ajout_syngas_uid.php`, à la racine du site — recherche automatiquement une correspondance sur Syngas pour chaque série manga/light-novel encore sans UID Syngas, en comparant titre, auteur et éditeur. Les correspondances suffisamment fiables sont liées automatiquement (uniquement l'UID est posé, aucun autre champ n'est modifié) ; les correspondances moins sûres sont listées dans un rapport pour vérification manuelle. Ouvrez `ajout_syngas_uid.php` dans votre navigateur une fois, puis **supprimez ce fichier du serveur** — même précaution que `generate_password.php`.
 
 ### Bannissement
 

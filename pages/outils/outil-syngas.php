@@ -249,6 +249,147 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['tool_action'] ?? '') === '
     exit;
 }
 
+// ── Endpoint SSE : comparaison des séries déjà liées (envoi de mises à jour) ─
+// Sens inverse de syngas_receive_stream ci-dessus : signale les champs qui
+// diffèrent côté LENGAS par rapport à la fiche Syngas actuelle — pas la
+// même chose que "Récupérer les mises à jour Syngas" (Syngas → Lengas).
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'syngas_send_updates_stream') {
+    @ini_set('output_buffering', 'off');
+    @ini_set('zlib.output_compression', false);
+    @set_time_limit(0);
+    while (ob_get_level()) ob_end_flush();
+
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('X-Accel-Buffering: no');
+
+    $sse = function (string $event, array $payload): void {
+        echo 'event: ' . $event . "\n";
+        echo 'data: ' . json_encode($payload) . "\n\n";
+        flush();
+    };
+
+    $targets = syngas_sync_send_updates_targets($data);
+    $total   = count($targets);
+    $current = 0;
+    $with_changes = 0;
+
+    // syngas_is_banned() revérifie déjà elle-même l'état si le flag a expiré
+    // (voir includes/syngas.php) : pas de second appel réseau explicite ici.
+    if (syngas_is_banned()) {
+        $sse('banned', ['message' => 'La connexion de ce site à Syngas a été suspendue.', 'reason' => syngas_banned_reason()]);
+        $sse('done', ['success' => true, 'total' => $total, 'with_changes' => 0]);
+        exit;
+    }
+
+    foreach ($targets as $series) {
+        $current++;
+        $sse('progress', ['current' => $current, 'total' => $total, 'name' => $series['name']]);
+
+        $diff_info = syngas_sync_compute_reverse_diff($series);
+
+        if ($diff_info === null) {
+            if (syngas_is_banned()) {
+                $sse('banned', ['message' => 'La connexion de ce site à Syngas a été suspendue.', 'reason' => syngas_banned_reason()]);
+                break;
+            }
+            continue;
+        }
+
+        $with_changes++;
+        $sse('match', ['series' => $diff_info]);
+        usleep(80000);
+    }
+
+    $sse('done', [
+        'success'      => true,
+        'total'        => $total,
+        'with_changes' => $with_changes,
+    ]);
+    exit;
+}
+
+// ── Endpoint SSE : envoi effectif des propositions sélectionnées ───────────
+// $_GET['selections'] : JSON { "<series_id>": true, … } — séries cochées
+// dans le récapitulatif (toutes celles avec un changement, par défaut).
+// $_GET['diffs']       : JSON { "<series_id>": {...} } — résultat de
+//                        syngas_sync_compute_reverse_diff() pour chaque
+//                        série, recalculé côté client à partir des
+//                        évènements SSE déjà reçus (même principe que
+//                        syngas_receive_save : pas de nouvel appel réseau à
+//                        Syngas pour reconstruire le diff ici).
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'syngas_send_updates_apply_stream') {
+    @ini_set('output_buffering', 'off');
+    @ini_set('zlib.output_compression', false);
+    @set_time_limit(0);
+    while (ob_get_level()) ob_end_flush();
+
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('X-Accel-Buffering: no');
+
+    $sse = function (string $event, array $payload): void {
+        echo 'event: ' . $event . "\n";
+        echo 'data: ' . json_encode($payload) . "\n\n";
+        flush();
+    };
+
+    $selections = json_decode($_GET['selections'] ?? '{}', true);
+    if (!is_array($selections)) $selections = [];
+    $diffs = json_decode($_GET['diffs'] ?? '{}', true);
+    if (!is_array($diffs)) $diffs = [];
+
+    // syngas_is_banned() revérifie déjà elle-même l'état si le flag a expiré
+    // (voir includes/syngas.php) : pas de second appel réseau explicite ici.
+    if (syngas_is_banned()) {
+        $sse('banned', ['message' => 'La connexion de ce site à Syngas a été suspendue.', 'reason' => syngas_banned_reason()]);
+        $sse('done', ['success' => true, 'total' => 0, 'sent' => 0, 'failed' => []]);
+        exit;
+    }
+
+    $selected_ids = array_keys(array_filter($selections));
+    $total   = count($selected_ids);
+    $current = 0;
+    $sent    = 0;
+    $failed  = [];
+
+    foreach ($selected_ids as $series_id) {
+        $diff_info = $diffs[$series_id] ?? null;
+        if (!is_array($diff_info) || empty($diff_info['syngas_uid'])) {
+            continue;
+        }
+
+        $found = find_series_by_id($data, $series_id);
+        if ($found === null) continue;
+        $series = $found['data'];
+
+        $current++;
+        $sse('progress', ['current' => $current, 'total' => $total, 'name' => $series['name']]);
+
+        $result = syngas_sync_send_update_one($series, $diff_info);
+
+        if (!$result['ok']) {
+            if (syngas_is_banned()) {
+                $sse('banned', ['message' => 'La connexion de ce site à Syngas a été suspendue.', 'reason' => syngas_banned_reason()]);
+                break;
+            }
+            $failed[] = ['name' => $series['name'], 'error' => $result['error']];
+            continue;
+        }
+
+        $sent++;
+        usleep(150000); // ~150 ms entre séries, par courtoisie envers Syngas
+    }
+
+    $sse('done', [
+        'success' => true,
+        'total'   => $total,
+        'sent'    => $sent,
+        'failed'  => $failed,
+    ]);
+    exit;
+}
+
 $tool_title    = 'Synchronisation Syngas';
 $tool_subtitle = 'Partagez et récupérez des fiches avec la base commune des mangathèques Lengas.';
 require __DIR__ . '/_layout_head.php';
@@ -281,6 +422,17 @@ require __DIR__ . '/_layout_head.php';
             </button>
             <div id="syngas-receive-progress"></div>
             <div id="syngas-receive-results"></div>
+        </div>
+
+        <div class="tools-section">
+            <h2>Envoyer des mises à jour à Syngas</h2>
+            <p>Compare chaque série déjà liée à Syngas à sa fiche actuelle, et vous laisse choisir lesquelles proposer en retour — série par série ou toutes à la fois. Les propositions apparaissent dans « Propositions de modification » côté Syngas (jamais dans « Séries en attente »), et attendent la validation d'un modérateur avant d'être appliquées.</p>
+            <button id="syngas-send-updates-btn" class="button button-opt">
+                <span id="syngas-send-updates-text">Vérifier les différences</span>
+                <span id="syngas-send-updates-spinner" class="spinner" style="display: none;"></span>
+            </button>
+            <div id="syngas-send-updates-progress"></div>
+            <div id="syngas-send-updates-results"></div>
         </div>
 
 <?php
