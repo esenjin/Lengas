@@ -463,6 +463,10 @@ function displayIntegrityResults(results) {
     container.innerHTML = html;
 
     // ── Événements des boutons de nettoyage ───────────────────────────────────
+    // Après un nettoyage, on relance la vérification en AJAX (et on réaffiche
+    // directement les nouveaux résultats) plutôt que de recharger la page :
+    // un rechargement complet perdait les résultats déjà affichés et obligeait
+    // à recliquer sur « Vérifier l'intégrité » pour les revoir.
     const postClean = (action, confirmMsg) => {
         showCustomConfirm('Confirmation', confirmMsg).then((confirmed) => {
             if (!confirmed) return;
@@ -475,7 +479,19 @@ function displayIntegrityResults(results) {
             .then(data => {
                 if (data.success) {
                     showSuccessModal(data.message);
-                    window.location.reload();
+                    return fetch('outil-integrite.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'tool_action=check_integrity'
+                    })
+                    .then(response => response.json())
+                    .then(refreshed => {
+                        if (refreshed.success) {
+                            displayIntegrityResults(refreshed.results);
+                        } else {
+                            showErrorModal('Une erreur est survenue lors de la ré-vérification.');
+                        }
+                    });
                 } else {
                     showErrorModal(data.message);
                 }

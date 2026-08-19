@@ -779,7 +779,18 @@ function check_external_access(): array {
 function get_site_url(): string {
     $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
     $host     = $_SERVER['HTTP_HOST'];
-    $uri      = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+    // SCRIPT_NAME reflète l'URL réellement appelée, ici toujours
+    // .../pages/outils/outil-integrite.php (seul point d'entrée POST de cet
+    // outil) : on retire ce suffixe fixe pour retomber sur la racine du site,
+    // plutôt que dirname() qui ne remonterait que d'un cran (vers pages/outils/).
+    $script_name = $_SERVER['SCRIPT_NAME'];
+    $suffix      = '/pages/outils/outil-integrite.php';
+    if (substr($script_name, -strlen($suffix)) === $suffix) {
+        $uri = substr($script_name, 0, -strlen($suffix));
+    } else {
+        // Filet de sécurité si ce code venait à être appelé depuis un autre endroit.
+        $uri = rtrim(dirname(dirname(dirname($script_name))), '/\\');
+    }
     return "$protocol://$host$uri";
 }
 
