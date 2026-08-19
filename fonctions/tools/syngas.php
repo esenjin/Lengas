@@ -17,6 +17,84 @@ if (!function_exists('syngas_search')) {
     require_once __DIR__ . '/../../includes/syngas.php';
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Persistance de la sélection avant un flux SSE (table `options`)
+//
+// EventSource ne peut faire que des requêtes GET, sans corps : la liste des
+// identifiants cochés (envoi) ou les sélections + diffs déjà calculés (envoi
+// des mises à jour) transitaient donc directement dans l'URL du flux. Avec un
+// grand nombre de séries cochées, cette URL peut dépasser la longueur
+// maximale acceptée par le serveur web ou PHP (limite typique aux alentours
+// de 8 Ko selon la configuration) — la requête échoue alors AVANT même
+// d'atteindre ce script (souvent une 414 « URI Too Long », parfois une
+// requête simplement tronquée), et EventSource ne reçoit qu'un échec de bas
+// niveau générique, indiscernable de tout autre problème réseau côté
+// JavaScript (source.onerror). D'où le message vague « L'envoi a été
+// interrompu » alors qu'en réalité rien n'a été envoyé à Syngas : la requête
+// n'est jamais arrivée jusqu'à la boucle d'envoi.
+//
+// Même principe que anilist_import_save_state() (fonctions/tools/anilist_import.php) :
+// la sélection est d'abord persistée via un POST classique (corps de requête,
+// sans limite pratique de taille), puis le flux SSE n'a plus qu'une URL
+// courte à ouvrir (aucun paramètre autre que 'action').
+//
+// Une seule campagne d'envoi à la fois par outil (send / send_updates) :
+// clés distinctes pour ne pas se marcher dessus si les deux sections de la
+// page sont utilisées à la suite.
+
+function syngas_send_state_key(): string {
+    return 'syngas_send_state';
+}
+
+function syngas_send_updates_state_key(): string {
+    return 'syngas_send_updates_state';
+}
+
+// Persiste la liste des identifiants de séries cochées pour l'envoi.
+function syngas_save_send_state(array $ids): void {
+    save_options([syngas_send_state_key() => json_encode(['ids' => array_values($ids)], JSON_UNESCAPED_UNICODE)]);
+}
+
+// Relit la sélection persistée, ou [] si aucune n'est en attente.
+function syngas_load_send_state(): array {
+    $opts = load_options();
+    $raw  = trim((string)($opts[syngas_send_state_key()] ?? ''));
+    if ($raw === '') return [];
+    $decoded = json_decode($raw, true);
+    return is_array($decoded['ids'] ?? null) ? $decoded['ids'] : [];
+}
+
+function syngas_clear_send_state(): void {
+    delete_options([syngas_send_state_key()]);
+}
+
+// Persiste les sélections cochées ET les diffs déjà calculés côté client
+// (résultat de syngas_sync_compute_reverse_diff() pour chaque série,
+// reconstruit à partir des évènements SSE déjà reçus par le navigateur —
+// jamais recalculé ici, exactement comme avant ce correctif).
+function syngas_save_send_updates_state(array $selections, array $diffs): void {
+    save_options([syngas_send_updates_state_key() => json_encode(
+        ['selections' => $selections, 'diffs' => $diffs],
+        JSON_UNESCAPED_UNICODE
+    )]);
+}
+
+function syngas_load_send_updates_state(): array {
+    $opts = load_options();
+    $raw  = trim((string)($opts[syngas_send_updates_state_key()] ?? ''));
+    if ($raw === '') return ['selections' => [], 'diffs' => []];
+    $decoded = json_decode($raw, true);
+    if (!is_array($decoded)) return ['selections' => [], 'diffs' => []];
+    return [
+        'selections' => is_array($decoded['selections'] ?? null) ? $decoded['selections'] : [],
+        'diffs'      => is_array($decoded['diffs'] ?? null) ? $decoded['diffs'] : [],
+    ];
+}
+
+function syngas_clear_send_updates_state(): void {
+    delete_options([syngas_send_updates_state_key()]);
+}
+
 // ── Ciblage ─────────────────────────────────────────────────────────────────
 
 // Séries manga sans syngas_uid ET dont les catégories permettent de dériver

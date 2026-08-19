@@ -290,13 +290,18 @@ function syngas_curl(string $method, string $path, ?array $payload = null, int $
     curl_close($ch);
 
     if ($err !== '') {
-        return ['ok' => false, 'http' => $code, 'data' => null, 'error' => $err];
+        // Préfixe explicite : un curl_error() brut ("Operation timed out
+        // after 6000 milliseconds", "Could not resolve host"...) ne dit pas
+        // à l'utilisateur QUEL service est en cause — Syngas, Babengas et
+        // Anilist utilisent tous trois cURL, et ces messages se ressemblent.
+        return ['ok' => false, 'http' => $code, 'data' => null,
+                'error' => 'Connexion à Syngas impossible : ' . $err];
     }
 
     $data = json_decode((string)$body, true);
     if (!is_array($data)) {
         return ['ok' => false, 'http' => $code, 'data' => null,
-                'error' => 'Réponse illisible de Syngas (JSON invalide).'];
+                'error' => 'Réponse illisible de Syngas (code HTTP ' . $code . ', contenu non-JSON). Le service est peut-être temporairement indisponible.'];
     }
 
     return syngas_handle_response($code, $data);
@@ -330,8 +335,9 @@ function syngas_handle_response(int $code, array $data): array {
     }
 
     if ($code < 200 || $code >= 300) {
+        $message = trim((string)($data['message'] ?? ''));
         return ['ok' => false, 'http' => $code, 'data' => $data,
-                'error' => (string)($data['message'] ?? "Erreur HTTP $code")];
+                'error' => $message !== '' ? $message : "Syngas a répondu avec une erreur (code HTTP $code)."];
     }
 
     // Un appel authentifié réussi prouve que l'instance n'est plus bannie.

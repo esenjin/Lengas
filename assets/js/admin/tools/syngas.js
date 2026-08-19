@@ -185,6 +185,12 @@ function syRenderSendPreview(targets, excludedCount) {
 }
 
 // Étape 2 : envoi effectif après confirmation, via flux SSE.
+//
+// La sélection est d'abord persistée côté serveur via un POST classique
+// (syngas_send_settings_save) : l'EventSource ouvert ensuite n'a qu'une URL
+// courte et fixe, sans risquer de dépasser la longueur d'URL maximale du
+// serveur quand un grand nombre de séries sont cochées (voir la note
+// détaillée dans pages/outils/outil-syngas.php et fonctions/tools/syngas.php).
 let syngasSendSource = null;
 function syConfirmSend() {
     const checked = Array.from(document.querySelectorAll('#syngas-send-form .syngas-send-checkbox:checked'))
@@ -200,7 +206,33 @@ function syConfirmSend() {
 
     if (syngasSendSource) { syngasSendSource.close(); syngasSendSource = null; }
     results.innerHTML = '';
+    progress.innerHTML = `<p class="analysis-progress"><span class="progress-spinner"></span>Préparation de l'envoi…</p>`;
 
+    const body = new URLSearchParams();
+    body.set('tool_action', 'syngas_send_settings_save');
+    checked.forEach(id => body.append('ids[]', id));
+
+    fetch('outil-syngas.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+    })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.success) {
+                progress.innerHTML = '';
+                results.innerHTML = '<p class="error-text">Impossible d\'enregistrer la sélection avant l\'envoi : le serveur a répondu, mais sans confirmer l\'enregistrement. Réessayez.</p>';
+                return;
+            }
+            syRunSendStream(progress, results);
+        })
+        .catch(() => {
+            progress.innerHTML = '';
+            results.innerHTML = '<p class="error-text">Impossible d\'enregistrer la sélection avant l\'envoi : le serveur n\'a pas répondu (connexion perdue ou serveur indisponible). Rien n\'a été envoyé à Syngas — réessayez.</p>';
+        });
+}
+
+function syRunSendStream(progress, results) {
     let current = 0, total = 0, currentName = '';
     const renderProgress = () => {
         const countText = total > 0 ? `${current} / ${total}` : `${current}`;
@@ -211,8 +243,7 @@ function syConfirmSend() {
     };
     renderProgress();
 
-    const params = checked.map(id => `ids[]=${encodeURIComponent(id)}`).join('&');
-    const source = new EventSource(`outil-syngas.php?action=syngas_send_stream&${params}`);
+    const source = new EventSource('outil-syngas.php?action=syngas_send_stream');
     syngasSendSource = source;
 
     source.addEventListener('progress', (ev) => {
@@ -244,7 +275,10 @@ function syConfirmSend() {
     source.onerror = () => {
         source.close(); syngasSendSource = null;
         progress.innerHTML = '';
-        results.innerHTML = '<p class="error-text">L\'envoi a été interrompu. Rechargez la page pour voir où il s\'est arrêté.</p>';
+        const progressText = current > 0
+            ? ` ${current} sur ${total || '?'} série(s) avaient été traitées avant la coupure.`
+            : ' Aucune série n\'avait encore été traitée.';
+        results.innerHTML = '<p class="error-text">La connexion avec le serveur a été coupée pendant l\'envoi (réseau interrompu, ou délai d\'exécution dépassé côté serveur).' + progressText + ' Rechargez la page : les séries déjà envoyées resteront en attente de modération sur Syngas, les autres pourront être renvoyées.</p>';
     };
 }
 
@@ -314,7 +348,12 @@ function syLoadReceive() {
     source.onerror = () => {
         source.close(); syngasReceiveSource = null;
         progress.innerHTML = '';
-        if (!anyMatch) results.innerHTML = '<p class="error-text">La vérification a été interrompue. Veuillez réessayer.</p>';
+        if (!anyMatch) {
+            const progressText = current > 0
+                ? ` (${current} sur ${total || '?'} série(s) vérifiée(s) avant la coupure)`
+                : '';
+            results.innerHTML = `<p class="error-text">La connexion avec le serveur a été coupée pendant la vérification${progressText} (réseau interrompu, ou délai d'exécution dépassé côté serveur). Aucune donnée n'a été modifiée — relancez la vérification.</p>`;
+        }
         if (btn) btn.disabled = false;
         if (textEl) textEl.textContent = 'Vérifier les mises à jour';
         if (spinner) spinner.style.display = 'none';
@@ -499,7 +538,12 @@ function sySendUpdatesLoad() {
     source.onerror = () => {
         source.close(); syngasSendUpdatesSource = null;
         progress.innerHTML = '';
-        if (!anyMatch) results.innerHTML = '<p class="error-text">La vérification a été interrompue. Veuillez réessayer.</p>';
+        if (!anyMatch) {
+            const progressText = current > 0
+                ? ` (${current} sur ${total || '?'} série(s) vérifiée(s) avant la coupure)`
+                : '';
+            results.innerHTML = `<p class="error-text">La connexion avec le serveur a été coupée pendant la vérification${progressText} (réseau interrompu, ou délai d'exécution dépassé côté serveur). Aucune proposition n'a été envoyée — relancez la vérification.</p>`;
+        }
         if (btn) btn.disabled = false;
         if (textEl) textEl.textContent = 'Vérifier les différences';
         if (spinner) spinner.style.display = 'none';
@@ -573,9 +617,15 @@ document.addEventListener('click', (e) => {
 });
 
 // Étape 2 : envoi effectif des propositions cochées, via flux SSE — même
-// principe que syConfirmSend() (envoi de nouvelles séries), mais vers
-// syngas_send_updates_apply_stream et avec les diffs déjà calculés transmis
-// en paramètre (jamais recalculés côté serveur à cette étape).
+// principe que syConfirmSend() (envoi de nouvelles séries).
+//
+// selections ET diffs (le résultat complet de syngas_sync_compute_reverse_diff()
+// pour chaque série cochée — de loin le plus volumineux des trois flux de cet
+// outil) sont d'abord persistés côté serveur via un POST classique
+// (syngas_send_updates_settings_save), pour la même raison que syConfirmSend()
+// ci-dessus : une URL de flux SSE trop longue échoue avant même d'atteindre
+// PHP, et EventSource ne peut faire que des requêtes GET, donc jamais avec
+// un corps de requête.
 let syngasSendUpdatesApplySource = null;
 function sySendUpdatesConfirm() {
     const blocks = document.querySelectorAll('#syngas-send-updates-form .syngas-sync-series');
@@ -602,7 +652,41 @@ function sySendUpdatesConfirm() {
 
     if (syngasSendUpdatesApplySource) { syngasSendUpdatesApplySource.close(); syngasSendUpdatesApplySource = null; }
     results.innerHTML = '';
+    progress.innerHTML = `<p class="analysis-progress"><span class="progress-spinner"></span>Préparation de l'envoi…</p>`;
 
+    // Seules les séries cochées sont transmises (pas tout syngasSendUpdatesDiffs) :
+    // limite déjà la taille du corps POST au strict nécessaire.
+    const selectedDiffs = {};
+    Object.keys(selections).forEach(id => {
+        if (syngasSendUpdatesDiffs[id]) selectedDiffs[id] = syngasSendUpdatesDiffs[id];
+    });
+
+    const body = new URLSearchParams();
+    body.set('tool_action', 'syngas_send_updates_settings_save');
+    body.set('selections', JSON.stringify(selections));
+    body.set('diffs', JSON.stringify(selectedDiffs));
+
+    fetch('outil-syngas.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+    })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.success) {
+                progress.innerHTML = '';
+                results.innerHTML = '<p class="error-text">Impossible d\'enregistrer la sélection avant l\'envoi : le serveur a répondu, mais sans confirmer l\'enregistrement. Réessayez.</p>';
+                return;
+            }
+            syRunSendUpdatesApplyStream(progress, results);
+        })
+        .catch(() => {
+            progress.innerHTML = '';
+            results.innerHTML = '<p class="error-text">Impossible d\'enregistrer la sélection avant l\'envoi : le serveur n\'a pas répondu (connexion perdue ou serveur indisponible). Rien n\'a été envoyé à Syngas — réessayez.</p>';
+        });
+}
+
+function syRunSendUpdatesApplyStream(progress, results) {
     let current = 0, total = 0, currentName = '';
     const renderProgress = () => {
         const countText = total > 0 ? `${current} / ${total}` : `${current}`;
@@ -613,19 +697,7 @@ function sySendUpdatesConfirm() {
     };
     renderProgress();
 
-    const params = new URLSearchParams();
-    params.set('action', 'syngas_send_updates_apply_stream');
-    params.set('selections', JSON.stringify(selections));
-    // EventSource ne peut faire que des requêtes GET : diffs transite donc en
-    // paramètre d'URL plutôt qu'en corps de requête POST (comme syngas_receive_save,
-    // qui lui n'a pas cette contrainte SSE). Reste réaliste pour ce volume :
-    // seules les séries COCHÉES sont incluses (pas toute la sélection
-    // affichée), quelques champs texte courts chacune — largement sous les
-    // limites d'URL habituelles (~8000 caractères) même pour plusieurs
-    // dizaines de séries. Un envoi par lots serait à envisager si ce
-    // plafond devenait un problème réel en pratique.
-    params.set('diffs', JSON.stringify(syngasSendUpdatesDiffs));
-    const source = new EventSource(`outil-syngas.php?${params.toString()}`);
+    const source = new EventSource('outil-syngas.php?action=syngas_send_updates_apply_stream');
     syngasSendUpdatesApplySource = source;
 
     source.addEventListener('progress', (ev) => {
@@ -657,6 +729,9 @@ function sySendUpdatesConfirm() {
     source.onerror = () => {
         source.close(); syngasSendUpdatesApplySource = null;
         progress.innerHTML = '';
-        results.innerHTML = '<p class="error-text">L\'envoi a été interrompu. Rechargez la page pour voir où il s\'est arrêté.</p>';
+        const progressText = current > 0
+            ? ` ${current} sur ${total || '?'} série(s) avaient été traitées avant la coupure.`
+            : ' Aucune série n\'avait encore été traitée.';
+        results.innerHTML = '<p class="error-text">La connexion avec le serveur a été coupée pendant l\'envoi (réseau interrompu, ou délai d\'exécution dépassé côté serveur).' + progressText + ' Rechargez la page et relancez « Vérifier les différences » pour reproposer les séries restantes.</p>';
     };
 }

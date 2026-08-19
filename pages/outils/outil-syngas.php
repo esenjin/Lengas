@@ -105,9 +105,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
+// ── Endpoint : persistance de la sélection avant l'envoi (POST) ────────────
+// EventSource ne pouvant faire que des requêtes GET, la liste des séries
+// cochées (potentiellement nombreuse) transite ici par un POST classique
+// plutôt que par l'URL du flux SSE qui suit — voir la note détaillée dans
+// fonctions/tools/syngas.php (syngas_save_send_state()) : une URL trop
+// longue échoue avant même d'atteindre PHP, ce qui se traduisait par un
+// échec immédiat et silencieux du flux, sans rien envoyer à Syngas.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['tool_action'] ?? '') === 'syngas_send_settings_save') {
+    header('Content-Type: application/json');
+    $ids = $_POST['ids'] ?? [];
+    if (!is_array($ids)) $ids = [];
+    syngas_save_send_state(array_values(array_filter(array_map('strval', $ids))));
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // ── Endpoint SSE : envoi effectif, après confirmation ───────────────────────
-// $_GET['ids'] : liste des identifiants de séries à envoyer (celles cochées
-// dans le récapitulatif ; toutes par défaut).
+// Lit la sélection persistée par syngas_send_settings_save juste avant
+// (aucun paramètre dans l'URL du flux lui-même, qui reste toujours courte
+// quel que soit le nombre de séries cochées).
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'syngas_send_stream') {
     @ini_set('output_buffering', 'off');
     @ini_set('zlib.output_compression', false);
@@ -124,9 +141,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         flush();
     };
 
-    $ids = $_GET['ids'] ?? [];
-    if (!is_array($ids)) $ids = [];
-    $ids = array_flip(array_filter(array_map('strval', $ids)));
+    $ids = array_flip(syngas_load_send_state());
+    syngas_clear_send_state(); // consommée : une prochaine visite ne doit pas la rejouer
 
     $targets = syngas_sync_send_targets($data);
     if (!empty($ids)) {
@@ -309,15 +325,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
+// ── Endpoint : persistance des sélections + diffs avant l'envoi (POST) ─────
+// Même raison que syngas_send_settings_save ci-dessus : selections ET diffs
+// (le résultat complet de syngas_sync_compute_reverse_diff() pour chaque
+// série cochée) transitaient auparavant dans l'URL du flux SSE — de loin le
+// cas le plus volumineux des trois flux de cet outil, donc le plus exposé à
+// dépasser la longueur d'URL maximale dès que plusieurs dizaines de séries
+// sont concernées.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['tool_action'] ?? '') === 'syngas_send_updates_settings_save') {
+    header('Content-Type: application/json');
+    $selections = json_decode($_POST['selections'] ?? '{}', true);
+    if (!is_array($selections)) $selections = [];
+    $diffs = json_decode($_POST['diffs'] ?? '{}', true);
+    if (!is_array($diffs)) $diffs = [];
+    syngas_save_send_updates_state($selections, $diffs);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // ── Endpoint SSE : envoi effectif des propositions sélectionnées ───────────
-// $_GET['selections'] : JSON { "<series_id>": true, … } — séries cochées
-// dans le récapitulatif (toutes celles avec un changement, par défaut).
-// $_GET['diffs']       : JSON { "<series_id>": {...} } — résultat de
-//                        syngas_sync_compute_reverse_diff() pour chaque
-//                        série, recalculé côté client à partir des
-//                        évènements SSE déjà reçus (même principe que
-//                        syngas_receive_save : pas de nouvel appel réseau à
-//                        Syngas pour reconstruire le diff ici).
+// Lit les sélections et diffs persistés par syngas_send_updates_settings_save
+// juste avant (résultat de syngas_sync_compute_reverse_diff() pour chaque
+// série, recalculé côté client à partir des évènements SSE déjà reçus — pas
+// de nouvel appel réseau à Syngas pour reconstruire le diff ici).
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'syngas_send_updates_apply_stream') {
     @ini_set('output_buffering', 'off');
     @ini_set('zlib.output_compression', false);
@@ -334,10 +364,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         flush();
     };
 
-    $selections = json_decode($_GET['selections'] ?? '{}', true);
-    if (!is_array($selections)) $selections = [];
-    $diffs = json_decode($_GET['diffs'] ?? '{}', true);
-    if (!is_array($diffs)) $diffs = [];
+    $state      = syngas_load_send_updates_state();
+    $selections = $state['selections'];
+    $diffs      = $state['diffs'];
+    syngas_clear_send_updates_state(); // consommée : une prochaine visite ne doit pas la rejouer
 
     // syngas_is_banned() revérifie déjà elle-même l'état si le flag a expiré
     // (voir includes/syngas.php) : pas de second appel réseau explicite ici.
