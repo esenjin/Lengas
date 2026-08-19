@@ -25,7 +25,16 @@ const SYNGAS_DIFF_LABELS = {
 };
 
 // ── Résolution automatique au chargement de la page ────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+//
+// Chaque appel à l'endpoint ne traite qu'un lot de SYNGAS_RESOLVE_BATCH_LIMIT
+// soumissions (protection serveur contre un timeout cumulé, voir
+// fonctions/tools/syngas.php) : tant que la réponse signale qu'il reste des
+// soumissions non couvertes par ce lot (remaining_in_journal > 0), on relance
+// automatiquement l'appel — l'utilisateur n'a donc plus besoin de recharger
+// la page à la main pour voir la suite des résultats. Une courte pause entre
+// deux lots reste une politesse envers Syngas, dans le même esprit que les
+// autres intégrations externes du site (Anilist, Babengas).
+function syResolvePendingSubmissions(totalResolved = 0) {
     fetch('outil-syngas.php?action=syngas_resolve_pending')
         .then(r => r.json())
         .then(data => {
@@ -33,11 +42,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 syShowBannedBanner(data.message, data.reason);
                 return;
             }
-            if (data.success && data.resolved > 0) {
-                showSuccessModal(`${data.resolved} série(s) automatiquement liée(s) suite à une modération Syngas.`);
+            if (!data.success) return;
+
+            const runningTotal = totalResolved + (data.resolved || 0);
+
+            if (data.remaining_in_journal > 0) {
+                setTimeout(() => syResolvePendingSubmissions(runningTotal), 400);
+                return;
+            }
+
+            if (runningTotal > 0) {
+                showSuccessModal(`${runningTotal} série(s) automatiquement liée(s) suite à une modération Syngas.`);
             }
         })
         .catch(() => { /* silencieux : purement une amélioration de confort */ });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    syResolvePendingSubmissions();
 });
 
 function syShowBannedBanner(message, reason) {

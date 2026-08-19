@@ -138,21 +138,26 @@ function syngas_sync_receive_targets(array $data): array {
 // retenter). Ne bloque jamais le reste de l'outil : une erreur réseau sur une
 // soumission n'empêche pas de vérifier les suivantes.
 //
-// Retourne un résumé ['resolved' => int, 'still_pending' => int] à afficher.
+// Retourne un résumé ['resolved' => int, 'still_pending' => int,
+// 'remaining_in_journal' => int] à afficher.
 //
-// Plafonné à SYNGAS_RESOLVE_BATCH_LIMIT soumissions par appel : cette
-// fonction tourne automatiquement à CHAQUE chargement de la page (voir
-// outil-syngas.php, endpoint syngas_resolve_pending, appelé au
-// DOMContentLoaded côté JS) — sans plafond, une longue liste de soumissions
-// encore en attente ferait un aller-retour réseau par soumission à chaque
-// simple visite de la page, ce qui est à la fois lent pour l'utilisateur et
-// coûteux en ressources serveur (timeout cumulé). Les soumissions non
-// traitées à ce passage restent dans le journal et seront reprises au
-// prochain chargement — rien n'est perdu, seulement étalé dans le temps.
+// Plafonné à SYNGAS_RESOLVE_BATCH_LIMIT soumissions par appel HTTP : un
+// aller-retour réseau par soumission dans une seule requête PHP risquerait
+// un timeout cumulé sur une longue liste. Ce plafond ne limite en revanche
+// plus le nombre de soumissions traitées par VISITE de la page : le JS
+// (voir assets/js/admin/tools/syngas.js) relance automatiquement cet appel
+// tant que 'remaining_in_journal' > 0, sans action de l'utilisateur — un lot
+// encore non traité à un passage donné est simplement repris par l'appel
+// suivant, quelques centaines de millisecondes plus tard.
 function syngas_resolve_tracked_submissions(array &$data): array {
-    $tracked = array_slice(syngas_tracked_submissions(), 0, SYNGAS_RESOLVE_BATCH_LIMIT);
+    $all = syngas_tracked_submissions();
+    $tracked = array_slice($all, 0, SYNGAS_RESOLVE_BATCH_LIMIT);
     $resolved = 0;
     $still_pending = 0;
+    // Soumissions qui, faute de place dans ce lot, seront traitées à un
+    // prochain appel (et non pas celles restées 'en_attente' côté Syngas
+    // après vérification, comptabilisées séparément dans $still_pending).
+    $remaining_in_journal = max(0, count($all) - count($tracked));
 
     foreach ($tracked as $row) {
         // Timeout réduit : appel en boucle, même raison que
@@ -190,7 +195,14 @@ function syngas_resolve_tracked_submissions(array &$data): array {
         }
     }
 
-    return ['resolved' => $resolved, 'still_pending' => $still_pending];
+    return [
+        'resolved'           => $resolved,
+        'still_pending'      => $still_pending,
+        // Traduit en "y a-t-il un autre lot à demander tout de suite ?" côté
+        // JS : > 0 tant qu'il restait des lignes non couvertes par ce lot
+        // dans le journal local (indépendamment de leur statut Syngas).
+        'remaining_in_journal' => $remaining_in_journal,
+    ];
 }
 
 // ── Réception : comparaison champ par champ (section 6.2) ──────────────────
