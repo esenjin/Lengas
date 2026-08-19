@@ -26,15 +26,21 @@ const SYNGAS_DIFF_LABELS = {
 
 // ── Résolution automatique au chargement de la page ────────────────────────
 //
-// Chaque appel à l'endpoint ne traite qu'un lot de SYNGAS_RESOLVE_BATCH_LIMIT
-// soumissions (protection serveur contre un timeout cumulé, voir
-// fonctions/tools/syngas.php) : tant que la réponse signale qu'il reste des
-// soumissions non couvertes par ce lot (remaining_in_journal > 0), on relance
-// automatiquement l'appel — l'utilisateur n'a donc plus besoin de recharger
-// la page à la main pour voir la suite des résultats. Une courte pause entre
-// deux lots reste une politesse envers Syngas, dans le même esprit que les
-// autres intégrations externes du site (Anilist, Babengas).
-function syResolvePendingSubmissions(totalResolved = 0) {
+// Depuis l'endpoint groupé POST /submissions/status-batch côté Syngas (voir
+// includes/syngas.php, syngas_submission_status_batch()), tout le journal
+// local de soumissions en attente est désormais résolu en UN SEUL appel
+// réseau — plus besoin de boucler sur plusieurs chargements de page. La
+// réponse inclut 'details' : un tableau {name, status} par soumission dont
+// le statut vient d'être déterminé (créée/fusionnée/rejetée), qu'on met en
+// forme ici en une liste lisible pour la notification, plutôt que le simple
+// compteur affiché auparavant.
+const SYNGAS_RESOLVE_STATUS_LABELS = {
+    creee: '✅ créée sur Syngas',
+    fusionnee: '🔗 fusionnée avec une fiche existante',
+    rejetee: '❌ rejetée',
+};
+
+document.addEventListener('DOMContentLoaded', () => {
     fetch('outil-syngas.php?action=syngas_resolve_pending')
         .then(r => r.json())
         .then(data => {
@@ -44,22 +50,17 @@ function syResolvePendingSubmissions(totalResolved = 0) {
             }
             if (!data.success) return;
 
-            const runningTotal = totalResolved + (data.resolved || 0);
+            const details = Array.isArray(data.details) ? data.details : [];
+            if (details.length === 0) return;
 
-            if (data.remaining_in_journal > 0) {
-                setTimeout(() => syResolvePendingSubmissions(runningTotal), 400);
-                return;
-            }
-
-            if (runningTotal > 0) {
-                showSuccessModal(`${runningTotal} série(s) automatiquement liée(s) suite à une modération Syngas.`);
-            }
+            const lines = details.map(d => {
+                const label = SYNGAS_RESOLVE_STATUS_LABELS[d.status] || d.status;
+                return `${d.name} : ${label}`;
+            });
+            const summary = `${details.length} série(s) traitée(s) suite à une modération Syngas :\n\n${lines.join('\n')}`;
+            showSuccessModal(summary);
         })
         .catch(() => { /* silencieux : purement une amélioration de confort */ });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    syResolvePendingSubmissions();
 });
 
 function syShowBannedBanner(message, reason) {

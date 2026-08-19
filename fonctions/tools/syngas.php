@@ -127,50 +127,72 @@ function syngas_sync_receive_targets(array $data): array {
 
 // ── Résolution automatique des soumissions déjà suivies ─────────────────────
 //
-// À chaque relance de l'outil, on interroge GET /submissions/{id} (voir
-// includes/syngas.php, syngas_submission_status()) pour chaque soumission
-// encore en attente localement (table syngas_submissions). Si Syngas l'a
-// entre-temps créée ou fusionnée, syngas_uid est posé automatiquement — sans
-// que l'utilisateur ait à repasser par la « Recherche Syngas » (section 6.1,
-// point 5, tel qu'amélioré par l'endpoint de suivi ajouté après la V1
-// initiale de Syngas). Une soumission encore en_attente ou rejetée reste
-// simplement dans le journal (rejetée : elle en est retirée, rien à
-// retenter). Ne bloque jamais le reste de l'outil : une erreur réseau sur une
-// soumission n'empêche pas de vérifier les suivantes.
+// À chaque relance de l'outil, on interroge Syngas (voir includes/syngas.php,
+// syngas_submission_status_batch()) pour chaque soumission encore en attente
+// localement (table syngas_submissions). Si Syngas l'a entre-temps créée ou
+// fusionnée, syngas_uid est posé automatiquement — sans que l'utilisateur
+// ait à repasser par la « Recherche Syngas » (section 6.1, point 5, tel
+// qu'amélioré par l'endpoint de suivi ajouté après la V1 initiale de
+// Syngas). Une soumission encore en_attente ou rejetée reste simplement
+// dans le journal (rejetée : elle en est retirée, rien à retenter). Ne
+// bloque jamais le reste de l'outil : une erreur réseau sur l'appel groupé
+// laisse simplement le journal inchangé pour ce passage.
 //
 // Retourne un résumé ['resolved' => int, 'still_pending' => int,
-// 'remaining_in_journal' => int] à afficher.
+// 'details' => array<{name, status}>] à afficher.
 //
-// Plafonné à SYNGAS_RESOLVE_BATCH_LIMIT soumissions par appel HTTP : un
-// aller-retour réseau par soumission dans une seule requête PHP risquerait
-// un timeout cumulé sur une longue liste. Ce plafond ne limite en revanche
-// plus le nombre de soumissions traitées par VISITE de la page : le JS
-// (voir assets/js/admin/tools/syngas.js) relance automatiquement cet appel
-// tant que 'remaining_in_journal' > 0, sans action de l'utilisateur — un lot
-// encore non traité à un passage donné est simplement repris par l'appel
-// suivant, quelques centaines de millisecondes plus tard.
+// Utilise l'appel en lot POST /submissions/status-batch (voir
+// includes/syngas.php, syngas_submission_status_batch()) plutôt qu'un appel
+// GET /submissions/{id} par soumission : tout le journal local tient
+// désormais dans UN SEUL aller-retour réseau (jusqu'à
+// SYNGAS_RESOLVE_BATCH_LIMIT soumissions), contre un appel par soumission
+// auparavant. Le plafond reste nécessaire (le serveur Syngas plafonne
+// lui-même à 200 identifiants par appel, voir status_batch.php côté Syngas)
+// mais ne coûte plus qu'UN appel réseau — pas un par lot comme avec l'ancien
+// GET /submissions/{id} — donc plus besoin d'étaler le traitement sur
+// plusieurs chargements de page : cette fonction résout tout le journal en
+// un seul passage tant qu'il tient sous SYNGAS_RESOLVE_BATCH_LIMIT lignes.
+// Une erreur réseau sur l'appel batch laisse tout le journal inchangé (rien
+// n'est perdu, un prochain appel reprendra tout depuis le début).
+//
+// 'details' liste, pour l'affichage de la notification, chaque soumission
+// dont le statut a été déterminé lors de CET appel (donc pas celles restées
+// 'en_attente', qui n'apportent rien de nouveau à afficher) : le nom de la
+// série concernée et son verdict ('creee', 'fusionnee' ou 'rejetee').
 function syngas_resolve_tracked_submissions(array &$data): array {
     $all = syngas_tracked_submissions();
     $tracked = array_slice($all, 0, SYNGAS_RESOLVE_BATCH_LIMIT);
     $resolved = 0;
     $still_pending = 0;
-    // Soumissions qui, faute de place dans ce lot, seront traitées à un
-    // prochain appel (et non pas celles restées 'en_attente' côté Syngas
-    // après vérification, comptabilisées séparément dans $still_pending).
-    $remaining_in_journal = max(0, count($all) - count($tracked));
+    $details = [];
+
+    if ($tracked === []) {
+        return ['resolved' => 0, 'still_pending' => 0, 'details' => []];
+    }
+
+    $ids = array_map(fn($row) => $row['submission_id'], $tracked);
+    $batch = syngas_submission_status_batch($ids, 20);
+    if (!$batch['ok']) {
+        // Erreur réseau sur l'appel groupé : on laisse le journal tel quel,
+        // sans acharnement — un prochain appel (prochaine visite de la page)
+        // retentera l'intégralité du lot.
+        return ['resolved' => 0, 'still_pending' => count($tracked), 'details' => []];
+    }
+    $statuses = $batch['results'];
 
     foreach ($tracked as $row) {
-        // Timeout réduit : appel en boucle, même raison que
-        // syngas_sync_compute_diff() / syngas_sync_send_one().
-        $status_res = syngas_submission_status($row['submission_id'], 6);
-        if (!$status_res['ok']) {
-            // Introuvable (404) ou erreur réseau : on laisse le journal tel
-            // quel, sans acharnement — un identifiant devenu invalide sera
-            // simplement ignoré indéfiniment, ce qui est sans conséquence.
+        $status_res = $statuses[$row['submission_id']] ?? null;
+        if ($status_res === null) {
+            // Absent de la réponse (introuvable côté Syngas, ou déjà purgé) :
+            // on laisse le journal tel quel, sans acharnement — même
+            // traitement que l'ancien 404 individuel.
             continue;
         }
 
-        $status = $status_res['status'];
+        $status = (string)($status_res['status'] ?? '');
+        $found  = find_series_by_id($data, $row['series_id']);
+        $series_name = $found['data']['name'] ?? '';
+
         if ($status === 'en_attente') {
             $still_pending++;
             continue;
@@ -178,11 +200,13 @@ function syngas_resolve_tracked_submissions(array &$data): array {
 
         if ($status === 'rejetee') {
             syngas_untrack_submission($row['submission_id']);
+            if ($series_name !== '') {
+                $details[] = ['name' => $series_name, 'status' => 'rejetee'];
+            }
             continue;
         }
 
-        if (($status === 'creee' || $status === 'fusionnee') && $status_res['series'] !== null) {
-            $found = find_series_by_id($data, $row['series_id']);
+        if (($status === 'creee' || $status === 'fusionnee') && ($status_res['series'] ?? null) !== null) {
             if ($found !== null && empty($found['data']['syngas_uid'])) {
                 $syngas_id = (string)($status_res['series']['id'] ?? '');
                 if ($syngas_id !== '') {
@@ -192,16 +216,16 @@ function syngas_resolve_tracked_submissions(array &$data): array {
                 }
             }
             syngas_untrack_submission($row['submission_id']);
+            if ($series_name !== '') {
+                $details[] = ['name' => $series_name, 'status' => $status];
+            }
         }
     }
 
     return [
-        'resolved'           => $resolved,
-        'still_pending'      => $still_pending,
-        // Traduit en "y a-t-il un autre lot à demander tout de suite ?" côté
-        // JS : > 0 tant qu'il restait des lignes non couvertes par ce lot
-        // dans le journal local (indépendamment de leur statut Syngas).
-        'remaining_in_journal' => $remaining_in_journal,
+        'resolved'      => $resolved,
+        'still_pending' => $still_pending,
+        'details'       => $details,
     ];
 }
 

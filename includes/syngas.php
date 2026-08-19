@@ -41,6 +41,8 @@
 //   GET  /submissions/{id}     → suivi du devenir d'une soumission (ajouté
 //                                 après la V1 initiale, voir le commentaire
 //                                 de syngas_submission_status() plus bas)
+//   POST /submissions/status-batch → équivalent en lot du précédent (voir
+//                                 syngas_submission_status_batch() plus bas)
 //
 // Erreurs communes : 401 (clé absente/invalide), 403 (instance bannie,
 // { error: 'banned', reason, banned_at }), 429 (limite de débit, Retry-After).
@@ -903,4 +905,42 @@ function syngas_submission_status(string $submission_id, int $timeout = 15): arr
         'created_at'  => $d['created_at'] ?? null,
         'error'       => '',
     ];
+}
+
+// ── Suivi en masse de plusieurs soumissions (POST /submissions/status-batch) ─
+//
+// Équivalent en lot de syngas_submission_status() ci-dessus : un seul appel
+// réseau pour résoudre jusqu'à SYNGAS_STATUS_BATCH_MAX_IDS soumissions, au
+// lieu d'un appel GET /submissions/{id} par soumission. Ajouté côté Syngas
+// après coup (comme /submissions/{id} en son temps) une fois observé qu'une
+// instance avec de nombreuses soumissions en attente finissait par saturer
+// son propre quota de débit Syngas (rate_limit_per_minute) rien qu'à
+// vérifier leurs statuts un par un.
+//
+// $submission_ids est plafonné avant l'appel (voir appelant,
+// syngas_resolve_tracked_submissions()) : cette fonction elle-même ne
+// tronque rien, elle relaie tel quel — c'est à l'appelant de respecter la
+// limite du serveur.
+//
+// Retourne ['ok'=>bool, 'results'=>array<submission_id, array{status,series,
+// reviewed_at,created_at}>, 'error'=>string]. Un identifiant demandé mais
+// absent de 'results' (soumission introuvable côté Syngas, ou déjà purgée)
+// se traite côté appelant comme "toujours en_attente" — même règle que pour
+// tout identifiant étranger à l'instance, jamais une erreur bloquante.
+function syngas_submission_status_batch(array $submission_ids, int $timeout = 15): array {
+    $ids = array_values(array_unique(array_filter(
+        array_map('trim', array_map('strval', $submission_ids)),
+        fn($id) => $id !== ''
+    )));
+    if ($ids === []) {
+        return ['ok' => true, 'results' => [], 'error' => ''];
+    }
+
+    $res = syngas_request('POST', '/submissions/status-batch', ['submission_ids' => $ids], $timeout);
+    if (!$res['ok']) {
+        return ['ok' => false, 'results' => [], 'error' => $res['error']];
+    }
+
+    $results = $res['data']['results'] ?? [];
+    return ['ok' => true, 'results' => is_array($results) ? $results : [], 'error' => ''];
 }

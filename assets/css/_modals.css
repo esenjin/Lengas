@@ -91,6 +91,22 @@ html:has(body.modal-open) {
     max-width: 640px;
 }
 
+/* ── #custom-alert-message : liste détaillée (résolutions Syngas) ──────────
+   L'alerte générique (showCustomAlert / showSuccessModal, voir
+   assets/js/admin/main.js) n'affiche que du texte brut (textContent), sans
+   mise en forme. Certains appelants (voir syngas.js, le listener
+   DOMContentLoaded de résolution automatique) y composent désormais un
+   message multi-lignes listant chaque série résolue avec son verdict : sans
+   cette règle, les retours à la ligne du texte seraient simplement collapsés
+   (comportement par défaut de <p>) et tout s'afficherait sur une seule ligne
+   illisible. Ne change rien pour les messages courts sans retour à la ligne
+   (immense majorité des usages du site) : pre-line ne fait que respecter
+   les \n déjà présents dans le texte, sans affecter le retour à la ligne
+   automatique normal en fin de ligne trop longue. */
+#custom-alert-message {
+    white-space: pre-line;
+}
+
 .modal-active {
     display: flex;
 }

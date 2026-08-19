@@ -17,10 +17,14 @@ define('SYNGAS_BAN_FLAG_TTL', 5 * 60);
 
 // Nombre maximum de soumissions en attente résolues à chaque chargement de
 // la page « Synchronisation Syngas » (voir syngas_resolve_tracked_submissions()
-// dans fonctions/tools/syngas.php) — protège contre un aller-retour réseau
-// par soumission à CHAQUE simple visite de la page si le journal contient
-// beaucoup d'entrées encore en attente.
-define('SYNGAS_RESOLVE_BATCH_LIMIT', 15);
+// dans fonctions/tools/syngas.php). Depuis l'endpoint POST
+// /submissions/status-batch, tout le lot tient dans UN SEUL appel réseau
+// (voir includes/syngas.php, syngas_submission_status_batch()) — ce plafond
+// ne protège donc plus contre un aller-retour par soumission, mais reste
+// aligné sur la limite fixée côté serveur Syngas pour cet endpoint (200
+// identifiants par appel, voir api/v1/submissions/status_batch.php côté
+// Syngas) : au-delà, Syngas rejetterait l'appel entier (400 too_many_ids).
+define('SYNGAS_RESOLVE_BATCH_LIMIT', 200);
 
 // Chemin vers la base de données SQLite
 define('DB_FILE', 'bdd/lengas.db');
