@@ -7,7 +7,8 @@
 // statut de diffusion. Réutilise exactement le moteur qui tourne aussi en
 // arrière-plan à l'affichage de l'Animethèque (fonctions/tools/
 // anilist_sync.php) — cet outil ne fait qu'offrir un déclenchement explicite,
-// avec un bouton de forçage qui ignore le verrou de 24h habituel.
+// avec un bouton de forçage qui ignore le verrou habituel (durée réglable
+// depuis la page Options, 12h par défaut).
 //
 // Gabarit repris tel quel de assets/js/admin/tools/incomplete.js et
 // anilist-import.js : même structure de progression (SSE « progress » /
@@ -85,7 +86,7 @@
         }
 
         if (errors.length) {
-            html += `<details class="summary-group" open><summary><span class="summary-badge summary-badge--warn">⚠ ${errors.length}</span> En erreur (verrou reporté à 1 h)</summary>
+            html += `<details class="summary-group" open><summary><span class="summary-badge summary-badge--warn">⚠ ${errors.length}</span> En erreur (nouvel essai différé)</summary>
                 <ul class="summary-list">${errors.map(e => `<li><strong>${esc(e.title)}</strong> — <span class="summary-reason">${esc(e.message)}</span></li>`).join('')}</ul></details>`;
         }
 

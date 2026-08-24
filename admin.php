@@ -723,9 +723,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_anime_sync_due_ids'
 // assets/js/admin/anime.js). La page s'affiche donc immédiatement, la
 // synchro part ensuite en arrière-plan.
 //
-// Verrou d'1h par série (sauf contournement déjà écoulé), respecté ici même
-// si le front ne rappelle que des cartes qu'il croit dues : la vérité reste
-// celle du serveur. Échec API : report du verrou à 1h, jamais de fatale.
+// Verrou (réglable, 12h par défaut) par série (sauf contournement déjà
+// écoulé), respecté ici même si le front ne rappelle que des cartes qu'il
+// croit dues : la vérité reste celle du serveur. Échec API : report du
+// verrou au délai de retry réglé (4h par défaut), jamais de fatale.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sync_anime_series'])) {
     header('Content-Type: application/json');
 

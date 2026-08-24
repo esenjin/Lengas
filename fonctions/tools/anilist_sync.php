@@ -18,8 +18,8 @@
 // Le moteur ci-dessous (anilist_sync_series_now) est le SEUL point d'écriture
 // d'une synchronisation. Il est appelé par deux entrées distinctes :
 //   • l'endpoint AJAX d'admin.php (pages/admin.php), une série à la fois — le
-//     quota de séries par visite et le verrou d'1h y sont vérifiés
-//     directement autour de l'appel ;
+//     quota de séries par visite et le verrou (réglable, 12h par défaut) y
+//     sont vérifiés directement autour de l'appel ;
 //   • anilist_sync_run_batch(), utilisée par le sous-onglet « Vérification
 //     via Anilist » de la page Outils (bouton de forçage : verrous ignorés,
 //     aucun plafond de visite — action explicite de l'administrateur).
@@ -36,19 +36,76 @@
 // 1. Réglages du verrou
 // ────────────────────────────────────────────────────────────────────────────
 
-// Verrou normal après une synchronisation réussie : 1 heure, par série.
-// Anciennement 24h ; réduit car l'API Anilist supporte largement une
-// fréquence de vérification plus élevée, et le nombre de séries en cours de
-// diffusion ET de visionnage simultanément reste toujours limité en
-// pratique (jamais des centaines) — le coût en requêtes reste négligeable.
-function anilist_sync_lock_seconds(): int {
-    return 3600;
+// Valeurs par défaut (secondes) : 12h entre deux synchronisations réussies,
+// 4h avant de retenter après un échec API. Un compromis entre fraîcheur des
+// données et pression sur l'API d'Anilist — l'utilisateur peut ajuster ces
+// deux durées depuis la page Options, dans les bornes définies ci-dessous.
+const ANILIST_SYNC_LOCK_DEFAULT_SECONDS       = 12 * 3600;
+const ANILIST_SYNC_RETRY_LOCK_DEFAULT_SECONDS = 4  * 3600;
+
+// Bornes autorisées (secondes) pour les réglages utilisateur, appliquées
+// par anilist_sync_clamp_lock_seconds() / anilist_sync_clamp_retry_lock_seconds()
+// aussi bien à la lecture (Bloc 1) qu'à l'écriture (fonctions/options.php) :
+// une valeur hors bornes ou invalide dans les options ne doit jamais
+// pouvoir désactiver de fait le verrou (0, négatif) ni le rendre absurde.
+const ANILIST_SYNC_LOCK_MIN_SECONDS   = 1  * 3600;  // 1h
+const ANILIST_SYNC_LOCK_MAX_SECONDS   = 72 * 3600;  // 72h
+const ANILIST_SYNC_RETRY_MIN_SECONDS  = 30 * 60;    // 30min
+const ANILIST_SYNC_RETRY_MAX_SECONDS  = 24 * 3600;  // 24h
+
+// Ramène une valeur (déjà castée en int) dans les bornes du verrou normal.
+function anilist_sync_clamp_lock_seconds(int $seconds): int {
+    return max(ANILIST_SYNC_LOCK_MIN_SECONDS, min(ANILIST_SYNC_LOCK_MAX_SECONDS, $seconds));
 }
 
-// Report du verrou après un échec API : 15 minutes, pour retenter bientôt
-// sans pour autant marteler l'API à chaque page vue en cas de panne.
+// Ramène une valeur (déjà castée en int) dans les bornes du verrou de retry.
+function anilist_sync_clamp_retry_lock_seconds(int $seconds): int {
+    return max(ANILIST_SYNC_RETRY_MIN_SECONDS, min(ANILIST_SYNC_RETRY_MAX_SECONDS, $seconds));
+}
+
+// Verrou normal après une synchronisation réussie, en secondes.
+// Lu depuis les options du site (réglable, page Options) ; repli sur la
+// valeur par défaut (12h) si l'option est absente ou invalide. Toujours
+// ramené dans les bornes [1h, 72h] par sécurité, même si l'option a été
+// altérée par un autre moyen que le formulaire (import de sauvegarde...).
+//
+// Mise en cache statique intra-requête : cette fonction est appelée une
+// fois par série lors du calcul des séries dues/éligibles (potentiellement
+// des dizaines par page), et les options du site ne changent jamais en
+// cours de requête — inutile de refaire une lecture SQLite à chaque appel.
+function anilist_sync_lock_seconds(): int {
+    static $cached = null;
+    if ($cached !== null) return $cached;
+
+    $options = function_exists('load_options') ? load_options() : [];
+    $raw     = $options['anilist_sync_lock_hours'] ?? null;
+    $cached  = ($raw === null || $raw === '' || !is_numeric($raw))
+        ? ANILIST_SYNC_LOCK_DEFAULT_SECONDS
+        : anilist_sync_clamp_lock_seconds((int) round(((float) $raw) * 3600));
+
+    return $cached;
+}
+
+// Report du verrou après un échec API, en secondes. Lu depuis les options
+// du site ; repli sur la valeur par défaut (4h) si absente ou invalide.
+// Toujours ramené dans les bornes [30min, 24h], ET toujours strictement
+// inférieur (ou égal) au verrou normal — un délai de retry plus long que le
+// verrou normal n'aurait aucun sens. Mise en cache statique : même raison
+// que anilist_sync_lock_seconds() ci-dessus.
 function anilist_sync_retry_lock_seconds(): int {
-    return 15 * 60;
+    static $cached = null;
+    if ($cached !== null) return $cached;
+
+    $options = function_exists('load_options') ? load_options() : [];
+    $raw     = $options['anilist_sync_retry_hours'] ?? null;
+    $lock    = anilist_sync_lock_seconds();
+
+    $retry = ($raw === null || $raw === '' || !is_numeric($raw))
+        ? ANILIST_SYNC_RETRY_LOCK_DEFAULT_SECONDS
+        : anilist_sync_clamp_retry_lock_seconds((int) round(((float) $raw) * 3600));
+
+    $cached = min($retry, $lock);
+    return $cached;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -114,7 +171,8 @@ function anilist_sync_is_due(array $series, bool $ignore_lock = false): bool {
 //                l'affichage uniquement — déjà persistée ci-dessus),
 //    'message'=> string,
 //    'series' => la série à jour (ou telle quelle en cas d'échec/skip),
-//    'retry_lock' => bool (true si un échec doit reporter le verrou d'1h)]
+//    'retry_lock' => bool (true si un échec doit reporter le verrou selon
+//                    anilist_sync_retry_lock_seconds())]
 function anilist_sync_series_now(array $data, string $series_id, bool $force = false): array {
     $found = find_series_by_id($data, $series_id);
     if (!$found) {
@@ -129,7 +187,7 @@ function anilist_sync_series_now(array $data, string $series_id, bool $force = f
     }
 
     if (!$force && !anilist_sync_is_due($series, false)) {
-        return ['status' => 'skipped', 'data' => $data, 'message' => "Verrou de 1h non écoulé.", 'series' => $series, 'retry_lock' => false];
+        return ['status' => 'skipped', 'data' => $data, 'message' => "Verrou non écoulé.", 'series' => $series, 'retry_lock' => false];
     }
 
     // Anilist fait autorité : on force toujours le contournement du cache de
@@ -191,10 +249,10 @@ function anilist_sync_series_now(array $data, string $series_id, bool $force = f
     return ['status' => $status, 'data' => $data, 'message' => $message, 'series' => $data[$key], 'retry_lock' => false];
 }
 
-// Reporte le verrou d'1 heure après un échec API, SANS toucher au reste de la
-// série. Séparé de anilist_sync_series_now() : le report d'échec n'est pas
-// une synchronisation, c'est juste une façon d'éviter de remarteler l'API à
-// chaque page vue pendant l'heure qui suit.
+// Reporte le verrou après un échec API, SANS toucher au reste de la série.
+// Séparé de anilist_sync_series_now() : le report d'échec n'est pas une
+// synchronisation, c'est juste une façon d'éviter de remarteler l'API à
+// chaque page vue pendant le délai de retry qui suit.
 //
 // Écriture ciblée (Bloc 5) : upsert_series_row() sur la seule série
 // concernée — un échec API ne touche jamais aux tomes/épisodes, un simple
@@ -203,10 +261,12 @@ function anilist_sync_apply_retry_lock(array $data, string $series_id): array {
     $found = find_series_by_id($data, $series_id);
     if (!$found) return $data;
     // anilist_synced_at ne mémorise qu'UN seul horodatage, sur lequel
-    // anilist_sync_is_due() applique toujours la même durée de verrou (24h).
-    // Pour obtenir une réouverture dans 1h plutôt que 24h, on recule donc
-    // l'horodatage posé de la différence entre les deux durées : 24h plus
-    // tard, anilist_sync_is_due() ne verra que l'équivalent d'1h écoulée.
+    // anilist_sync_is_due() applique toujours la même durée de verrou
+    // (anilist_sync_lock_seconds()). Pour obtenir une réouverture après le
+    // délai de retry plutôt qu'après le verrou normal, on recule donc
+    // l'horodatage posé de la différence entre les deux durées : le verrou
+    // normal plus tard, anilist_sync_is_due() ne verra que l'équivalent du
+    // délai de retry écoulé.
     $backdated = time() - (anilist_sync_lock_seconds() - anilist_sync_retry_lock_seconds());
     $data[$found['key']]['anilist_synced_at'] = $backdated;
     upsert_series_row($data[$found['key']]);
@@ -300,8 +360,8 @@ function anilist_sync_eligible_series_ids(array $data): array {
     return $ids;
 }
 
-// Parmi les séries éligibles, celles dont le verrou d'1h est écoulé (ce que
-// la synchro automatique traiterait réellement sans forçage).
+// Parmi les séries éligibles, celles dont le verrou (réglable) est écoulé
+// (ce que la synchro automatique traiterait réellement sans forçage).
 function anilist_sync_due_series_ids(array $data): array {
     $ids = [];
     foreach ($data as $series) {

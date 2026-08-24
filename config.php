@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '4.2.2');
+define('SITE_VERSION', '4.2.3');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Syngas — base commune des mangathèques Lengas (voir includes/syngas.php).
@@ -231,7 +231,7 @@ function init_db(PDO $pdo): void {
         $pdo->exec("ALTER TABLE series ADD COLUMN rewatch_count INTEGER NOT NULL DEFAULT 0");
     } catch (Exception $e) { /* colonne déjà présente */ }
 
-    // ── Horodatage de la dernière synchronisation Anilist (verrou 24h) ───────
+    // ── Horodatage de la dernière synchronisation Anilist (verrou réglable) ──
     try {
         $pdo->exec("ALTER TABLE series ADD COLUMN anilist_synced_at INTEGER NOT NULL DEFAULT 0");
     } catch (Exception $e) { /* colonne déjà présente */ }

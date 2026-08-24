@@ -4,9 +4,9 @@
 //
 // Déclenche la synchronisation automatique des séries animées éligibles
 // (diffusion et visionnage tous deux « en cours »), avec un bouton de
-// forçage qui ignore le verrou de 24 h. C'est la même synchronisation que
-// celle qui se déclenche automatiquement en arrière-plan à l'affichage de
-// l'Animethèque.
+// forçage qui ignore le verrou habituel (durée réglable depuis la page
+// Options, 12h par défaut). C'est la même synchronisation que celle qui se
+// déclenche automatiquement en arrière-plan à l'affichage de l'Animethèque.
 // ────────────────────────────────────────────────────────────────────────────
 
 require __DIR__ . '/_bootstrap.php';
@@ -17,7 +17,7 @@ require __DIR__ . '/_bootstrap.php';
 
 // ── Endpoint SSE : synchronisation Anilist en flux ────────────────────────────
 // $_GET['force'] = '1' → bouton de forçage : synchronise TOUTES les séries
-// animées éligibles, verrous de 24h ignorés (sur le modèle du bouton « Forcer
+// animées éligibles, verrous ignorés (sur le modèle du bouton « Forcer
 // la recherche (non analysées) » de l'outil MangaUpdates).
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'anilist_sync_stream') {
     @ini_set('output_buffering', 'off');
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'processed' => 0,
             'message'   => $force
                 ? "Aucune série animée éligible (diffusion et visionnage « en cours »)."
-                : "Aucune série à synchroniser pour le moment (verrous de 1h non écoulés).",
+                : "Aucune série à synchroniser pour le moment (verrous non écoulés).",
         ]);
         exit;
     }
@@ -74,17 +74,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 $tool_title    = 'Synchronisation via Anilist';
 $tool_subtitle = 'Nouveaux épisodes et statut de diffusion des séries animées en cours.';
 require __DIR__ . '/_layout_head.php';
+
+// Libellés d'heure lisibles (ex. 12h, 4h, 1h30, 30min) à partir des durées
+// réellement configurées (options du site, bornées et repliées sur les
+// valeurs par défaut par anilist_sync_lock_seconds() / _retry_lock_seconds()) —
+// pour ne jamais afficher un délai fixe qui ne correspondrait plus au
+// réglage effectif de l'utilisateur.
+$anilist_sync_format_hours = function (int $seconds): string {
+    if ($seconds < 3600) {
+        return round($seconds / 60) . 'min';
+    }
+    $hours   = intdiv($seconds, 3600);
+    $minutes = intdiv($seconds % 3600, 60);
+    return $minutes > 0 ? "{$hours}h{$minutes}" : "{$hours}h";
+};
+$anilist_sync_lock_label  = $anilist_sync_format_hours(anilist_sync_lock_seconds());
+$anilist_sync_retry_label = $anilist_sync_format_hours(anilist_sync_retry_lock_seconds());
 ?>
 
         <div class="tools-section">
             <h2>Synchronisation via Anilist</h2>
             <p>Tient à jour les séries animées dont la diffusion <strong>et</strong> le visionnage sont tous les deux « en cours » : nouveaux épisodes diffusés et statut de diffusion. C'est la même synchronisation qui se déclenche automatiquement, en arrière-plan, à l'affichage de l'Animethèque — cet outil permet de la lancer à la demande, ou de la forcer en ignorant le verrou habituel.</p>
             <p class="hint">⚠️ Limitations : seuls les épisodes et le statut de diffusion sont concernés. Les studios, genres, format, titres alternatifs ou la vignette Anilist ne sont vérifiés que par l'outil de revérification (« Vérification des animés »), qui demande une validation avant toute écriture. Les personnalisations (titre choisi, vignette personnelle, note, coches, éditions physiques) ne sont jamais affectées, ici comme ailleurs.</p>
-            <p class="hint">Un verrou de 1h protège chaque série contre des vérifications trop rapprochées ; en cas d'échec de l'API pour une série, ce délai est ramené à 15min avant une nouvelle tentative.</p>
+            <p class="hint">Un verrou de <?= htmlspecialchars($anilist_sync_lock_label) ?> protège chaque série contre des vérifications trop rapprochées ; en cas d'échec de l'API pour une série, ce délai est ramené à <?= htmlspecialchars($anilist_sync_retry_label) ?> avant une nouvelle tentative. Réglable dans « Options » → « Synchronisation Anilist ».</p>
 
             <div class="tools-actions">
                 <button id="anilist-sync-launch" class="button">Synchroniser les séries éligibles</button>
-                <button id="anilist-sync-launch-force" class="button button-opt" title="Synchronise toutes les séries animées éligibles (diffusion et visionnage « en cours »), en ignorant le verrou de 1 h">Forcer toutes les séries éligibles</button>
+                <button id="anilist-sync-launch-force" class="button button-opt" title="Synchronise toutes les séries animées éligibles (diffusion et visionnage « en cours »), en ignorant le verrou habituel">Forcer toutes les séries éligibles</button>
             </div>
 
             <div id="anilist-sync-progress"></div>

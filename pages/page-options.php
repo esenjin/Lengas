@@ -28,6 +28,10 @@ require_once 'vestikan/vestikan.php';
 // section « Statistiques » de l'Animethèque (bloc 14).
 require_once 'includes/anilist.php';
 require_once 'fonctions/stats_compute.php';
+// Constantes de bornes + valeurs par défaut du verrou de synchro Anilist
+// (ANILIST_SYNC_LOCK_MIN_SECONDS, etc.), nécessaires pour la section
+// « Synchronisation Anilist » (bloc 15) et sa validation à l'enregistrement.
+require_once 'fonctions/tools/anilist_sync.php';
 
 $all_data = load_data();
 $options  = load_options();
@@ -181,6 +185,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
         }
     }
     $options['stats_anime_format_settings'] = json_encode($anime_format_settings, JSON_UNESCAPED_UNICODE);
+
+    // ── Synchronisation Anilist : verrou normal + délai de retry (bloc 15) ──
+    // Saisis en heures dans le formulaire, stockés en heures (valeur brute,
+    // convertie en secondes à la lecture par anilist_sync_lock_seconds() /
+    // anilist_sync_retry_lock_seconds()). Toujours validés et bornés ici
+    // AVANT enregistrement — jamais de confiance aveugle dans la saisie —
+    // avec repli sur les valeurs par défaut si le champ est vide/invalide,
+    // et le délai de retry toujours ramené sous le verrou normal.
+    $sync_hours_in  = trim((string) ($_POST['anilist_sync_lock_hours']  ?? ''));
+    $retry_hours_in = trim((string) ($_POST['anilist_sync_retry_hours'] ?? ''));
+
+    $sync_seconds = is_numeric($sync_hours_in)
+        ? anilist_sync_clamp_lock_seconds((int) round(((float) $sync_hours_in) * 3600))
+        : ANILIST_SYNC_LOCK_DEFAULT_SECONDS;
+
+    $retry_seconds = is_numeric($retry_hours_in)
+        ? anilist_sync_clamp_retry_lock_seconds((int) round(((float) $retry_hours_in) * 3600))
+        : ANILIST_SYNC_RETRY_LOCK_DEFAULT_SECONDS;
+    // Le délai de retry ne doit jamais dépasser le verrou normal : retenter
+    // plus tard que la prochaine synchro planifiée n'aurait aucun sens.
+    $retry_seconds = min($retry_seconds, $sync_seconds);
+
+    // Stockage en heures, avec jusqu'à 2 décimales (ex. 0.5h = 30min) pour
+    // permettre les bornes basses (30min de retry) sans perdre en précision.
+    // Les zéros décimaux superflus sont retirés (12.00 → 12, 0.50 → 0.5)
+    // SANS toucher à la partie entière (120.00 → 120, pas 12).
+    $trim_hours = function (float $seconds_in_hours): string {
+        $s = number_format($seconds_in_hours, 2, '.', '');
+        if (strpos($s, '.') !== false) {
+            $s = rtrim($s, '0');
+            $s = rtrim($s, '.');
+        }
+        return $s;
+    };
+    $options['anilist_sync_lock_hours']  = $trim_hours($sync_seconds  / 3600);
+    $options['anilist_sync_retry_hours'] = $trim_hours($retry_seconds / 3600);
 
     $admin_password = trim($_POST['admin_password'] ?? '');
 
@@ -478,6 +518,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                     <?php endforeach; ?>
                 </div>
                 <p class="hint">Laissez un champ vide pour utiliser la valeur par défaut. Un épisode dont la durée réelle est connue via Anilist n'utilise jamais ces réglages.</p>
+
+                <!-- ══ SYNCHRONISATION ANILIST ═══════════════════════════ -->
+                <h3 class="options-section-title">Synchronisation Anilist</h3>
+                <p class="hint">Réglez la fréquence à laquelle les séries animées en cours (diffusion <strong>et</strong> visionnage) sont vérifiées automatiquement auprès d'Anilist, ainsi que le délai avant une nouvelle tentative en cas d'échec de l'API. Des valeurs plus hautes réduisent la pression sur l'API d'Anilist ; des valeurs plus basses raccourcissent le délai avant qu'un nouvel épisode diffusé n'apparaisse dans votre collection.</p>
+
+                <?php
+                $anilist_sync_lock_hours_cur  = $options['anilist_sync_lock_hours']  ?? (string) (ANILIST_SYNC_LOCK_DEFAULT_SECONDS  / 3600);
+                $anilist_sync_retry_hours_cur = $options['anilist_sync_retry_hours'] ?? (string) (ANILIST_SYNC_RETRY_LOCK_DEFAULT_SECONDS / 3600);
+                ?>
+
+                <div class="stats-defaults">
+                    <div class="stats-cat-row stats-cat-row--anime stats-cat-head">
+                        <label for="anilist_sync_lock_hours" class="stats-cat-name">Vérification toutes les (h)</label>
+                        <input type="number" step="0.5" min="1" max="72" id="anilist_sync_lock_hours" name="anilist_sync_lock_hours" value="<?= htmlspecialchars($anilist_sync_lock_hours_cur) ?>">
+                    </div>
+                    <div class="stats-cat-row stats-cat-row--anime stats-cat-head">
+                        <label for="anilist_sync_retry_hours" class="stats-cat-name">Nouvel essai après échec (h)</label>
+                        <input type="number" step="0.5" min="0.5" max="24" id="anilist_sync_retry_hours" name="anilist_sync_retry_hours" value="<?= htmlspecialchars($anilist_sync_retry_hours_cur) ?>">
+                    </div>
+                </div>
+                <p class="hint">Bornes : 1h à 72h pour la vérification, 30min à 24h pour le nouvel essai après échec. Le délai de nouvel essai reste toujours inférieur ou égal au délai de vérification, quelle que soit la saisie.</p>
 
                 <!-- ══ VIGNETTE ══════════════════════════════════════════ -->
                 <h3 class="options-section-title">Vignette</h3>
