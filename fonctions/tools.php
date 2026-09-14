@@ -18,6 +18,7 @@
 //   anilist_recheck.php    → Vérification manuelle des animés
 //   grouping.php           → Groupage de licences (suggestions de regroupement)
 //   syngas.php              → Synchronisation Syngas (envoi/réception)
+//   cache.php               → Vider le cache (rafraîchissement des assets CSS/JS)
 // ────────────────────────────────────────────────────────────────────────────
 
 require_once __DIR__ . '/tools/backups.php';
@@ -32,3 +33,4 @@ require_once __DIR__ . '/tools/anilist_sync.php';
 require_once __DIR__ . '/tools/anilist_recheck.php';
 require_once __DIR__ . '/tools/grouping.php';
 require_once __DIR__ . '/tools/syngas.php';
+require_once __DIR__ . '/tools/cache.php';

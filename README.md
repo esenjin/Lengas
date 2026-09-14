@@ -178,12 +178,13 @@ Tous les outils du site sont accessibles depuis `pages/page-outils.php`, accessi
 - **Synchronisation via Anilist** (`pages/outils/outil-anilist-sync.php`, visible uniquement si l'Animethèque contient au moins une série) : déclenche la synchronisation automatique des séries animées éligibles (diffusion et visionnage tous deux « en cours »), avec un bouton de forçage qui ignore le verrou d'1 h — voir [Intégration Anilist](#intégration-anilist-animethèque)
 - **Import Anilist** (`pages/outils/outil-anilist-import.php`) : importe en masse la liste ANIME d'un compte Anilist (par pseudo public), avec un écran d'aperçu détaillé avant toute écriture — voir [Intégration Anilist](#intégration-anilist-animethèque)
 - **Vérification des animés** (`pages/outils/outil-anilist-recheck.php`, visible uniquement si l'Animethèque contient au moins une série) : compare chaque série animée à sa fiche Anilist actuelle sur tout ce que la synchronisation automatique ne couvre pas (titres alternatifs, studios, format, genres, vignette…), avec validation explicite avant toute correction
-- **Vérification des mangas** (`pages/outils/outil-coherences.php`) : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome »/« dernier épisode », statut différent de MangaUpdates ou d'Anilist, prêts orphelins, série animée sans identifiant Anilist, épisode terminé sans date, vignette Anilist introuvable, contributeur sans rôle attribué, etc.) et propose une édition rapide de la série concernée (dont l'attribution d'un rôle en un clic pour un contributeur qui n'en a pas encore) ; les anomalies factuelles d'une série animée renvoient vers sa fiche Anilist pour correction à la source
+- **Vérification des mangas** (`pages/outils/outil-coherences.php`) : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome »/« dernier épisode », statut différent de MangaUpdates ou d'Anilist, prêts orphelins, série animée sans identifiant Anilist, épisode terminé sans date, vignette Anilist introuvable, contributeur sans rôle attribué, etc.) et propose une édition rapide de la série concernée (dont l'attribution d'un rôle en un clic pour un contributeur qui n'en a pas encore) ; les anomalies factuelles d'une série animée renvoient vers sa fiche Anilist pour correction à la source. L'analyse ne démarre jamais automatiquement : elle n'est lancée que sur clic explicite du bouton dédié. Après une édition rapide, la page n'est pas rechargée et l'analyse n'est pas relancée automatiquement : la série modifiée est simplement repérée par un liseré et un badge « ✓ Modifiée » dans la liste déjà affichée, en attendant une nouvelle analyse
 - **Sauvegardes** (`pages/outils/outil-sauvegardes.php`) : création et téléchargement d'archives de vos données, ainsi que l'export JSON complet (inclut les tables et les vignettes propres à l'Animethèque)
 - **Association MangaUpdates** (`pages/outils/outil-associations-mu.php`) : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement ; un second outil récupère de la même façon les genres manquants
 - **Synchronisation Syngas** (`pages/outils/outil-syngas.php`) : envoie vos séries mangas/light-novels non encore liées à Syngas (après récapitulatif et confirmation) et récupère les mises à jour des séries déjà liées (comparaison champ par champ, validation sélective) — voir [Comment utiliser Syngas](#comment-utiliser-syngas)
 - **Groupage de licences** (`pages/outils/outil-groupage-licences.php`) : repère les séries sans licence qui semblent appartenir à la même œuvre (comparaison du nom et, pour les animés, des titres alternatifs Anilist, avec bonus si deux mangas partagent au moins un même auteur ou si deux animés partagent le même studio) et propose de les regrouper. Chaque suggestion se valide individuellement : création d'une nouvelle licence, rattachement à une licence existante détectée automatiquement (avec consultation de son contenu actuel avant de confirmer), rattachement à une autre licence choisie manuellement, ou ignorée. Seuil de similarité ajustable, avec un repère calculé sur le score moyen des licences déjà existantes. Analyse entièrement locale (aucun appel réseau)
 - **Vérification d'intégrité du site** (`pages/outils/outil-integrite.php`) : compare automatiquement votre instance au dépôt Gitea, **au tag correspondant à votre version installée** (si aucun tag ne correspond, la comparaison se fait avec la version la plus récente et le signale). Pour chaque fichier versionné, elle vérifie la **présence** ET le **contenu** (comparaison d'empreinte : « OK », « Modifié » ou « Manquant »). Elle repère aussi les **fichiers étrangers au dépôt** (présents sur l'instance mais absents du dépôt, hors données `uploads/` `saves/` `bdd/`, config Vestikan, thèmes personnalisés et photo de profil de l'admin), l'**état des modules facultatifs** Vestikan et Babengas (installés ? réellement activés ? service distant fonctionnel ?), l'**état de Syngas** (service joignable ? clé API provisionnée ? bannissement éventuel signalé), la **connectivité à l'API Anilist**, les permissions, les fichiers interdits, les doublons, les images orphelines (la photo de profil de l'admin et les vignettes Anilist actives ne sont jamais considérées comme orphelines), l'accès externe aux dossiers sensibles, la structure de la base de données (y compris les tables et colonnes propres à l'Animethèque), les thèmes personnalisés présents
+- **Vider le cache** (`pages/outils/outil-cache.php`) : force le renouvellement du cache navigateur sur les fichiers CSS/JS du site, pour que les changements d'une mise à jour s'affichent correctement sans avoir besoin d'un rechargement forcé (Ctrl+F5). Ne touche jamais à votre session ni à vos données. Repose sur un compteur de version stocké en base (option `cache_bust_version`), utilisé par `asset_url()` (`includes/helpers.php`) comme paramètre `?v=...` de chaque CSS/JS : ce mécanisme fonctionne même si le serveur web n'a aucun droit d'écriture sur `assets/` (cas courant en hébergement mutualisé). Un rafraîchissement de la date de modification des fichiers eux-mêmes est tenté en complément, à titre de bonus non bloquant si les droits le permettent
 
 ### Aperçu de lien (OpenGraph)
 Lorsqu'un lien du site est partagé (Discord, réseaux sociaux, messageries…), un aperçu (titre, description, vignette) est généré automatiquement via `includes/opengraph.php`, inclus dans le `<head>` de chaque page :
@@ -312,7 +313,6 @@ Elles ne sont pas obligatoire, mais il est recommandé de passer par les version
 - [3.3.0](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.3.0), pour migrer vos séries "lues ailleurs" vers le nouveau système (uniquement si vous êtes sur une version 2.1.0 ou supérieur, les "lues ailleurs" n'existaient pas avant).
 - [3.6.0](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.6.0), pour enregistrer en masse les dates de lecture des séries.
 - [3.9.0](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.9.0), pour ajouter en masse des urls Babelio aux séries.
-- [4.3.0](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/4.3.0), pour migrer la gestion des contributeurs des séries mangas.
 
 ---
 
@@ -393,7 +393,7 @@ Les contributeurs (auteur, éditeur, autres rôles — voir [Personnalités](#pe
 
 ### Association en masse des anciennes séries (`ajout_syngas_uid.php`)
 
-Si votre collection existait déjà avant l'intégration Syngas, un script à usage unique — `ajout_syngas_uid.php` (à récupérer [ici](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/4.2.0)), à la racine du site — recherche automatiquement une correspondance sur Syngas pour chaque série manga/light-novel encore sans UID Syngas, en comparant titre, auteur et éditeur. Les correspondances suffisamment fiables sont liées automatiquement (uniquement l'UID est posé, aucun autre champ n'est modifié) ; les correspondances moins sûres sont listées dans un rapport pour vérification manuelle. Ouvrez `ajout_syngas_uid.php` dans votre navigateur une fois, puis **supprimez ce fichier du serveur** — même précaution que `generate_password.php`.
+Si votre collection existait déjà avant l'intégration Syngas, un script à usage unique — `ajout_syngas_uid.php`, à la racine du site — recherche automatiquement une correspondance sur Syngas pour chaque série manga/light-novel encore sans UID Syngas, en comparant titre, auteur et éditeur. Les correspondances suffisamment fiables sont liées automatiquement (uniquement l'UID est posé, aucun autre champ n'est modifié) ; les correspondances moins sûres sont listées dans un rapport pour vérification manuelle. Ouvrez `ajout_syngas_uid.php` dans votre navigateur une fois, puis **supprimez ce fichier du serveur** — même précaution que `generate_password.php`.
 
 ### Bannissement
 
@@ -452,7 +452,8 @@ lengas/
 │       ├── outil-associations-mu.php  # Association MangaUpdates (fiches + genres)
 │       ├── outil-syngas.php           # Synchronisation Syngas (envoi/réception)
 │       ├── outil-groupage-licences.php # Groupage de licences (suggestions de regroupement)
-│       └── outil-integrite.php        # Vérification d'intégrité du site
+│       ├── outil-integrite.php        # Vérification d'intégrité du site
+│       └── outil-cache.php            # Vider le cache (rafraîchissement des assets CSS/JS)
 ├── vestikan/              # Connexion SSO Vestikan (facultatif, non versionné pour la config)
 │   ├── vestikan-login.php    # Démarrage de la connexion Vestikan
 │   ├── vestikan-callback.php # Callback OAuth Vestikan
@@ -521,7 +522,8 @@ lengas/
 │       │       ├── anilist-import.js
 │       │       ├── anilist-sync.js
 │       │       ├── anilist-recheck.js
-│       │       └── grouping.js
+│       │       ├── grouping.js
+│       │       └── cache.js
 │       ├── stats.js
 │       ├── historique.js
 │       ├── personnalites.js
@@ -566,7 +568,8 @@ lengas/
 │       ├── anilist_import.php     # Import de masse de la liste Anilist
 │       ├── anilist_sync.php       # Synchronisation automatique des animés en cours
 │       ├── anilist_recheck.php    # Vérification manuelle des animés
-│       └── grouping.php           # Groupage de licences (suggestions de regroupement)
+│       ├── grouping.php           # Groupage de licences (suggestions de regroupement)
+│       └── cache.php              # Vider le cache (rafraîchissement des assets CSS/JS)
 ├── uploads/              # Images des séries, dont les vignettes Anilist téléchargées (chmod 0774)
 ├── saves/                # Sauvegardes de la base de données (chmod 0774)
 └── bdd/                  # Fichiers de données (chmod 0774)

@@ -44,10 +44,10 @@ require __DIR__ . '/_layout_head.php';
             <h2>Vérification des mangas</h2>
             <p>Vérification des incohérences internes de vos séries (doublons, numéros manquants, mauvais tag « dernier tome », prêts orphelins…). Cet outil exploite aussi le statut de publication MangaUpdates mis en cache.</p>
             <div class="tools-actions">
-                <button id="reload-coherences-btn" class="button button-opt">Relancer l'analyse</button>
+                <button id="reload-coherences-btn" class="button button-opt">Lancer l'analyse</button>
             </div>
             <div id="coherences-results">
-                <!-- Résultats chargés dynamiquement -->
+                <p class="loading-text">Cliquez sur « Lancer l'analyse » pour vérifier votre collection.</p>
             </div>
         </div>
 

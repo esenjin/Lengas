@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_action'])) {
     <meta name="description" content="Gestion des livres prêtés.">
     <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
-    <link rel="stylesheet" href="../assets/css/main.css">
+    <?= asset_css_tag('assets/css/main.css') ?>
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">

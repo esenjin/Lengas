@@ -31,7 +31,7 @@ $sso_error = isset($_GET['sso_error']);
     <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
     <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="stylesheet" href="assets/css/main.css">
+    <?= asset_css_tag('assets/css/main.css') ?>
     <?= theme_link_tag($options) ?>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>

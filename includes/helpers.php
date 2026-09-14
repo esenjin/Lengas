@@ -1080,6 +1080,78 @@ function profil_has_visible_highlights(array $data, array $options): bool {
     return false;
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// CACHE-BUSTING DES ASSETS STATIQUES (CSS / JS)
+// ──────────────────────────────────────────────────────────────────────────────
+// Sans paramètre de version, un navigateur peut continuer à servir une
+// ancienne copie d'un fichier CSS/JS depuis son cache après une mise à jour
+// du site, jusqu'à un rechargement forcé (Ctrl+F5) par l'utilisateur. Cette
+// fonction ajoute automatiquement « ?v=<empreinte> » à l'URL d'un asset, en
+// se basant sur sa date de dernière modification sur le disque (comme le
+// fait déjà theme_link_tag() pour le CSS de thème, ici généralisé à tous les
+// CSS et JS du site) : le navigateur ne réutilise son cache que tant que le
+// fichier n'a pas changé, et va systématiquement chercher la version fraîche
+// dès qu'il est republié (nouvelle mise à jour, ou après l'outil « Vider le
+// cache », qui republie main.css avec une date modifiée — voir
+// fonctions/tools/cache.php).
+//
+// $path est un chemin RELATIF À LA RACINE DU PROJET (ex. "assets/css/main.css"),
+// quelle que soit la profondeur de la page appelante : cette fonction déduit
+// elle-même le préfixe "../" nécessaire à partir de PHP_SELF, exactement
+// comme theme_link_tag() le fait déjà.
+// Version manuelle de cache-busting, stockée en base (option
+// 'cache_bust_version'). Sert de PLANCHER MINIMUM pour asset_url() : même si
+// le serveur web n'a pas les droits d'écriture sur assets/css ou assets/js
+// (cas fréquent en hébergement mutualisé, où les fichiers appartiennent à
+// l'utilisateur FTP et sont en lecture seule pour PHP), l'outil « Vider le
+// cache » reste capable de forcer le renouvellement en incrémentant
+// simplement ce compteur — sans jamais avoir besoin d'écrire sur le disque.
+// Vaut 0 tant que l'outil n'a jamais été utilisé (aucune option à créer par
+// avance : load_options()/save_options() gèrent déjà les clés manquantes).
+function cache_bust_manual_version(): int {
+    static $cached = null;
+    if ($cached !== null) return $cached;
+    if (!function_exists('load_options')) return 0;
+    try {
+        $options = load_options();
+        $cached  = (int)($options['cache_bust_version'] ?? 0);
+    } catch (Exception $e) {
+        $cached = 0;
+    }
+    return $cached;
+}
+
+function asset_url(string $path): string {
+    $v = max(@filemtime($path) ?: 0, cache_bust_manual_version());
+    if ($v === 0) {
+        $v = defined('SITE_VERSION') ? SITE_VERSION : time();
+    }
+    $php_self = str_replace('\\', '/', $_SERVER['PHP_SELF'] ?? '');
+    // Profondeur du script courant sous la racine du projet : pages/outils/
+    // est deux crans sous la racine, pages/ un seul, la racine elle-même
+    // zéro. On compte les segments "/pages/" et "/outils/" plutôt que de
+    // reconnaître un par un les scripts existants, pour rester correct si un
+    // nouveau sous-dossier apparaît.
+    $depth = 0;
+    if (strpos($php_self, '/pages/outils/') !== false) {
+        $depth = 2;
+    } elseif (strpos($php_self, '/pages/') !== false) {
+        $depth = 1;
+    }
+    $prefix = str_repeat('../', $depth);
+    return $prefix . $path . '?v=' . $v;
+}
+
+// Émet une balise <link rel="stylesheet"> pour un CSS, avec cache-busting.
+function asset_css_tag(string $path): string {
+    return '<link rel="stylesheet" href="' . htmlspecialchars(asset_url($path), ENT_QUOTES) . '">';
+}
+
+// Émet une balise <script> pour un JS, avec cache-busting.
+function asset_js_tag(string $path): string {
+    return '<script src="' . htmlspecialchars(asset_url($path), ENT_QUOTES) . '"></script>';
+}
+
 // Récupère la dernière version publiée sur Gitea (null si indisponible).
 if (!function_exists('get_latest_version_from_gitea')) {
     function get_latest_version_from_gitea() {

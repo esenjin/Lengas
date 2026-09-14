@@ -183,7 +183,7 @@ foreach (series_type_keys() as $__t) {
     <meta name="description" content="Profil de l'administrateur du site.">
     <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
-    <link rel="stylesheet" href="../assets/css/main.css">
+    <?= asset_css_tag('assets/css/main.css') ?>
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">
@@ -485,9 +485,9 @@ foreach (series_type_keys() as $__t) {
         }, $highlighted), JSON_UNESCAPED_UNICODE) ?>;
         window.highlightsMax = <?= json_encode(series_highlights_max()) ?>;
     </script>
-    <script src="../assets/js/admin/main.js"></script>
-    <script src="../assets/js/admin/profil.js"></script>
-    <script src="../assets/js/admin/highlights.js"></script>
+    <?= asset_js_tag('assets/js/admin/main.js') ?>
+    <?= asset_js_tag('assets/js/admin/profil.js') ?>
+    <?= asset_js_tag('assets/js/admin/highlights.js') ?>
 
     <script>
     // Bouton « Retour en haut »

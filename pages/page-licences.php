@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['license_action'])) {
     <meta name="description" content="Regroupement de séries sous une même licence.">
     <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
-    <link rel="stylesheet" href="../assets/css/main.css">
+    <?= asset_css_tag('assets/css/main.css') ?>
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">
@@ -210,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['license_action'])) {
         // Registre allégé des types (badges), seule source de vérité pour ce JS.
         window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
     </script>
-    <script src="../assets/js/admin/main.js"></script>
-    <script src="../assets/js/admin/licenses.js"></script>
+    <?= asset_js_tag('assets/js/admin/main.js') ?>
+    <?= asset_js_tag('assets/js/admin/licenses.js') ?>
 </body>
 </html>

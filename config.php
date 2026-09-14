@@ -591,6 +591,11 @@ function init_db(PDO $pdo): void {
             'syngas_banned'                 => '0',
             'syngas_banned_reason'          => '',
             'syngas_banned_at'              => '0',
+            // ── Vider le cache (outil « Vider le cache ») ──
+            // Plancher minimum utilisé par asset_url() (includes/helpers.php)
+            // pour le paramètre « ?v=... » des CSS/JS. 0 = jamais utilisé,
+            // repli sur la date de modification des fichiers eux-mêmes.
+            'cache_bust_version'            => '0',
         ];
         $stmt = $pdo->prepare("INSERT OR IGNORE INTO options (key, value) VALUES (?, ?)");
         foreach ($defaults as $k => $v) {

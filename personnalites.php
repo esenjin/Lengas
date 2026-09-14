@@ -53,7 +53,7 @@ if ($manga_private) {
         <meta name="description" content="<?= htmlspecialchars($options['site_description'] ?? '') ?>">
         <?= opengraph_tags($options) ?>
         <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-        <link rel="stylesheet" href="assets/css/main.css">
+        <?= asset_css_tag('assets/css/main.css') ?>
         <?= theme_link_tag($options) ?>
     </head>
     <body>
@@ -143,7 +143,7 @@ $reviews_public = !is_hide_reviews($options, 'manga');
     <meta name="description" content="<?= htmlspecialchars($options['site_description'] ?? '') ?>">
     <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-    <link rel="stylesheet" href="assets/css/main.css">
+    <?= asset_css_tag('assets/css/main.css') ?>
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar personalities-page">
@@ -309,9 +309,9 @@ $reviews_public = !is_hide_reviews($options, 'manga');
     // $__profil_pages, includes/public-sidebar.php) — la modale elle-même
     // n'est donc pas nécessaire ici.
     ?>
-    <script src="assets/js/admin/main.js"></script>
-    <script src="assets/js/public.js"></script>
-    <script src="assets/js/personnalites.js"></script>
+    <?= asset_js_tag('assets/js/admin/main.js') ?>
+    <?= asset_js_tag('assets/js/public.js') ?>
+    <?= asset_js_tag('assets/js/personnalites.js') ?>
 </body>
 </html>
 

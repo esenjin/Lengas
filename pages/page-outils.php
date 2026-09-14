@@ -147,6 +147,15 @@ $tools = [
         'color'       => 'purple',
         'section'     => 'site',
     ],
+    [
+        'icon'        => 'broom',
+        'name'        => 'Vider le cache',
+        'description' => "Force l'affichage des derniers styles et scripts du site après une mise à jour, sans toucher à votre session.",
+        'href'        => 'outils/outil-cache.php',
+        'visible'     => true,
+        'color'       => 'purple',
+        'section'     => 'site',
+    ],
 ];
 
 // Regroupe les outils visibles par section, en conservant l'ordre défini
@@ -178,7 +187,7 @@ $tool_icon_colors = [
     <meta name="description" content="Outils de maintenance et de vérification de la collection.">
     <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
-    <link rel="stylesheet" href="../assets/css/main.css">
+    <?= asset_css_tag('assets/css/main.css') ?>
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar tools-page">

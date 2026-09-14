@@ -69,14 +69,20 @@ const modals = {
 };
 
 // Fermeture d'une modale : si des corrections ont été enregistrées depuis
-// l'édition rapide, on relance l'analyse des incohérences.
+// l'édition rapide, on marque simplement le bloc de la série concernée
+// comme « modifié » dans la liste déjà affichée (voir coherence.js,
+// markCoherenceSeriesEdited) — l'analyse elle-même n'est PAS relancée
+// automatiquement : seul un nouveau clic sur « Lancer l'analyse » le fait.
 function closeToolModal(modal) {
     modal.classList.remove('modal-active');
 
     const isCoherenceModal = (modal.id === 'coherence-edit-modal');
     if (isCoherenceModal && window.coherenceEditDirty) {
+        const editedSeriesId = window.coherenceEditDirty;
         window.coherenceEditDirty = false;
-        if (typeof loadCoherences === 'function') loadCoherences();
+        if (typeof markCoherenceSeriesEdited === 'function') {
+            markCoherenceSeriesEdited(editedSeriesId);
+        }
     }
 }
 

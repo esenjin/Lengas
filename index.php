@@ -432,7 +432,7 @@ $data = array_values(apply_refine_filter($data, $refine_categories, $refine_genr
     <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
     <?= opengraph_tags($options, ['title' => $options['index_page_title'] ?? '', 'data' => $data, 'public' => true]) ?>
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-    <link rel="stylesheet" href="assets/css/main.css">
+    <?= asset_css_tag('assets/css/main.css') ?>
         <?= theme_link_tag($options) ?>
     <style>
         /* Style pour les cartes cliquables */
@@ -761,7 +761,7 @@ $data = array_values(apply_refine_filter($data, $refine_categories, $refine_genr
         // réapparaître les séries déjà affichées en double au premier scroll.
         window.initialPublicPerPage = <?= json_encode($per_page_public) ?>;
     </script>
-    <script src="assets/js/admin/main.js"></script>
-    <script src="assets/js/public.js"></script>
+    <?= asset_js_tag('assets/js/admin/main.js') ?>
+    <?= asset_js_tag('assets/js/public.js') ?>
 </body>
 </html>

@@ -31,7 +31,7 @@ if ($history_hidden) {
         <meta name="description" content="<?= htmlspecialchars($options['site_description'] ?? '') ?>">
         <?= opengraph_tags($options) ?>
         <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-        <link rel="stylesheet" href="assets/css/main.css">
+        <?= asset_css_tag('assets/css/main.css') ?>
         <?= theme_link_tag($options) ?>
     </head>
     <body>
@@ -378,7 +378,7 @@ $has_more = $total_days > $days_per_page;
     <meta name="description" content="<?= htmlspecialchars($options['site_description'] ?? '') ?>">
     <?= opengraph_tags($options, ['title' => $page_title, 'data' => $data, 'public' => true]) ?>
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-    <link rel="stylesheet" href="assets/css/main.css">
+    <?= asset_css_tag('assets/css/main.css') ?>
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar history-page">
@@ -568,8 +568,8 @@ $has_more = $total_days > $days_per_page;
             perPage:   <?= (int)$days_per_page ?>
         };
     </script>
-    <script src="assets/js/admin/main.js"></script>
-    <script src="assets/js/public.js"></script>
-    <script src="assets/js/historique.js"></script>
+    <?= asset_js_tag('assets/js/admin/main.js') ?>
+    <?= asset_js_tag('assets/js/public.js') ?>
+    <?= asset_js_tag('assets/js/historique.js') ?>
 </body>
 </html>

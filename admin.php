@@ -1249,7 +1249,7 @@ if ($current_type === 'anime') {
     <meta name="description" content="<?= htmlspecialchars($options['site_description']) ?>">
     <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-    <link rel="stylesheet" href="assets/css/main.css">
+    <?= asset_css_tag('assets/css/main.css') ?>
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">
@@ -1834,16 +1834,16 @@ if ($current_type === 'anime') {
         window.animeEditionsMax = <?= json_encode(series_editions_max()) ?>;
         window.animeEditionCommentMax = <?= json_encode(series_edition_comment_max()) ?>;
     </script>
-    <script src="assets/js/admin/modals.js"></script>
-    <script src="assets/js/admin/autocomplete.js"></script>
-    <script src="assets/js/admin/contributors.js"></script>
-    <script src="assets/js/admin/series.js"></script>
-    <script src="assets/js/admin/syngas-search.js"></script>
-    <script src="assets/js/admin/anime.js"></script>
-    <script src="assets/js/admin/volumes.js"></script>
-    <script src="assets/js/admin/episodes.js"></script>
-    <script src="assets/js/admin/pagination.js"></script>
-    <script src="assets/js/admin/main.js"></script>
+    <?= asset_js_tag('assets/js/admin/modals.js') ?>
+    <?= asset_js_tag('assets/js/admin/autocomplete.js') ?>
+    <?= asset_js_tag('assets/js/admin/contributors.js') ?>
+    <?= asset_js_tag('assets/js/admin/series.js') ?>
+    <?= asset_js_tag('assets/js/admin/syngas-search.js') ?>
+    <?= asset_js_tag('assets/js/admin/anime.js') ?>
+    <?= asset_js_tag('assets/js/admin/volumes.js') ?>
+    <?= asset_js_tag('assets/js/admin/episodes.js') ?>
+    <?= asset_js_tag('assets/js/admin/pagination.js') ?>
+    <?= asset_js_tag('assets/js/admin/main.js') ?>
 
 </body>
 </html>

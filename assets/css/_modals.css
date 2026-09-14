@@ -1154,6 +1154,27 @@ html:has(body.modal-open) {
     box-shadow: none;
 }
 
+/* Bloc incohérence marqué comme récemment modifié depuis la modale d'édition
+   rapide (voir assets/js/admin/tools/coherence.js) : liseré + pastille, sans
+   recharger l'analyse ni la page. Retiré automatiquement dès qu'on relance
+   une nouvelle analyse. */
+.coherence-series-block--edited {
+    border-color: rgba(74, 222, 128, 0.45);
+    box-shadow: inset 3px 0 0 var(--success-color);
+}
+
+.coherence-edited-badge {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 20px;
+    background: rgba(74, 222, 128, 0.15);
+    color: var(--success-color);
+    white-space: nowrap;
+}
+
+
 /* ── Animation de progression analyse séries incomplètes ─────────────────── */
 .analysis-progress {
     display: flex;

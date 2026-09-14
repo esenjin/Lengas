@@ -51,7 +51,7 @@ if (!empty($options['private_mode'])) {
         <title><?= htmlspecialchars($page_title) ?></title>
         <meta name="description" content="<?= htmlspecialchars($options['site_description'] ?? '') ?>">
         <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-        <link rel="stylesheet" href="assets/css/main.css">
+        <?= asset_css_tag('assets/css/main.css') ?>
         <?= theme_link_tag($options) ?>
     </head>
     <body>
@@ -321,7 +321,7 @@ $anime_chart_payload = [
     <meta name="description" content="<?= htmlspecialchars($options['site_description'] ?? '') ?>">
     <meta property="og:image" content="assets/img/logo.png">
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico">
-    <link rel="stylesheet" href="assets/css/main.css">
+    <?= asset_css_tag('assets/css/main.css') ?>
         <?= theme_link_tag($options) ?>
 </head>
 <body class="stats-page with-sidebar">
@@ -1191,9 +1191,9 @@ $anime_chart_payload = [
         window.reviewsPublic  = <?= json_encode($reviews_public) ?>;
         window.licensesPublic = true;
     </script>
-    <script src="assets/js/admin/main.js"></script>
-    <script src="assets/js/public.js"></script>
-    <script src="assets/js/stats.js"></script>
+    <?= asset_js_tag('assets/js/admin/main.js') ?>
+    <?= asset_js_tag('assets/js/public.js') ?>
+    <?= asset_js_tag('assets/js/stats.js') ?>
 </body>
 </html>
 

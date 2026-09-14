@@ -283,7 +283,7 @@ $move_candidates = array_map(function ($s) {
     <meta name="description" content="Gestion de la liste d'envies.">
     <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
-    <link rel="stylesheet" href="../assets/css/main.css">
+    <?= asset_css_tag('assets/css/main.css') ?>
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">
@@ -578,7 +578,7 @@ $move_candidates = array_map(function ($s) {
 
     </main>
 
-    <script src="../assets/js/admin/anime.js"></script>
+    <?= asset_js_tag('assets/js/admin/anime.js') ?>
     <script>
         // Redirige l'endpoint d'autocomplétion (assets/js/admin/autocomplete.js)
         // vers admin.php, qui vit à la racine du projet — cette page est dans
@@ -586,8 +586,8 @@ $move_candidates = array_map(function ($s) {
         // interroge cet endpoint dès son exécution.
         window.suggestionsEndpoint = '../admin.php';
     </script>
-    <script src="../assets/js/admin/autocomplete.js"></script>
-    <script src="../assets/js/admin/contributors.js"></script>
+    <?= asset_js_tag('assets/js/admin/autocomplete.js') ?>
+    <?= asset_js_tag('assets/js/admin/contributors.js') ?>
     <script>
         // Registre des types (libellés, couleurs) : seule source de vérité,
         // partagée avec admin.php et index.php. Aucun libellé ni couleur ne

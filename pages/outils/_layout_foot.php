@@ -17,9 +17,9 @@ $tool_scripts = $tool_scripts ?? [];
 
     <button id="back-to-top" title="Retour en haut">↑</button>
 
-    <script src="../../assets/js/admin/tools/page.js"></script>
+    <?= asset_js_tag('assets/js/admin/tools/page.js') ?>
 <?php foreach ($tool_scripts as $__script): ?>
-    <script src="../../assets/js/admin/tools/<?= htmlspecialchars($__script) ?>"></script>
+    <?= asset_js_tag('assets/js/admin/tools/' . $__script) ?>
 <?php endforeach; ?>
 
 </body>

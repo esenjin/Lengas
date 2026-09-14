@@ -19,7 +19,7 @@ $tool_subtitle = $tool_subtitle ?? '';
     <meta name="description" content="Outils de maintenance et de vérification de la collection.">
     <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="../../assets/img/favicon.ico">
-    <link rel="stylesheet" href="../../assets/css/main.css">
+    <?= asset_css_tag('assets/css/main.css') ?>
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar tools-page">

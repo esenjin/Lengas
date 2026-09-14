@@ -106,7 +106,7 @@ $eligible = array_map(function ($s) {
     <meta name="description" content="Gestion des critiques de séries.">
     <?= opengraph_tags($options) ?>
     <link rel="icon" type="image/x-icon" href="../assets/img/favicon.ico">
-    <link rel="stylesheet" href="../assets/css/main.css">
+    <?= asset_css_tag('assets/css/main.css') ?>
     <?= theme_link_tag($options) ?>
 </head>
 <body class="with-sidebar">
@@ -285,7 +285,7 @@ $eligible = array_map(function ($s) {
         // seule source de vérité pour ce JS — aucun libellé n'est écrit en dur.
         window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
     </script>
-    <script src="../assets/js/admin/main.js"></script>
-    <script src="../assets/js/admin/reviews.js"></script>
+    <?= asset_js_tag('assets/js/admin/main.js') ?>
+    <?= asset_js_tag('assets/js/admin/reviews.js') ?>
 </body>
 </html>

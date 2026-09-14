@@ -6,11 +6,9 @@
 // Périmètre : Mangathèque uniquement (voir coherence.php).
 // ──────────────────────────────────────────────────────────────────────────
 
-// La page « Outils » lance l'analyse dès son chargement, et propose de la relancer.
-document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('coherences-results')) loadCoherences();
-});
-
+// La page « Outils » ne lance plus l'analyse automatiquement à son chargement
+// (elle pouvait auparavant être coûteuse sur une grosse collection) : elle ne
+// démarre plus que sur clic explicite du bouton « Relancer l'analyse ».
 document.getElementById('reload-coherences-btn')?.addEventListener('click', () => loadCoherences());
 
 function loadCoherences() {
@@ -183,6 +181,40 @@ function renderCoherences(issues) {
     });
 
     container.appendChild(listDiv);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Marquage visuel « modifié » (sans recharger l'analyse ni la page)
+// ──────────────────────────────────────────────────────────────────────────────
+// Appelée par closeToolModal (page.js) à la fermeture de la modale d'édition
+// rapide, si des modifications ont été enregistrées (window.coherenceEditDirty
+// contient alors l'id de la série concernée, voir le handler de
+// #cedit-save-btn ci-dessus). N'affecte que le bloc de CETTE série, déjà
+// présent dans la liste affichée : les autres blocs, et l'ensemble des
+// anomalies encore listées, restent inchangés tant que l'utilisateur ne
+// relance pas explicitement l'analyse.
+function markCoherenceSeriesEdited(seriesId) {
+    if (!seriesId) return;
+    const block = document.querySelector(`#coherences-list .coherence-series-block[data-series-id="${CSS.escape(seriesId)}"]`);
+    if (!block) return;
+
+    block.classList.add('coherence-series-block--edited');
+
+    const header = block.querySelector('.coherence-series-name');
+    if (header && !header.querySelector('.coherence-edited-badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'coherence-edited-badge';
+        badge.textContent = '✓ Modifiée';
+        badge.title = 'Des corrections ont été enregistrées depuis cette page. Relancez l\'analyse pour vérifier si elles ont résolu les anomalies listées ci-dessous.';
+        // Juste avant le bouton « Modifier »/« Gérer les prêts », s'il existe,
+        // sinon en toute fin d'en-tête.
+        const actionBtn = header.querySelector('.cedit-open-btn, .button-otl');
+        if (actionBtn) {
+            header.insertBefore(badge, actionBtn);
+        } else {
+            header.appendChild(badge);
+        }
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -515,7 +547,11 @@ document.getElementById('cedit-save-btn').addEventListener('click', () => {
                 const idx = window.seriesData.findIndex(s => s.id === seriesId);
                 if (idx !== -1) window.seriesData[idx] = data.series;
             }
-            window.coherenceEditDirty = true;
+            // Ne relance plus toute l'analyse (coûteux, et faisait disparaître
+            // les anomalies déjà consultées) : le bloc de CETTE série est
+            // simplement marqué comme modifié dans la liste déjà affichée,
+            // voir markCoherenceSeriesEdited() et closeToolModal (page.js).
+            window.coherenceEditDirty = seriesId;
             feedback.style.color = 'var(--success-color)';
             feedback.textContent = '✓ Modifications enregistrées.';
             // Rebâtir la liste des tomes avec les données fraîches
