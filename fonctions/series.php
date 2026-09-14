@@ -127,7 +127,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
             'collector' => $all_collector,
             'last' => false,
             'added_at' => date('Y-m-d'),
-            'read_at' => ($volumes_status === 'terminé') ? date('Y-m-d') : ''
+            'read_at' => ($volumes_status === 'terminé') ? date('Y-m-d H:i:s') : ''
         ];
     }
 
@@ -291,7 +291,7 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
         // d'une saisie erronée) ou une valeur inchangée ne touche jamais la
         // date de dernière relecture, qui alimente la page « Historique ».
         if ($new_reread_count > $previous_reread_count) {
-            $data[$series_key]['reread_last_date'] = date('Y-m-d');
+            $data[$series_key]['reread_last_date'] = date('Y-m-d H:i:s');
         }
     }
     if ($syngas_uid !== null) {
@@ -330,7 +330,7 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
                 'collector' => $new_volumes_collector,
                 'last' => false,
                 'added_at' => date('Y-m-d'),
-                'read_at' => ($new_volumes_status === 'terminé') ? date('Y-m-d') : ''
+                'read_at' => ($new_volumes_status === 'terminé') ? date('Y-m-d H:i:s') : ''
             ];
         }
     }

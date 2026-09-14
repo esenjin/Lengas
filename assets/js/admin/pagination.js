@@ -9,6 +9,17 @@ let currentSortBy = 'name';
 let currentSortOrder = 'asc';
 let currentSearchTerm = '';
 
+// Date ISO (éventuellement suivie d'une heure, ex. "2026-09-14 18:30:00") →
+// seul le jour AAAA-MM-JJ, seul format accepté par un <input type="date">.
+// L'heure n'est stockée que pour départager plusieurs séries lues le même
+// jour dans l'Historique (voir historique.php) ; elle ne s'édite jamais
+// elle-même.
+function volumeDateOnly(value) {
+    if (!value) return '';
+    const m = /^(\d{4}-\d{2}-\d{2})/.exec(value);
+    return m ? m[1] : value;
+}
+
 // Lit l'état du widget de filtre de statuts (cases + mode OU/ET).
 function readStatusFilter() {
     const root = document.getElementById('status-filter');
@@ -434,7 +445,7 @@ document.getElementById('series-list').addEventListener('click', (e) => {
             document.querySelector('#edit-volume-modal [name="status"]').value = volume.status;
             document.querySelector('#edit-volume-modal [name="is_collector"]').checked = !!volume.collector;
             document.querySelector('#edit-volume-modal [name="is_last"]').checked = !!volume.last;
-            document.getElementById('edit-volume-read-at').value = volume.read_at || '';
+            document.getElementById('edit-volume-read-at').value = volumeDateOnly(volume.read_at);
             const applyAll = document.getElementById('edit-volume-apply-status-all');
             if (applyAll) applyAll.checked = false;
             if (typeof updateReadAtVisibility === 'function') updateReadAtVisibility();

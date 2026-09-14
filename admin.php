@@ -575,9 +575,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_volume'])) {
     $is_collector = !empty($_POST['is_collector']);
     $is_last = !empty($_POST['is_last']);
     $read_at = trim($_POST['read_at'] ?? '');
-    // Validation basique du format de date (évite d'enregistrer une valeur invalide)
+    // Validation basique du format de date (évite d'enregistrer une valeur invalide).
+    // Le champ du formulaire (<input type="date">) ne renseigne que le jour ;
+    // on y accole l'heure actuelle avant stockage, pour que ce tome se classe
+    // correctement parmi les autres lectures du jour dans l'Historique (voir
+    // historique.php) sans jamais afficher cette heure nulle part sur le site.
     if ($read_at !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $read_at)) {
         $read_at = null;
+    } elseif ($read_at !== '') {
+        $read_at .= ' ' . date('H:i:s');
     }
 
     // Écriture ciblée : update_volume() (et, le cas échéant,
@@ -628,9 +634,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_episode'])) {
     $status        = $_POST['status'] ?? '';
     $watched_at    = trim($_POST['watched_at'] ?? '');
     // Même contrôle de format que pour les tomes : une date invalide est
-    // ignorée plutôt qu'enregistrée telle quelle.
+    // ignorée plutôt qu'enregistrée telle quelle. Le champ du formulaire
+    // (<input type="date">) ne renseigne que le jour ; on y accole l'heure
+    // actuelle avant stockage, pour que cet épisode se classe correctement
+    // parmi les autres visionnages du jour dans l'Historique (voir
+    // historique.php) sans jamais afficher cette heure nulle part sur le site.
     if ($watched_at !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $watched_at)) {
         $watched_at = null;
+    } elseif ($watched_at !== '') {
+        $watched_at .= ' ' . date('H:i:s');
     }
 
     // Requête AJAX (édition sans rechargement de page) : la réponse devient

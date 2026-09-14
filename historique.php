@@ -83,7 +83,12 @@ function history_ordinal(int $n): string {
 
 // ── Construction du journal : date => [ ['series' => …, 'items' => […]] ] ───
 // Un tome/épisode compte dans l'historique s'il est marqué "terminé" et
-// possède une date de lecture/visionnage (read_at, format Y-m-d).
+// possède une date de lecture/visionnage (read_at, format Y-m-d, ou Y-m-d
+// H:i:s depuis l'introduction de l'heure de lecture/visionnage — voir
+// fonctions/volumes.php et fonctions/episodes.php). Seul le JOUR est affiché
+// ici (substr(...,0,10)) : l'heure ne sert qu'à départager, au sein d'une
+// même journée, plusieurs séries terminées ce jour-là (voir le tri plus bas),
+// et n'apparaît jamais telle quelle à l'écran.
 //
 // Une série apparaît en plus, ce même journal, à la date de sa dernière
 // relecture/revisionnage (reread_last_date / rewatch_last_date, cf.
@@ -115,10 +120,23 @@ function history_build_entries(array $series_list, string $type_filter): array {
             $decorated = decorate_series_for_display($series);
             foreach ($items_by_date as $date => $items) {
                 usort($items, fn($a, $b) => $a['number'] <=> $b['number']);
+                // Clé de tri de l'entrée dans sa journée : l'heure la plus
+                // tardive parmi les tomes/épisodes de CE groupe (le dernier
+                // marqué "terminé" ce jour-là pour cette série) — voir le tri
+                // plus bas. Une valeur sans heure connue (donnée antérieure à
+                // l'introduction de l'heure, ou date saisie manuellement) vaut
+                // simplement le jour seul, et se classe avant les entrées
+                // horodatées du même jour dans un tri décroissant.
+                $latest = '';
+                foreach ($items as $it) {
+                    $it_read_at = trim((string)($it['read_at'] ?? ''));
+                    if ($it_read_at > $latest) $latest = $it_read_at;
+                }
                 $by_date[$date][] = [
-                    'kind'   => 'volumes',
-                    'series' => $decorated,
-                    'items'  => $items,
+                    'kind'     => 'volumes',
+                    'series'   => $decorated,
+                    'items'    => $items,
+                    'sort_key' => $latest,
                 ];
             }
         }
@@ -143,13 +161,23 @@ function history_build_entries(array $series_list, string $type_filter): array {
                 'is_anime' => $is_anime_series,
                 'count'   => $rereread_count,
                 'label'   => history_ordinal($rereread_count) . ' ' . ($is_anime_series ? 'revisionnage' : 'relecture'),
+                'sort_key' => $rereread_date,
             ];
         }
     }
 
-    // Trie chaque jour par nom de série, puis les jours par date décroissante.
+    // Trie chaque jour par heure de lecture/visionnage décroissante (la plus
+    // récente en tête, cohérent avec le tri des jours entre eux juste en
+    // dessous) plutôt que par nom de série — sans quoi une série qui commence
+    // par « A » s'affichait toujours en premier ce jour-là, quelle que soit
+    // l'heure réelle de lecture. À égalité (même sort_key, ou aucune heure
+    // connue des deux côtés), on retombe sur le nom pour un ordre stable et
+    // prévisible plutôt qu'un ordre dépendant de la stabilité de usort().
     foreach ($by_date as $date => &$entries) {
-        usort($entries, fn($a, $b) => strcasecmp($a['series']['name'], $b['series']['name']));
+        usort($entries, function ($a, $b) {
+            $cmp = strcmp($b['sort_key'], $a['sort_key']);
+            return $cmp !== 0 ? $cmp : strcasecmp($a['series']['name'], $b['series']['name']);
+        });
     }
     unset($entries);
 

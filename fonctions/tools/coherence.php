@@ -426,7 +426,7 @@ function coherence_quick_edit(array &$data, array $input): array {
             if ($new_vol_status === 'terminé') {
                 $prev_read_at = $data[$idx]['volumes'][$vi]['read_at'] ?? '';
                 if ($prev_vol_status !== 'terminé' || $prev_read_at === '') {
-                    $data[$idx]['volumes'][$vi]['read_at'] = date('Y-m-d');
+                    $data[$idx]['volumes'][$vi]['read_at'] = date('Y-m-d H:i:s');
                 }
             } else {
                 $data[$idx]['volumes'][$vi]['read_at'] = '';
@@ -448,7 +448,7 @@ function coherence_quick_edit(array &$data, array $input): array {
                     'collector' => false,
                     'last'      => !empty($av['last']),
                     'added_at'  => date('Y-m-d'),
-                    'read_at'   => ($av_status === 'terminé') ? date('Y-m-d') : '',
+                    'read_at'   => ($av_status === 'terminé') ? date('Y-m-d H:i:s') : '',
                 ];
                 $existing_numbers[] = $num;
             }

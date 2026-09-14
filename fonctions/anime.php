@@ -356,7 +356,7 @@ function update_anime_series(array $data, string $series_id, array $fields): arr
         // Même règle que reread_last_date côté manga : seule une AUGMENTATION
         // du compteur (édition manuelle ou import Anilist) met à jour la date.
         if ($new_rewatch_count > $previous_rewatch_count) {
-            $data[$key]['rewatch_last_date'] = date('Y-m-d');
+            $data[$key]['rewatch_last_date'] = date('Y-m-d H:i:s');
         }
     }
 

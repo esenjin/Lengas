@@ -36,6 +36,16 @@ function episodeFormatDate(value) {
     return m ? `${m[3]}/${m[2]}/${m[1]}` : value;
 }
 
+// Date ISO (éventuellement suivie d'une heure, ex. "2026-09-14 18:30:00") →
+// seul le jour AAAA-MM-JJ, seul format accepté par un <input type="date">.
+// L'heure n'est stockée que pour départager plusieurs séries vues le même
+// jour dans l'Historique ; elle ne s'édite jamais elle-même.
+function episodeDateOnly(value) {
+    if (!value) return '';
+    const m = /^(\d{4}-\d{2}-\d{2})/.exec(value);
+    return m ? m[1] : value;
+}
+
 // Infobulle d'un épisode, à l'identique de celle générée côté serveur : ni date
 // d'ajout à la collection, ni tag collector — un épisode ne s'achète pas.
 function episodeTooltip(episode) {
@@ -85,7 +95,7 @@ function openEpisodeModal(series, episodeIndex) {
     // muet.
     if (status.value === '') status.value = animeVocab('todo', 'à voir');
 
-    document.getElementById('edit-episode-watched-at').value = episode.read_at || '';
+    document.getElementById('edit-episode-watched-at').value = episodeDateOnly(episode.read_at);
 
     const applyAll = document.getElementById('edit-episode-apply-status-all');
     if (applyAll) applyAll.checked = false;

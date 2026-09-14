@@ -112,10 +112,10 @@ function anime_build_episodes(int $count, array $existing = []): array {
             'collector' => false,
             'last'      => !empty($episode['last']),
             'added_at'  => ($episode['added_at'] ?? '') !== '' ? $episode['added_at'] : date('Y-m-d'),
-            // Un épisode vu sans date connue est daté du jour plutôt que de
+            // Un épisode vu sans date connue est daté à l'instant plutôt que de
             // laisser un trou ; un épisode non vu n'a jamais de date.
             'read_at'   => $watched
-                ? (($episode['read_at'] ?? '') !== '' ? $episode['read_at'] : date('Y-m-d'))
+                ? (($episode['read_at'] ?? '') !== '' ? $episode['read_at'] : date('Y-m-d H:i:s'))
                 : '',
         ];
     }
@@ -281,7 +281,7 @@ function update_episode(array $data, string $series_id, int $episode_index, stri
         } elseif ($previous === episode_status_done() && $existing !== '') {
             $new_watched_at = $existing;
         } else {
-            $new_watched_at = date('Y-m-d');
+            $new_watched_at = date('Y-m-d H:i:s');
         }
     } else {
         $new_watched_at = '';
