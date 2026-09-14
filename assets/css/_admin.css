@@ -803,7 +803,50 @@
     opacity: 0.85;
 }
 
-/* ── Index des outils (page-outils.php) : grille de cartes ──────────────── */
+/* ── Index des outils (page-outils.php) : sections + grille de cartes ───────
+   Les outils sont regroupés par section (Mangathèque, Animethèque,
+   Mutualisés, Site) plutôt que listés en vrac ; chaque section porte un
+   titre teinté selon la même logique de couleur que les cartes qu'elle
+   contient (rose/bleu/brun/violet — voir plus bas). */
+.tools-index-section {
+    max-width: 900px;
+    margin-bottom: 32px;
+}
+.tools-index-section:last-child {
+    margin-bottom: 0;
+}
+
+.tools-index-section-title {
+    margin: 0 0 14px;
+    padding-bottom: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tools-index-section-title--manga {
+    color: var(--sidebar-section-manga);
+    border-bottom-color: rgba(var(--sidebar-section-manga-rgb), 0.3);
+}
+
+.tools-index-section-title--anime {
+    color: var(--sidebar-section-anime);
+    border-bottom-color: rgba(var(--sidebar-section-anime-rgb), 0.3);
+}
+
+.tools-index-section-title--shared {
+    color: var(--sidebar-section-brown);
+    border-bottom-color: rgba(var(--sidebar-section-brown-rgb), 0.3);
+}
+
+.tools-index-section-title--site {
+    color: var(--primary-color);
+    border-bottom-color: rgba(var(--primary-color-rgb), 0.3);
+}
+
 .tools-index-grid {
     max-width: 900px;
     display: grid;

@@ -36,7 +36,17 @@ $has_babengas        = function_exists('babengas_enabled') && babengas_enabled()
 // couleur thématique (accord avec les couleurs déjà utilisées ailleurs sur le
 // site — rose pour les mangas, bleu pour les animés, brun pour le mutualisé,
 // violet pour tout ce qui touche au site lui-même) : 'pink' | 'blue' | 'brown' | 'purple'.
-// L'ordre de ce tableau est l'ordre d'affichage sur la page.
+// Les outils sont désormais regroupés par section (Mangathèque, Animethèque,
+// Mutualisés, Site) plutôt que listés en vrac : la clé 'section' rattache
+// chaque outil à l'une des sections ci-dessous, et l'ordre à l'intérieur
+// d'une section suit l'ordre du tableau.
+$tool_sections = [
+    'manga'  => 'Mangathèque',
+    'anime'  => 'Animethèque',
+    'shared' => 'Mutualisés',
+    'site'   => 'Site',
+];
+
 $tools = [
     [
         'icon'        => 'book-check-outline',
@@ -45,6 +55,7 @@ $tools = [
         'href'        => 'outils/outil-mangaupdates.php',
         'visible'     => true,
         'color'       => 'pink',
+        'section'     => 'manga',
     ],
     [
         'icon'        => 'book-search-outline',
@@ -53,30 +64,7 @@ $tools = [
         'href'        => 'outils/outil-babengas.php',
         'visible'     => $has_babengas,
         'color'       => 'pink',
-    ],
-    [
-        'icon'        => 'sync',
-        'name'        => 'Synchronisation via Anilist',
-        'description' => "Tient à jour les épisodes et le statut de diffusion des séries animées en cours.",
-        'href'        => 'outils/outil-anilist-sync.php',
-        'visible'     => $has_anime,
-        'color'       => 'blue',
-    ],
-    [
-        'icon'        => 'cloud-download-outline',
-        'name'        => 'Import Anilist',
-        'description' => "Importe en masse la liste animée d'un compte Anilist public, avec aperçu détaillé avant écriture.",
-        'href'        => 'outils/outil-anilist-import.php',
-        'visible'     => true,
-        'color'       => 'blue',
-    ],
-    [
-        'icon'        => 'clipboard-check-outline',
-        'name'        => 'Vérification des animés',
-        'description' => "Compare chaque fiche animée à Anilist (studios, format, genres, vignette…), avec validation avant correction.",
-        'href'        => 'outils/outil-anilist-recheck.php',
-        'visible'     => $has_anime,
-        'color'       => 'blue',
+        'section'     => 'manga',
     ],
     [
         'icon'        => 'alert-circle-check-outline',
@@ -85,14 +73,7 @@ $tools = [
         'href'        => 'outils/outil-coherences.php',
         'visible'     => true,
         'color'       => 'pink',
-    ],
-    [
-        'icon'        => 'archive-arrow-down-outline',
-        'name'        => 'Sauvegardes',
-        'description' => "Créez, téléchargez et supprimez des archives de vos données, ou exportez-les en JSON.",
-        'href'        => 'outils/outil-sauvegardes.php',
-        'visible'     => true,
-        'color'       => 'purple',
+        'section'     => 'manga',
     ],
     [
         'icon'        => 'link-variant',
@@ -101,6 +82,7 @@ $tools = [
         'href'        => 'outils/outil-associations-mu.php',
         'visible'     => true,
         'color'       => 'pink',
+        'section'     => 'manga',
     ],
     [
         'icon'        => 'cloud-sync-outline',
@@ -109,6 +91,34 @@ $tools = [
         'href'        => 'outils/outil-syngas.php',
         'visible'     => true,
         'color'       => 'pink',
+        'section'     => 'manga',
+    ],
+    [
+        'icon'        => 'sync',
+        'name'        => 'Synchronisation via Anilist',
+        'description' => "Tient à jour les épisodes et le statut de diffusion des séries animées en cours.",
+        'href'        => 'outils/outil-anilist-sync.php',
+        'visible'     => $has_anime,
+        'color'       => 'blue',
+        'section'     => 'anime',
+    ],
+    [
+        'icon'        => 'cloud-download-outline',
+        'name'        => 'Import Anilist',
+        'description' => "Importe en masse la liste animée d'un compte Anilist public, avec aperçu détaillé avant écriture.",
+        'href'        => 'outils/outil-anilist-import.php',
+        'visible'     => true,
+        'color'       => 'blue',
+        'section'     => 'anime',
+    ],
+    [
+        'icon'        => 'clipboard-check-outline',
+        'name'        => 'Vérification des animés',
+        'description' => "Compare chaque fiche animée à Anilist (studios, format, genres, vignette…), avec validation avant correction.",
+        'href'        => 'outils/outil-anilist-recheck.php',
+        'visible'     => $has_anime,
+        'color'       => 'blue',
+        'section'     => 'anime',
     ],
     [
         'icon'        => 'source-merge',
@@ -117,6 +127,16 @@ $tools = [
         'href'        => 'outils/outil-groupage-licences.php',
         'visible'     => true,
         'color'       => 'brown',
+        'section'     => 'shared',
+    ],
+    [
+        'icon'        => 'archive-arrow-down-outline',
+        'name'        => 'Sauvegardes',
+        'description' => "Créez, téléchargez et supprimez des archives de vos données, ou exportez-les en JSON.",
+        'href'        => 'outils/outil-sauvegardes.php',
+        'visible'     => true,
+        'color'       => 'purple',
+        'section'     => 'site',
     ],
     [
         'icon'        => 'shield-check-outline',
@@ -125,8 +145,19 @@ $tools = [
         'href'        => 'outils/outil-integrite.php',
         'visible'     => true,
         'color'       => 'purple',
+        'section'     => 'site',
     ],
 ];
+
+// Regroupe les outils visibles par section, en conservant l'ordre défini
+// dans $tool_sections puis l'ordre du tableau $tools au sein de chacune.
+// Une section sans aucun outil visible (ex. Animethèque vide) est
+// simplement omise de l'affichage.
+$tools_by_section = [];
+foreach ($tools as $tool) {
+    if (empty($tool['visible'])) continue;
+    $tools_by_section[$tool['section']][] = $tool;
+}
 
 // Couleurs hexadécimales utilisées pour teinter dynamiquement les icônes
 // Iconify (paramètre ?color=), en accord avec les classes CSS
@@ -160,20 +191,25 @@ $tool_icon_colors = [
             <p class="page-subtitle">Vérifiez, complétez et sauvegardez votre collection.</p>
         </div>
 
-        <div class="tools-index-grid">
-            <?php foreach ($tools as $tool): ?>
-                <?php if (empty($tool['visible'])) continue; ?>
-                <?php $tool_color = $tool['color'] ?? 'purple'; ?>
-                <a class="tools-index-card tools-index-card--<?= htmlspecialchars($tool_color) ?>" href="<?= htmlspecialchars($tool['href']) ?>">
-                    <img class="tools-index-card-icon" src="https://api.iconify.design/mdi/<?= htmlspecialchars($tool['icon']) ?>.svg?color=%23<?= htmlspecialchars($tool_icon_colors[$tool_color] ?? $tool_icon_colors['purple']) ?>" width="32" height="32" alt="">
-                    <div class="tools-index-card-body">
-                        <h2 class="tools-index-card-title"><?= htmlspecialchars($tool['name']) ?></h2>
-                        <p class="tools-index-card-desc"><?= htmlspecialchars($tool['description']) ?></p>
-                    </div>
-                    <span class="tools-index-card-cta">Ouvrir →</span>
-                </a>
-            <?php endforeach; ?>
-        </div>
+        <?php foreach ($tool_sections as $section_key => $section_label): ?>
+            <?php if (empty($tools_by_section[$section_key])) continue; ?>
+            <section class="tools-index-section">
+                <h2 class="tools-index-section-title tools-index-section-title--<?= htmlspecialchars($section_key) ?>"><?= htmlspecialchars($section_label) ?></h2>
+                <div class="tools-index-grid">
+                    <?php foreach ($tools_by_section[$section_key] as $tool): ?>
+                        <?php $tool_color = $tool['color'] ?? 'purple'; ?>
+                        <a class="tools-index-card tools-index-card--<?= htmlspecialchars($tool_color) ?>" href="<?= htmlspecialchars($tool['href']) ?>">
+                            <img class="tools-index-card-icon" src="https://api.iconify.design/mdi/<?= htmlspecialchars($tool['icon']) ?>.svg?color=%23<?= htmlspecialchars($tool_icon_colors[$tool_color] ?? $tool_icon_colors['purple']) ?>" width="32" height="32" alt="">
+                            <div class="tools-index-card-body">
+                                <h3 class="tools-index-card-title"><?= htmlspecialchars($tool['name']) ?></h3>
+                                <p class="tools-index-card-desc"><?= htmlspecialchars($tool['description']) ?></p>
+                            </div>
+                            <span class="tools-index-card-cta">Ouvrir →</span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php endforeach; ?>
 
     </main>
 

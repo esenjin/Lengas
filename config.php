@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '4.2.3');
+define('SITE_VERSION', '4.2.4');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Syngas — base commune des mangathèques Lengas (voir includes/syngas.php).
