@@ -142,11 +142,14 @@ function publicContributorRoleLabel(role, roleCustom) {
 }
 
 // Liste HTML des contributeurs d'une série, groupés en "Nom (Rôle1, Rôle2)",
-// chaque nom étant un lien vers sa fiche personnalité (annuaire, périmètre
-// Mangathèque). Une même personne ayant plusieurs rôles SUR CETTE SÉRIE
-// (hors auteur/éditeur, déjà affichés sur leurs propres lignes) n'apparaît
-// qu'une seule fois, avec tous ses rôles réunis entre parenthèses — jamais
-// une ligne par rôle.
+// chaque nom étant cliquable pour ouvrir sa fiche personnalité EN MODALE, sur
+// la page courante — jamais une navigation vers personnalites.php (voir
+// openPersonalityModalByName() ci-dessous), pour ne pas interrompre la
+// consultation en cours (recherche, filtre, position de scroll…) sur
+// index.php/historique.php. Une même personne ayant plusieurs rôles SUR
+// CETTE SÉRIE (hors auteur/éditeur, déjà affichés sur leurs propres lignes)
+// n'apparaît qu'une seule fois, avec tous ses rôles réunis entre parenthèses
+// — jamais une ligne par rôle.
 function publicContributorsListHtml(series, excludeRoles = []) {
     const list = (series.contributors || []).filter(c =>
         c && c.name && c.name.trim() !== '' && !excludeRoles.includes(c.role || '')
@@ -161,10 +164,129 @@ function publicContributorsListHtml(series, excludeRoles = []) {
     });
 
     return [...byName.entries()].map(([name, labels]) => {
-        const href = 'personnalites.php?nom=' + encodeURIComponent(name);
-        return `<a href="${publicEscape(href)}">${publicEscape(name)}</a> (${publicEscape(labels.join(', '))})`;
+        return `<a href="#" class="personality-link" data-personality-name="${publicEscape(name)}">${publicEscape(name)}</a> (${publicEscape(labels.join(', '))})`;
     }).join(', ');
 }
+
+// ── Fiche « Personnalité » à la volée, sur N'IMPORTE QUELLE page publique ──
+//
+// Contrairement à personnalites.php (qui reçoit son annuaire complet déjà
+// calculé côté serveur, window.personalitiesData), les autres pages
+// publiques (index.php, historique.php) n'ont que window.allSeriesData —
+// largement suffisant : il contient déjà `contributors` pour chaque série
+// manga visible. On y recalcule donc le même agrégat que
+// collection_personalities() (includes/helpers.php), mais côté client,
+// uniquement pour LE nom demandé (pas toute la collection) : nettement
+// moins de travail qu'un annuaire complet, et surtout AUCUNE navigation.
+//
+// Renvoie null si le nom ne correspond à aucun contributeur actuellement
+// visible (série supprimée entre-temps, collection privée, etc.).
+function buildPersonalityFromSeriesData(name) {
+    const pool = Array.isArray(window.allSeriesData) ? window.allSeriesData : [];
+    const roleLabels = [];
+    const roleKeys = [];
+    const series = [];
+
+    pool.forEach(s => {
+        if (s.type === 'anime') return; // périmètre Mangathèque uniquement
+        const matches = (s.contributors || []).filter(c => c && c.name === name);
+        if (!matches.length) return;
+
+        const labelsForThisSeries = [];
+        matches.forEach(c => {
+            const label = publicContributorRoleLabel(c.role, c.role_custom);
+            const key = c.role || '__none__';
+            if (!roleLabels.includes(label)) { roleLabels.push(label); roleKeys.push(key); }
+            if (!labelsForThisSeries.includes(label)) labelsForThisSeries.push(label);
+        });
+
+        series.push({
+            id: s.id,
+            name: s.name,
+            thumbnail: s.thumbnail,
+            volumesCount: (s.volumes || []).length,
+            roles: labelsForThisSeries,
+        });
+    });
+
+    if (!series.length) return null;
+
+    // Vignette représentative : série avec le plus de tomes ; à égalité, la
+    // première rencontrée (window.allSeriesData suit le même ordre que
+    // load_data() côté serveur, donc la plus ancienne) — même règle que
+    // personality_thumbnail() (includes/helpers.php).
+    let thumb = series[0];
+    series.forEach(s => { if (s.volumesCount > thumb.volumesCount) thumb = s; });
+
+    series.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+
+    return {
+        name,
+        thumbnail: thumb.thumbnail,
+        role_labels: roleLabels,
+        series_count: series.length,
+        series: series.map(s => ({ id: s.id, name: s.name, thumbnail: s.thumbnail, roles: s.roles })),
+    };
+}
+
+// Ouvre la fiche d'un contributeur en modale (#personality-detail-modal) sur
+// la page courante, à partir de son seul nom — utilisé par tous les liens
+// "Nom (Rôle)" du site (modale de détail série, annuaire personnalites.php).
+// Ne fait AUCUNE navigation : reste sur index.php/historique.php/
+// personnalites.php, quelle que soit la page d'où le clic est parti.
+function openPersonalityModalByName(name) {
+    const modal = document.getElementById('personality-detail-modal');
+    if (!modal) return; // page sans cette modale dans son HTML (ne devrait pas arriver, voir chaque page publique)
+
+    const p = buildPersonalityFromSeriesData(name);
+    if (!p) return; // plus aucune série visible pour ce nom (supprimée, collection privée…)
+
+    document.getElementById('personality-modal-thumb').src = p.thumbnail;
+    document.getElementById('personality-modal-name').textContent = p.name;
+    document.getElementById('personality-modal-roles').innerHTML = p.role_labels
+        .map(label => `<span class="personality-role-badge">${publicEscape(label)}</span>`)
+        .join('');
+    document.getElementById('personality-modal-count').textContent =
+        `${p.series_count} série${p.series_count > 1 ? 's' : ''}`;
+
+    const seriesList = document.getElementById('personality-modal-series');
+    seriesList.innerHTML = '';
+    p.series.forEach(s => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'personality-series-card';
+        card.dataset.seriesId = s.id;
+        card.innerHTML = `
+            <img src="${publicEscape(s.thumbnail)}" alt="" loading="lazy">
+            <div>
+                <strong>${publicEscape(s.name)}</strong>
+                <p>(${publicEscape(s.roles.join(', '))})</p>
+            </div>
+        `;
+        card.addEventListener('click', () => {
+            const pool = Array.isArray(window.allSeriesData) ? window.allSeriesData : [];
+            const series = pool.find(x => x.id === s.id);
+            if (!series || typeof window.fillSeriesDetailModal !== 'function') return;
+            window.fillSeriesDetailModal(series);
+            window.openModal('series-detail-modal');
+        });
+        seriesList.appendChild(card);
+    });
+
+    window.openModal('personality-detail-modal');
+}
+
+// Délégation d'événement globale : tout lien ".personality-link" (modale de
+// détail série, cartes de l'annuaire personnalites.php) ouvre la fiche
+// contributeur en modale plutôt que de naviguer — un seul écouteur pour
+// toute la page, y compris les liens injectés dynamiquement après coup
+// (fillSeriesDetailModal() régénère ce HTML à chaque ouverture).
+document.addEventListener('click', function (e) {
+    const link = e.target.closest('.personality-link');
+    if (!link) return;
+    e.preventDefault();
+    openPersonalityModalByName(link.dataset.personalityName);
+});
 
 // Contenu d'une carte. Un animé montre ses studios et son format là où un manga
 // montre ses contributeurs (auteur, éditeur en priorité) : ni l'un ni l'autre
@@ -212,14 +334,14 @@ function fillSeriesDetailModal(series) {
         if (modalAuthor) {
             const names = (series.contributors || []).filter(c => c && c.role === 'auteur' && c.name);
             modalAuthor.innerHTML = names.length
-                ? names.map(c => `<a href="personnalites.php?nom=${encodeURIComponent(c.name)}">${publicEscape(c.name)}</a>`).join(', ')
+                ? names.map(c => `<a href="#" class="personality-link" data-personality-name="${publicEscape(c.name)}">${publicEscape(c.name)}</a>`).join(', ')
                 : 'aucun';
         }
         const modalPublisher = document.getElementById('modal-series-publisher');
         if (modalPublisher) {
             const names = (series.contributors || []).filter(c => c && c.role === 'editeur' && c.name);
             modalPublisher.innerHTML = names.length
-                ? names.map(c => `<a href="personnalites.php?nom=${encodeURIComponent(c.name)}">${publicEscape(c.name)}</a>`).join(', ')
+                ? names.map(c => `<a href="#" class="personality-link" data-personality-name="${publicEscape(c.name)}">${publicEscape(c.name)}</a>`).join(', ')
                 : 'aucun';
         }
         const modalOthers = document.getElementById('modal-series-other-contributors');

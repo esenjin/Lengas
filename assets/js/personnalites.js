@@ -1,13 +1,14 @@
 // ──────────────────────────────────────────────────────────────────────────
-// assets/js/personnalites.js — Page publique « Personnalités »
+// assets/js/personnalites.js — Page publique « Personnalités » (annuaire)
 //
-// Tout le rendu de l'annuaire (cartes, tri, filtre par rôle, compteur) se
-// fait ici, côté client, à partir de window.personalitiesData (une entrée
-// par personnalité, voir personnalites.php). La fiche individuelle d'une
-// personnalité s'ouvre dans une modale (#personality-detail-modal) plutôt
-// que de naviguer vers une page séparée — le clic sur une série de cette
-// modale ouvre à son tour la modale de détail série habituelle
-// (#series-detail-modal, fillSeriesDetailModal(), fournie par public.js).
+// Rendu, tri et filtre des cartes de l'annuaire, à partir de
+// window.personalitiesData (une entrée par personnalité, calculée côté
+// serveur — voir personnalites.php). L'ouverture de la fiche individuelle
+// (modale #personality-detail-modal) est mutualisée avec le reste du site
+// via openPersonalityModalByName(), fournie par assets/js/public.js — cette
+// page n'a donc PAS sa propre logique de remplissage de modale : cliquer sur
+// une carte ici se comporte exactement comme cliquer sur un nom de
+// contributeur depuis index.php ou historique.php.
 // ──────────────────────────────────────────────────────────────────────────
 
 function persoEscHtml(s) {
@@ -37,7 +38,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 <p class="personality-card-roles">${persoEscHtml(p.role_labels.join(', '))}</p>
             </div>
         `;
-        a.addEventListener('click', () => openPersonalityModal(p));
+        // Fonction commune (assets/js/public.js) : recalcule la fiche à
+        // partir de window.allSeriesData plutôt que de réutiliser l'entrée
+        // `p` telle quelle, pour un comportement identique quel que soit le
+        // point d'entrée (cette carte, ou un lien "Nom (Rôle)" ailleurs sur
+        // le site).
+        a.addEventListener('click', () => window.openPersonalityModalByName(p.name));
         return a;
     }
 
@@ -76,51 +82,11 @@ document.addEventListener('DOMContentLoaded', function () {
     sortSelect?.addEventListener('change', applyFilterAndSort);
     applyFilterAndSort();
 
-    // Lien profond ?nom=... (ex. depuis la modale de détail d'une série,
-    // assets/js/public.js, qui pointe vers un contributeur précis) : ouvre
-    // directement sa fiche en modale au chargement, sans changer la vue de
-    // l'annuaire en arrière-plan — remplace l'ancienne page dédiée par
-    // contributeur, retirée au profit de cette modale.
+    // Lien profond ?nom=... (ex. un signet, un lien partagé) : ouvre
+    // directement la fiche en modale au chargement, sans changer la vue de
+    // l'annuaire en arrière-plan.
     const requestedName = new URLSearchParams(window.location.search).get('nom');
-    if (requestedName) {
-        const match = all.find(p => p.name === requestedName);
-        if (match) openPersonalityModal(match);
-    }
-
-    // ── Modale de fiche individuelle ────────────────────────────────────────
-    function openPersonalityModal(p) {
-        document.getElementById('personality-modal-thumb').src = p.thumbnail;
-        document.getElementById('personality-modal-name').textContent = p.name;
-        document.getElementById('personality-modal-roles').innerHTML = p.role_labels
-            .map(label => `<span class="personality-role-badge">${persoEscHtml(label)}</span>`)
-            .join('');
-        document.getElementById('personality-modal-count').textContent =
-            `${p.series_count} série${p.series_count > 1 ? 's' : ''}`;
-
-        const seriesList = document.getElementById('personality-modal-series');
-        seriesList.innerHTML = '';
-        p.series.forEach(s => {
-            const card = document.createElement('button');
-            card.type = 'button';
-            card.className = 'personality-series-card';
-            card.dataset.seriesId = s.id;
-            card.innerHTML = `
-                <img src="${persoEscHtml(s.thumbnail)}" alt="" loading="lazy">
-                <div>
-                    <strong>${persoEscHtml(s.name)}</strong>
-                    <p>(${persoEscHtml(s.roles.join(', '))})</p>
-                </div>
-            `;
-            card.addEventListener('click', () => {
-                const pool = Array.isArray(window.allSeriesData) ? window.allSeriesData : [];
-                const series = pool.find(x => x.id === s.id);
-                if (!series || typeof window.fillSeriesDetailModal !== 'function') return;
-                window.fillSeriesDetailModal(series);
-                window.openModal('series-detail-modal');
-            });
-            seriesList.appendChild(card);
-        });
-
-        window.openModal('personality-detail-modal');
+    if (requestedName && typeof window.openPersonalityModalByName === 'function') {
+        window.openPersonalityModalByName(requestedName);
     }
 });

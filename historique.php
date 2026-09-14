@@ -431,6 +431,27 @@ $has_more = $total_days > $days_per_page;
             <p class="loading-spinner" id="history-loading-spinner">Chargement…</p>
         </div>
 
+        <!-- Modale de fiche « Personnalité » (auteur, éditeur, autre
+             contributeur) : ouverte en JS depuis un lien "Nom (Rôle)" de la
+             modale de détail série (assets/js/public.js,
+             openPersonalityModalByName()), jamais une navigation vers
+             personnalites.php — reste sur la page courante. Même structure
+             que sur personnalites.php (l'annuaire lui-même). -->
+        <div class="modal" id="personality-detail-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-personality-detail-modal">&times;</span>
+                <div class="personality-profile-header">
+                    <img id="personality-modal-thumb" src="" alt="" class="personality-profile-thumb">
+                    <div>
+                        <h2 id="personality-modal-name"></h2>
+                        <p class="personality-profile-roles" id="personality-modal-roles"></p>
+                        <p class="personality-profile-count" id="personality-modal-count"></p>
+                    </div>
+                </div>
+                <div class="personality-series-list" id="personality-modal-series"></div>
+            </div>
+        </div>
+
         <!-- Modale pour afficher les détails d'une série (réutilise le rendu et
              les scripts de la page d'accueil : mêmes ID, mêmes fonctions JS). -->
         <div class="modal" id="series-detail-modal">
