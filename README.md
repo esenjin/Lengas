@@ -31,6 +31,7 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 - Marquer les tomes collectors et les derniers tomes/épisodes
 - Gérer les prêts de tomes à vos amis (les animés ne se prêtent jamais, même en édition physique)
 - Rédiger des critiques (avis) sur vos séries, mises en forme en Markdown et visibles par vos visiteurs
+- Consulter un annuaire des **Personnalités** (auteurs, éditeurs et autres contributeurs de votre Mangathèque), avec la liste des séries et des rôles tenus par chacune
 - Activer un mode privé pour cacher votre bibliothèque, réglable séparément pour chaque collection
 - Choisir un thème (clair, sombre ou personnalisé)
 - Vérifier le nombre de tomes parus en France avec Babengas (Babelio, facultatif)
@@ -71,6 +72,17 @@ Depuis la version 4.0, chaque série porte un **type** : `manga` (regroupant aus
 - Remplissage automatique des URL MangaUpdates en masse via l'outil « Association MangaUpdates » (recherche par titre + auteur), avec possibilité d'exclure une ou plusieurs catégories de la recherche (ex. les light-novels, dont la publication FR ne suit pas MangaUpdates)
 - Association à une fiche Babelio (URL) pour connaître le nombre de tomes réellement parus en France, via le service Babengas
 - Recherche et liaison à une fiche **Syngas** (base commune des mangathèques Lengas) pour pré-remplir automatiquement une fiche, disponible à l'ajout et à l'édition — voir [Comment utiliser Syngas](#comment-utiliser-syngas)
+- **Contributeurs** : liste d'un ou plusieurs contributeurs par série, chacun avec un nom et un rôle (Auteur, Scénariste, Dessinateur, Illustrateur, Coloriste, Traducteur, Adaptateur, Lettreur, Éditeur, ou « Autre » avec précision libre) — voir [Personnalités](#personnalités). Une même personne peut apparaître plusieurs fois sur une série avec des rôles différents (ex. Auteur et Illustrateur). Au moins un contributeur de rôle « Auteur » et un de rôle « Éditeur » sont requis à la création d'une série ; les lignes s'ajoutent librement via un bouton « + »
+
+### Personnalités
+Annuaire public des contributeurs de la Mangathèque (`personnalites.php`, lien dans le menu latéral public et admin, section Mangathèque — nouvel onglet depuis l'admin), calculé à la volée à partir des fiches série : aucune table dédiée, une « personnalité » est un regroupement de tous les contributeurs qui partagent exactement le même nom, tous rôles confondus, à travers toute la collection. Deux orthographes différentes d'un même auteur forment donc deux personnalités distinctes.
+
+- Cartes triées par ordre alphabétique par défaut, avec vignette (celle de la série où la personne compte le plus de tomes en collection ; à égalité, la série la plus ancienne), nombre de séries et liste de ses rôles
+- Tri au choix : nom (A→Z / Z→A), nombre de séries (croissant/décroissant), nombre de rôles distincts occupés (croissant/décroissant)
+- Filtre par rôle, avec un compteur de personnalités affichées mis à jour dynamiquement
+- Clic sur une carte (ou sur un nom de contributeur, n'importe où sur le site) : ouvre une **modale** listant les séries de la personne et le(s) rôle(s) qu'elle y tient (une même personne avec plusieurs rôles sur une même série n'apparaît qu'une fois, tous ses rôles réunis) — jamais de changement de page, pour ne pas interrompre la navigation en cours. Un clic sur une série ouvre à son tour sa fiche de détail habituelle
+- Respecte le mode privé et le masquage des séries matures de la Mangathèque : une série non éligible n'est jamais comptée ni listée, et une personnalité qui n'aurait plus aucune série visible n'apparaît pas
+- Périmètre Mangathèque uniquement — l'Animethèque n'a pas de notion de contributeur éditable (voir [Intégration Anilist](#intégration-anilist-animethèque))
 
 ### Gestion des séries (Animethèque)
 - Ajout d'un animé par recherche Anilist (titre (ou ID Anilist) → jusqu'à 10 résultats → sélection → import automatique complet des données)
@@ -141,7 +153,7 @@ Depuis la version 4.0, chaque série porte un **type** : `manga` (regroupant aus
 
 ### Statistiques
 Page dédiée organisée en deux onglets, **Mangathèque** (par défaut) et **Animethèque** :
-- **Mangathèque** : nombre de séries, de tomes, valeur de la collection, tomes collectors, prêts, lues ailleurs, répartition par statut, etc.
+- **Mangathèque** : nombre de séries, de tomes, valeur de la collection, tomes collectors, prêts, lues ailleurs, répartition par statut, etc. Les auteurs et éditeurs sont comptabilisés séparément (une série peut désormais en avoir plusieurs de chaque) ; les autres contributeurs sont regroupés dans un total agrégé, avec un filtre pour n'afficher qu'un rôle précis
 - **Animethèque** : nombre de séries, d'épisodes, répartition par statut de visionnage/genre/format/studio, favoris, notations, revisionnages, et un temps de visionnage total calculé à partir de la durée réelle des épisodes fournie par Anilist (avec un repli paramétrable par format dans les options).
 
 ### Historique (page publique « Historique »)
@@ -166,11 +178,11 @@ Tous les outils du site sont accessibles depuis `pages/page-outils.php`, accessi
 - **Synchronisation via Anilist** (`pages/outils/outil-anilist-sync.php`, visible uniquement si l'Animethèque contient au moins une série) : déclenche la synchronisation automatique des séries animées éligibles (diffusion et visionnage tous deux « en cours »), avec un bouton de forçage qui ignore le verrou d'1 h — voir [Intégration Anilist](#intégration-anilist-animethèque)
 - **Import Anilist** (`pages/outils/outil-anilist-import.php`) : importe en masse la liste ANIME d'un compte Anilist (par pseudo public), avec un écran d'aperçu détaillé avant toute écriture — voir [Intégration Anilist](#intégration-anilist-animethèque)
 - **Vérification des animés** (`pages/outils/outil-anilist-recheck.php`, visible uniquement si l'Animethèque contient au moins une série) : compare chaque série animée à sa fiche Anilist actuelle sur tout ce que la synchronisation automatique ne couvre pas (titres alternatifs, studios, format, genres, vignette…), avec validation explicite avant toute correction
-- **Vérification des mangas** (`pages/outils/outil-coherences.php`) : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome »/« dernier épisode », statut différent de MangaUpdates ou d'Anilist, prêts orphelins, série animée sans identifiant Anilist, épisode terminé sans date, vignette Anilist introuvable, etc.) et propose une édition rapide de la série concernée ; les anomalies factuelles d'une série animée renvoient vers sa fiche Anilist pour correction à la source
+- **Vérification des mangas** (`pages/outils/outil-coherences.php`) : repère les anomalies (doublons, numéros manquants, mauvais tag « dernier tome »/« dernier épisode », statut différent de MangaUpdates ou d'Anilist, prêts orphelins, série animée sans identifiant Anilist, épisode terminé sans date, vignette Anilist introuvable, contributeur sans rôle attribué, etc.) et propose une édition rapide de la série concernée (dont l'attribution d'un rôle en un clic pour un contributeur qui n'en a pas encore) ; les anomalies factuelles d'une série animée renvoient vers sa fiche Anilist pour correction à la source
 - **Sauvegardes** (`pages/outils/outil-sauvegardes.php`) : création et téléchargement d'archives de vos données, ainsi que l'export JSON complet (inclut les tables et les vignettes propres à l'Animethèque)
 - **Association MangaUpdates** (`pages/outils/outil-associations-mu.php`) : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement ; un second outil récupère de la même façon les genres manquants
 - **Synchronisation Syngas** (`pages/outils/outil-syngas.php`) : envoie vos séries mangas/light-novels non encore liées à Syngas (après récapitulatif et confirmation) et récupère les mises à jour des séries déjà liées (comparaison champ par champ, validation sélective) — voir [Comment utiliser Syngas](#comment-utiliser-syngas)
-- **Groupage de licences** (`pages/outils/outil-groupage-licences.php`) : repère les séries sans licence qui semblent appartenir à la même œuvre (comparaison du nom et, pour les animés, des titres alternatifs Anilist, avec bonus si deux mangas partagent le même auteur ou si deux animés partagent le même studio) et propose de les regrouper. Chaque suggestion se valide individuellement : création d'une nouvelle licence, rattachement à une licence existante détectée automatiquement (avec consultation de son contenu actuel avant de confirmer), rattachement à une autre licence choisie manuellement, ou ignorée. Seuil de similarité ajustable, avec un repère calculé sur le score moyen des licences déjà existantes. Analyse entièrement locale (aucun appel réseau)
+- **Groupage de licences** (`pages/outils/outil-groupage-licences.php`) : repère les séries sans licence qui semblent appartenir à la même œuvre (comparaison du nom et, pour les animés, des titres alternatifs Anilist, avec bonus si deux mangas partagent au moins un même auteur ou si deux animés partagent le même studio) et propose de les regrouper. Chaque suggestion se valide individuellement : création d'une nouvelle licence, rattachement à une licence existante détectée automatiquement (avec consultation de son contenu actuel avant de confirmer), rattachement à une autre licence choisie manuellement, ou ignorée. Seuil de similarité ajustable, avec un repère calculé sur le score moyen des licences déjà existantes. Analyse entièrement locale (aucun appel réseau)
 - **Vérification d'intégrité du site** (`pages/outils/outil-integrite.php`) : compare automatiquement votre instance au dépôt Gitea, **au tag correspondant à votre version installée** (si aucun tag ne correspond, la comparaison se fait avec la version la plus récente et le signale). Pour chaque fichier versionné, elle vérifie la **présence** ET le **contenu** (comparaison d'empreinte : « OK », « Modifié » ou « Manquant »). Elle repère aussi les **fichiers étrangers au dépôt** (présents sur l'instance mais absents du dépôt, hors données `uploads/` `saves/` `bdd/`, config Vestikan, thèmes personnalisés et photo de profil de l'admin), l'**état des modules facultatifs** Vestikan et Babengas (installés ? réellement activés ? service distant fonctionnel ?), l'**état de Syngas** (service joignable ? clé API provisionnée ? bannissement éventuel signalé), la **connectivité à l'API Anilist**, les permissions, les fichiers interdits, les doublons, les images orphelines (la photo de profil de l'admin et les vignettes Anilist actives ne sont jamais considérées comme orphelines), l'accès externe aux dossiers sensibles, la structure de la base de données (y compris les tables et colonnes propres à l'Animethèque), les thèmes personnalisés présents
 
 ### Aperçu de lien (OpenGraph)
@@ -354,7 +366,7 @@ Au tout premier appel à Syngas (une recherche, ou l'outil de synchronisation, s
 
 Dans la modale d'ajout **et** la modale d'édition d'une série manga, une section « Recherche Syngas » vous permet de chercher si la série existe déjà sur Syngas. Saisissez un nom et cliquez sur « Chercher » (la recherche n'est jamais déclenchée au fil de la frappe) : jusqu'à 5 résultats s'affichent, chacun avec un lien « Voir sur Syngas » pour vérifier visuellement avant de valider. Un lien « Accéder à Syngas ↗ » en haut de cette section ouvre directement le site Syngas dans un nouvel onglet.
 
-Au clic sur « Valider » un résultat : tous les champs non vides renvoyés par Syngas **remplacent intégralement** les champs Lengas correspondants (un champ vide côté Syngas ne touche jamais à votre valeur locale), la vignette est téléchargée et stockée localement, et la série est liée immédiatement — pas besoin de repasser par l'outil de synchronisation pour formaliser le lien.
+Au clic sur « Valider » un résultat : tous les champs non vides renvoyés par Syngas **remplacent intégralement** les champs Lengas correspondants (un champ vide côté Syngas ne touche jamais à votre valeur locale) — la liste de contributeurs est ainsi entièrement remplacée par celle de Syngas si celle-ci n'est pas vide, la vignette est téléchargée et stockée localement, et la série est liée immédiatement — pas besoin de repasser par l'outil de synchronisation pour formaliser le lien.
 
 Le champ « UID Syngas » (visible dans les deux modales, sous la section de recherche) montre l'identifiant de la fiche Syngas actuellement liée, s'il y en a une. Il est rempli automatiquement à la validation d'une correspondance, mais reste **modifiable ou effaçable à la main** si besoin — le lien Syngas n'est jamais verrouillé. Un UID déjà utilisé par une autre série de votre collection est refusé avec un message explicite.
 
@@ -369,10 +381,14 @@ Comme MangaUpdates et Babelio, une série liée à Syngas affiche un badge cliqu
 Accessible depuis la page Outils, cet outil comporte trois sections :
 
 - **Envoyer des séries à Syngas** : propose à Syngas chaque série manga/light-novel qui n'y est pas encore liée. Un récapitulatif liste les séries qui seront envoyées (avec possibilité de décocher celles à exclure) — rien n'est envoyé sans confirmation explicite. La détection de doublon se fait automatiquement côté Syngas : Lengas n'a pas besoin d'en chercher une lui-même. La série n'est liée que plus tard, une fois validée par la modération Syngas — soit automatiquement détecté à votre prochaine visite de cette page, soit en la retrouvant via la « Recherche Syngas ».
-- **Récupérer les mises à jour Syngas** : compare chaque série déjà liée à sa fiche Syngas actuelle, champ par champ, et vous laisse valider les changements avant enregistrement (case à cocher par série, ou tous à la fois). Une série sans aucun changement n'apparaît pas dans le récapitulatif.
+- **Récupérer les mises à jour Syngas** : compare chaque série déjà liée à sa fiche Syngas actuelle, champ par champ, et vous laisse valider les changements avant enregistrement (case à cocher par série, ou tous à la fois). Une série sans aucun changement n'apparaît pas dans le récapitulatif. La comparaison des contributeurs est structurée (nom **et** rôle, pas un simple texte), sans tenir compte de leur ordre.
 - **Envoyer des mises à jour à Syngas** : le sens inverse — compare chaque série déjà liée à sa fiche Syngas actuelle et signale les champs qui diffèrent côté Lengas (donc que Syngas ne connaît pas encore). Un récapitulatif liste les séries avec différences, case à cocher par série ou toutes à la fois. Contrairement à l'envoi d'une nouvelle série, ceci dépose une **proposition de modification** sur la fiche existante — visible côté Syngas dans « Propositions de modification » (jamais dans « Séries en attente ») — qui attend la validation d'un modérateur avant d'être appliquée.
 
 Le nombre de tomes VF renvoyé par Syngas vient compléter les outils de cohérence (priorité Syngas → Babengas → MangaUpdates pour la « meilleure référence », sans jamais rien supprimer des autres sources).
+
+### Contrat de données avec Syngas
+
+Les contributeurs (auteur, éditeur, autres rôles — voir [Personnalités](#personnalités)) sont échangés avec Syngas sous la forme d'une liste structurée `{nom, rôle}`, avec le même registre fermé de rôles des deux côtés. Chaque requête envoyée à Syngas porte un en-tête `X-Lengas-Version`, que Syngas peut utiliser pour refuser les instances Lengas trop anciennes pour parler ce format. Le détail complet du contrat (format exact, registre de rôles, endpoints concernés) est documenté dans `SYNGAS_CONTRACT.md`, à la racine du dépôt — utile si vous exploitez ou faites évoluer votre propre instance de Syngas.
 
 ### Association en masse des anciennes séries (`ajout_syngas_uid.php`)
 
@@ -406,6 +422,7 @@ lengas/
 ├── admin.php              # Interface d'administration
 ├── stats.php              # Page des statistiques
 ├── historique.php         # Page publique « Historique » (journal chronologique)
+├── personnalites.php      # Annuaire public « Personnalités » (contributeurs de la Mangathèque)
 ├── config.php             # Configuration du site
 ├── login.php              # Connexion
 ├── logout.php             # Déconnexion
@@ -459,6 +476,7 @@ lengas/
 │   │   ├── _reviews.css
 │   │   ├── _licenses.css
 │   │   ├── _historique.css
+│   │   ├── _personnalites.css
 │   │   ├── _series.css
 │   │   ├── _sidebar.css
 │   │   ├── _stats.css
@@ -477,6 +495,7 @@ lengas/
 │       │   ├── modals.js
 │       │   ├── autocomplete.js
 │       │   ├── series.js
+│       │   ├── contributors.js
 │       │   ├── syngas-search.js
 │       │   ├── volumes.js
 │       │   ├── anime.js
@@ -504,17 +523,18 @@ lengas/
 │       │       └── grouping.js
 │       ├── stats.js
 │       ├── historique.js
+│       ├── personnalites.js
 │       └── public.js
 ├── includes/
 │   ├── auth.php              # Gestion de l'authentification et des sessions
-│   ├── helpers.php           # Fonctions utilitaires générales + registre central des types de séries
+│   ├── helpers.php           # Fonctions utilitaires générales + registre central des types de séries et des rôles de contributeur + agrégation « Personnalités »
 │   ├── mangaupdates.php      # API MangaUpdates (suivi des tomes et du statut)
 │   ├── anilist.php           # Connecteur API Anilist (GraphQL) : recherche, fiches, listes utilisateur
 │   ├── babengas.php          # Intégration du microservice Babengas
 │   ├── syngas.php            # Intégration Syngas (base commune des mangathèques Lengas)
 │   ├── syngas_search_section.php # Section « Recherche Syngas » partagée (modales manga)
 │   ├── sidebar.php           # Menu latéral à icônes de l'administration
-│   ├── public-sidebar.php    # Menu latéral à icônes des pages publiques (accueil, statistiques, historique)
+│   ├── public-sidebar.php    # Menu latéral à icônes des pages publiques (accueil, statistiques, historique, personnalités)
 │   ├── public-profil-modal.php # Modale « Qui suis-je ? », partagée par les pages publiques ci-dessus
 │   ├── custom_icons.php      # Icônes, couleurs et lecture des liens personnalisés (partagé options/sidebar)
 │   ├── themes.php            # Gestion des thèmes (base + personnalisés)

@@ -151,7 +151,7 @@ $reviews_public = !is_hide_reviews($options, 'manga');
     <div class="container">
 
         <h1>Personnalités</h1>
-        <p class="personalities-intro">Tous les auteurs, éditeurs et autres contributeurs de votre Mangathèque, réunis par personne.</p>
+        <p class="personalities-intro">Tous les auteurs, éditeurs et autres contributeurs de la Mangathèque, réunis par personne.</p>
 
         <?php if (!empty($personalities_payload)): ?>
         <div class="personalities-filters">
