@@ -217,11 +217,10 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
         // sélection parmi les titres alternatifs.
         'name' => $media['title'],
         'type' => 'anime',
-        // Champs sans objet pour un animé : laissés vides, et masqués à
-        // l'affichage comme dans les modales.
-        'author'             => '',
-        'publisher'          => '',
-        'other_contributors' => [''],
+        // Champ sans objet pour un animé : laissé vide (liste de
+        // contributeurs, notion propre à la Mangathèque — voir la migration
+        // « Personnalités » dans config.php).
+        'contributors'       => [],
         // La catégorie d'un animé, c'est son format. On alimente le champ
         // existant avec le libellé français : recherche, tri par catégorie et
         // autocomplétion fonctionnent alors sans traitement particulier. Le code

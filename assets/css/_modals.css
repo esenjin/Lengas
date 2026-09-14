@@ -1018,6 +1018,44 @@ html:has(body.modal-open) {
     background: rgba(52, 211, 153, 0.04);
 }
 
+/* ── Section « Contributeurs sans rôle » (anomalie 'contributor_missing_role',
+   assets/js/admin/tools/coherence.js) ─────────────────────────────────────── */
+.cedit-contrib-roles-title {
+    font-size: 0.82rem;
+    color: var(--text-white);
+    font-weight: 600;
+    margin: 0 0 8px;
+}
+
+.cedit-contrib-role-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--background-medium);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.cedit-contrib-role-name {
+    font-size: 0.82rem;
+    color: var(--text-white);
+    font-weight: 600;
+    min-width: 100px;
+    flex: 1 1 100px;
+}
+
+.cedit-contrib-role-select {
+    flex: 1 1 160px;
+    margin-bottom: 0;
+}
+
+.cedit-contrib-role-custom {
+    flex: 1 1 140px;
+    margin-bottom: 0;
+}
+
 .cedit-vol-num {
     font-size: 0.82rem;
     color: var(--text-white);

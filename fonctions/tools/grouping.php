@@ -255,8 +255,15 @@ function grouping_precompute(array $series): array {
             if ($n !== '') $secondary[] = $n;
         }
     } else {
-        $author = grouping_normalize_title((string)($series['author'] ?? ''));
-        if ($author !== '') $secondary[] = $author;
+        // Plusieurs auteurs possibles depuis la migration « Personnalités »
+        // (liste `contributors`, remplaçant l'ancien champ scalaire `author`) :
+        // chaque nom d'auteur normalisé devient un signal secondaire à part
+        // entière, un seul nom commun entre deux séries suffit au bonus (voir
+        // grouping_precomputed_secondary_bonus() ci-dessous).
+        foreach (series_contributors_by_role($series, 'auteur') as $c) {
+            $n = grouping_normalize_title((string)($c['name'] ?? ''));
+            if ($n !== '') $secondary[] = $n;
+        }
     }
 
     return [
@@ -321,9 +328,15 @@ function grouping_secondary_bonus(array $seriesA, array $seriesB): float {
     $bonus = 10.0;
 
     if (!is_anime($seriesA) && !is_anime($seriesB)) {
-        $a = grouping_normalize_title((string)($seriesA['author'] ?? ''));
-        $b = grouping_normalize_title((string)($seriesB['author'] ?? ''));
-        return ($a !== '' && $a === $b) ? $bonus : 0.0;
+        // Même règle que grouping_precompute() : plusieurs auteurs possibles
+        // par série désormais, un seul nom commun (normalisé) entre les deux
+        // séries suffit à déclencher le bonus.
+        $namesA = array_map(fn($c) => grouping_normalize_title((string)($c['name'] ?? '')), series_contributors_by_role($seriesA, 'auteur'));
+        $namesB = array_map(fn($c) => grouping_normalize_title((string)($c['name'] ?? '')), series_contributors_by_role($seriesB, 'auteur'));
+        foreach (array_filter($namesA, fn($n) => $n !== '') as $n) {
+            if (in_array($n, $namesB, true)) return $bonus;
+        }
+        return 0.0;
     }
 
     if (is_anime($seriesA) && is_anime($seriesB)) {
@@ -671,7 +684,7 @@ function grouping_format_members(array $series_list): array {
             'id'     => $s['id'],
             'name'   => $s['name'],
             'type'   => series_type($s),
-            'detail' => is_anime($s) ? series_studios_text($s) : (string)($s['author'] ?? ''),
+            'detail' => is_anime($s) ? series_studios_text($s) : series_contributors_names_text($s, 'auteur'),
             'image'  => function_exists('series_thumbnail') ? series_thumbnail($s) : '',
         ];
     }

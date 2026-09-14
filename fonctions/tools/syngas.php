@@ -229,6 +229,43 @@ function syngas_resolve_tracked_submissions(array &$data): array {
     ];
 }
 
+// ── Comparaison structurée des contributeurs (« Personnalités ») ───────────
+// Contrairement aux autres champs "liste" (genres, categories), une liste de
+// contributeurs porte plus qu'un simple nom : le rôle compte aussi. Deux
+// listes sont considérées identiques si elles contiennent le même ensemble
+// de triplets {name, role, role_custom}, sans tenir compte de l'ORDRE (Syngas
+// n'a aucune obligation de renvoyer ses contributeurs dans le même ordre que
+// Lengas les a stockés).
+function syngas_contributors_normalize_for_diff(array $contributors): array {
+    $rows = array_map(function ($c) {
+        $name = trim((string)($c['name'] ?? ''));
+        $role = trim((string)($c['role'] ?? ''));
+        $custom = ($role === 'autre') ? trim((string)($c['role_custom'] ?? '')) : '';
+        return $name . '|' . $role . '|' . $custom;
+    }, array_filter($contributors, fn($c) => is_array($c) && trim((string)($c['name'] ?? '')) !== ''));
+    sort($rows);
+    return $rows;
+}
+
+function syngas_contributors_differ(array $old, array $new): bool {
+    return syngas_contributors_normalize_for_diff($old) !== syngas_contributors_normalize_for_diff($new);
+}
+
+// Rendu texte d'une liste de contributeurs pour l'affichage du récapitulatif
+// (colonnes "avant"/"après" de l'outil) : "Nom (Rôle), Nom (Rôle)…", même
+// registre de libellés que contributor_role_label() (includes/helpers.php).
+function syngas_contributors_to_text(array $contributors): string {
+    $parts = array_map(function ($c) {
+        $name = trim((string)($c['name'] ?? ''));
+        if ($name === '') return null;
+        $label = function_exists('contributor_role_label')
+            ? contributor_role_label($c['role'] ?? '', $c['role_custom'] ?? '')
+            : (($c['role'] ?? '') ?: 'rôle non précisé');
+        return $name . ' (' . $label . ')';
+    }, $contributors);
+    return implode(', ', array_filter($parts));
+}
+
 // ── Réception : comparaison champ par champ (section 6.2) ──────────────────
 //
 // Pour une série locale déjà liée, récupère sa fiche Syngas actuelle et
@@ -261,8 +298,21 @@ function syngas_sync_compute_diff(array $series): ?array {
     foreach ($fields as $key => $new_value) {
         $old_value = $series[$key] ?? null;
 
+        // Contributeurs : comparaison structurée dédiée (liste de {name, role,
+        // role_custom} depuis la migration « Personnalités »), pas la
+        // normalisation texte comma-separated utilisée pour les autres champs
+        // "liste" ci-dessous.
+        if ($key === 'contributors') {
+            if (!syngas_contributors_differ((array)$old_value, (array)$new_value)) continue;
+            $diff[$key] = [
+                'old' => syngas_contributors_to_text((array)$old_value),
+                'new' => syngas_contributors_to_text((array)$new_value),
+            ];
+            continue;
+        }
+
         // Normalisation pour comparaison : les champs "liste" (categories,
-        // other_contributors, genres côté Lengas) sont stockés en tableau.
+        // genres côté Lengas) sont stockés en tableau.
         // array_map('trim', ...) AVANT l'implode : un élément peut porter un
         // espace de tête résiduel (ex. la colonne `genres` en base contient
         // "Action, Aventure" pour une série saisie/importée avant une
@@ -470,19 +520,15 @@ function syngas_sync_compute_reverse_diff(array $series): ?array {
     // connaît actuellement. Un champ local VIDE n'est jamais proposé (on ne
     // propose pas d'effacer un champ que Syngas a déjà rempli — cohérent
     // avec la règle « champ vide n'écrase jamais » appliquée partout
-    // ailleurs dans cette intégration).
+    // ailleurs dans cette intégration). Les contributeurs sont traités à part
+    // ci-dessous (comparaison structurée, pas de simple chaîne).
     $comparable = [
         'name'               => (string)($series['name'] ?? ''),
-        'author'             => (string)($series['author'] ?? ''),
-        'publisher'          => (string)($series['publisher'] ?? ''),
         // array_map('trim', …) AVANT l'implode : même raison que
         // syngas_sync_compute_diff() ci-dessus — un élément de la colonne
-        // `genres`/`other_contributors` peut porter un espace de tête
-        // résiduel selon l'origine de la donnée (saisie ancienne, import),
-        // ce qui produirait un faux "changement" purement cosmétique.
-        'other_contributors' => is_array($series['other_contributors'] ?? null)
-                                  ? implode(',', array_filter(array_map('trim', $series['other_contributors']), fn($v) => $v !== ''))
-                                  : trim((string)($series['other_contributors'] ?? '')),
+        // `genres` peut porter un espace de tête résiduel selon l'origine de
+        // la donnée (saisie ancienne, import), ce qui produirait un faux
+        // "changement" purement cosmétique.
         'genres'             => is_array($series['genres'] ?? null)
                                   ? implode(',', array_filter(array_map('trim', $series['genres']), fn($v) => $v !== ''))
                                   : trim((string)($series['genres'] ?? '')),
@@ -494,9 +540,6 @@ function syngas_sync_compute_reverse_diff(array $series): ?array {
 
     $syngas_values = [
         'name'               => (string)($syngas_series['name'] ?? ''),
-        'author'             => (string)($syngas_series['author'] ?? ''),
-        'publisher'          => (string)($syngas_series['publisher'] ?? ''),
-        'other_contributors' => trim((string)($syngas_series['other_contributors'] ?? '')),
         'genres'             => is_array($syngas_series['genres'] ?? null)
                                   ? implode(',', array_filter(array_map('trim', $syngas_series['genres']), fn($v) => $v !== ''))
                                   : trim((string)($syngas_series['genres'] ?? '')),
@@ -523,6 +566,24 @@ function syngas_sync_compute_reverse_diff(array $series): ?array {
     // pas la valeur convertie utilisée pour la comparaison ci-dessus.
     if (isset($diff['status'])) {
         $fields['status'] = $series['status'] ?? '';
+    }
+
+    // Contributeurs : comparaison structurée (liste de {name, role,
+    // role_custom}), pas une simple chaîne — même logique que
+    // syngas_contributors_differ() (fonctions/syngas.php), dupliquée ici en
+    // sens inverse (Lengas source de vérité, pas Syngas). Un contributeur
+    // local absent (liste vide) n'est jamais proposé, même règle que les
+    // autres champs de ce mapping.
+    $local_contributors = array_values(array_filter($series['contributors'] ?? [], fn($c) => trim((string)($c['name'] ?? '')) !== ''));
+    if (!empty($local_contributors) && function_exists('syngas_contributors_differ')) {
+        $syngas_contributors = is_array($syngas_series['contributors'] ?? null) ? $syngas_series['contributors'] : [];
+        if (syngas_contributors_differ($syngas_contributors, $local_contributors)) {
+            $diff['contributors'] = [
+                'old' => syngas_contributors_to_text($syngas_contributors),
+                'new' => syngas_contributors_to_text($local_contributors),
+            ];
+            $fields['contributors'] = $local_contributors;
+        }
     }
 
     // Nombre de tomes VF : comparé à part, jamais dans $fields (n'a pas de

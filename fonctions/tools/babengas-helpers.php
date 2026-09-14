@@ -264,7 +264,7 @@ function babengas_series_without_url(array $data): array {
         $out[] = [
             'id'             => $series['id'],
             'name'           => $series['name'],
-            'author'         => $series['author'] ?? '',
+            'author'         => series_contributors_names_text($series, 'auteur'),
             'read_elsewhere' => !empty($series['read_elsewhere']),
             'invalid_url'    => $url !== '', // URL présente mais hors format /serie/…
         ];

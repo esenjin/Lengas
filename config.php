@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '4.2.4');
+define('SITE_VERSION', '4.3.0');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Syngas — base commune des mangathèques Lengas (voir includes/syngas.php).
@@ -316,6 +316,111 @@ function init_db(PDO $pdo): void {
     try {
         $pdo->exec("ALTER TABLE series ADD COLUMN syngas_volumes_count INTEGER");
     } catch (Exception $e) { /* colonne déjà présente */ }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // « Personnalités » — fusion de author / publisher / other_contributors
+    // ──────────────────────────────────────────────────────────────────────────
+    // Remplace les trois anciens champs (un auteur unique, un éditeur unique,
+    // une liste de noms sans rôle) par une seule colonne `contributors`
+    // (JSON), liste de { name, role, role_custom }. `role` est une valeur du
+    // registre fermé contributor_roles() (includes/helpers.php) ; 'autre' est
+    // accompagné d'un role_custom libre. Un rôle vide ('') reste toléré : les
+    // anciens « autres contributeurs » migrés n'en ont pas et attendent d'être
+    // complétés (voir l'anomalie dédiée de l'outil « Vérification des
+    // mangas »). Périmètre Mangathèque uniquement — les animés n'ont jamais
+    // renseigné ces trois colonnes (restées vides), rien à migrer pour eux.
+    //
+    // La migration des DONNÉES ne peut avoir lieu qu'une seule fois, tant que
+    // les anciennes colonnes existent encore : on la déclenche donc AVANT de
+    // les supprimer, et seulement si `author` est encore présente (sonde de
+    // schéma directe, sans dépendre d'un flag séparé).
+    $__contrib_needs_migration = false;
+    try {
+        $pdo->exec("ALTER TABLE series ADD COLUMN contributors TEXT NOT NULL DEFAULT ''");
+        $__contrib_needs_migration = true; // colonne tout juste créée
+    } catch (Exception $e) { /* colonne déjà présente */ }
+
+    if ($__contrib_needs_migration) {
+        try {
+            $pdo->query("SELECT author FROM series LIMIT 1");
+            // Les anciennes colonnes existent encore : première migration.
+            $rows = $pdo->query("SELECT id, author, publisher, other_contributors FROM series")->fetchAll(PDO::FETCH_ASSOC);
+            $upd  = $pdo->prepare("UPDATE series SET contributors = :c WHERE id = :id");
+            foreach ($rows as $row) {
+                $contributors = [];
+
+                $author = trim((string)($row['author'] ?? ''));
+                if ($author !== '') {
+                    $contributors[] = ['name' => $author, 'role' => 'auteur', 'role_custom' => ''];
+                }
+
+                $publisher = trim((string)($row['publisher'] ?? ''));
+                if ($publisher !== '') {
+                    $contributors[] = ['name' => $publisher, 'role' => 'editeur', 'role_custom' => ''];
+                }
+
+                $others = trim((string)($row['other_contributors'] ?? ''));
+                if ($others !== '') {
+                    foreach (explode(',', $others) as $name) {
+                        $name = trim($name);
+                        if ($name === '') continue;
+                        // Rôle vide : à compléter manuellement (outil de
+                        // vérification des mangas, anomalie dédiée).
+                        $contributors[] = ['name' => $name, 'role' => '', 'role_custom' => ''];
+                    }
+                }
+
+                $upd->execute([
+                    ':c'  => json_encode($contributors, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    ':id' => $row['id'],
+                ]);
+            }
+        } catch (Exception $e) { /* anciennes colonnes déjà absentes : rien à migrer */ }
+    }
+
+    // Anciennes colonnes définitivement supprimées une fois `contributors` en
+    // place (DROP COLUMN natif, SQLite ≥ 3.35 / 2021). Dégradation gracieuse
+    // sur un moteur SQLite plus ancien : les colonnes restent en base,
+    // orphelines, mais ne sont plus lues ni écrites nulle part — sans
+    // incidence sur le fonctionnement du site.
+    foreach (['author', 'publisher', 'other_contributors'] as $__old_col) {
+        try {
+            $pdo->exec("ALTER TABLE series DROP COLUMN {$__old_col}");
+        } catch (Exception $e) { /* déjà absente, ou moteur SQLite trop ancien */ }
+    }
+
+    // ── Renommage de rôle : 'character_design' → 'illustrateur' ────────────────
+    // Le rôle « Character Design » a été renommé « Illustrateur » (clé de
+    // registre comprise) après la sortie initiale de « Personnalités ».
+    // Migration légère et idempotente, sans flag séparé : ne coûte qu'un
+    // simple filtre LIKE sur les lignes concernées, jamais un scan complet de
+    // la table une fois qu'il n'y a plus rien à renommer (LIKE ne matche
+    // alors plus aucune ligne). Seule la CLÉ de rôle change ; role_custom et
+    // le reste de chaque entrée sont préservés tels quels.
+    try {
+        $rows = $pdo->query("SELECT id, contributors FROM series WHERE contributors LIKE '%character_design%'")->fetchAll(PDO::FETCH_ASSOC);
+        if (!empty($rows)) {
+            $upd = $pdo->prepare("UPDATE series SET contributors = :c WHERE id = :id");
+            foreach ($rows as $row) {
+                $list = json_decode((string)$row['contributors'], true);
+                if (!is_array($list)) continue;
+                $changed = false;
+                foreach ($list as &$c) {
+                    if (($c['role'] ?? '') === 'character_design') {
+                        $c['role'] = 'illustrateur';
+                        $changed = true;
+                    }
+                }
+                unset($c);
+                if ($changed) {
+                    $upd->execute([
+                        ':c'  => json_encode($list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        ':id' => $row['id'],
+                    ]);
+                }
+            }
+        }
+    } catch (Exception $e) { /* colonne contributors absente : migration précédente pas encore passée, rien à faire ici */ }
 
     // ──────────────────────────────────────────────────────────────────────────
     // Typage de la liste d'envies
@@ -716,6 +821,31 @@ function decode_alt_titles($raw): array {
     return $out;
 }
 
+// Décode la colonne `contributors` (JSON) en tableau de contributeurs.
+// Chaque entrée : ['name' => string, 'role' => string, 'role_custom' => string].
+// `role` est une clé du registre fermé contributor_roles() (includes/
+// helpers.php), ou '' pour un contributeur migré sans rôle attribué (voir
+// init_db()). Une valeur vide, illisible ou non conforme rend un tableau
+// vide plutôt qu'une fatale.
+function decode_contributors($raw): array {
+    $raw = trim((string)$raw);
+    if ($raw === '') return [];
+    $decoded = json_decode($raw, true);
+    if (!is_array($decoded)) return [];
+    $out = [];
+    foreach ($decoded as $c) {
+        if (!is_array($c)) continue;
+        $name = trim((string)($c['name'] ?? ''));
+        if ($name === '') continue;
+        $out[] = [
+            'name'        => $name,
+            'role'        => (string)($c['role'] ?? ''),
+            'role_custom' => trim((string)($c['role_custom'] ?? '')),
+        ];
+    }
+    return $out;
+}
+
 function load_data(): array {
     $db      = get_db();
     $series  = $db->query("SELECT * FROM series ORDER BY rowid")->fetchAll();
@@ -755,9 +885,11 @@ function load_data(): array {
             'name'               => $s['name'],
             // Repli sur 'manga' : couvre les bases non encore migrées.
             'type'               => (isset($s['type']) && trim($s['type']) !== '') ? $s['type'] : 'manga',
-            'author'             => $s['author'],
-            'publisher'          => $s['publisher'],
-            'other_contributors' => $s['other_contributors'] !== '' ? explode(',', $s['other_contributors']) : [''],
+            // Liste unifiée des contributeurs (auteur, éditeur, autres rôles),
+            // voir decode_contributors() ci-dessus. Remplace les anciennes
+            // colonnes author / publisher / other_contributors, supprimées
+            // par la migration « Personnalités » (voir init_db()).
+            'contributors'       => decode_contributors($s['contributors'] ?? ''),
             'categories'         => $s['categories']  !== '' ? explode(',', $s['categories'])  : [''],
             'genres'             => $s['genres']       !== '' ? explode(',', $s['genres'])       : [''],
             'image'              => $s['image'],
@@ -827,12 +959,11 @@ function load_data(): array {
 function upsert_series_row(array $series): void {
     $db = get_db();
     $stmt = $db->prepare("
-        INSERT INTO series (id, name, type, author, publisher, other_contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating, syngas_uid, syngas_volumes_count, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, rewatch_last_date, anilist_synced_at, episode_duration, reread_count, reread_last_date)
-        VALUES (:id,:name,:type,:author,:publisher,:other_contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating,:syngas_uid,:syngas_volumes_count,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:rewatch_last_date,:anilist_synced_at,:episode_duration,:reread_count,:reread_last_date)
+        INSERT INTO series (id, name, type, contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating, syngas_uid, syngas_volumes_count, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, rewatch_last_date, anilist_synced_at, episode_duration, reread_count, reread_last_date)
+        VALUES (:id,:name,:type,:contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating,:syngas_uid,:syngas_volumes_count,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:rewatch_last_date,:anilist_synced_at,:episode_duration,:reread_count,:reread_last_date)
         ON CONFLICT(id) DO UPDATE SET
             name=excluded.name, type=excluded.type,
-            author=excluded.author, publisher=excluded.publisher,
-            other_contributors=excluded.other_contributors, categories=excluded.categories,
+            contributors=excluded.contributors, categories=excluded.categories,
             genres=excluded.genres, image=excluded.image, anilist_id=excluded.anilist_id,
             mature=excluded.mature, favorite=excluded.favorite, status=excluded.status,
             mangaupdates_url=excluded.mangaupdates_url, babelio_url=excluded.babelio_url,
@@ -858,9 +989,17 @@ function upsert_series_row(array $series): void {
         ':id'                  => $s['id'],
         ':name'                => $s['name'],
         ':type'                => (isset($s['type']) && trim($s['type']) !== '') ? $s['type'] : 'manga',
-        ':author'              => $s['author'] ?? '',
-        ':publisher'           => $s['publisher'] ?? '',
-        ':other_contributors'  => implode(',', $s['other_contributors'] ?? ['']),
+        ':contributors'        => json_encode(
+                                        array_values(array_map(
+                                            fn($c) => [
+                                                'name'        => (string)($c['name'] ?? ''),
+                                                'role'        => (string)($c['role'] ?? ''),
+                                                'role_custom' => (string)($c['role_custom'] ?? ''),
+                                            ],
+                                            array_filter($s['contributors'] ?? [], fn($c) => trim((string)($c['name'] ?? '')) !== '')
+                                        )),
+                                        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                                    ),
         ':categories'          => implode(',', $s['categories'] ?? ['']),
         ':genres'              => implode(',', $s['genres'] ?? ['']),
         ':image'               => $s['image'] ?? '',

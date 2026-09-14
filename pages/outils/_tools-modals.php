@@ -71,6 +71,12 @@ $tm_add_babelio_url = $tm_add_babelio_url ?? false;
             <p class="hint">La série est lue en dehors de la collection physique.</p>
         </div>
 
+        <!-- Contributeurs sans rôle attribué (anomalie « contributeur sans
+             rôle ») : section masquée par défaut, affichée uniquement si la
+             série a au moins un contributeur concerné (voir
+             buildCeditContributorRoles(), assets/js/admin/tools/coherence.js). -->
+        <div class="cedit-field-group" id="cedit-contrib-roles" hidden></div>
+
         <hr class="cedit-divider">
 
         <!-- Liste des tomes -->

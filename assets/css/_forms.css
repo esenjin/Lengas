@@ -399,3 +399,69 @@ form {
     border-color: var(--text-white);
     box-shadow: 0 0 0 2px var(--swatch, #4ade80);
 }
+
+/* ── Bloc dynamique « Contributeurs » (ajout/édition d'une série manga) ──────
+   Une ligne = nom + rôle (+ précision libre si "Autre") + bouton supprimer.
+   Voir assets/js/admin/contributors.js. */
+.contributors-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.contributor-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.contributor-row .contributor-name {
+    flex: 2 1 160px;
+    margin-bottom: 0;
+}
+
+.contributor-row .autocomplete-container {
+    flex: 2 1 160px;
+    position: relative;
+}
+
+.contributor-row .autocomplete-container .contributor-name {
+    width: 100%;
+}
+
+.contributor-row .contributor-role {
+    flex: 1 1 140px;
+    margin-bottom: 0;
+}
+
+.contributor-row .contributor-role-custom {
+    flex: 1 1 140px;
+    margin-bottom: 0;
+}
+
+.contributor-remove-btn {
+    flex: 0 0 auto;
+    background: transparent;
+    border: 1px solid var(--input-border);
+    color: var(--text-muted, #8888a8);
+    border-radius: var(--border-radius-sm);
+    width: 34px;
+    height: 34px;
+    font-size: 1.1em;
+    line-height: 1;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.contributor-remove-btn:hover {
+    background: var(--error-color, #e05c5c);
+    border-color: var(--error-color, #e05c5c);
+    color: var(--text-white);
+}
+
+.contributors-add-btn {
+    align-self: flex-start;
+    margin-bottom: 14px;
+}

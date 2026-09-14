@@ -75,6 +75,10 @@ $series_with_status = array_map(function ($series) {
 ?>
 <script>
     window.seriesData = <?= json_encode($series_with_status) ?>;
+    // Registre des rôles de contributeur (« Personnalités »), pour l'action
+    // rapide de l'anomalie « contributeur sans rôle » — même source que
+    // admin.php (includes/helpers.php, contributor_roles_for_js()).
+    window.contributorRoles = <?= json_encode(contributor_roles_for_js(), JSON_UNESCAPED_UNICODE) ?>;
 </script>
 <?php
 $tool_scripts = ['coherence.js'];

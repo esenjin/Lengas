@@ -174,6 +174,13 @@ function syngasRenderResults(prefix, results) {
         const thumb = r.thumbnail_url
             ? `<img class="syngas-result-thumb" src="${syngasEscHtml(r.thumbnail_url)}" alt="" loading="lazy">`
             : `<div class="syngas-result-thumb syngas-result-thumb--empty"></div>`;
+        // Aperçu texte des contributeurs : nouveau contrat Syngas → un seul
+        // champ `author` déjà mis en forme (voir SYNGAS_CONTRACT.md, section
+        // "Résumé de recherche"). Repli sur l'ancien format à deux champs
+        // séparés (`author`/`publisher`) si Syngas n'a pas encore été mis à
+        // jour — purement cosmétique, sans incidence sur les données
+        // réellement écrites (celles-ci passent par syngas_validate, jamais
+        // par ce simple résumé d'aperçu).
         const meta = [r.author, r.publisher].filter(Boolean).map(syngasEscHtml).join(' · ');
         html += `
             <div class="syngas-result">
@@ -270,20 +277,18 @@ function syngasValidateResult(prefix, syngasId, btn) {
 // Syngas) n'est jamais touché — cohérent avec la règle « champ vide
 // n'écrase jamais » appliquée côté serveur.
 function syngasApplyFieldsToAddForm(fields, syngasUid, thumbnailPath, volumesCount) {
-    const map = {
-        name: 'add-series-name',
-        author: 'add-series-author',
-        publisher: 'add-series-publisher',
-        other_contributors: 'add-series-other-contributors',
-        genres: 'add-series-genres',
-        mangaupdates_url: null, // pas de champ dédié dans la modale d'ajout par name direct
-        babelio_url: null,
-    };
-
     if (fields.name) document.getElementById('add-series-name').value = fields.name;
-    if (fields.author) document.getElementById('add-series-author').value = fields.author;
-    if (fields.publisher) document.getElementById('add-series-publisher').value = fields.publisher;
-    if (fields.other_contributors) document.getElementById('add-series-other-contributors').value = fields.other_contributors;
+    // Contributeurs : liste complète [{name, role, role_custom}] — remplace
+    // intégralement les lignes du formulaire (même règle d'écrasement total
+    // que les autres champs non vides de ce mapping, voir includes/
+    // syngas.php, syngas_map_to_lengas_fields()). Un tableau absent ou vide
+    // laisse les lignes déjà présentes (Auteur/Éditeur par défaut) intactes.
+    if (Array.isArray(fields.contributors) && fields.contributors.length) {
+        const contribContainer = document.getElementById('add-series-contributors');
+        if (contribContainer && typeof contributorsRenderList === 'function') {
+            contributorsRenderList(contribContainer, fields.contributors);
+        }
+    }
     if (fields.genres) document.getElementById('add-series-genres').value = fields.genres;
     if (Array.isArray(fields.categories) && fields.categories.length) {
         document.getElementById('add-series-categories').value = fields.categories.join(', ');

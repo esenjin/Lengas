@@ -219,6 +219,20 @@
 
 .panel-head h3 { margin-bottom: 16px; }
 
+/* Filtre par rôle du panel « Top 20 contributeurs » (page Statistiques) —
+   même registre visuel que les <select> de formulaire, mais compact pour
+   tenir sur la ligne du panel-head à côté du toggle tomes/séries. */
+.contributors-role-filter {
+    width: auto;
+    margin-bottom: 16px;
+    padding: 6px 10px;
+    font-size: 0.85em;
+    background: var(--input-bg, var(--card-bg));
+    color: var(--text-white);
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius-sm);
+}
+
 /* Moyenne mensuelle affichée à côté du titre d'un panel "par mois"
    (Tomes ajoutés / lus, Épisodes vus) : même registre visuel discret que
    .panel-note, mais sur la ligne du titre plutôt qu'en dessous du graphique. */

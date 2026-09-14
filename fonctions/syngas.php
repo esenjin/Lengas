@@ -127,6 +127,43 @@ function syngas_resolve_tracked_submissions(array &$data): array {
 // réseau (traité comme "rien à afficher" : l'outil continue sur les
 // suivantes, cohérent avec le traitement d'erreur des autres outils SSE).
 // Sinon : ['series_id'=>…, 'name'=>…, 'diff'=>[champ => ['old'=>…,'new'=>…]], 'thumbnail_url'=>…].
+// ── Comparaison structurée des contributeurs (« Personnalités ») ───────────
+// Contrairement aux autres champs "liste" (genres, categories), une liste de
+// contributeurs porte plus qu'un simple nom : le rôle compte aussi. Deux
+// listes sont considérées identiques si elles contiennent le même ensemble
+// de triplets {name, role, role_custom}, sans tenir compte de l'ORDRE (Syngas
+// n'a aucune obligation de renvoyer ses contributeurs dans le même ordre que
+// Lengas les a stockés).
+function syngas_contributors_normalize_for_diff(array $contributors): array {
+    $rows = array_map(function ($c) {
+        $name = trim((string)($c['name'] ?? ''));
+        $role = trim((string)($c['role'] ?? ''));
+        $custom = ($role === 'autre') ? trim((string)($c['role_custom'] ?? '')) : '';
+        return $name . '|' . $role . '|' . $custom;
+    }, array_filter($contributors, fn($c) => is_array($c) && trim((string)($c['name'] ?? '')) !== ''));
+    sort($rows);
+    return $rows;
+}
+
+function syngas_contributors_differ(array $old, array $new): bool {
+    return syngas_contributors_normalize_for_diff($old) !== syngas_contributors_normalize_for_diff($new);
+}
+
+// Rendu texte d'une liste de contributeurs pour l'affichage du récapitulatif
+// (colonnes "avant"/"après" de l'outil) : "Nom (Rôle), Nom (Rôle)…", même
+// registre de libellés que contributor_role_label() (includes/helpers.php).
+function syngas_contributors_to_text(array $contributors): string {
+    $parts = array_map(function ($c) {
+        $name = trim((string)($c['name'] ?? ''));
+        if ($name === '') return null;
+        $label = function_exists('contributor_role_label')
+            ? contributor_role_label($c['role'] ?? '', $c['role_custom'] ?? '')
+            : (($c['role'] ?? '') ?: 'rôle non précisé');
+        return $name . ' (' . $label . ')';
+    }, $contributors);
+    return implode(', ', array_filter($parts));
+}
+
 function syngas_sync_compute_diff(array $series): ?array {
     $syngas_id = trim((string)($series['syngas_uid'] ?? ''));
     if ($syngas_id === '') return null;
@@ -147,21 +184,34 @@ function syngas_sync_compute_diff(array $series): ?array {
     foreach ($fields as $key => $new_value) {
         $old_value = $series[$key] ?? null;
 
+        // Contributeurs : comparaison structurée dédiée (liste de {name, role,
+        // role_custom} depuis la migration « Personnalités »), pas la
+        // normalisation texte comma-separated utilisée pour les autres champs
+        // "liste" ci-dessous — voir syngas_contributors_diff_differs().
+        if ($key === 'contributors') {
+            if (!syngas_contributors_differ((array)$old_value, (array)$new_value)) continue;
+            $diff[$key] = [
+                'old' => syngas_contributors_to_text((array)$old_value),
+                'new' => syngas_contributors_to_text((array)$new_value),
+            ];
+            continue;
+        }
+
         // Normalisation pour comparaison : les champs "liste" (categories,
-        // other_contributors, genres côté Lengas) sont stockés en tableau.
+        // genres côté Lengas) sont stockés en tableau.
         $old_cmp = is_array($old_value) ? implode(',', array_filter($old_value)) : (string)$old_value;
         $new_cmp = is_array($new_value) ? implode(',', array_filter($new_value)) : (string)$new_value;
 
-        // Champs "liste" séparés par virgules (genres, categories,
-        // other_contributors) : Syngas peut renvoyer ses valeurs avec des
-        // espaces après les virgules ("Action, Aventure") alors que Lengas
-        // les stocke toujours sans ("Action,Aventure", cf.
-        // clean_comma_separated() dans fonctions/series.php). Sans
-        // normalisation, ce simple écart de formatage faisait apparaître un
-        // faux changement dans le récapitulatif alors que le contenu est
-        // identique — on compare donc les deux côtés élément par élément,
-        // en ignorant l'espacement et l'ordre.
-        if (in_array($key, ['genres', 'categories', 'other_contributors'], true)) {
+        // Champs "liste" séparés par virgules (genres, categories) : Syngas
+        // peut renvoyer ses valeurs avec des espaces après les virgules
+        // ("Action, Aventure") alors que Lengas les stocke toujours sans
+        // ("Action,Aventure", cf. clean_comma_separated() dans
+        // fonctions/series.php). Sans normalisation, ce simple écart de
+        // formatage faisait apparaître un faux changement dans le
+        // récapitulatif alors que le contenu est identique — on compare donc
+        // les deux côtés élément par élément, en ignorant l'espacement et
+        // l'ordre.
+        if (in_array($key, ['genres', 'categories'], true)) {
             $normalize_list = function (string $value): array {
                 $items = array_map('trim', explode(',', $value));
                 $items = array_filter($items, fn($v) => $v !== '');

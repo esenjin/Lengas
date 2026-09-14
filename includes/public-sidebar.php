@@ -78,6 +78,20 @@ $__reviews_public_anime = !is_private_mode($options, 'anime') && !is_hide_review
                 </li>
                 <?php endif; ?>
 
+                <?php if (!is_private_mode($options, 'manga')): ?>
+                <!-- Personnalités : annuaire des contributeurs (auteurs,
+                     éditeurs, autres rôles), masqué avec le reste de la
+                     Mangathèque en mode privé — même règle que le bouton
+                     Critiques mangas ci-dessus. -->
+                <li>
+                    <a href="personnalites.php"
+                       class="sidebar-link <?= $current_page === 'personnalites.php' ? 'is-active is-active--pink' : '' ?>"
+                       data-tooltip="Personnalités">
+                        <img src="https://api.iconify.design/mdi/account-group.svg?color=<?= $__c_manga ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+                <?php endif; ?>
+
             </ul>
         </li>
 

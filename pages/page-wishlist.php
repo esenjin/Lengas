@@ -135,9 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $index = (int)($_POST['index'] ?? 0);
 
         $name               = trim($_POST['name'] ?? '');
-        $author             = trim($_POST['author'] ?? '');
-        $publisher          = trim($_POST['publisher'] ?? '');
-        $other_contributors = trim($_POST['other_contributors'] ?? '');
+        $contributors       = admin_read_contributors_from_post('contrib');
         $categories         = trim($_POST['categories'] ?? '');
         $genres             = trim($_POST['genres'] ?? '');
         $mangaupdates_url   = trim($_POST['mangaupdates_url'] ?? '');
@@ -174,11 +172,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        // Au moins un Auteur ET un Éditeur — même règle que admin.php.
+        $has_author    = !empty(array_filter($contributors, fn($c) => $c['role'] === 'auteur' && trim($c['name']) !== ''));
+        $has_publisher = !empty(array_filter($contributors, fn($c) => $c['role'] === 'editeur' && trim($c['name']) !== ''));
+        if (!$has_author || !$has_publisher) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Au moins un contributeur avec le rôle « Auteur » et un avec le rôle « Éditeur » sont requis.']);
+            exit;
+        }
+
         $series_fields = [
             'name'               => $name,
-            'author'             => $author,
-            'publisher'          => $publisher,
-            'other_contributors' => $other_contributors,
+            'contributors'       => $contributors,
             'categories'         => $categories,
             'genres'             => $genres,
             'mangaupdates_url'   => $mangaupdates_url,
@@ -466,12 +471,10 @@ $move_candidates = array_map(function ($s) {
                     <input type="hidden" name="index" id="asfw-index">
                     <p>Nom :</p>
                     <input type="text" name="name" id="asfw-name" placeholder="Nom de la série (obligatoire)" autocomplete="off" required>
-                    <p>Auteur :</p>
-                    <input type="text" name="author" id="asfw-author" placeholder="Nom de l'auteur (obligatoire)" autocomplete="off" required>
-                    <p>Éditeur :</p>
-                    <input type="text" name="publisher" id="asfw-publisher" placeholder="Nom de l'éditeur (obligatoire)" autocomplete="off" required>
-                    <p>Autres contributeurs :</p>
-                    <input type="text" name="other_contributors" id="asfw-other-contributors" placeholder="Autres contributeurs (séparés par des virgules) (facultatif)" autocomplete="off">
+                    <p>Contributeurs :</p>
+                    <p class="hint">Au moins un « Auteur » et un « Éditeur » sont requis. Une même personne peut apparaître sur plusieurs lignes avec des rôles différents.</p>
+                    <div class="contributors-field" id="asfw-contributors" data-prefix="contrib"></div>
+                    <button type="button" class="button button-opt contributors-add-btn" data-contributors-target="asfw-contributors">+ Ajouter un contributeur</button>
                     <p>Catégories :</p>
                     <input type="text" name="categories" id="asfw-categories" placeholder="Catégories (séparées par des virgules) (obligatoire)" autocomplete="off" required>
                     <p>Genres :</p>
@@ -584,11 +587,15 @@ $move_candidates = array_map(function ($s) {
         window.suggestionsEndpoint = '../admin.php';
     </script>
     <script src="../assets/js/admin/autocomplete.js"></script>
+    <script src="../assets/js/admin/contributors.js"></script>
     <script>
         // Registre des types (libellés, couleurs) : seule source de vérité,
         // partagée avec admin.php et index.php. Aucun libellé ni couleur ne
         // doit être écrit en dur plus bas.
         window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
+        // Registre des rôles de contributeur, même source que admin.php —
+        // voir includes/helpers.php, contributor_roles_for_js().
+        window.contributorRoles = <?= json_encode(contributor_roles_for_js(), JSON_UNESCAPED_UNICODE) ?>;
 
         let wishlistData = <?= json_encode(array_values($wishlist)) ?>;
         // Entrée animée en attente de confirmation d'import Anilist (modale
@@ -951,8 +958,13 @@ $move_candidates = array_map(function ($s) {
             form.reset();
             document.getElementById('asfw-index').value       = index;
             document.getElementById('asfw-name').value        = item.name || '';
-            document.getElementById('asfw-author').value      = item.author || '';
-            document.getElementById('asfw-publisher').value   = item.publisher || '';
+            const asfwContribContainer = document.getElementById('asfw-contributors');
+            if (asfwContribContainer && typeof contributorsRenderList === 'function') {
+                const prefill = [];
+                if (item.author)    prefill.push({ name: item.author, role: 'auteur' });
+                if (item.publisher) prefill.push({ name: item.publisher, role: 'editeur' });
+                contributorsRenderList(asfwContribContainer, prefill);
+            }
             document.getElementById('add-series-from-wishlist-modal').classList.add('modal-active');
         }
 
@@ -960,19 +972,19 @@ $move_candidates = array_map(function ($s) {
         // les champs de cette modale, identiques à celles de admin.php :
         // window.currentSeriesType n'est pas posé sur cette page, donc
         // currentViewType() retombe sur 'manga' par défaut — cohérent, cette
-        // modale ne créant que des mangas.
+        // modale ne créant que des mangas. Les champs Auteur/Éditeur/Autres
+        // contributeurs sont désormais gérés par le bloc dynamique
+        // « Contributeurs » (assets/js/admin/contributors.js), qui gère sa
+        // propre autocomplétion par ligne.
         setupAutocomplete('asfw-name', ['name']);
-        setupAutocomplete('asfw-author', ['author', 'other_contributors']);
-        setupAutocomplete('asfw-publisher', ['publisher']);
-        setupMultiAutocomplete('asfw-other-contributors', ['author', 'other_contributors']);
         setupMultiAutocomplete('asfw-categories', ['categories']);
         setupMultiAutocomplete('asfw-genres', ['genres']);
 
         // Mêmes suggestions sur le formulaire d'ajout rapide manga en haut de
         // page (déjà référencées par autocomplete.js, mais inertes tant que
         // ce script n'était pas chargé ici).
-        setupAutocomplete('wishlist-author', ['author', 'other_contributors']);
-        setupAutocomplete('wishlist-publisher', ['publisher']);
+        setupAutocomplete('wishlist-author', ['contributors']);
+        setupAutocomplete('wishlist-publisher', ['contributors']);
 
         document.getElementById('add-series-from-wishlist-form').addEventListener('submit', async function(e) {
             e.preventDefault();

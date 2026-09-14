@@ -242,12 +242,20 @@ function add_from_wishlist(array $data, array $wishlist, int $index): array {
 
     $new_id = generate_uuid();
     $db     = get_db();
+    // Auteur et éditeur de la wishlist (champs simples, hors périmètre de la
+    // migration « Personnalités ») deviennent respectivement une ligne de
+    // contributeur de rôle 'auteur' et 'editeur' sur la série créée — voir la
+    // nouvelle colonne `contributors` (JSON) de la table `series`.
+    $new_contributors = [];
+    if (trim($author) !== '')    $new_contributors[] = ['name' => trim($author), 'role' => 'auteur', 'role_custom' => ''];
+    if (trim($publisher) !== '') $new_contributors[] = ['name' => trim($publisher), 'role' => 'editeur', 'role_custom' => ''];
+    $new_contributors_json = json_encode($new_contributors, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $db->beginTransaction();
     try {
         $db->prepare("
-            INSERT INTO series (id, name, type, author, publisher, categories, image, status)
-            VALUES (?, ?, 'manga', ?, ?, '', '', 'en cours')
-        ")->execute([$new_id, $name, $author, $publisher]);
+            INSERT INTO series (id, name, type, contributors, categories, image, status)
+            VALUES (?, ?, 'manga', ?, '', '', 'en cours')
+        ")->execute([$new_id, $name, $new_contributors_json]);
 
         $db->prepare("
             INSERT INTO volumes (series_id, number, status, collector, last, added_at)
@@ -271,9 +279,7 @@ function add_from_wishlist(array $data, array $wishlist, int $index): array {
         'id'                 => $new_id,
         'name'               => $name,
         'type'               => 'manga',
-        'author'             => $author,
-        'publisher'          => $publisher,
-        'other_contributors' => [''],
+        'contributors'       => $new_contributors,
         'categories'         => [''],
         'genres'             => [''],
         'image'              => '',
@@ -313,8 +319,8 @@ function move_series_to_wishlist(array $data, array $wishlist, string $series_id
     $type   = series_type($series);
 
     $name       = $series['name'];
-    $author     = ($type === 'manga') ? ($series['author'] ?? '') : '';
-    $publisher  = ($type === 'manga') ? ($series['publisher'] ?? '') : '';
+    $author     = ($type === 'manga') ? series_contributors_names_text($series, 'auteur') : '';
+    $publisher  = ($type === 'manga') ? series_contributors_names_text($series, 'editeur') : '';
     $studio     = ($type === 'anime') ? (function_exists('series_studios_text') ? series_studios_text($series) : '') : '';
     $anilist_id = ($type === 'anime') ? trim((string)($series['anilist_id'] ?? '')) : '';
 
@@ -370,9 +376,7 @@ function add_series_from_wishlist(array $data, array $wishlist, int $index, arra
     $result = add_series(
         $data,
         $series_fields['name'],
-        $series_fields['author'],
-        $series_fields['publisher'],
-        $series_fields['other_contributors'],
+        $series_fields['contributors'],
         $series_fields['categories'],
         $series_fields['genres'],
         $series_fields['mangaupdates_url'],

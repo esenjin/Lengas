@@ -391,12 +391,24 @@ function get_incomplete_series(array $data): array {
     foreach ($data as $series) {
         $url = $series['mangaupdates_url'] ?? '';
 
+        // Auteur/éditeur dérivés une seule fois ici, posés directement sur
+        // $series avant toute branche : cette fonction pousse ensuite la
+        // série TELLE QUELLE dans $incomplete_series / $series_with_more_
+        // volumes (contrairement à $no_reference_series/$failed_series, qui
+        // reconstruisent un petit tableau dédié juste en dessous) — sans ces
+        // deux clés, le front (assets/js/admin/tools/incomplete.js) qui lit
+        // encore series.author/series.publisher afficherait "undefined"
+        // depuis la migration « Personnalités » (author/publisher supprimés
+        // de la série elle-même, remplacés par contributors).
+        $series['author']    = series_contributors_names_text($series, 'auteur');
+        $series['publisher'] = series_contributors_names_text($series, 'editeur');
+
         // ── Cas 1 : aucune URL MangaUpdates ───────────────────────────────────
         if ($url === '') {
             $no_reference_series[] = [
                 'id'     => $series['id'],
                 'name'   => $series['name'],
-                'author' => $series['author'] ?? '',
+                'author' => series_contributors_names_text($series, 'auteur'),
             ];
             continue;
         }
@@ -407,7 +419,7 @@ function get_incomplete_series(array $data): array {
             $failed_series[] = [
                 'id'     => $series['id'],
                 'name'   => $series['name'],
-                'author' => $series['author'] ?? '',
+                'author' => series_contributors_names_text($series, 'auteur'),
                 'ref'    => 'mangaupdates',
                 'reason' => 'URL MangaUpdates invalide',
             ];
@@ -419,7 +431,7 @@ function get_incomplete_series(array $data): array {
             $failed_series[] = [
                 'id'     => $series['id'],
                 'name'   => $series['name'],
-                'author' => $series['author'] ?? '',
+                'author' => series_contributors_names_text($series, 'auteur'),
                 'ref'    => 'mangaupdates',
                 'reason' => 'Erreur de récupération MangaUpdates (réseau ou service indisponible)',
             ];
@@ -432,7 +444,7 @@ function get_incomplete_series(array $data): array {
             $failed_series[] = [
                 'id'              => $series['id'],
                 'name'            => $series['name'],
-                'author'          => $series['author'] ?? '',
+                'author'          => series_contributors_names_text($series, 'auteur'),
                 'ref'             => 'mangaupdates',
                 'reason'          => 'Nombre de tomes non renseigné sur MangaUpdates',
                 'mangaupdates_url'=> $url, // URL pour afficher le badge MU

@@ -150,10 +150,20 @@ function add_from_read(array $data, array $read, int $index): array {
         $db     = get_db();
         $db->beginTransaction();
         try {
+            // Contributeurs : l'auteur et l'éditeur saisis pour "lues ailleurs"
+            // deviennent respectivement une ligne de rôle 'auteur' et 'editeur'
+            // dans la nouvelle colonne `contributors` (JSON) — voir la migration
+            // « Personnalités » dans config.php, qui a remplacé les anciennes
+            // colonnes author/publisher/other_contributors de la table `series`.
+            $contributors = [];
+            if (trim($author) !== '')    $contributors[] = ['name' => trim($author), 'role' => 'auteur', 'role_custom' => ''];
+            if (trim($publisher) !== '') $contributors[] = ['name' => trim($publisher), 'role' => 'editeur', 'role_custom' => ''];
+            $contributors_json = json_encode($contributors, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
             $db->prepare("
-                INSERT INTO series (id, name, author, publisher, categories, image, status)
-                VALUES (?, ?, ?, ?, '', '', 'en cours')
-            ")->execute([$new_id, $name, $author, $publisher]);
+                INSERT INTO series (id, name, contributors, categories, image, status)
+                VALUES (?, ?, ?, '', '', 'en cours')
+            ")->execute([$new_id, $name, $contributors_json]);
 
             $volStmt = $db->prepare("
                 INSERT INTO volumes (series_id, number, status, collector, last, added_at)
@@ -185,9 +195,7 @@ function add_from_read(array $data, array $read, int $index): array {
         $data[] = [
             'id'                 => $new_id,
             'name'               => $name,
-            'author'             => $author,
-            'publisher'          => $publisher,
-            'other_contributors' => [''],
+            'contributors'       => $contributors,
             'categories'         => [''],
             'genres'             => [''],
             'image'              => '',
@@ -230,12 +238,18 @@ function move_series_to_read(array $data, array $read, string $series_id): array
 
     $added_at = date('Y-m-d');
     $db       = get_db();
+    // L'auteur et l'éditeur enregistrés dans "lues ailleurs" (table dédiée,
+    // colonnes author/publisher propres — hors périmètre de la migration
+    // « Personnalités », qui ne touche que la table `series`) sont dérivés
+    // des contributeurs de rôle 'auteur'/'editeur' de la série déplacée.
+    $moved_author    = series_contributors_names_text($series, 'auteur');
+    $moved_publisher = series_contributors_names_text($series, 'editeur');
     $db->beginTransaction();
     try {
         $db->prepare("
             INSERT INTO read_elsewhere (name, author, publisher, volumes_read, status, added_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        ")->execute([$series['name'], $series['author'], $series['publisher'], $volumes_read, $status, $added_at]);
+        ")->execute([$series['name'], $moved_author, $moved_publisher, $volumes_read, $status, $added_at]);
 
         // Supprimer la série (CASCADE supprime aussi les volumes)
         $db->prepare("DELETE FROM series WHERE id = ?")->execute([$series_id]);
@@ -247,8 +261,8 @@ function move_series_to_read(array $data, array $read, string $series_id): array
 
     $read[] = [
         'name'         => $series['name'],
-        'author'       => $series['author'],
-        'publisher'    => $series['publisher'],
+        'author'       => $moved_author,
+        'publisher'    => $moved_publisher,
         'volumes_read' => $volumes_read,
         'status'       => $status,
         'added_at'     => $added_at,

@@ -233,6 +233,25 @@ function check_manga_coherence(array $data): array {
             $series_issues[] = ['type' => 'sequence_not_starting_at_1', 'message' => 'La collection ne commence pas au tome 1 (premier tome possédé : ' . $min . ').'];
         }
 
+        // ── Contributeurs sans rôle attribué ──────────────────────────────────
+        // Cas typique : « autres contributeurs » migrés depuis l'ancien format
+        // texte (voir la migration « Personnalités », config.php) — un rôle
+        // vide y est volontairement toléré à la migration, à charge pour
+        // l'admin de le compléter ensuite. `names` porte les noms concernés,
+        // pour construire l'action rapide côté front (assets/js/admin/tools/
+        // coherence.js) sans avoir à les re-parcourir côté client.
+        $missing_role_names = array_values(array_unique(array_map(
+            fn($c) => $c['name'],
+            array_filter(series_contributors($series), fn($c) => ($c['role'] ?? '') === '')
+        )));
+        if (!empty($missing_role_names)) {
+            $series_issues[] = [
+                'type'    => 'contributor_missing_role',
+                'message' => (count($missing_role_names) === 1 ? 'Le contributeur ' : 'Les contributeurs ') . implode(', ', $missing_role_names) . (count($missing_role_names) === 1 ? " n'a" : " n'ont") . ' pas de rôle attribué.',
+                'names'   => $missing_role_names,
+            ];
+        }
+
         // ── Tomes non lus dans une série "lue ailleurs" ──────────────────────
         if (!empty($series['read_elsewhere'])) {
             $unread = array_values(array_filter($volumes, fn($v) => ($v['status'] ?? '') !== 'terminé'));
@@ -396,6 +415,40 @@ function coherence_quick_edit(array &$data, array $input): array {
     // Lue ailleurs
     if ($read_elsewhere !== null) {
         $data[$idx]['read_elsewhere'] = $read_elsewhere;
+    }
+
+    // ── Attribution de rôle aux contributeurs sans rôle ──────────────────────
+    // Action rapide de l'anomalie 'contributor_missing_role' (voir plus haut
+    // dans ce fichier) : met à jour, PAR NOM, le rôle des contributeurs de
+    // cette série qui n'en avaient pas encore. Ne touche jamais un
+    // contributeur qui a déjà un rôle (seuls les rôles vides sont ciblés),
+    // et ne crée ni ne supprime aucune ligne — uniquement une mise à jour en
+    // place. Format attendu : [{"name":"...", "role":"...",
+    // "role_custom":"..."}], la comparaison de nom étant stricte (même
+    // capitalisation que la ligne existante).
+    $contrib_role_updates = json_decode($input['contrib_role_updates'] ?? '[]', true);
+    if (is_array($contrib_role_updates) && !empty($contrib_role_updates)) {
+        $updates_by_name = [];
+        foreach ($contrib_role_updates as $u) {
+            $uname = trim((string)($u['name'] ?? ''));
+            if ($uname === '') continue;
+            $updates_by_name[$uname] = sanitize_contributor_entry([
+                'name'        => $uname,
+                'role'        => $u['role'] ?? '',
+                'role_custom' => $u['role_custom'] ?? '',
+            ]);
+        }
+        if (!empty($updates_by_name)) {
+            foreach ($data[$idx]['contributors'] as &$c) {
+                if (($c['role'] ?? '') !== '') continue; // seuls les rôles vides sont ciblés
+                $cname = $c['name'] ?? '';
+                if (isset($updates_by_name[$cname])) {
+                    $c['role']        = $updates_by_name[$cname]['role'];
+                    $c['role_custom'] = $updates_by_name[$cname]['role_custom'];
+                }
+            }
+            unset($c);
+        }
     }
 
     // Suppressions de tomes (index décroissants pour ne pas décaler la liste)

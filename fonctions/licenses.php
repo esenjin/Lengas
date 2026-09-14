@@ -176,7 +176,7 @@ function get_license_detail(array $data, string $license_id): ?array {
             'id'       => $s['id'],
             'name'     => $s['name'],
             'type'     => series_type($s),
-            'author'   => is_anime($s) ? series_studios_text($s) : (string)($s['author'] ?? ''),
+            'author'   => is_anime($s) ? series_studios_text($s) : series_contributors_names_text($s, 'auteur'),
             'category' => is_anime($s) ? ($s['format_label'] ?? '') : (string)(($s['categories'][0] ?? '') ?: ''),
             'image'    => $s['thumbnail'],
         ];
@@ -213,7 +213,7 @@ function get_licensable_series(array $data, string $exclude_license_id = ''): ar
             'id'     => $s['id'],
             'name'   => $s['name'],
             'type'   => series_type($s),
-            'author' => is_anime($s) ? series_studios_text($s) : (string)($s['author'] ?? ''),
+            'author' => is_anime($s) ? series_studios_text($s) : series_contributors_names_text($s, 'auteur'),
             // Vignette déjà résolue (perso -> Anilist -> défaut) : permet au
             // front de mettre à jour la vignette de la carte de licence dès
             // l'ajout d'une série, sans attendre un rechargement de page.

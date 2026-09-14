@@ -110,6 +110,20 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                     </a>
                 </li>
 
+                <!-- Personnalités : annuaire des contributeurs (auteurs,
+                     éditeurs, autres rôles) — page publique, mais accessible
+                     aussi depuis l'admin comme raccourci vers l'annuaire.
+                     Nouvel onglet, même principe que Accueil public/
+                     Statistiques/Historique ci-dessous (section Divers). -->
+                <li>
+                    <a href="<?= $base ?>personnalites.php"
+                       class="sidebar-link <?= $current_page === 'personnalites.php' ? 'is-active is-active--pink' : '' ?>"
+                       data-tooltip="Personnalités"
+                       target="_blank">
+                        <img src="https://api.iconify.design/mdi/account-group.svg?color=<?= $__c_manga ?>" width="22" height="22" alt="">
+                    </a>
+                </li>
+
             </ul>
         </li>
 

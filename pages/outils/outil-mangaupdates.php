@@ -59,9 +59,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         $url = $series['mangaupdates_url'] ?? '';
 
+        // Auteur/éditeur dérivés une seule fois ici : $series est ensuite
+        // poussée telle quelle dans $incomplete_series/$series_with_more_
+        // volumes plus bas (contrairement à $no_reference_series/$failed_
+        // series, qui reconstruisent un petit tableau dédié) — sans ces deux
+        // clés, le front (assets/js/admin/tools/incomplete.js) qui lit
+        // encore series.author/series.publisher afficherait "undefined"
+        // depuis la migration « Personnalités ». Même correction que
+        // includes/mangaupdates.php, get_incomplete_series().
+        $series['author']    = series_contributors_names_text($series, 'auteur');
+        $series['publisher'] = series_contributors_names_text($series, 'editeur');
+
         // Aucune référence disponible
         if ($url === '') {
-            $no_reference_series[] = ['id' => $series['id'], 'name' => $series['name'], 'author' => $series['author'] ?? '', 'read_elsewhere' => !empty($series['read_elsewhere'])];
+            $no_reference_series[] = ['id' => $series['id'], 'name' => $series['name'], 'author' => series_contributors_names_text($series, 'auteur'), 'read_elsewhere' => !empty($series['read_elsewhere'])];
             continue;
         }
 
@@ -71,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             $failed_series[] = [
                 'id'             => $series['id'],
                 'name'           => $series['name'],
-                'author'         => $series['author'] ?? '',
+                'author'         => series_contributors_names_text($series, 'auteur'),
                 'ref'            => 'mangaupdates',
                 'reason'         => 'URL MangaUpdates invalide',
                 'has_mu_url'     => false, // URL présente mais invalide : on propose l'ajout
@@ -94,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             $failed_series[] = [
                 'id'             => $series['id'],
                 'name'           => $series['name'],
-                'author'         => $series['author'] ?? '',
+                'author'         => series_contributors_names_text($series, 'auteur'),
                 'ref'            => 'mangaupdates',
                 'reason'         => 'Erreur de récupération MangaUpdates (réseau ou service indisponible)',
                 'has_mu_url'     => true, // URL valide : pas besoin du bouton Ajouter
@@ -109,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             $failed_series[] = [
                 'id'              => $series['id'],
                 'name'            => $series['name'],
-                'author'          => $series['author'] ?? '',
+                'author'          => series_contributors_names_text($series, 'auteur'),
                 'ref'             => 'mangaupdates',
                 'reason'          => 'Nombre de tomes non renseigné sur MangaUpdates',
                 'has_mu_url'      => true, // URL valide : pas besoin du bouton Ajouter

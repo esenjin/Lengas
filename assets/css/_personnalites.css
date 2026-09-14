@@ -1,0 +1,216 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Page publique « Personnalités » (personnalites.php)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.personalities-intro {
+    text-align: center;
+    color: var(--text-muted);
+    max-width: 560px;
+    margin: 0 auto 24px;
+}
+
+/* ── Filtre par rôle, tri et compteur (annuaire) ─────────────────────────── */
+.personalities-filters {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.personalities-filters select {
+    width: auto;
+    min-width: 200px;
+    padding: 9px 14px;
+    border-radius: 999px;
+    border: 1.5px solid var(--background-lighter);
+    background: var(--background-card);
+    color: var(--text-color);
+    font-size: 0.92em;
+}
+
+.personalities-count {
+    color: var(--text-muted);
+    font-size: 0.85em;
+    margin: 0;
+    white-space: nowrap;
+}
+
+/* ── Grille de cartes (annuaire) ─────────────────────────────────────────── */
+.personalities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 18px;
+}
+
+/* .personality-card est un <button> (pas un <a>) : le clic ouvre la modale de
+   fiche individuelle en JS plutôt que de naviguer vers une page séparée —
+   voir assets/js/personnalites.js. On y neutralise donc les styles de bouton
+   par défaut (assets/css/_base.css) qui ne conviennent pas à une carte :
+   alignement du texte, largeur, police, et surtout le fond coloré au survol. */
+.personality-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px;
+    background: var(--background-card);
+    border: 1.5px solid var(--background-lighter);
+    border-radius: var(--border-radius, 10px);
+    text-align: left;
+    text-decoration: none;
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 1em;
+    font-weight: 400;
+    cursor: pointer;
+    transition: var(--transition-fast, all 0.15s ease);
+}
+
+.personality-card:hover {
+    /* Neutralise button:hover (assets/css/_base.css), qui colore le fond de
+       TOUT <button> par défaut — illisible ici avec le texte clair de la
+       carte. Seul le contour doit changer au survol, jamais le fond. */
+    background: var(--background-card);
+    border-color: var(--primary-color);
+    box-shadow: none;
+    transform: translateY(-2px);
+}
+
+.personality-card img {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--background-lighter);
+}
+
+.personality-card-body strong {
+    display: block;
+    font-family: 'Outfit', system-ui, sans-serif;
+    color: var(--text-white);
+    margin-bottom: 2px;
+}
+
+.personality-card-count {
+    font-size: 0.82em;
+    color: var(--text-muted);
+    margin: 0 0 4px;
+}
+
+.personality-card-roles {
+    font-size: 0.78em;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* ── Modale de fiche individuelle (#personality-detail-modal) ───────────────
+   Contenu propre à cette modale (le reste — .modal, .modal-content,
+   .close-modal — vient de assets/css/_modals.css, partagé avec tout le
+   site). */
+.personality-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    margin-bottom: 28px;
+}
+
+.personality-profile-thumb {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--background-lighter);
+    flex-shrink: 0;
+}
+
+.personality-profile-header h2 {
+    margin: 0 0 8px;
+}
+
+.personality-profile-roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 8px;
+}
+
+.personality-role-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--background-lighter);
+    color: var(--text-color);
+    font-size: 0.78em;
+}
+
+.personality-profile-count {
+    color: var(--text-muted);
+    margin: 0;
+    font-size: 0.9em;
+}
+
+.personality-series-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+/* Même raison que .personality-card ci-dessus : un <button>, pas un <a>. */
+.personality-series-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px;
+    background: var(--background-card);
+    border: 1.5px solid var(--background-lighter);
+    border-radius: var(--border-radius, 10px);
+    color: var(--text-color);
+    text-align: left;
+    font-family: inherit;
+    font-size: 1em;
+    font-weight: 400;
+    cursor: pointer;
+    transition: var(--transition-fast, all 0.15s ease);
+}
+
+.personality-series-card:hover {
+    /* Même correctif que .personality-card:hover ci-dessus : le contour
+       change de couleur, jamais le fond. */
+    background: var(--background-card);
+    border-color: var(--primary-color);
+    box-shadow: none;
+    transform: translateY(-2px);
+}
+
+.personality-series-card img {
+    width: 48px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.personality-series-card strong {
+    display: block;
+    font-family: 'Outfit', system-ui, sans-serif;
+    color: var(--text-white);
+    margin-bottom: 2px;
+}
+
+.personality-series-card p {
+    margin: 0;
+    font-size: 0.82em;
+    color: var(--text-muted);
+}
+
+@media (max-width: 600px) {
+    .personality-profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+}

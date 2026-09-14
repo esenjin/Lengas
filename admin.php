@@ -49,9 +49,7 @@ $offset = ($page - 1) * $per_page_admin;
 // Gestion des actions pour les séries
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $name = trim($_POST['name'] ?? '');
-    $author = trim($_POST['author'] ?? '');
-    $publisher = trim($_POST['publisher'] ?? '');
-    $other_contributors = trim($_POST['other_contributors'] ?? '');
+    $contributors = admin_read_contributors_from_post('contrib');
     $categories = trim($_POST['categories'] ?? '');
     $genres = trim($_POST['genres'] ?? '');
     $mangaupdates_url = trim($_POST['mangaupdates_url'] ?? '');
@@ -94,6 +92,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
         $image = $syngas_thumbnail_path;
     }
 
+    // Au moins un Auteur ET un Éditeur : contrainte déjà portée par le
+    // `required` HTML des deux premières lignes par défaut du formulaire
+    // (assets/js/admin/contributors.js), revérifiée ici côté serveur en
+    // défense en profondeur (JS désactivé, appel direct...).
+    $has_author    = !empty(array_filter($contributors, fn($c) => $c['role'] === 'auteur' && trim($c['name']) !== ''));
+    $has_publisher = !empty(array_filter($contributors, fn($c) => $c['role'] === 'editeur' && trim($c['name']) !== ''));
+    if (!$has_author || !$has_publisher) {
+        $_SESSION['error_message'] = "Au moins un contributeur avec le rôle « Auteur » et un avec le rôle « Éditeur » sont requis.";
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit;
+    }
+
     // Appeler add_series avec $image (qui peut être null)
     // Cette modale ne crée que des mangas et light-novels (cf. registre de types).
     //
@@ -101,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     // (upsert_series_row() + replace_series_volumes()) au moment de
     // l'appel. $result['data'] ne sert qu'à réafficher la collection à
     // jour côté admin.
-    $result = add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned, $rating, 'manga', $reread_count, $syngas_uid);
+    $result = add_series($data, $name, $contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned, $rating, 'manga', $reread_count, $syngas_uid);
 
     if ($result['success'] && $syngas_volumes_count !== null) {
         // Cache local pour coherence_reference_volumes() (section 6.4) : la
@@ -257,8 +267,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['syngas_search'])) {
         echo json_encode(['success' => true, 'results' => [[
             'id'             => $id,
             'name'           => $s['name'] ?? '',
-            'author'         => $s['author'] ?? '',
-            'publisher'      => $s['publisher'] ?? '',
+            // Aperçu texte des contributeurs (nouveau contrat Syngas, liste
+            // {name, role, role_custom}) — même rendu que le récapitulatif
+            // de l'outil de synchronisation, voir syngas_contributors_to_text()
+            // (fonctions/tools/syngas.php).
+            'author'         => function_exists('syngas_contributors_to_text') ? syngas_contributors_to_text((array)($s['contributors'] ?? [])) : '',
             'thumbnail_url'  => $s['thumbnail_url'] ?? '',
             'public_url'     => $s['public_url'] ?? '',
         ]]]);
@@ -809,9 +822,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_volume'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $series_id = $_POST['series_id'] ?? '';
     $name = trim($_POST['edit_name'] ?? '');
-    $author = trim($_POST['edit_author'] ?? '');
-    $publisher = trim($_POST['edit_publisher'] ?? '');
-    $other_contributors = trim($_POST['edit_other_contributors'] ?? '');
+    $contributors = admin_read_contributors_from_post('edit_contrib');
     $categories = trim($_POST['edit_categories'] ?? '');
     $genres = trim($_POST['edit_genres'] ?? '');
     $mangaupdates_url = trim($_POST['edit_mangaupdates_url'] ?? '');
@@ -857,11 +868,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         }
     }
 
+    // Au moins un Auteur ET un Éditeur — voir la même vérification côté
+    // add_series() ci-dessus pour le détail du raisonnement.
+    $has_author    = !empty(array_filter($contributors, fn($c) => $c['role'] === 'auteur' && trim($c['name']) !== ''));
+    $has_publisher = !empty(array_filter($contributors, fn($c) => $c['role'] === 'editeur' && trim($c['name']) !== ''));
+    if (!$has_author || !$has_publisher) {
+        $message = "Au moins un contributeur avec le rôle « Auteur » et un avec le rôle « Éditeur » sont requis.";
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $message]);
+            exit;
+        }
+        $_SESSION['error_message'] = $message;
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit;
+    }
+
     // Écriture ciblée : update_series() écrit directement en base
     // (upsert_series_row() + replace_series_volumes()) au moment de
     // l'appel. $result['data'] ne sert qu'à réafficher la collection à
     // jour côté admin.
-    $result = update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned, $edit_rating, $edit_reread_count, $edit_syngas_uid);
+    $result = update_series($data, $series_id, $name, $contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned, $edit_rating, $edit_reread_count, $edit_syngas_uid);
     if ($result['success']) {
         // Réchauffer le cache MangaUpdates pour la série modifiée
         if ($mangaupdates_url !== '') {
@@ -1115,25 +1142,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
     // valeur => liste des types où elle apparaît (ordre de première rencontre)
     $suggestions = [];
 
-    if (in_array($field, ['name', 'author', 'publisher', 'other_contributors', 'categories', 'genres', 'studios', 'alt_titles'], true)) {
+    if (in_array($field, ['name', 'contributors', 'categories', 'genres', 'studios', 'alt_titles'], true)) {
         foreach ($pool as $series) {
             $series_type = series_type($series);
 
-            // Studios et titres alternatifs sont propres aux animés : pas une
-            // colonne directement lisible comme les autres champs (le premier
-            // passe par une fonction de mise en forme, le second peut être
-            // stocké en JSON), d'où ces deux cas à part plutôt qu'un simple
-            // accès à $series[$field].
+            // Studios, titres alternatifs et contributeurs ne sont pas des
+            // colonnes directement lisibles comme les autres champs (les deux
+            // premiers propres aux animés, le troisième désormais une liste
+            // de { name, role } plutôt qu'un tableau de noms bruts) — d'où
+            // ces trois cas à part plutôt qu'un simple accès à $series[$field].
             if ($field === 'studios') {
                 if (!is_anime($series)) continue;
                 $values = (array)($series['studios'] ?? []);
             } elseif ($field === 'alt_titles') {
                 if (!is_anime($series)) continue;
                 $values = series_alt_titles($series);
+            } elseif ($field === 'contributors') {
+                // Tous les noms de contributeurs, tous rôles confondus (auteur,
+                // éditeur, autres) : une seule dimension d'autocomplétion, comme
+                // c'était déjà le cas pour other_contributors, mais couvrant
+                // aussi ce qui relevait auparavant de author/publisher.
+                if (is_anime($series)) continue;
+                $values = series_contributors_all_names($series);
             } else {
                 if (!isset($series[$field])) continue;
-                // Le champ est soit un tableau (contributeurs, genres, catégories),
-                // soit une chaîne (nom, auteur, éditeur).
+                // Le champ est soit un tableau (genres, catégories), soit une
+                // chaîne (nom de série).
                 $values = is_array($series[$field]) ? $series[$field] : [$series[$field]];
             }
 
@@ -1308,12 +1342,10 @@ if ($current_type === 'anime') {
                     <?php require __DIR__ . '/includes/syngas_search_section.php'; ?>
                     <p>Nom :</p>
                     <input type="text" name="name" id="add-series-name" placeholder="Nom de la série (obligatoire)" autocomplete="off" required>
-                    <p>Auteur :</p>
-                    <input type="text" name="author" id="add-series-author" placeholder="Nom de l'auteur (obligatoire)" autocomplete="off" required>
-                    <p>Éditeur :</p>
-                    <input type="text" name="publisher" id="add-series-publisher" placeholder="Nom de l'éditeur (obligatoire)" autocomplete="off" required>
-                    <p>Autres contributeurs :</p>
-                    <input type="text" name="other_contributors" id="add-series-other-contributors" placeholder="Autres contributeurs (séparés par des virgules) (facultatif)" autocomplete="off">
+                    <p>Contributeurs :</p>
+                    <p class="hint">Au moins un « Auteur » et un « Éditeur » sont requis. Une même personne peut apparaître sur plusieurs lignes avec des rôles différents.</p>
+                    <div class="contributors-field" id="add-series-contributors" data-prefix="contrib"></div>
+                    <button type="button" class="button button-opt contributors-add-btn" data-contributors-target="add-series-contributors">+ Ajouter un contributeur</button>
                     <p>Catégories :</p>
                     <input type="text" name="categories" id="add-series-categories" placeholder="Catégories (séparées par des virgules) (obligatoire)" autocomplete="off" required>
                     <p class="hint">Utilisez notamment "manga" ou "light-novel" pour identifier le type de publication — Syngas s'appuie sur ce tag pour reconnaître vos séries.</p>
@@ -1508,12 +1540,10 @@ if ($current_type === 'anime') {
                     <?php $__syngas_context = 'edit'; require __DIR__ . '/includes/syngas_search_section.php'; unset($__syngas_context); ?>
                     <p>Nom :</p>
                     <input type="text" name="edit_name" id="edit-series-name" placeholder="Nom de la série" autocomplete="off" required>
-                    <p>Auteur :</p>
-                    <input type="text" name="edit_author" id="edit-series-author" placeholder="Auteur" autocomplete="off" required>
-                    <p>Éditeur :</p>
-                    <input type="text" name="edit_publisher" id="edit-series-publisher" placeholder="Éditeur" autocomplete="off" required>
-                    <p>Autres contributeurs :</p>
-                    <input type="text" name="edit_other_contributors" id="edit-series-other-contributors" placeholder="Autres contributeurs (séparés par des virgules) (facultatif)" autocomplete="off">
+                    <p>Contributeurs :</p>
+                    <p class="hint">Au moins un « Auteur » et un « Éditeur » sont requis. Une même personne peut apparaître sur plusieurs lignes avec des rôles différents.</p>
+                    <div class="contributors-field" id="edit-series-contributors" data-prefix="edit_contrib"></div>
+                    <button type="button" class="button button-opt contributors-add-btn" data-contributors-target="edit-series-contributors">+ Ajouter un contributeur</button>
                     <p>Catégories :</p>
                     <input type="text" name="edit_categories" id="edit-series-categories" placeholder="Catégories (séparées par des virgules)" autocomplete="off" required>
                     <p class="hint">Utilisez notamment "manga" ou "light-novel" pour identifier le type de publication — Syngas s'appuie sur ce tag pour reconnaître vos séries.</p>
@@ -1791,6 +1821,9 @@ if ($current_type === 'anime') {
         // couleur de chaque type), pour les badges de l'autocomplétion.
         window.currentSeriesType = <?= json_encode($current_type) ?>;
         window.seriesTypes = <?= json_encode(series_types_for_js()) ?>;
+        // Registre des rôles de contributeur (« Personnalités », Mangathèque) —
+        // voir includes/helpers.php, contributor_roles_for_js().
+        window.contributorRoles = <?= json_encode(contributor_roles_for_js(), JSON_UNESCAPED_UNICODE) ?>;
         // Racine publique de Syngas (site web, pas l'API) — dérivée de
         // SYNGAS_API_URL (config.php) en retirant le segment "/api/v1", pour
         // construire les liens "Voir sur Syngas" des badges de liens et de la
@@ -1803,6 +1836,7 @@ if ($current_type === 'anime') {
     </script>
     <script src="assets/js/admin/modals.js"></script>
     <script src="assets/js/admin/autocomplete.js"></script>
+    <script src="assets/js/admin/contributors.js"></script>
     <script src="assets/js/admin/series.js"></script>
     <script src="assets/js/admin/syngas-search.js"></script>
     <script src="assets/js/admin/anime.js"></script>

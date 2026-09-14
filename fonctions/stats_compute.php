@@ -264,6 +264,11 @@ if (!function_exists('compute_stats')) {
         $genres_none_series = 0; // séries sans aucun genre
         $categories   = [];   // name => ['series'=>n, 'volumes'=>n]
         $contributors = [];   // name => ['series'=>n, 'volumes'=>n]
+        // Détail des « autres contributeurs » par rôle (registre fermé,
+        // includes/helpers.php contributor_roles()) : role => [name => [...]]
+        // — clé '__none__' pour les contributeurs migrés sans rôle attribué.
+        // Alimente le filtre par rôle du front (assets/js/stats.js).
+        $contributors_by_role = [];
 
         // Séries
         $longest_series = ['name' => null, 'volumes' => 0];
@@ -310,17 +315,23 @@ if (!function_exists('compute_stats')) {
             $series_cat_keys = stats_clean_list($series['categories'] ?? []);
             if (count($series_cat_keys) === 0) $series_cat_keys = [''];
 
-            // Auteur
-            $author = trim((string) ($series['author'] ?? ''));
-            if ($author !== '') {
+            // Auteur(s) — plusieurs possibles par série depuis la migration
+            // « Personnalités » (liste `contributors`, remplaçant l'ancien
+            // champ scalaire unique `author`). Chaque auteur de la série
+            // incrémente son propre compteur, la série comptant pour 1 dans
+            // chacun (comme c'était déjà le cas pour un auteur unique).
+            foreach (series_contributors_by_role($series, 'auteur') as $c) {
+                $author = trim((string)($c['name'] ?? ''));
+                if ($author === '') continue;
                 if (!isset($authors[$author])) $authors[$author] = ['series' => 0, 'volumes' => 0];
                 $authors[$author]['series']  += 1;
                 $authors[$author]['volumes'] += $vcount;
             }
 
-            // Éditeur
-            $publisher = trim((string) ($series['publisher'] ?? ''));
-            if ($publisher !== '') {
+            // Éditeur(s) — même principe que les auteurs ci-dessus.
+            foreach (series_contributors_by_role($series, 'editeur') as $c) {
+                $publisher = trim((string)($c['name'] ?? ''));
+                if ($publisher === '') continue;
                 if (!isset($publishers[$publisher])) $publishers[$publisher] = ['series' => 0, 'volumes' => 0];
                 $publishers[$publisher]['series']  += 1;
                 $publishers[$publisher]['volumes'] += $vcount;
@@ -346,11 +357,28 @@ if (!function_exists('compute_stats')) {
                 }
             }
 
-            // Contributeurs
-            foreach (stats_clean_list($series['other_contributors'] ?? []) as $c) {
-                if (!isset($contributors[$c])) $contributors[$c] = ['series' => 0, 'volumes' => 0];
-                $contributors[$c]['series']  += 1;
-                $contributors[$c]['volumes'] += $vcount;
+            // Autres contributeurs (tous rôles hors auteur/éditeur, déjà
+            // comptés ci-dessus) : total agrégé (tous rôles confondus, comme
+            // avant la migration « Personnalités ») ET détail par rôle
+            // (contributors_by_role), pour le filtre dédié côté front
+            // (assets/js/stats.js).
+            foreach (series_contributors($series) as $c) {
+                $role = $c['role'] ?? '';
+                if (in_array($role, ['auteur', 'editeur'], true)) continue;
+                $name = trim((string)($c['name'] ?? ''));
+                if ($name === '') continue;
+
+                if (!isset($contributors[$name])) $contributors[$name] = ['series' => 0, 'volumes' => 0];
+                $contributors[$name]['series']  += 1;
+                $contributors[$name]['volumes'] += $vcount;
+
+                $role_key = $role !== '' ? $role : '__none__';
+                if (!isset($contributors_by_role[$role_key])) $contributors_by_role[$role_key] = [];
+                if (!isset($contributors_by_role[$role_key][$name])) {
+                    $contributors_by_role[$role_key][$name] = ['series' => 0, 'volumes' => 0];
+                }
+                $contributors_by_role[$role_key][$name]['series']  += 1;
+                $contributors_by_role[$role_key][$name]['volumes'] += $vcount;
             }
 
             // Progression de la série
@@ -528,6 +556,21 @@ if (!function_exists('compute_stats')) {
         $publishers_by_series   = $to_sorted($publishers, 'series');
         $contributors_by_series = $to_sorted($contributors, 'series');
 
+        // Détail des « autres contributeurs » par rôle, trié comme les autres
+        // dimensions (volumes décroissant). Chaque rôle garde son libellé
+        // affichable (contributor_role_label(), includes/helpers.php) pour
+        // que le front n'ait pas à dupliquer le registre pour ce seul usage.
+        $contributors_by_role_sorted = [];
+        foreach ($contributors_by_role as $role_key => $names) {
+            $role = ($role_key === '__none__') ? '' : $role_key;
+            $contributors_by_role_sorted[] = [
+                'role'       => $role_key,
+                'role_label' => function_exists('contributor_role_label') ? contributor_role_label($role) : $role_key,
+                'entries'    => $to_sorted($names, 'volumes'),
+            ];
+        }
+        usort($contributors_by_role_sorted, fn($a, $b) => strcasecmp($a['role_label'], $b['role_label']));
+
         // ── Valeur ventilée par catégorie (normal + collector) ──────────────
         // Ordonnée par valeur totale décroissante ; 'sans catégorie' placé en fin.
         $value_categories = [];
@@ -676,6 +719,7 @@ if (!function_exists('compute_stats')) {
             'genres_none_series' => $genres_none_series,
             'categories'        => $categories_sorted,
             'contributors'      => $contributors_sorted,
+            'contributors_by_role' => $contributors_by_role_sorted,
 
             // Temporel
             'purchases_by_month'=> $purchases_series,

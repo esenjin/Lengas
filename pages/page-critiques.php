@@ -92,7 +92,7 @@ $eligible = array_map(function ($s) {
     return [
         'id'     => $s['id'],
         'name'   => $s['name'],
-        'author' => is_anime($s) ? series_studios_text($s) : ($s['author'] ?? ''),
+        'author' => is_anime($s) ? series_studios_text($s) : series_contributors_names_text($s, 'auteur'),
         'type'   => series_type($s),
     ];
 }, $data);

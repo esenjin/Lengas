@@ -52,6 +52,7 @@ const COHERENCE_LABELS = {
     ref_more_volumes:           { icon: '📦', label: 'Plus de tomes que la référence' },
     loan_deleted_series:        { icon: '👻', label: 'Prêt — série supprimée' },
     loan_read_elsewhere:        { icon: '📤', label: 'Prêt — lue ailleurs' },
+    contributor_missing_role:   { icon: '👤', label: 'Contributeur sans rôle' },
 };
 
 function renderCoherences(issues) {
@@ -207,8 +208,8 @@ function openCoherenceEdit(seriesId) {
     // Remplir les infos lecture seule
     document.getElementById('cedit-series-id').value = seriesId;
     document.getElementById('cedit-name').textContent       = series.name || '';
-    document.getElementById('cedit-author').textContent     = series.author || '—';
-    document.getElementById('cedit-publisher').textContent  = series.publisher || '—';
+    document.getElementById('cedit-author').textContent     = coherenceContributorsText(series, 'auteur') || '—';
+    document.getElementById('cedit-publisher').textContent  = coherenceContributorsText(series, 'editeur') || '—';
     const cats = Array.isArray(series.categories)
         ? series.categories.filter(c => c && c.trim()).join(', ')
         : (series.categories || '');
@@ -224,10 +225,88 @@ function openCoherenceEdit(seriesId) {
     // Feedback
     document.getElementById('cedit-feedback').textContent = '';
 
+    // Contributeurs sans rôle attribué (anomalie 'contributor_missing_role') :
+    // section affichée seulement si la série en compte au moins un.
+    buildCeditContributorRoles(series.contributors || []);
+
     // Construire la liste des tomes
     buildCeditVolumesList(series.volumes || []);
 
     modals['coherence-edit'].modal.classList.add('modal-active');
+}
+
+// Noms des contributeurs d'un rôle donné, joints par virgule — équivalent
+// front de series_contributors_names_text() (includes/helpers.php), pour
+// l'affichage en lecture seule de cette modale.
+function coherenceContributorsText(series, role) {
+    return (series.contributors || [])
+        .filter(c => c && c.role === role && c.name && c.name.trim() !== '')
+        .map(c => c.name)
+        .join(', ');
+}
+
+// Construit la section « Contributeurs sans rôle » : une ligne par nom
+// concerné, avec un <select> de rôle (registre window.contributorRoles,
+// includes/helpers.php contributor_roles_for_js()) et un champ de précision
+// libre pour « Autre ». Rien n'est affiché si la série n'a aucun
+// contributeur sans rôle — pas de section vide inutile.
+function buildCeditContributorRoles(contributors) {
+    const wrap = document.getElementById('cedit-contrib-roles');
+    if (!wrap) return; // section absente du HTML si non prévue (garde défensive)
+    wrap.innerHTML = '';
+
+    const missing = (contributors || []).filter(c => c && c.name && (c.role ?? '') === '');
+    if (missing.length === 0) {
+        wrap.hidden = true;
+        return;
+    }
+    wrap.hidden = false;
+
+    const title = document.createElement('p');
+    title.className = 'cedit-contrib-roles-title';
+    title.textContent = 'Contributeurs sans rôle attribué :';
+    wrap.appendChild(title);
+
+    const roles = window.contributorRoles || {};
+    missing.forEach(c => {
+        const row = document.createElement('div');
+        row.className = 'cedit-contrib-role-row';
+        row.dataset.contribName = c.name;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'cedit-contrib-role-name';
+        nameSpan.textContent = c.name;
+        row.appendChild(nameSpan);
+
+        const roleSel = document.createElement('select');
+        roleSel.className = 'cedit-select cedit-select--sm cedit-contrib-role-select';
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '— Choisir un rôle —';
+        roleSel.appendChild(emptyOpt);
+        Object.entries(roles).forEach(([value, label]) => {
+            const opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = label;
+            roleSel.appendChild(opt);
+        });
+        row.appendChild(roleSel);
+
+        const customInput = document.createElement('input');
+        customInput.type = 'text';
+        customInput.className = 'cedit-contrib-role-custom';
+        customInput.placeholder = 'Préciser le rôle';
+        customInput.hidden = true;
+        row.appendChild(customInput);
+
+        roleSel.addEventListener('change', () => {
+            const isOther = roleSel.value === 'autre';
+            customInput.hidden = !isOther;
+            if (!isOther) customInput.value = '';
+        });
+
+        wrap.appendChild(row);
+    });
 }
 
 function buildCeditVolumesList(volumes) {
@@ -398,6 +477,20 @@ document.getElementById('cedit-save-btn').addEventListener('click', () => {
         }
     });
 
+    // Contributeurs sans rôle : une entrée par ligne où un rôle a été choisi
+    // (les lignes laissées sur « — Choisir un rôle — » sont ignorées, elles
+    // resteront signalées par l'outil au prochain passage).
+    const contribRoleUpdates = [];
+    document.querySelectorAll('#cedit-contrib-roles .cedit-contrib-role-row').forEach(row => {
+        const role = row.querySelector('.cedit-contrib-role-select')?.value || '';
+        if (role === '') return;
+        contribRoleUpdates.push({
+            name: row.dataset.contribName,
+            role,
+            role_custom: row.querySelector('.cedit-contrib-role-custom')?.value.trim() || '',
+        });
+    });
+
     const params = new URLSearchParams({
         tool_action:     'coherence_quick_edit',
         series_id:       seriesId,
@@ -406,6 +499,7 @@ document.getElementById('cedit-save-btn').addEventListener('click', () => {
         delete_volumes:  JSON.stringify(deleteIndexes),
         volumes_updates: JSON.stringify(volumesUpdates),
         add_volumes:     JSON.stringify(addVolumes),
+        contrib_role_updates: JSON.stringify(contribRoleUpdates),
     });
 
     fetch('outil-coherences.php', {
@@ -427,6 +521,11 @@ document.getElementById('cedit-save-btn').addEventListener('click', () => {
             // Rebâtir la liste des tomes avec les données fraîches
             if (data.series && data.series.volumes) {
                 buildCeditVolumesList(data.series.volumes);
+            }
+            // Idem pour la section « Contributeurs sans rôle » : se vide
+            // d'elle-même une fois tous les rôles attribués.
+            if (data.series) {
+                buildCeditContributorRoles(data.series.contributors || []);
             }
         } else {
             feedback.style.color = 'var(--error-color)';

@@ -207,9 +207,9 @@ function createLightSeriesCard(series) {
         </div>
         <div class="series-info">
             <h2>${series.name}</h2>
-            <p><strong>Auteur :</strong> ${series.author}</p>
-            <p><strong>Éditeur :</strong> ${series.publisher}</p>
-            <p><strong>Autres contributeurs :</strong> ${formatListCollapsed(series.other_contributors)}</p>
+            <p><strong>Auteur :</strong> ${formatContributorsRoleCollapsed(series.contributors, 'auteur')}</p>
+            <p><strong>Éditeur :</strong> ${formatContributorsRoleCollapsed(series.contributors, 'editeur')}</p>
+            <p><strong>Autres contributeurs :</strong> ${formatContributorsCollapsed(series.contributors, ['auteur', 'editeur'])}</p>
             <p><strong>Catégories :</strong> ${series.categories ? series.categories.join(', ') : ''}</p>
             <p><strong>Genres :</strong> ${formatListCollapsed(series.genres)}</p>
             <div class="series-badges series-badges--links">
@@ -262,6 +262,62 @@ function formatListCollapsed(list) {
     const restText = pgEscape(rest.join(', '));
     return `${pgEscape(filtered[0])}` +
            `<button type="button" class="list-more-toggle" data-more="${restText}" data-more-count="${rest.length}">+${rest.length}</button>`;
+}
+
+// Libellé affichable d'un rôle de contributeur, à partir du registre exposé
+// par le serveur (window.contributorRoles, voir includes/helpers.php,
+// contributor_roles_for_js()). Même règle que contributor_role_label() côté
+// PHP pour 'autre' (précision libre) et '' (rôle non attribué).
+function contributorRoleLabel(role, roleCustom) {
+    if (role === 'autre') return (roleCustom && roleCustom.trim() !== '') ? roleCustom : 'Autre';
+    if (!role) return 'rôle non précisé';
+    return (window.contributorRoles && window.contributorRoles[role]) || role;
+}
+
+// Équivalent de formatListCollapsed() pour la liste de contributeurs
+// (objets {name, role, role_custom} plutôt que de simples chaînes) : chaque
+// personne s'affiche "Nom (Rôle1, Rôle2)" — une même personne ayant
+// plusieurs rôles sur cette série n'apparaît qu'une seule fois, tous ses
+// rôles réunis entre parenthèses, jamais une entrée par rôle. La première
+// est visible directement, le reste derrière un bouton "+N" identique au
+// comportement de formatListCollapsed().
+// $excludeRoles : rôles à ignorer entièrement (ex. ['auteur', 'editeur'],
+// déjà affichés sur leurs propres lignes juste au-dessus dans la carte —
+// voir createLightSeriesCard() — pour ne jamais les compter deux fois).
+// data-more reste du TEXTE BRUT (comme pour formatListCollapsed) : le
+// gestionnaire de clic partagé (ci-dessous) l'injecte via textContent, pas
+// innerHTML — aucune balise dans restText.
+function formatContributorsCollapsed(contributors, excludeRoles = []) {
+    const filtered = (contributors || []).filter(c => c && c.name && c.name.trim() !== '' && !excludeRoles.includes(c.role || ''));
+    if (filtered.length === 0) return '<em>aucun</em>';
+
+    const byName = new Map();
+    filtered.forEach(c => {
+        const label = contributorRoleLabel(c.role, c.role_custom);
+        if (!byName.has(c.name)) byName.set(c.name, []);
+        if (!byName.get(c.name).includes(label)) byName.get(c.name).push(label);
+    });
+    const grouped = [...byName.entries()].map(([name, labels]) => `${name} (${labels.join(', ')})`);
+
+    if (grouped.length === 1) return pgEscape(grouped[0]);
+
+    const rest = grouped.slice(1);
+    const restText = pgEscape(rest.join(', '));
+    return `${pgEscape(grouped[0])}` +
+           `<button type="button" class="list-more-toggle" data-more="${restText}" data-more-count="${rest.length}">+${rest.length}</button>`;
+}
+
+// Contributeurs d'UN SEUL rôle (ex. 'auteur', 'editeur'), sans le libellé de
+// rôle répété à côté de chaque nom (déjà porté par le titre de la ligne —
+// "Auteur :", "Éditeur :" — inutile de le redire pour chaque nom). Une
+// série peut avoir plusieurs auteurs/éditeurs depuis la migration
+// « Personnalités » : au-delà du premier, même repli "+N" que les autres
+// listes de la carte.
+function formatContributorsRoleCollapsed(contributors, role) {
+    const names = (contributors || [])
+        .filter(c => c && c.role === role && c.name && c.name.trim() !== '')
+        .map(c => c.name);
+    return formatListCollapsed(names);
 }
 
 // Délégation d'événement : clic sur un bouton « +N » -> dévoile le reste de
@@ -362,9 +418,10 @@ document.getElementById('series-list').addEventListener('click', (e) => {
 
                 document.getElementById('edit-series-id-input').value = seriesId;
                 document.getElementById('edit-series-name').value = series.name;
-                document.getElementById('edit-series-author').value = series.author;
-                document.getElementById('edit-series-publisher').value = series.publisher;
-                document.getElementById('edit-series-other-contributors').value = series.other_contributors ? series.other_contributors.join(', ') : '';
+                const editContribContainer = document.getElementById('edit-series-contributors');
+                if (editContribContainer && typeof contributorsRenderList === 'function') {
+                    contributorsRenderList(editContribContainer, series.contributors || []);
+                }
                 document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
                 document.getElementById('edit-series-genres').value = series.genres ? series.genres.join(', ') : '';
                 document.getElementById('edit-series-mangaupdates-url').value = series.mangaupdates_url || '';

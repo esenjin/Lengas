@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         // réponse invalide…), on avance : une série en échec ne doit jamais
         // bloquer ni interrompre le traitement des suivantes.
         try {
-            $candidates = mangaupdates_associate_candidates($series['name'], $series['author'] ?? '', 5);
+            $candidates = mangaupdates_associate_candidates($series['name'], series_contributors_names_text($series, 'auteur'), 5);
         } catch (\Throwable $e) {
             $candidates = [];
             $failed[] = $series['name'];
@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 'series' => [
                     'id'      => $series['id'],
                     'name'    => $series['name'],
-                    'author'  => $series['author'] ?? '',
+                    'author'  => series_contributors_names_text($series, 'auteur'),
                     'results' => $candidates,
                 ],
             ]);
@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 'series' => [
                     'id'               => $series['id'],
                     'name'             => $series['name'],
-                    'author'           => $series['author'] ?? '',
+                    'author'           => series_contributors_names_text($series, 'auteur'),
                     'mangaupdates_url' => $series['mangaupdates_url'],
                     'genres'           => $genres,
                 ],

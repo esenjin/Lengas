@@ -27,9 +27,10 @@ document.addEventListener('click', function(e) {
             // Met à jour les champs du formulaire avec les données de la série
             document.getElementById('edit-series-id-input').value = seriesId;
             document.getElementById('edit-series-name').value = series.name;
-            document.getElementById('edit-series-author').value = series.author;
-            document.getElementById('edit-series-publisher').value = series.publisher;
-            document.getElementById('edit-series-other-contributors').value = series.other_contributors ? series.other_contributors.join(', ') : '';
+            const editContribContainer = document.getElementById('edit-series-contributors');
+            if (editContribContainer && typeof contributorsRenderList === 'function') {
+                contributorsRenderList(editContribContainer, series.contributors || []);
+            }
             document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
             document.getElementById('edit-series-genres').value = series.genres ? series.genres.join(', ') : '';
             document.getElementById('edit-series-mangaupdates-url').value = series.mangaupdates_url || '';

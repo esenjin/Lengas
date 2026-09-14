@@ -373,7 +373,7 @@ function babengas_targets(array $data, bool $all = false, bool $force = false): 
             'id'     => (string)$series['id'],
             'url'    => $url,
             'name'   => (string)($series['name'] ?? ''),
-            'author' => (string)($series['author'] ?? ''),
+            'author' => series_contributors_names_text($series, 'auteur'),
         ];
     }
 
@@ -409,6 +409,16 @@ function babengas_cached_incomplete(array $data, array $exclude_ids = []): array
 
     foreach ($data as $series) {
         if (isset($exclude[(string)$series['id']])) continue;
+
+        // Auteur/éditeur dérivés une seule fois ici, posés directement sur
+        // $series avant toute branche : cette fonction pousse ensuite la
+        // série TELLE QUELLE dans $incomplete plus bas — sans ces deux clés,
+        // le front (assets/js/admin/tools/babengas.js) qui lit encore
+        // series.author/series.publisher afficherait "undefined" depuis la
+        // migration « Personnalités » (voir la même correction dans
+        // includes/mangaupdates.php, get_incomplete_series()).
+        $series['author']    = series_contributors_names_text($series, 'auteur');
+        $series['publisher'] = series_contributors_names_text($series, 'editeur');
 
         $url = trim((string)($series['babelio_url'] ?? ''));
         if ($url === '') continue;
@@ -486,6 +496,12 @@ function babengas_integrate_results(array $data, array $resultats): array {
         $series = $by_id[$lengas_id] ?? null;
         if ($series === null) continue;
 
+        // Auteur/éditeur dérivés, mêmes raisons que babengas_cached_incomplete()
+        // ci-dessus — $series est ensuite poussée telle quelle dans
+        // $incomplete plus bas.
+        $series['author']    = series_contributors_names_text($series, 'auteur');
+        $series['publisher'] = series_contributors_names_text($series, 'editeur');
+
         $nb_tomes  = isset($r['nb_tomes'])  && $r['nb_tomes']  !== null ? (int)$r['nb_tomes']  : null;
         $nb_ref    = isset($r['nb_reference']) && $r['nb_reference'] !== null ? (int)$r['nb_reference'] : null;
         $incertain = !empty($r['incertain']);
@@ -496,7 +512,7 @@ function babengas_integrate_results(array $data, array $resultats): array {
             $failed[] = [
                 'id'          => $series['id'],
                 'name'        => $series['name'],
-                'author'      => $series['author'] ?? '',
+                'author'      => series_contributors_names_text($series, 'auteur'),
                 'ref'         => 'babelio',
                 'reason'      => babengas_error_message($erreur !== null ? (string)$erreur : ($incertain ? 'incertain' : '')),
                 'erreur'      => $erreur,
@@ -561,6 +577,12 @@ function babengas_local_oneshots(array $data): array {
         // On ne traite ici QUE les fiches de tome ; les fiches série passent
         // par Babengas.
         if ($url === '' || !babelio_is_livre_url($url)) continue;
+
+        // Auteur/éditeur dérivés, mêmes raisons que babengas_cached_incomplete()
+        // plus haut dans ce fichier — $series est ensuite poussée telle
+        // quelle dans $incomplete plus bas.
+        $series['author']    = series_contributors_names_text($series, 'auteur');
+        $series['publisher'] = series_contributors_names_text($series, 'editeur');
 
         // Même critère que le ciblage Babengas : un « dernier tome » posé →
         // rien à signaler. Le statut de publication n'entre pas en compte.

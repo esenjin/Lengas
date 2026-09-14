@@ -569,6 +569,194 @@ function decorate_series_for_display(array $series): array {
     return $series;
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// REGISTRE DES RÔLES DE CONTRIBUTEUR (« Personnalités », Mangathèque uniquement)
+// ──────────────────────────────────────────────────────────────────────────────
+// Chaque ligne de la liste `contributors` d'une série manga (colonne JSON,
+// voir decode_contributors() dans config.php) porte une clé de rôle parmi ce
+// registre fermé, ou '' (rôle non attribué — anciens « autres contributeurs »
+// migrés, voir init_db()) ou 'autre' (rôle libre, précisé dans role_custom).
+//
+// Périmètre volontairement Mangathèque : l'Animethèque n'a pas de notion de
+// contributeur éditable (studios/staff viennent d'Anilist, jamais saisis à la
+// main) — voir la section Anilist du README.
+//
+// AJOUTER UN RÔLE = AJOUTER UNE ENTRÉE ICI. Rien d'autre ne doit lister les
+// rôles en dur (formulaires, stats, outil de vérification, page Personnalités).
+if (!function_exists('contributor_roles')) {
+function contributor_roles(): array {
+    return [
+        'auteur'           => 'Auteur',
+        'scenariste'       => 'Scénariste',
+        'dessinateur'      => 'Dessinateur',
+        'illustrateur'     => 'Illustrateur',
+        'coloriste'        => 'Coloriste',
+        'traducteur'       => 'Traducteur',
+        'adaptateur'       => 'Adaptateur',
+        'lettreur'         => 'Lettreur',
+        'editeur'          => 'Éditeur',
+        'autre'            => 'Autre',
+    ];
+}
+}
+
+// Registre des rôles exposé tel quel au JS (window.contributorRoles) — même
+// principe que series_types_for_js() : une seule source de vérité PHP, le
+// front ne fait plus que lire ce que le serveur lui donne. Utilisé par
+// assets/js/admin/pagination.js (affichage) ; assets/js/admin/contributors.js
+// garde sa propre copie CONTRIBUTOR_ROLES pour construire les <option>
+// du <select> dans l'ordre voulu avant que ce script ait pu s'exécuter (le
+// <select> peut être régénéré très tôt, dès l'ouverture de la modale).
+function contributor_roles_for_js(): array {
+    return contributor_roles();
+}
+
+// Libellé affichable d'un rôle. Pour 'autre', renvoie role_custom si fourni
+// (sinon juste « Autre ») ; pour un rôle vide (non attribué), une chaîne
+// explicite plutôt qu'un badge vide.
+function contributor_role_label(string $role, string $role_custom = ''): string {
+    $role_custom = trim($role_custom);
+    if ($role === 'autre') {
+        return $role_custom !== '' ? $role_custom : 'Autre';
+    }
+    if ($role === '') {
+        return 'Rôle non précisé';
+    }
+    return contributor_roles()[$role] ?? ($role_custom !== '' ? $role_custom : $role);
+}
+
+// Liste normalisée des contributeurs d'une série (toujours un tableau, même
+// pour une série animée ou une entrée sans contributeurs).
+function series_contributors($series): array {
+    $list = $series['contributors'] ?? [];
+    return is_array($list) ? $list : [];
+}
+
+// Sous-ensemble des contributeurs d'une série pour UN rôle donné (ex.
+// 'auteur', 'editeur'). Une série peut avoir plusieurs auteurs : cette
+// fonction renvoie donc toujours un tableau, potentiellement avec plusieurs
+// entrées.
+function series_contributors_by_role($series, string $role): array {
+    return array_values(array_filter(series_contributors($series), fn($c) => ($c['role'] ?? '') === $role));
+}
+
+// Noms (texte affichable) des contributeurs d'un rôle donné, joints par
+// virgule — pratique pour l'affichage compact (cartes, recherche, SEARCH_DATA
+// des statistiques).
+function series_contributors_names_text($series, string $role): string {
+    $names = array_map(fn($c) => $c['name'], series_contributors_by_role($series, $role));
+    return implode(', ', $names);
+}
+
+// Tous les noms de contributeurs d'une série, tous rôles confondus (recherche
+// transverse, autocomplétion).
+function series_contributors_all_names($series): array {
+    return array_values(array_unique(array_map(fn($c) => $c['name'], series_contributors($series))));
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// « Personnalités » — annuaire des contributeurs (Mangathèque, calculé à la
+// volée, sans table dédiée : une personnalité est un regroupement par nom
+// EXACT sur l'ensemble des séries manga de la collection).
+// ──────────────────────────────────────────────────────────────────────────────
+// Renvoie un tableau indexé par nom, chaque entrée :
+//   ['name' => string, 'roles' => [role => label, ...], 'series_ids' => [ids],
+//    'series_count' => int,
+//    'series_roles' => [series_id => [role_label, ...]]]
+// `series_roles` regroupe, PAR SÉRIE, tous les libellés de rôle occupés par
+// cette personne sur cette série — une personne avec plusieurs rôles sur une
+// même série (ex. Auteur ET Illustrateur) y apparaît une seule fois, avec la
+// liste complète de ses rôles pour cette série (voir la fiche individuelle,
+// personnalites.php, qui n'affiche ainsi jamais deux fois la même série).
+// $data doit être la Mangathèque déjà filtrée par visibilité (mode privé /
+// masquage mature) par l'appelant — cette fonction ne fait aucun filtrage
+// elle-même, elle se contente d'agréger ce qu'on lui donne (cohérent avec le
+// reste du site : le filtrage de visibilité est TOUJOURS fait en amont, au
+// point d'entrée d'affichage).
+function collection_personalities(array $data): array {
+    $out = [];
+    foreach ($data as $series) {
+        if (function_exists('is_anime') && is_anime($series)) continue;
+        foreach (series_contributors($series) as $c) {
+            $name = trim((string)($c['name'] ?? ''));
+            if ($name === '') continue;
+            if (!isset($out[$name])) {
+                $out[$name] = ['name' => $name, 'roles' => [], 'series_ids' => [], 'series_roles' => []];
+            }
+            $role_label = contributor_role_label($c['role'] ?? '', $c['role_custom'] ?? '');
+            $role_key = ($c['role'] ?? '') !== '' ? $c['role'] : '__none__';
+            $out[$name]['roles'][$role_key] = $role_label;
+            if (!in_array($series['id'], $out[$name]['series_ids'], true)) {
+                $out[$name]['series_ids'][] = $series['id'];
+            }
+            if (!isset($out[$name]['series_roles'][$series['id']])) {
+                $out[$name]['series_roles'][$series['id']] = [];
+            }
+            if (!in_array($role_label, $out[$name]['series_roles'][$series['id']], true)) {
+                $out[$name]['series_roles'][$series['id']][] = $role_label;
+            }
+        }
+    }
+    foreach ($out as &$p) {
+        $p['series_count'] = count($p['series_ids']);
+    }
+    unset($p);
+    return $out;
+}
+
+// Vignette représentative d'une personnalité : celle de la série (parmi
+// $series_ids) qui compte le plus de tomes en collection ; à égalité, la
+// série la plus ANCIENNE (ordre d'insertion en base — load_data() trie par
+// rowid, donc la première série rencontrée dans $data qui fait partie de
+// l'égalité l'emporte).
+// $data : Mangathèque complète (ou déjà filtrée par visibilité), même source
+// que collection_personalities().
+function personality_thumbnail(array $data, array $series_ids, string $default = 'assets/img/logo.png'): string {
+    $best = null;
+    $best_count = -1;
+    foreach ($data as $series) {
+        if (!in_array($series['id'], $series_ids, true)) continue;
+        $count = count($series['volumes'] ?? []);
+        if ($count > $best_count) {
+            $best_count = $count;
+            $best = $series; // $data déjà trié par ancienneté (rowid) : le
+                              // premier atteint à égalité de tomes est donc
+                              // bien le plus ancien, sans tri supplémentaire.
+        }
+    }
+    return $best !== null ? series_thumbnail($best, $default) : $default;
+}
+
+// ── Lecture des lignes « Contributeurs » d'un formulaire série (ajout ou
+// édition d'une série manga, ou modale « Ajouter à la collection » de la
+// liste d'envies — trois points d'appel, distingués par $prefix : 'contrib',
+// 'edit_contrib') ────────────────────────────────────────────────────────
+// Le bloc dynamique (assets/js/admin/contributors.js) soumet trois tableaux
+// parallèles indexés pareil : {$prefix}_name[], {$prefix}_role[],
+// {$prefix}_role_custom[] — une ligne vide (nom vide) est silencieusement
+// ignorée ici, cohérent avec sanitize_contributor_entry() (fonctions/
+// series.php) qui refait le même filtrage côté écriture. Partagée entre
+// admin.php et pages/page-wishlist.php (tous deux chargent includes/
+// helpers.php).
+function admin_read_contributors_from_post(string $prefix): array {
+    $names   = $_POST[$prefix . '_name']        ?? [];
+    $roles   = $_POST[$prefix . '_role']         ?? [];
+    $customs = $_POST[$prefix . '_role_custom']  ?? [];
+    if (!is_array($names)) return [];
+
+    $out = [];
+    foreach ($names as $i => $name) {
+        $name = trim((string)$name);
+        if ($name === '') continue;
+        $out[] = [
+            'name'        => $name,
+            'role'        => trim((string)($roles[$i] ?? '')),
+            'role_custom' => trim((string)($customs[$i] ?? '')),
+        ];
+    }
+    return $out;
+}
+
 // ── Recherche texte transverse (admin.php + index.php) ────────────────────────
 // Unique définition de « une série correspond-elle à ce terme de recherche ? »,
 // pour que les quatre points de recherche du site (liste admin, endpoint AJAX
@@ -586,11 +774,15 @@ function series_matches_search(array $series, string $normalized_search): bool {
     if ($normalized_search === '') return true;
 
     $haystacks = [
-        $series['name']      ?? '',
-        $series['author']    ?? '',
-        $series['publisher'] ?? '',
+        $series['name'] ?? '',
     ];
-    foreach (['other_contributors', 'categories', 'genres'] as $field) {
+    // Contributeurs (auteurs, éditeurs, tous les autres rôles confondus) :
+    // tous les noms, quel que soit leur rôle — une recherche par nom de
+    // contributeur ne doit pas avoir à connaître son rôle.
+    if (!empty($series['contributors'])) {
+        $haystacks[] = implode(', ', series_contributors_all_names($series));
+    }
+    foreach (['categories', 'genres'] as $field) {
         if (!empty($series[$field])) {
             $haystacks[] = implode(', ', (array)$series[$field]);
         }
@@ -729,6 +921,17 @@ function sort_series(&$data, $sort_by, $sort_order) {
             return $sort_order === 'asc'
                 ? strcasecmp($a_categories, $b_categories)
                 : strcasecmp($b_categories, $a_categories);
+        } elseif ($sort_by === 'author' || $sort_by === 'publisher') {
+            // Les anciens champs scalaires author/publisher ont été remplacés
+            // par la liste `contributors` (voir la migration « Personnalités »,
+            // config.php) : on trie ici sur les noms des contributeurs du rôle
+            // correspondant, joints par virgule (plusieurs auteurs/éditeurs
+            // possibles désormais) — une série animée (sans contributeurs) se
+            // retrouve donc naturellement triée comme si le champ était vide.
+            $role = $sort_by === 'author' ? 'auteur' : 'editeur';
+            $a_val = function_exists('series_contributors_names_text') ? series_contributors_names_text($a, $role) : '';
+            $b_val = function_exists('series_contributors_names_text') ? series_contributors_names_text($b, $role) : '';
+            return $sort_order === 'asc' ? strcasecmp($a_val, $b_val) : strcasecmp($b_val, $a_val);
         } else {
             return $sort_order === 'asc'
                 ? strcasecmp($a[$sort_by], $b[$sort_by])

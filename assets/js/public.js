@@ -123,14 +123,58 @@ function publicSeriesCardClass(series) {
         + (series.favorite ? ' favorite' : '');
 }
 
+// Noms des contributeurs d'un rôle donné, joints par virgule (carte série) —
+// équivalent front de series_contributors_names_text() (includes/helpers.php).
+function publicContributorsNames(series, role) {
+    return (series.contributors || [])
+        .filter(c => c && c.role === role && c.name && c.name.trim() !== '')
+        .map(c => c.name)
+        .join(', ');
+}
+
+// Libellé affichable d'un rôle de contributeur — même registre que côté admin
+// (assets/js/admin/pagination.js, contributorRoleLabel()), dupliqué ici car
+// les deux fronts (public et admin) ne partagent pas de script commun.
+function publicContributorRoleLabel(role, roleCustom) {
+    if (role === 'autre') return (roleCustom && roleCustom.trim() !== '') ? roleCustom : 'Autre';
+    if (!role) return 'rôle non précisé';
+    return (window.contributorRoles && window.contributorRoles[role]) || role;
+}
+
+// Liste HTML des contributeurs d'une série, groupés en "Nom (Rôle1, Rôle2)",
+// chaque nom étant un lien vers sa fiche personnalité (annuaire, périmètre
+// Mangathèque). Une même personne ayant plusieurs rôles SUR CETTE SÉRIE
+// (hors auteur/éditeur, déjà affichés sur leurs propres lignes) n'apparaît
+// qu'une seule fois, avec tous ses rôles réunis entre parenthèses — jamais
+// une ligne par rôle.
+function publicContributorsListHtml(series, excludeRoles = []) {
+    const list = (series.contributors || []).filter(c =>
+        c && c.name && c.name.trim() !== '' && !excludeRoles.includes(c.role || '')
+    );
+    if (!list.length) return 'aucun';
+
+    const byName = new Map();
+    list.forEach(c => {
+        const label = publicContributorRoleLabel(c.role, c.role_custom);
+        if (!byName.has(c.name)) byName.set(c.name, []);
+        if (!byName.get(c.name).includes(label)) byName.get(c.name).push(label);
+    });
+
+    return [...byName.entries()].map(([name, labels]) => {
+        const href = 'personnalites.php?nom=' + encodeURIComponent(name);
+        return `<a href="${publicEscape(href)}">${publicEscape(name)}</a> (${publicEscape(labels.join(', '))})`;
+    }).join(', ');
+}
+
 // Contenu d'une carte. Un animé montre ses studios et son format là où un manga
-// montre son auteur et son éditeur : ni l'un ni l'autre n'a de champ vide.
+// montre ses contributeurs (auteur, éditeur en priorité) : ni l'un ni l'autre
+// n'a de champ vide.
 function publicSeriesCardHtml(series) {
     const identity = publicIsAnime(series)
         ? `<p><strong>Studios :</strong> ${series.studios_text ? publicEscape(series.studios_text) : '<em>inconnus</em>'}</p>
            <p><strong>Catégorie :</strong> ${publicEscape(series.format_label || '')}</p>`
-        : `<p><strong>Auteur :</strong> ${publicEscape(series.author || '')}</p>
-           <p><strong>Éditeur :</strong> ${publicEscape(series.publisher || '')}</p>`;
+        : `<p><strong>Auteur :</strong> ${publicEscape(publicContributorsNames(series, 'auteur'))}</p>
+           <p><strong>Éditeur :</strong> ${publicEscape(publicContributorsNames(series, 'editeur'))}</p>`;
 
     return `
         <img class="series-image" src="${publicEscape(publicThumbnail(series))}" alt="${publicEscape(series.name)}" loading="lazy">
@@ -163,10 +207,26 @@ function fillSeriesDetailModal(series) {
     show('modal-row-contributors', !isAnime);
     show('modal-row-studios', isAnime);
 
-    setText('modal-series-author', series.author || '');
-    setText('modal-series-publisher', series.publisher || '');
-    const contributors = (series.other_contributors || []).filter(i => i && i.trim() !== '');
-    setText('modal-series-other-contributors', contributors.length ? contributors.join(', ') : 'aucun');
+    if (!isAnime) {
+        const modalAuthor = document.getElementById('modal-series-author');
+        if (modalAuthor) {
+            const names = (series.contributors || []).filter(c => c && c.role === 'auteur' && c.name);
+            modalAuthor.innerHTML = names.length
+                ? names.map(c => `<a href="personnalites.php?nom=${encodeURIComponent(c.name)}">${publicEscape(c.name)}</a>`).join(', ')
+                : 'aucun';
+        }
+        const modalPublisher = document.getElementById('modal-series-publisher');
+        if (modalPublisher) {
+            const names = (series.contributors || []).filter(c => c && c.role === 'editeur' && c.name);
+            modalPublisher.innerHTML = names.length
+                ? names.map(c => `<a href="personnalites.php?nom=${encodeURIComponent(c.name)}">${publicEscape(c.name)}</a>`).join(', ')
+                : 'aucun';
+        }
+        const modalOthers = document.getElementById('modal-series-other-contributors');
+        if (modalOthers) {
+            modalOthers.innerHTML = publicContributorsListHtml(series, ['auteur', 'editeur']);
+        }
+    }
     setText('modal-series-studios', series.studios_text || 'inconnus');
 
     // La catégorie d'un animé, c'est son format : le libellé passe au singulier.
@@ -556,11 +616,12 @@ document.addEventListener('DOMContentLoaded', function() {
     suggestionsList.style.display = 'none';
     wrapper.appendChild(suggestionsList);
 
-    // Studios et titres alternatifs (animés) inclus : la barre traverse les
-    // deux collections, elle doit pouvoir retrouver un animé par son studio
-    // ou par un titre autre que celui affiché sur sa carte, tout comme un
-    // manga se retrouve déjà par auteur ou éditeur.
-    const fields = ['name', 'author', 'publisher', 'categories', 'genres', 'other_contributors', 'studios', 'alt_titles'];
+    // Studios et titres alternatifs (animés), contributeurs (mangas — auteur,
+    // éditeur et tous les autres rôles réunis) : la barre traverse les deux
+    // collections, elle doit pouvoir retrouver un animé par son studio ou par
+    // un titre autre que celui affiché sur sa carte, tout comme un manga se
+    // retrouve déjà par n'importe lequel de ses contributeurs.
+    const fields = ['name', 'contributors', 'categories', 'genres', 'studios', 'alt_titles'];
 
     // with_types=1 : la barre de recherche traverse les collections et chaque
     // suggestion indique celles où elle apparaît.
@@ -749,8 +810,10 @@ function setModalLicenseBtn(series) {
             authorEl.textContent = series.studios_text ? ('Studios : ' + series.studios_text) : '';
             publisherEl.textContent = '';
         } else {
-            authorEl.textContent = series.author ? ('Auteur : ' + series.author) : '';
-            publisherEl.textContent = series.publisher ? ('Éditeur : ' + series.publisher) : '';
+            const authorNames    = publicContributorsNames(series, 'auteur');
+            const publisherNames = publicContributorsNames(series, 'editeur');
+            authorEl.textContent = authorNames ? ('Auteur : ' + authorNames) : '';
+            publisherEl.textContent = publisherNames ? ('Éditeur : ' + publisherNames) : '';
         }
         const cats = (series.categories && series.categories.length) ? series.categories.join(', ') : '';
         document.getElementById('review-modal-categories').textContent = cats ? ('Catégories : ' + cats) : '';

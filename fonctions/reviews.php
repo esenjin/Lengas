@@ -67,7 +67,7 @@ function list_reviews(array $data): array {
         $s = $by_id[$r['series_id']];
         // Sous-titre de carte : auteur pour un manga, studios pour un animé —
         // même rôle d'affichage, source différente selon le type.
-        $subtitle = is_anime($s) ? series_studios_text($s) : (string)($s['author'] ?? '');
+        $subtitle = is_anime($s) ? series_studios_text($s) : series_contributors_names_text($s, 'auteur');
         $result[] = [
             'series_id'  => $r['series_id'],
             'name'       => $s['name'],

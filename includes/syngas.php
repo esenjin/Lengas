@@ -259,7 +259,17 @@ function syngas_tracked_submissions(): array {
 function syngas_curl(string $method, string $path, ?array $payload = null, int $timeout = 15, bool $authenticated = true): array {
     $base = rtrim(SYNGAS_API_URL, '/');
 
-    $headers = ['Content-Type: application/json', 'Accept: application/json'];
+    $headers = [
+        'Content-Type: application/json',
+        'Accept: application/json',
+        // Permet à Syngas de bloquer les instances Lengas trop anciennes pour
+        // parler le contrat `contributors` actuel (voir la migration
+        // « Personnalités », config.php, et includes/helpers.php pour le
+        // registre de rôles partagé) — envoyé sur CHAQUE appel, authentifié ou
+        // non, pour que même le tout premier provisionnement (POST
+        // /instances/register) puisse être refusé si nécessaire.
+        'X-Lengas-Version: ' . SITE_VERSION,
+    ];
     if ($authenticated) {
         $key = syngas_api_key();
         if ($key === '') {
@@ -510,9 +520,26 @@ function syngas_map_to_lengas_fields(array $syngas_series, $local_categories = [
     };
 
     $set_if_not_empty('name', $syngas_series['name'] ?? null);
-    $set_if_not_empty('author', $syngas_series['author'] ?? null);
-    $set_if_not_empty('publisher', $syngas_series['publisher'] ?? null);
-    $set_if_not_empty('other_contributors', $syngas_series['other_contributors'] ?? null);
+    // Contributeurs : contrat unifié (liste JSON [{name, role, role_custom}],
+    // même registre de rôles que Lengas — voir includes/helpers.php,
+    // contributor_roles()) depuis la migration « Personnalités ». Un tableau
+    // Syngas vide ne touche jamais au champ Lengas correspondant (même règle
+    // que les autres champs de ce mapping) ; un tableau non vide REMPLACE
+    // intégralement les contributeurs Lengas (comportement déjà documenté
+    // dans le README pour la validation d'une recherche Syngas).
+    if (!empty($syngas_series['contributors']) && is_array($syngas_series['contributors'])) {
+        $sanitize = function_exists('sanitize_contributor_entry')
+            ? 'sanitize_contributor_entry'
+            : fn($c) => ['name' => trim((string)($c['name'] ?? '')), 'role' => trim((string)($c['role'] ?? '')), 'role_custom' => trim((string)($c['role_custom'] ?? ''))];
+        $fields['contributors'] = array_values(array_map(
+            fn($c) => $sanitize([
+                'name'        => $c['name'] ?? '',
+                'role'        => $c['role'] ?? '',
+                'role_custom' => $c['role_custom'] ?? '',
+            ]),
+            array_filter($syngas_series['contributors'], fn($c) => is_array($c) && trim((string)($c['name'] ?? '')) !== '')
+        ));
+    }
     // Conversion inverse de syngas_status_from_lengas() : Syngas renvoie "En
     // cours"/"Terminée"/… (majuscule initiale), le <select> de Lengas
     // n'accepte que "en cours"/"terminée"/… en minuscules — sans cette
@@ -726,11 +753,19 @@ function syngas_submit_series(array $series, int $timeout = 15): array {
     $payload = [
         'type'               => $syngas_type,
         'name'               => (string)($series['name'] ?? ''),
-        'author'             => (string)($series['author'] ?? ''),
-        'publisher'          => (string)($series['publisher'] ?? ''),
-        'other_contributors' => is_array($series['other_contributors'] ?? null)
-                                  ? implode(',', array_filter($series['other_contributors']))
-                                  : (string)($series['other_contributors'] ?? ''),
+        // Contributeurs : liste JSON [{name, role, role_custom}], même
+        // registre de rôles que Lengas (contrat unifié depuis la migration
+        // « Personnalités » — voir includes/helpers.php, contributor_roles()).
+        // Un rôle vide ('') ou 'autre' est envoyé tel quel ; à Syngas de
+        // décider s'il l'accepte tel quel ou le classe à part.
+        'contributors'       => array_values(array_map(
+            fn($c) => [
+                'name'        => (string)($c['name'] ?? ''),
+                'role'        => (string)($c['role'] ?? ''),
+                'role_custom' => (string)($c['role_custom'] ?? ''),
+            ],
+            array_filter($series['contributors'] ?? [], fn($c) => trim((string)($c['name'] ?? '')) !== '')
+        )),
         'genres'             => is_array($series['genres'] ?? null)
                                   ? implode(',', array_filter($series['genres']))
                                   : (string)($series['genres'] ?? ''),
@@ -802,9 +837,8 @@ function syngas_submit_series(array $series, int $timeout = 15): array {
 // fiche Syngas actuelle (le diff est calculé par l'appelant — voir
 // syngas_sync_send_updates_targets() dans fonctions/tools/syngas.php —
 // jamais recalculé ici) ; mêmes clés que syngas_submit_series() (name,
-// author, publisher, other_contributors, genres, status, mangaupdates_url,
-// babelio_url, mature, volumes_count). $thumbnail_changed : si true, la
-// vignette locale actuelle est jointe en tant que thumbnail_source_url (même
+// contributors, genres, status, mangaupdates_url, babelio_url, mature,
+// volumes_count). $thumbnail_changed : si true, la vignette locale actuelle est jointe en tant que thumbnail_source_url (même
 // principe et mêmes contraintes que syngas_submit_series() — voir sa note
 // détaillée sur og_absolute_url()).
 //
@@ -830,7 +864,21 @@ function syngas_propose_edit(string $syngas_uid, array $fields, bool $thumbnail_
             $payload['status'] = syngas_status_from_lengas((string)$value);
             continue;
         }
-        if (in_array($key, ['other_contributors', 'genres'], true)) {
+        if ($key === 'contributors') {
+            // Contrat unifié : liste JSON [{name, role, role_custom}], jamais
+            // aplatie en chaîne (contrairement à 'genres' ci-dessous, resté
+            // un champ texte comma-separated côté Syngas).
+            $payload['contributors'] = array_values(array_map(
+                fn($c) => [
+                    'name'        => (string)($c['name'] ?? ''),
+                    'role'        => (string)($c['role'] ?? ''),
+                    'role_custom' => (string)($c['role_custom'] ?? ''),
+                ],
+                is_array($value) ? $value : []
+            ));
+            continue;
+        }
+        if ($key === 'genres') {
             $payload[$key] = is_array($value) ? implode(',', array_filter($value)) : (string)$value;
             continue;
         }

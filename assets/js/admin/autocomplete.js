@@ -404,20 +404,17 @@ setupSeriesSelection('multiple-series-results', 'multiple-selected-series-id', '
 
 // Initialisation des autocomplétions
 setupAutocomplete('add-series-name', ['name']);
-setupAutocomplete('add-series-author', ['author', 'other_contributors']);
-setupAutocomplete('add-series-publisher', ['publisher']);
 setupAutocomplete('edit-series-name', ['name']);
-setupAutocomplete('edit-series-author', ['author', 'other_contributors']);
-setupAutocomplete('edit-series-publisher', ['publisher']);
-setupAutocomplete('wishlist-author', ['author', 'other_contributors']);
-setupAutocomplete('wishlist-publisher', ['publisher']);
 setupMultiAutocomplete('add-series-categories', ['categories']);
 setupMultiAutocomplete('add-series-genres', ['genres']);
 setupMultiAutocomplete('edit-series-categories', ['categories']);
 setupMultiAutocomplete('edit-series-genres', ['genres']);
-setupMultiAutocomplete('add-series-other-contributors', ['author', 'other_contributors']);
-setupMultiAutocomplete('edit-series-other-contributors', ['author', 'other_contributors']);
+// Les champs "Auteur"/"Éditeur"/"Autres contributeurs" sont remplacés par le
+// bloc dynamique « Contributeurs » (assets/js/admin/contributors.js), qui
+// gère sa propre autocomplétion par ligne sur le champ virtuel 'contributors'.
+// La liste d'envies (page-wishlist.php) garde ses champs auteur/éditeur
+// simples — hors périmètre « Personnalités » (voir sa propre initialisation).
 // La barre de recherche principale traverse les deux collections : elle
 // interroge aussi les champs propres aux animés (studios, titres alternatifs),
 // sans effet côté mangas (endpoint get_suggestions les ignore pour ce type).
-setupMultiAutocomplete('search-all', ['name', 'author', 'other_contributors', 'publisher', 'categories', 'genres', 'studios', 'alt_titles']);
+setupMultiAutocomplete('search-all', ['name', 'contributors', 'categories', 'genres', 'studios', 'alt_titles']);

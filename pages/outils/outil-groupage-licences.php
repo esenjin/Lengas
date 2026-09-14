@@ -127,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'name'             => $found['name'],
             'type'             => series_type($found),
             'thumbnail'        => function_exists('series_thumbnail') ? series_thumbnail($found) : '',
-            'detail'           => $is_anime_series ? series_studios_text($found) : (string)($found['author'] ?? ''),
+            'detail'           => $is_anime_series ? series_studios_text($found) : series_contributors_names_text($found, 'auteur'),
             'categories'       => $categories,
             'mangaupdates_url' => (string)($found['mangaupdates_url'] ?? ''),
             'babelio_url'      => (string)($found['babelio_url'] ?? ''),

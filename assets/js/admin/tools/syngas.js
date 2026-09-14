@@ -11,9 +11,7 @@ function syEscHtml(s) {
 
 const SYNGAS_DIFF_LABELS = {
     name: 'Nom',
-    author: 'Auteur',
-    publisher: 'Éditeur',
-    other_contributors: 'Autres contributeurs',
+    contributors: 'Contributeurs',
     genres: 'Genres',
     categories: 'Catégories',
     status: 'Statut de publication',

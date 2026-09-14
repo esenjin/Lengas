@@ -97,8 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         'targets'  => array_map(fn($s) => [
             'id'        => $s['id'],
             'name'      => $s['name'],
-            'author'    => $s['author'] ?? '',
-            'publisher' => $s['publisher'] ?? '',
+            'author'    => series_contributors_names_text($s, 'auteur'),
+            'publisher' => series_contributors_names_text($s, 'editeur'),
         ], $targets),
         'excluded_count' => count($excluded),
     ]);

@@ -54,9 +54,10 @@ function build_light_series(array $series, array $review_series_ids, array $loan
         'id' => $series['id'],
         'name' => $series['name'],
         'type' => series_type($series),
-        'author' => $series['author'],
-        'publisher' => $series['publisher'],
-        'other_contributors' => $series['other_contributors'] ?? [],
+        // Liste unifiée des contributeurs (auteur, éditeur, autres rôles) —
+        // remplace les anciens champs author / publisher / other_contributors.
+        // Voir includes/helpers.php (contributor_roles(), series_contributors*).
+        'contributors' => series_contributors($series),
         'categories' => $series['categories'] ?? [],
         'genres' => $series['genres'] ?? [],
         // Vignette déjà résolue par la cascade perso → Anilist → défaut :
@@ -118,7 +119,14 @@ function build_light_series(array $series, array $review_series_ids, array $loan
 // $syngas_uid : posé automatiquement quand la création suit une correspondance
 // Syngas validée dans la modale d'ajout (jamais saisi à la main) — voir
 // includes/syngas.php et l'endpoint syngas_validate de admin.php.
-function add_series($data, $name, $author, $publisher, $other_contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours', $read_elsewhere = false, $reading_abandoned = false, $rating = '', $type = 'manga', $reread_count = 0, $syngas_uid = '') {
+// $contributors : liste déjà normalisée de ['name'=>string,'role'=>string,
+// 'role_custom'=>string] (voir admin_read_contributors_from_post() dans
+// admin.php) — remplace les anciens $author/$publisher/$other_contributors.
+// Les entrées au nom vide sont filtrées ici, pas seulement à l'écriture SQL,
+// pour que $new_series (renvoyé dans $result['data'], notamment relu par le
+// cache syngas_volumes_count juste après add_series()) reflète déjà l'état
+// définitif.
+function add_series($data, $name, $contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours', $read_elsewhere = false, $reading_abandoned = false, $rating = '', $type = 'manga', $reread_count = 0, $syngas_uid = '') {
     $volumes = [];
     for ($i = 1; $i <= $volumes_count; $i++) {
         $volumes[] = [
@@ -137,7 +145,10 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         $volumes[$volumes_count - 1]['last'] = true;
     }
 
-    $other_contributors = clean_comma_separated($other_contributors);
+    $contributors = array_values(array_filter(
+        array_map('sanitize_contributor_entry', $contributors),
+        fn($c) => $c['name'] !== ''
+    ));
     $categories = clean_comma_separated($categories);
     $genres = clean_comma_separated($genres);
 
@@ -159,9 +170,7 @@ function add_series($data, $name, $author, $publisher, $other_contributors, $cat
         'id' => generate_uuid(),
         'name' => $name,
         'type' => sanitize_series_type($type),
-        'author' => $author,
-        'publisher' => $publisher,
-        'other_contributors' => explode(',', $other_contributors),
+        'contributors' => $contributors,
         'categories' => explode(',', $categories),
         'genres' => explode(',', $genres),
         'image' => $image ?? '',
@@ -222,7 +231,9 @@ function find_series_by_syngas_uid($data, string $syngas_uid, string $exclude_se
 // main depuis la modale d'édition (jamais verrouillé, cohérent avec le
 // principe général de l'intégration Syngas : un lien consultatif, jamais
 // autoritaire).
-function update_series($data, $series_id, $name, $author, $other_contributors, $publisher, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null, $new_status = null, $read_elsewhere = null, $reading_abandoned = null, $rating = null, $reread_count = null, $syngas_uid = null) {
+// $contributors : liste déjà normalisée de ['name'=>string,'role'=>string,
+// 'role_custom'=>string], voir add_series() ci-dessus.
+function update_series($data, $series_id, $name, $contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null, $new_status = null, $read_elsewhere = null, $reading_abandoned = null, $rating = null, $reread_count = null, $syngas_uid = null) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
         return ['success' => false, 'message' => "Série introuvable."];
@@ -265,9 +276,10 @@ function update_series($data, $series_id, $name, $author, $other_contributors, $
     // Met à jour directement via la clé
     $data[$series_key]['status'] = $new_status;
     $data[$series_key]['name'] = $name;
-    $data[$series_key]['author'] = $author;
-    $data[$series_key]['publisher'] = $publisher;
-    $data[$series_key]['other_contributors'] = explode(',', clean_comma_separated($other_contributors));
+    $data[$series_key]['contributors'] = array_values(array_filter(
+        array_map('sanitize_contributor_entry', $contributors),
+        fn($c) => $c['name'] !== ''
+    ));
     $data[$series_key]['categories'] = explode(',', clean_comma_separated($categories));
     $data[$series_key]['genres'] = explode(',', clean_comma_separated($genres));
     $data[$series_key]['mangaupdates_url'] = $mangaupdates_url;
@@ -418,4 +430,22 @@ function delete_series($data, $series_id) {
 // Fonction pour nettoyer les espaces après les virgules
 function clean_comma_separated($string) {
     return preg_replace('/\s*,\s*/', ',', trim($string));
+}
+
+// ── Nettoyage d'une ligne de contributeur (« Personnalités ») ───────────────
+// $entry : ['name'=>string, 'role'=>string, 'role_custom'=>string] tel que
+// reçu depuis admin.php (une ligne du formulaire « Contributeurs »). Rôle
+// ramené au registre fermé contributor_roles() de includes/helpers.php, ou
+// '' s'il est absent/non reconnu (jamais bloquant : voir la note de
+// contributor_role_label()). role_custom n'est conservé que pour le rôle
+// 'autre' — une précision laissée sur un autre rôle serait un résidu mort,
+// jamais affiché nulle part.
+function sanitize_contributor_entry($entry): array {
+    $name = trim((string)($entry['name'] ?? ''));
+    $role = trim((string)($entry['role'] ?? ''));
+    if ($role !== '' && $role !== 'autre' && !array_key_exists($role, contributor_roles())) {
+        $role = '';
+    }
+    $role_custom = ($role === 'autre') ? trim((string)($entry['role_custom'] ?? '')) : '';
+    return ['name' => $name, 'role' => $role, 'role_custom' => $role_custom];
 }

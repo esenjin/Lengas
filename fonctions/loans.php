@@ -176,8 +176,16 @@ function get_loans_by_series(array $data): array {
 
     foreach ($loans_by_series as $series_id => $series_loans) {
         $series = find_series_by_id($data, $series_id);
+        $series_payload = $series ? $series['data'] : null;
+        // Auteur/éditeur dérivés pour le front (assets/js/admin/loans.js, qui
+        // lit encore series.author) : la série n'a plus ces deux clés depuis
+        // la migration « Personnalités » (remplacées par `contributors`) —
+        // même correction que includes/mangaupdates.php, get_incomplete_series().
+        if ($series_payload !== null && function_exists('series_contributors_names_text')) {
+            $series_payload['author'] = series_contributors_names_text($series_payload, 'auteur');
+        }
         $result[] = [
-            'series'        => $series ? $series['data'] : null,
+            'series'        => $series_payload,
             'loans'         => $series_loans,
             'series_exists' => $series !== null,
         ];

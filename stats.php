@@ -118,11 +118,21 @@ foreach ($data as $series) {
     $search_data[] = [
         'type'               => 'manga',
         'name'               => $series['name'],
-        'author'             => $series['author'],
-        'publisher'          => $series['publisher'],
+        // Auteur(s)/éditeur(s) : chaînes affichables dérivées de la liste
+        // `contributors` (plusieurs personnes possibles par rôle depuis la
+        // migration « Personnalités », jointes par virgule) — remplace les
+        // anciens champs scalaires author/publisher. `other_contributors`
+        // reste une liste à plat de NOMS, mais désormais tous rôles confondus
+        // À L'EXCLUSION d'auteur et éditeur (déjà représentés sur leurs
+        // propres lignes ci-dessus, pour ne pas les compter deux fois).
+        'author'             => series_contributors_names_text($series, 'auteur'),
+        'publisher'          => series_contributors_names_text($series, 'editeur'),
         'categories'         => stats_clean_list($series['categories'] ?? []),
         'genres'             => stats_clean_list($series['genres'] ?? []),
-        'other_contributors' => stats_clean_list($series['other_contributors'] ?? []),
+        'other_contributors' => array_values(array_filter(array_map(
+            fn($c) => $c['name'],
+            array_filter($series['contributors'] ?? [], fn($c) => !in_array($c['role'] ?? '', ['auteur', 'editeur'], true))
+        ))),
         // Pas de titres alternatifs côté manga (notion propre à l'Animethèque) :
         // clé toujours présente, vide ici, pour que le JS de recherche n'ait
         // pas à distinguer les deux types sur ce champ.
@@ -199,6 +209,13 @@ $chart_payload = [
     'genres_none_series' => $stats['genres_none_series'] ?? 0,
     'categories'   => array_map(fn($c) => ['name' => $c['name'], 'series' => $c['series'], 'volumes' => $c['volumes']], $stats['categories']),
     'contributors' => array_map(fn($c) => ['name' => $c['name'], 'series' => $c['series'], 'volumes' => $c['volumes']], $stats['contributors']),
+    // Détail par rôle (registre fermé, includes/helpers.php) : alimente le
+    // filtre <select> de la section Contributeurs (assets/js/stats.js).
+    'contributors_by_role' => array_map(fn($group) => [
+        'role'       => $group['role'],
+        'role_label' => $group['role_label'],
+        'entries'    => array_map(fn($c) => ['name' => $c['name'], 'series' => $c['series'], 'volumes' => $c['volumes']], $group['entries']),
+    ], $stats['contributors_by_role'] ?? []),
     'value' => (function () use ($stats) {
         // Une barre par catégorie pour les tomes normaux et pour les collectors.
         // Une barre n'est pas incluse si elle vaut 0 €.
@@ -510,6 +527,14 @@ $anime_chart_payload = [
             <div class="panel">
                 <div class="panel-head">
                     <h3>Top 20 contributeurs</h3>
+                    <?php if (!empty($stats['contributors_by_role'])): ?>
+                    <select id="contributors-role-filter" class="contributors-role-filter">
+                        <option value="">Tous les rôles</option>
+                        <?php foreach ($stats['contributors_by_role'] as $role_group): ?>
+                            <option value="<?= htmlspecialchars($role_group['role']) ?>"><?= htmlspecialchars($role_group['role_label']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php endif; ?>
                     <div class="toggle-group" data-target="contributors-view">
                         <button class="toggle-btn" data-metric="volumes">Par tomes</button>
                         <button class="toggle-btn is-active" data-metric="series">Par séries</button>

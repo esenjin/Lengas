@@ -440,12 +440,17 @@ document.addEventListener('DOMContentLoaded', function () {
         charts._buildCategories = buildCategories;
     }
 
-    // ── 7. Contributeurs (toggle par tomes / par séries) ──────────────────────
+    // ── 7. Contributeurs (toggle par tomes / par séries, filtre par rôle) ─────
     if (S.contributors && S.contributors.length && document.getElementById('bar-contributors')) {
+        // Source de données courante : tous les contributeurs (agrégat, comme
+        // avant l'ajout du filtre) ou un seul rôle (S.contributors_by_role).
+        // Mutée par le <select> ci-dessous ; lue par le toggle de métrique.
+        charts._contribSource = S.contributors;
+
         function contribOpts(metric) {
             const valOf = c => metric === 'series' ? c.series : c.volumes;
             // Tri selon la métrique puis top 20
-            const list = S.contributors.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 20);
+            const list = charts._contribSource.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 20);
             return {
                 ...apexBase,
                 chart: { ...apexBase.chart, type: 'bar', height: Math.max(220, list.length * 34) },
@@ -457,7 +462,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 dataLabels: { enabled: true, textAnchor: 'start', offsetX: 4, style: { colors: ['#fff'] } },
                 legend: { show: false },
                 tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
-                    const c = list[dataPointIndex];
+                    const c = charts._contribSource.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 20)[dataPointIndex];
                     return `<div class="apex-tip"><b>${c.name}</b><br>${fmtInt(c.volumes)} tome(s) · ${fmtInt(c.series)} série(s)</div>`;
                 } }
             };
@@ -466,6 +471,28 @@ document.addEventListener('DOMContentLoaded', function () {
         charts.contrib.render();
         charts._contribOpts = contribOpts;
     }
+
+    // Filtre par rôle (Auteur/Éditeur exclus de cette section — déjà sur
+    // leurs propres graphiques) : reconstruit charts._contribSource puis
+    // redessine avec la métrique actuellement sélectionnée.
+    document.getElementById('contributors-role-filter')?.addEventListener('change', function () {
+        if (!charts.contrib || !charts._contribOpts) return;
+        const role = this.value;
+        if (role === '') {
+            charts._contribSource = S.contributors;
+        } else {
+            const group = (S.contributors_by_role || []).find(g => g.role === role);
+            charts._contribSource = group ? group.entries : [];
+        }
+        const activeBtn = document.querySelector('.toggle-group[data-target="contributors-view"] .toggle-btn.is-active');
+        const metric = activeBtn ? activeBtn.dataset.metric : 'series';
+        const list = charts._contribSource.slice().sort((a, b) => (metric === 'series' ? b.series - a.series : b.volumes - a.volumes)).slice(0, 20);
+        charts.contrib.updateOptions({
+            chart: { height: Math.max(220, list.length * 34) },
+            xaxis: { categories: list.map(c => c.name) },
+            series: [{ name: metric === 'series' ? 'Séries' : 'Tomes', data: list.map(c => metric === 'series' ? c.series : c.volumes) }],
+        });
+    });
 
     // ── 8. Valeur ─────────────────────────────────────────────────────────────
     if (S.value && S.value.labels && S.value.labels.length && document.getElementById('value-chart')) {
@@ -885,7 +912,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Contributeurs : par tomes / par séries (top 20 dans chaque cas)
+    // Contributeurs : par tomes / par séries (top 20 dans chaque cas, sur la
+    // source courante — tous ou un rôle filtré, voir charts._contribSource
+    // ci-dessus).
     document.querySelectorAll('.toggle-group[data-target="contributors-view"] .toggle-btn').forEach(btn => {
         btn.addEventListener('click', function () {
             document.querySelectorAll('.toggle-group[data-target="contributors-view"] .toggle-btn').forEach(b => b.classList.remove('is-active'));
@@ -893,7 +922,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const metric = this.dataset.metric;
             if (charts.contrib && charts._contribOpts) {
                 const valOf = c => metric === 'series' ? c.series : c.volumes;
-                const list = S.contributors.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 20);
+                const list = (charts._contribSource || S.contributors).slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 20);
                 charts.contrib.updateOptions({
                     chart: { height: Math.max(220, list.length * 34) },
                     xaxis: { categories: list.map(c => c.name) },

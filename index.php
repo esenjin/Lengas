@@ -235,12 +235,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
     // valeur => types où elle apparaît
     $suggestions = [];
 
-    if (in_array($field, ['name', 'author', 'publisher', 'other_contributors', 'categories', 'genres', 'studios', 'alt_titles'], true)) {
+    if (in_array($field, ['name', 'contributors', 'categories', 'genres', 'studios', 'alt_titles'], true)) {
         foreach ($all_data as $series) {
             $series_type = series_type($series);
 
-            // Studios et titres alternatifs sont propres aux animés : pas une
-            // colonne directement lisible comme les autres champs (cf. le
+            // Studios, titres alternatifs et contributeurs ne sont pas des
+            // colonnes directement lisibles comme les autres champs (cf. le
             // même correctif dans admin.php).
             if ($field === 'studios') {
                 if (!is_anime($series)) continue;
@@ -248,6 +248,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_suggestions'])) {
             } elseif ($field === 'alt_titles') {
                 if (!is_anime($series)) continue;
                 $values = series_alt_titles($series);
+            } elseif ($field === 'contributors') {
+                if (is_anime($series)) continue;
+                $values = series_contributors_all_names($series);
             } else {
                 if (!isset($series[$field])) continue;
                 $values = is_array($series[$field]) ? $series[$field] : [$series[$field]];
@@ -520,8 +523,8 @@ $data = array_values(apply_refine_filter($data, $refine_categories, $refine_genr
                                     (<?= $read_volumes ?> vu<?= $read_volumes > 1 ? 's' : '' ?>)
                                 </div>
                             <?php else: ?>
-                                <p><strong>Auteur :</strong> <?= $series['author'] ?? '' ?></p>
-                                <p><strong>Éditeur :</strong> <?= $series['publisher'] ?? '' ?></p>
+                                <p><strong>Auteur :</strong> <?= htmlspecialchars(series_contributors_names_text($series, 'auteur')) ?></p>
+                                <p><strong>Éditeur :</strong> <?= htmlspecialchars(series_contributors_names_text($series, 'editeur')) ?></p>
                                 <div class="series-stats">
                                     <?php if (empty($series['read_elsewhere'])): ?>
                                         <?= $total_volumes ?> tome<?= $total_volumes > 1 ? 's' : '' ?> possédé<?= $total_volumes > 1 ? 's' : '' ?>
