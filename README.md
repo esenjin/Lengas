@@ -312,6 +312,7 @@ Elles ne sont pas obligatoire, mais il est recommandé de passer par les version
 - [3.3.0](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.3.0), pour migrer vos séries "lues ailleurs" vers le nouveau système (uniquement si vous êtes sur une version 2.1.0 ou supérieur, les "lues ailleurs" n'existaient pas avant).
 - [3.6.0](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.6.0), pour enregistrer en masse les dates de lecture des séries.
 - [3.9.0](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.9.0), pour ajouter en masse des urls Babelio aux séries.
+- [4.3.0](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/4.3.0), pour migrer la gestion des contributeurs des séries mangas.
 
 ---
 
