@@ -393,7 +393,7 @@ Les contributeurs (auteur, éditeur, autres rôles — voir [Personnalités](#pe
 
 ### Association en masse des anciennes séries (`ajout_syngas_uid.php`)
 
-Si votre collection existait déjà avant l'intégration Syngas, un script à usage unique — `ajout_syngas_uid.php`, à la racine du site — recherche automatiquement une correspondance sur Syngas pour chaque série manga/light-novel encore sans UID Syngas, en comparant titre, auteur et éditeur. Les correspondances suffisamment fiables sont liées automatiquement (uniquement l'UID est posé, aucun autre champ n'est modifié) ; les correspondances moins sûres sont listées dans un rapport pour vérification manuelle. Ouvrez `ajout_syngas_uid.php` dans votre navigateur une fois, puis **supprimez ce fichier du serveur** — même précaution que `generate_password.php`.
+Si votre collection existait déjà avant l'intégration Syngas, un script à usage unique — `ajout_syngas_uid.php` (à récupérer [ici](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/4.2.0)), à la racine du site — recherche automatiquement une correspondance sur Syngas pour chaque série manga/light-novel encore sans UID Syngas, en comparant titre, auteur et éditeur. Les correspondances suffisamment fiables sont liées automatiquement (uniquement l'UID est posé, aucun autre champ n'est modifié) ; les correspondances moins sûres sont listées dans un rapport pour vérification manuelle. Ouvrez `ajout_syngas_uid.php` dans votre navigateur une fois, puis **supprimez ce fichier du serveur** — même précaution que `generate_password.php`.
 
 ### Bannissement
 
