@@ -10,11 +10,11 @@
       calqué visuellement sur l'outil « Association MangaUpdates »
       (.mu-associate-* dans _admin.css) pour rester cohérent.
    4. Badge de lien Syngas (carte admin + modale de détails publique),
-      calqué sur .babelio-badge/.babelio-logo (_babengas.css).
+      calqué sur .manganews-badge/.manganews-logo (_babengas.css).
    ────────────────────────────────────────────────────────────────────────── */
 
 /* ── 0. Badge de lien « Voir sur Syngas » (carte admin + modale publique) ─── */
-/* Même comportement que .mu-badge/.babelio-badge : s'insère dans la même
+/* Même comportement que .mu-badge/.manganews-badge : s'insère dans la même
    barre .series-badges--links, même opacité au survol. */
 
 .syngas-badge {

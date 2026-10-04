@@ -34,7 +34,7 @@ Lengas est une application web légère et intuitive pour gérer et suivre votre
 - Consulter un annuaire des **Personnalités** (auteurs, éditeurs et autres contributeurs de votre Mangathèque), avec la liste des séries et des rôles tenus par chacune
 - Activer un mode privé pour cacher votre bibliothèque, réglable séparément pour chaque collection
 - Choisir un thème (clair, sombre ou personnalisé)
-- Vérifier le nombre de tomes parus en France avec Babengas (Babelio, facultatif)
+- Vérifier le nombre de tomes parus en France, et le statut de publication de l'édition française, avec Babengas (Manga News, facultatif)
 - Pré-remplir et mutualiser vos fiches mangas/light-novels avec **Syngas**, la base commune des mangathèques Lengas
 - Vous connecter avec Vestikan (SSO facultatif)
 
@@ -70,7 +70,7 @@ Depuis la version 4.0, chaque série porte un **type** : `manga` (regroupant aus
 - Ajout, modification et suppression de séries
 - Association à une fiche MangaUpdates (URL) pour le suivi du nombre de tomes et du statut de publication
 - Remplissage automatique des URL MangaUpdates en masse via l'outil « Association MangaUpdates » (recherche par titre + auteur), avec possibilité d'exclure une ou plusieurs catégories de la recherche (ex. les light-novels, dont la publication FR ne suit pas MangaUpdates)
-- Association à une fiche Babelio (URL) pour connaître le nombre de tomes réellement parus en France, via le service Babengas
+- Association à une fiche Manga News (URL) pour connaître le nombre de tomes réellement parus en France et le statut de publication VF, via le service Babengas
 - Recherche et liaison à une fiche **Syngas** (base commune des mangathèques Lengas) pour pré-remplir automatiquement une fiche, disponible à l'ajout et à l'édition — voir [Comment utiliser Syngas](#comment-utiliser-syngas)
 - **Contributeurs** : liste d'un ou plusieurs contributeurs par série, chacun avec un nom et un rôle (Auteur, Scénariste, Dessinateur, Illustrateur, Coloriste, Traducteur, Adaptateur, Lettreur, Éditeur, ou « Autre » avec précision libre) — voir [Personnalités](#personnalités). Une même personne peut apparaître plusieurs fois sur une série avec des rôles différents (ex. Auteur et Illustrateur). Au moins un contributeur de rôle « Auteur » et un de rôle « Éditeur » sont requis à la création d'une série ; les lignes s'ajoutent librement via un bouton « + »
 
@@ -269,7 +269,7 @@ Anilist autorise 90 requêtes par minute ; le connecteur applique une fenêtre g
 - Droits d'écriture pour le serveur web sur les dossiers `bdd/`, `saves/` et `uploads/` (chmod 0774, voir [Structure des fichiers](#structure-des-fichiers))
 
 Facultatif, selon les fonctionnalités utilisées :
-- Un microservice [Babengas](https://git.crystalyx.net/Esenjin_Asakha/Babengas) (Docker) pour la vérification des sorties françaises via Babelio
+- Un microservice [Babengas](https://git.crystalyx.net/Esenjin_Asakha/Babengas) (Docker) pour la vérification des sorties françaises via Manga News (version 2.0.0 minimum)
 - Une instance [Vestikan](https://git.crystalyx.net/Esenjin_Asakha/Vestikan) pour la connexion SSO
 
 ---
@@ -312,7 +312,7 @@ Elles ne sont pas obligatoire, mais il est recommandé de passer par les version
 
 - [3.3.0](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.3.0), pour migrer vos séries "lues ailleurs" vers le nouveau système (uniquement si vous êtes sur une version 2.1.0 ou supérieur, les "lues ailleurs" n'existaient pas avant).
 - [3.6.0](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.6.0), pour enregistrer en masse les dates de lecture des séries.
-- [3.9.0](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/3.9.0), pour ajouter en masse des urls Babelio aux séries.
+- [4.3.1](https://git.crystalyx.net/Esenjin_Asakha/Lengas/releases/tag/4.3.1), pour ajouter en masse des urls Manga News aux séries (Babengas 2.0.0 minimum requis si vous utilisez Babengas).
 
 ---
 
@@ -328,23 +328,27 @@ Elles ne sont pas obligatoire, mais il est recommandé de passer par les version
 
 ## Comment vérifier les sorties françaises avec Babengas
 
-[Babengas](https://git.crystalyx.net/Esenjin_Asakha/Babengas) est un microservice Docker qui interroge Babelio pour connaître le nombre de tomes **réellement parus en France**. Il complète MangaUpdates, dont le décompte se base surtout sur l'édition l'origine (VO) et renseigne rarement l'édition française. Cet outil est réservé à la Mangathèque : l'Animethèque n'a pas d'équivalent, Anilist ne recensant pas les sorties françaises.
+[Babengas](https://git.crystalyx.net/Esenjin_Asakha/Babengas) est un microservice Docker qui interroge [Manga News](https://www.manga-news.com) pour connaître le nombre de tomes **réellement parus en France** et le **statut de publication** de l'édition française. Il complète MangaUpdates, dont le décompte se base surtout sur l'édition d'origine (VO) et renseigne rarement l'édition française. Cet outil est réservé à la Mangathèque : l'Animethèque n'a pas d'équivalent, Anilist ne recensant pas les sorties françaises.
 
 Son intégration à Lengas est **entièrement facultative** : sans les fichiers Babengas ni la configuration dans les options, la fonctionnalité reste invisible et le site fonctionne normalement.
 
-Babelio filtrant les IP d'hébergeurs, Babengas doit tourner sur une machine à IP résidentielle (un homelab), exposée en HTTPS via un reverse proxy. Une fois le service en ligne, renseignez son URL et sa clé partagée dans les options du site (page « Options », section « Babengas ») : l'outil dédié « Vérification via Babengas » apparaît alors dans la liste des outils.
+Babengas doit tourner sur une machine à IP résidentielle (un homelab), exposée en HTTPS via un reverse proxy. Une fois le service en ligne, renseignez son URL et sa clé partagée dans les options du site (page « Options », section « Babengas ») : l'outil dédié « Vérification via Babengas » apparaît alors dans la liste des outils. **Lengas 4.3.1 requiert Babengas 2.0.0 au minimum** (l'outil d'intégrité signale une version plus ancienne).
 
-Chaque série à vérifier doit disposer d'une **URL de fiche série Babelio** (champ dédié à l'ajout et à la modification), au format `/serie/SLUG/ID` :
+Chaque série à vérifier doit disposer d'une **URL de fiche série Manga News** (champ dédié à l'ajout et à la modification), au format `/serie/Nom-de-la-serie` :
 
 ```
-https://www.babelio.com/serie/Silent-Witch/54358
+https://www.manga-news.com/index.php/serie/March-comes-in-like-a-lion
 ```
 
-Pour un **one-shot** (série d'un seul tome, qui n'a pas de fiche série sur Babelio), collez plutôt l'adresse de la fiche du tome unique (`/livres/SLUG/ID`) : Lengas la reconnaît et la traite localement, sans passer par Babengas.
+Les one-shots ont eux aussi une fiche série sur Manga News : aucune saisie particulière. Les fiches VO (`/serie-vo/…`) et les fiches de tome (`/manga/…/vol-N`) sont refusées ; les sous-pages d'une série (`/serie/critique/…`, `/serie/editions/…`) sont acceptées et ramenées à la fiche principale.
 
-Le traitement est volontairement lent — une série toutes les cinq minutes, par courtoisie envers Babelio. Une campagne se lance puis se poursuit en arrière-plan : vous pouvez fermer la page, le suivi reprend à votre retour. L'état des fichiers Babengas apparaît dans l'outil de vérification d'intégrité (une absence y est signalée en orange « Absent », car non bloquante), qui indique en plus si le module est **réellement activé** (URL + clé renseignées, case cochée) et si le **microservice répond** (sonde `/sante`, avec sa version).
+Le traitement est volontairement espacé — environ 120 séries par heure, par courtoisie envers Manga News. Une campagne se lance puis se poursuit en arrière-plan : vous pouvez fermer la page, le suivi reprend à votre retour. L'état des fichiers Babengas apparaît dans l'outil de vérification d'intégrité (une absence y est signalée en orange « Absent », car non bloquante), qui indique en plus si le module est **réellement activé** (URL + clé renseignées, case cochée) et si le **microservice répond** (sonde `/sante`, avec sa version).
 
-> ⚠️ Babengas ne remonte **pas** le statut de publication : la fiche Babelio affiche « En cours » y compris sur des séries terminées depuis des années. Ce statut reste géré par MangaUpdates ou saisi manuellement.
+Le statut de publication VF (« En cours », « Terminé »…) remonté par Babengas est conservé avec le décompte dans le cache local (`babengas_cache`) et affiché dans les résultats de l'outil. Il sert aussi au ciblage : une série que Manga News indique comme terminée en VF et que vous possédez en entier n'est plus réinterrogée.
+
+### Ajout en masse des URL Manga News (`ajout_manganews.php`)
+
+Après le passage à la version 4.3.1, les séries n'ont pas encore d'URL Manga News. Une page autonome — `ajout_manganews.php`, à la racine du site, réservée à l'administrateur connecté — liste toutes les séries de la Mangathèque sans URL Manga News et cherche la bonne fiche pour chacune (séries VF). Pour chaque série, vous pouvez accepter la fiche suggérée, en choisir une autre parmi les résultats, relancer une recherche avec un autre titre, ou coller une URL à la main ; la validation se fait série par série, ou toutes d'un coup (« Tout valider »). Les recherches sont espacées d'environ une seconde, et rien n'est enregistré sans validation. Une fois vos séries associées, **supprimez ce fichier du serveur** — même précaution que `generate_password.php`.
 
 Pour installer Babengas sur son homelab :
 - Lire : [Babengas/README.md](https://git.crystalyx.net/Esenjin_Asakha/Babengas/src/branch/main/README.md)
@@ -375,7 +379,7 @@ Le champ « UID Syngas » (visible dans les deux modales, sous la section de rec
 
 ### Badges de liens
 
-Comme MangaUpdates et Babelio, une série liée à Syngas affiche un badge cliquable vers sa fiche Syngas — sur la carte admin et dans la modale de détails publique.
+Comme MangaUpdates et Manga News, une série liée à Syngas affiche un badge cliquable vers sa fiche Syngas — sur la carte admin et dans la modale de détails publique.
 
 ### Outil « Synchronisation Syngas »
 
@@ -428,6 +432,7 @@ lengas/
 ├── login.php              # Connexion
 ├── logout.php             # Déconnexion
 ├── babengas-ping.php      # Endpoint de test Babengas (facultatif)
+├── ajout_manganews.php    # Ajout en masse des URL Manga News (usage unique, à supprimer ensuite)
 ├── .htaccess
 ├── pages/                 # Pages secondaires de l'administration
 │   ├── page-prets.php     # Page de gestion des prêts
@@ -443,7 +448,7 @@ lengas/
 │       ├── _layout_foot.php        # Pied HTML commun (back-to-top, scripts)
 │       ├── _tools-modals.php       # Modales partagées entre plusieurs outils
 │       ├── outil-mangaupdates.php     # Vérification via MangaUpdates (tomes manquants)
-│       ├── outil-babengas.php         # Vérification via Babengas (Babelio)
+│       ├── outil-babengas.php         # Vérification via Babengas (Manga News)
 │       ├── outil-anilist-sync.php     # Synchronisation via Anilist
 │       ├── outil-anilist-import.php   # Import Anilist
 │       ├── outil-anilist-recheck.php  # Vérification des animés
@@ -489,7 +494,7 @@ lengas/
 │   ├── img/               # Images (logo, favicon)
 │   │   ├── logo.png
 │   │   ├── favicon.ico
-│   │   ├── babelogo.png
+│   │   ├── mnlogo.png
 │   │   ├── mulogo.png
 │   │   └── physique.png
 │   └── js/                # Scripts JavaScript

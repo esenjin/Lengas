@@ -310,7 +310,7 @@ function integrity_check_vestikan(): array {
     return $status;
 }
 
-// Babengas : décompte VF via Babelio. Activé = option cochée + URL + clé.
+// Babengas : décompte VF via Manga News. Activé = option cochée + URL + clé.
 // Fonctionnel = la sonde /sante répond « ok ».
 function integrity_check_babengas(): array {
     $status = [
@@ -346,6 +346,12 @@ function integrity_check_babengas(): array {
         $status['detail']     = 'Configuré et service Babengas en ligne'
             . ($status['version'] !== '' ? ' (version ' . $status['version'] . ')' : '')
             . (!empty($health['actif']) ? '.' : ' — mais signalé inactif.');
+        // Lengas ≥ 4.3.1 attend un Babengas ≥ 2.0.0 (source Manga News) : une
+        // version plus ancienne refuserait les URL Manga News (url_invalide).
+        if ($status['version'] !== '' && version_compare($status['version'], '2.0.0', '<')) {
+            $status['functional'] = false;
+            $status['detail']    .= ' ⚠️ Version trop ancienne : Babengas 2.0.0 minimum est requis (source Manga News).';
+        }
     } else {
         $status['functional'] = false;
         $status['detail']     = 'Configuré mais service Babengas injoignable'
@@ -665,6 +671,9 @@ function check_site_integrity(array $data): array {
         $db = get_db();
         $col_names = array_column($db->query("PRAGMA table_info(series)")->fetchAll(PDO::FETCH_ASSOC), 'name');
         $results['db_structure']['Colonne series.mangaupdates_url'] = in_array('mangaupdates_url', $col_names, true);
+        $results['db_structure']['Colonne series.manganews_url'] = in_array('manganews_url', $col_names, true);
+        $tbl_bg = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='babengas_cache'")->fetchColumn();
+        $results['db_structure']['Table babengas_cache'] = ($tbl_bg !== false);
         $tbl = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='mangaupdates_cache'")->fetchColumn();
         $results['db_structure']['Table mangaupdates_cache'] = ($tbl !== false);
         if ($tbl !== false) {

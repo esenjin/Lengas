@@ -534,7 +534,6 @@ function syngas_sync_compute_reverse_diff(array $series): ?array {
                                   : trim((string)($series['genres'] ?? '')),
         'status'             => syngas_status_from_lengas((string)($series['status'] ?? '')),
         'mangaupdates_url'   => (string)($series['mangaupdates_url'] ?? ''),
-        'babelio_url'        => (string)($series['babelio_url'] ?? ''),
         'mature'             => (string)(int)(bool)($series['mature'] ?? false),
     ];
 
@@ -545,7 +544,6 @@ function syngas_sync_compute_reverse_diff(array $series): ?array {
                                   : trim((string)($syngas_series['genres'] ?? '')),
         'status'             => (string)($syngas_series['status'] ?? ''),
         'mangaupdates_url'   => (string)($syngas_series['mangaupdates_url'] ?? ''),
-        'babelio_url'        => (string)($syngas_series['babelio_url'] ?? ''),
         'mature'             => (string)(int)(bool)($syngas_series['mature'] ?? false),
     ];
 

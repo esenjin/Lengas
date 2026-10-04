@@ -109,7 +109,7 @@ function publicEditionsBadgeHtml(series) {
            `<img src="assets/img/physique.png" alt="Éditions physiques" class="editions-logo"></span>`;
 }
 
-// Lien vers la fiche Anilist, sur le modèle des badges MangaUpdates et Babelio.
+// Lien vers la fiche Anilist, sur le modèle des badges MangaUpdates et Manga News.
 function publicAnilistBadgeHtml(series) {
     if (!series.anilist_url) return '';
     return `<a class="anilist-badge" href="${publicEscape(series.anilist_url)}" target="_blank" rel="noopener" title="Voir la fiche sur Anilist">` +
@@ -361,14 +361,14 @@ function fillSeriesDetailModal(series) {
     document.getElementById('modal-series-stats').innerHTML = publicSeriesCount(series);
 
     const badge = publicStatusBadge(series);
-    // Scission « Liens » (MangaUpdates / Babelio / Anilist / éditions
+    // Scission « Liens » (MangaUpdates / Manga News / Anilist / éditions
     // physiques) / « Tags » (statut, mature, notation, revisionnages…),
     // deux rangées successives — cf. .series-badges--links/--tags (_series.css).
     const linksHtml =
         (isAnime ? publicEditionsBadgeHtml(series) : '') +
         (isAnime ? publicAnilistBadgeHtml(series) : '') +
         `${(!isAnime && series.mangaupdates_url) ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}` +
-        `${(!isAnime && series.babelio_url) ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}` +
+        `${(!isAnime && series.manganews_url) ? `<a class="manganews-badge" href="${series.manganews_url}" target="_blank" rel="noopener" title="Voir sur Manga News"><img src="assets/img/mnlogo.png" alt="Manga News" class="manganews-logo"></a>` : ''}` +
         `${(!isAnime && series.syngas_uid) ? `<a class="syngas-badge" href="${syngasPublicUrl(series.syngas_uid)}" target="_blank" rel="noopener" title="Voir sur Syngas"><img src="assets/img/synlogo.png" alt="Syngas" class="syngas-logo"></a>` : ''}`;
     const tagsHtml =
         `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +

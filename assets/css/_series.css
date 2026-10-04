@@ -283,7 +283,7 @@
 
 /* ── Scission « Liens » / « Tags » (admin comme public) ──────────────────────
    Deux rangées .series-badges successives : la première (--links) porte les
-   badges de liens externes (MangaUpdates, Babelio, Anilist, éditions
+   badges de liens externes (MangaUpdates, Manga News, Anilist, éditions
    physiques), la seconde (--tags) tout le reste (statut, notation, mature…).
    Une rangée --links vide (aucun lien connu) ne réserve aucun espace :
    :empty s'applique bien ici, tous ses enfants étant des expressions

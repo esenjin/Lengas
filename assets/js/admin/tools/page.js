@@ -62,9 +62,9 @@ const modals = {
         modal:    document.getElementById('add-mu-url-modal'),
         closeBtn: document.getElementById('close-add-mu-url-modal')
     },
-    'add-babelio-url': {
-        modal:    document.getElementById('add-babelio-url-modal'),
-        closeBtn: document.getElementById('close-add-babelio-url-modal')
+    'add-manganews-url': {
+        modal:    document.getElementById('add-manganews-url-modal'),
+        closeBtn: document.getElementById('close-add-manganews-url-modal')
     }
 };
 

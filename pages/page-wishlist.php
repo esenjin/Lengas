@@ -11,6 +11,7 @@ require 'includes/themes.php';
 require_once 'includes/opengraph.php';
 require_once 'includes/anilist.php';
 require 'includes/mangaupdates.php'; // pour le réchauffage de cache après « Ajouter à la collection » (manga)
+require_once 'includes/babengas.php'; // validation/normalisation de l'URL Manga News (manganews_normalize_url)
 require 'fonctions/series.php';
 require 'fonctions/volumes.php';
 require 'fonctions/anime.php';
@@ -139,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $categories         = trim($_POST['categories'] ?? '');
         $genres             = trim($_POST['genres'] ?? '');
         $mangaupdates_url   = trim($_POST['mangaupdates_url'] ?? '');
-        $babelio_url        = trim($_POST['babelio_url'] ?? '');
+        $manganews_url        = trim($_POST['manganews_url'] ?? '');
         $mature             = !empty($_POST['mature']);
         $favorite           = !empty($_POST['favorite']);
         $volumes_count      = (int)($_POST['volumes_count'] ?? 1);
@@ -181,13 +182,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        // URL Manga News facultative : validée et normalisée vers la fiche série.
+        if ($manganews_url !== '') {
+            $mn_norm = manganews_normalize_url($manganews_url);
+            if ($mn_norm === null) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'URL Manga News invalide (attendu : https://www.manga-news.com/index.php/serie/Nom-de-la-serie).']);
+                exit;
+            }
+            $manganews_url = $mn_norm;
+        }
+
         $series_fields = [
             'name'               => $name,
             'contributors'       => $contributors,
             'categories'         => $categories,
             'genres'             => $genres,
             'mangaupdates_url'   => $mangaupdates_url,
-            'babelio_url'        => $babelio_url,
+            'manganews_url'        => $manganews_url,
             'mature'             => $mature,
             'favorite'           => $favorite,
             'volumes_count'      => $volumes_count,
@@ -500,9 +512,9 @@ $move_candidates = array_map(function ($s) {
                     <p>URL MangaUpdates :</p>
                     <input type="text" name="mangaupdates_url" id="asfw-mangaupdates-url" placeholder="https://www.mangaupdates.com/series/xxxxxxx/nom-de-la-serie (facultatif)" autocomplete="off">
                     <p class="hint"><a tabindex="0" data-hint="L'URL MangaUpdates sert à détecter les tomes manquants des séries terminées (outil « Séries incomplètes »). Sur mangaupdates.com, ouvrez la fiche de votre série puis copiez l'URL complète. L'outil « Associer MangaUpdates » (modale Outils) peut aussi remplir ce champ automatiquement.">À quoi ça sert ? Où la trouver ?</a></p>
-                    <p>URL Babelio :</p>
-                    <input type="text" name="babelio_url" id="asfw-babelio-url" placeholder="https://www.babelio.com/serie/… (ou …/livres/… pour un one-shot)" autocomplete="off">
-                    <p class="hint"><a tabindex="0" data-hint="L'URL Babelio permet de connaître le nombre de tomes réellement parus en France, via le service Babengas (onglet « Vérification Babelio » de la page Outils). Sur babelio.com, ouvrez la fiche SÉRIE (adresse en /serie/…) et copiez l'URL complète. Pour un one-shot (un seul tome, sans fiche série), collez l'adresse de la fiche du tome (/livres/…).">À quoi ça sert ? Où la trouver ?</a></p>
+                    <p>URL Manga News :</p>
+                    <input type="text" name="manganews_url" id="asfw-manganews-url" placeholder="https://www.manga-news.com/index.php/serie/Nom-de-la-serie" autocomplete="off">
+                    <p class="hint"><a tabindex="0" data-hint="L'URL Manga News permet de connaître le nombre de tomes réellement parus en France et le statut de publication de l'édition française, via le service Babengas (outil « Vérification via Babengas » de la page Outils). Sur manga-news.com, ouvrez la fiche de la série (adresse en /serie/Nom-de-la-serie) et copiez l'URL complète.">À quoi ça sert ? Où la trouver ?</a></p>
                     <label>
                         <input type="checkbox" name="mature" id="asfw-mature"> Contenu mature 🔞
                     </label>

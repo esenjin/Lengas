@@ -1125,7 +1125,7 @@ html:has(body.modal-open) {
 }
 
 /* Le nom de la série occupe l'espace disponible, les badges/boutons suivants
-   (MU, Babelio, Modifier) se tassent à droite sans jamais s'écraser entre
+   (MU, Manga News, Modifier) se tassent à droite sans jamais s'écraser entre
    eux, même à plusieurs sur la même ligne. */
 .coherence-series-name > span:first-child {
     flex: 1 1 auto;

@@ -380,7 +380,7 @@ function add_series_from_wishlist(array $data, array $wishlist, int $index, arra
         $series_fields['categories'],
         $series_fields['genres'],
         $series_fields['mangaupdates_url'],
-        $series_fields['babelio_url'],
+        $series_fields['manganews_url'],
         $series_fields['mature'],
         $series_fields['favorite'],
         $series_fields['volumes_count'],

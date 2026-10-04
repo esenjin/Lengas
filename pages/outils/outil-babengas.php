@@ -1,7 +1,7 @@
 <?php
 // ────────────────────────────────────────────────────────────────────────────
 // pages/outils/outil-babengas.php — Outil « Vérification via Babengas »
-// (nombre de tomes réellement parus en France, via Babelio)
+// (nombre de tomes réellement parus en France, via Manga News)
 //
 // Cette page n'a de sens que si Babengas est configuré et activé. Elle reste
 // accessible directement (l'utilisateur peut avoir l'URL en favori), mais
@@ -36,11 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
             $response = babengas_cancel_current();
             break;
 
-        case 'babelio_associate_save':
+        case 'manganews_associate_save':
             // Format attendu : associations[series_id] = url
             $assoc = $_POST['associations'] ?? [];
             if (!is_array($assoc)) $assoc = [];
-            $response = babelio_save_associations($data, $assoc);
+            $response = manganews_save_associations($data, $assoc);
             break;
     }
 
@@ -50,21 +50,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tool_action'])) {
 }
 
 $tool_title    = 'Vérification via Babengas';
-$tool_subtitle = 'Nombre de tomes réellement parus en France, via Babelio.';
+$tool_subtitle = 'Nombre de tomes réellement parus en France, via Manga News.';
 require __DIR__ . '/_layout_head.php';
 ?>
 
         <div class="tools-section">
             <h2>Vérification via Babengas</h2>
-            <p>Cet outil interroge <strong>Babelio</strong> — via votre service Babengas — pour connaître le nombre de tomes <strong>réellement parus en France</strong>. Là où MangaUpdates se base surtout sur l'édition d'origine, Babelio couvre bien mieux les sorties VF : en cas de divergence, c'est ce décompte qui fait foi.</p>
+            <p>Cet outil interroge <strong>Manga News</strong> — via votre service Babengas — pour connaître le nombre de tomes <strong>réellement parus en France</strong> et le statut de publication de l'édition française. Là où MangaUpdates se base surtout sur l'édition d'origine, Manga News couvre bien mieux les sorties VF : en cas de divergence, c'est ce décompte qui fait foi.</p>
 
-            <p class="hint">⏱️ Le traitement est <strong>asynchrone et lent, volontairement</strong>, par courtoisie envers leurs serveurs. Comptez environ cinq minutes par série. Vous pouvez fermer cette page sans interrompre la campagne : le suivi reprendra à votre retour.</p>
-            <p class="hint">Sont exclues du ciblage les séries dont la publication est figée (terminée, en pause ou abandonnée) et celles possédant un tome tagué « dernier tome » : elles n'ont plus rien à apprendre de Babelio. Les séries vérifiées il y a moins de 30 jours sont ignorées, sauf si un tome a été ajouté depuis. Les one-shots (fiche de tome Babelio) sont vérifiés localement, sans passer par le service.</p>
+            <p class="hint">⏱️ Le traitement est <strong>asynchrone et volontairement espacé</strong>, par courtoisie envers leurs serveurs. Comptez environ 120 séries par heure (une toutes les 30 secondes). Vous pouvez fermer cette page sans interrompre la campagne : le suivi reprendra à votre retour.</p>
+            <p class="hint">Sont exclues du ciblage les séries possédant un tome tagué « dernier tome » et celles que Manga News indique comme terminées en VF et que vous possédez en entier : elles n'ont plus rien à apprendre. Les séries vérifiées il y a moins de 30 jours sont ignorées, sauf si un tome a été ajouté depuis.</p>
 
             <div class="tools-actions">
                 <button id="babengas-launch" class="button">Lancer une campagne</button>
                 <button id="babengas-launch-all" class="button button-opt" title="Vérifie toutes les séries éligibles, y compris celles contrôlées il y a moins de 30 jours (les séries avec un tome tagué « dernier » restent exclues)">Forcer les séries éligibles</button>
-                <button id="babengas-launch-force" class="button button-opt" title="Vérifie l'intégralité des séries ayant une URL de fiche série Babelio, sans aucune exception (y compris celles avec un tome tagué « dernier »)">Forcer toutes les séries</button>
+                <button id="babengas-launch-force" class="button button-opt" title="Vérifie l'intégralité des séries ayant une URL Manga News, sans aucune exception (y compris celles avec un tome tagué « dernier »)">Forcer toutes les séries</button>
                 <button id="babengas-cancel" class="button button-opt" style="display:none;">Annuler la campagne</button>
             </div>
 
@@ -73,7 +73,7 @@ require __DIR__ . '/_layout_head.php';
         </div>
 
 <?php
-$tm_add_babelio_url = true;
+$tm_add_manganews_url = true;
 require __DIR__ . '/_tools-modals.php';
 
 $tool_scripts = ['babengas.js'];

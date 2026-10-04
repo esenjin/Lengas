@@ -1,11 +1,12 @@
 <?php
 // ──────────────────────────────────────────────────────────────────────────────
-// includes/babengas.php — Intégration du microservice Babengas (données Babelio)
+// includes/babengas.php — Intégration du microservice Babengas (données Manga News)
 //
 // Babengas est un microservice Docker tournant sur un homelab (IP résidentielle)
-// qui interroge Babelio pour connaître le nombre de tomes VF RÉELLEMENT PARUS
-// d'une série. Babelio référençant les tomes AVANT leur sortie, Babengas corrige
-// le décompte en vérifiant les dates de parution.
+// qui interroge Manga News pour connaître le nombre de tomes VF RÉELLEMENT PARUS
+// d'une série, ainsi que son statut de publication. Une seule page par série
+// suffit : la fiche Manga News porte le décompte VF, le statut VF/VO et les
+// dates de sortie.
 //
 // L'intégration est ENTIÈREMENT FACULTATIVE (même principe que Vestikan) :
 // sans les trois options `babengas_url`, `babengas_key` et `babengas_enabled`,
@@ -14,12 +15,14 @@
 // Contrat API consommé (header X-Babengas-Key sauf /sante) :
 //   GET    /sante            → état du service
 //   POST   /campagne         → crée une campagne, retourne un campagne_id
-//   GET    /campagne/{id}    → avancement + résultats
+//   GET    /campagne/{id}    → avancement + résultats (nb_tomes, nb_reference,
+//                              statut_vf, statut_vo, …)
 //   DELETE /campagne/{id}    → annule
 //
-// ⚠️ Babengas ne remonte PAS le statut de publication : celui de Babelio affiche
-// « En cours » y compris sur des séries terminées depuis des années. Le statut
-// reste du ressort de MangaUpdates ou d'une saisie manuelle.
+// Le statut de publication VF de Manga News est jugé fiable : il est conservé
+// dans le cache (colonnes statut_vf / statut_vo) et fait foi pour l'édition
+// française. MangaUpdates reste la référence pour les genres et titres
+// alternatifs.
 // ──────────────────────────────────────────────────────────────────────────────
 
 // ── Configuration ─────────────────────────────────────────────────────────────
@@ -43,53 +46,50 @@ function babengas_enabled(): bool {
     return babengas_url() !== '' && babengas_key() !== '';
 }
 
-// ── Validation des URL Babelio ────────────────────────────────────────────────
+// ── Validation des URL Manga News ─────────────────────────────────────────────
 //
-// Deux formes d'URL sont acceptées, qui ne se traitent PAS de la même façon :
-//
-//   • Fiche SÉRIE  (/serie/SLUG/ID)  → envoyée à Babengas, qui lit le bloc
-//     « Série de N livres » pour compter les tomes VF parus.
-//
-//   • Fiche TOME   (/livres/SLUG/ID) → cas des one-shots. Un one-shot n'a pas
-//     de fiche série sur Babelio, seulement la fiche de son unique tome.
-//     Babengas ne saurait rien en faire (il cherche un bloc « Série de N
-//     livres » qui n'existe pas) : on ne la lui envoie donc jamais. Lengas la
-//     traite localement — une fiche de tome vaut un seul tome paru.
+// Seules les fiches SÉRIE VF sont acceptées : /index.php/serie/Nom-de-la-serie
+// (le « /index.php » est facultatif). Les sous-pages d'une série
+// (/serie/critique/Nom, /serie/editions/Nom…) sont acceptées et ramenées à la
+// fiche principale. Les fiches VO (/serie-vo/…) et les fiches de tome
+// (/manga/…/vol-N) sont refusées — comme le fait Babengas (url_invalide).
+// Les one-shots ont, sur Manga News, une fiche série comme les autres.
 
-// Extrait l'ID d'une fiche SÉRIE : /serie/SLUG/54358 → "54358". null sinon.
-function babelio_serie_id_from_url(string $url): ?string {
+// Sous-pages d'une fiche série (même liste que Babengas, src/MangaNews.php).
+const MANGANEWS_SOUS_PAGES = 'critique|news|video|infos|editions|editionsVo|images|personnages|avis';
+
+// Extrait le slug d'une fiche série : …/serie/March-comes-in-like-a-lion →
+// "March-comes-in-like-a-lion". null si l'URL n'est pas une fiche série.
+function manganews_serie_slug_from_url(string $url): ?string {
     $url = trim($url);
     if ($url === '') return null;
-    if (preg_match('#babelio\.com/serie/[^/]+/(\d+)#i', $url, $m)) {
-        return $m[1];
+    if (!preg_match('#^https?://(?:www\.)?manga-news\.com(?::\d+)?/#i', $url)) return null;
+
+    $chemin = (string)parse_url($url, PHP_URL_PATH);
+    if (preg_match('#/(?:index\.php/)?serie/(?:(?:' . MANGANEWS_SOUS_PAGES . ')/)?([^/?\#\s]+)/?$#', $chemin, $m)) {
+        $slug = rawurldecode($m[1]);
+        return $slug !== '' ? $slug : null;
     }
     return null;
 }
 
-// Extrait l'ID d'une fiche TOME : /livres/SLUG/1883854 → "1883854". null sinon.
-function babelio_livre_id_from_url(string $url): ?string {
-    $url = trim($url);
-    if ($url === '') return null;
-    if (preg_match('#babelio\.com/livres/[^/]+/(\d+)#i', $url, $m)) {
-        return $m[1];
-    }
-    return null;
+// URL canonique de la fiche d'une série, depuis son slug.
+// Les « : » du slug sont conservés tels quels : le site les emploie ainsi
+// dans ses propres liens (ex. Re:zero).
+function manganews_url_from_slug(string $slug): string {
+    return 'https://www.manga-news.com/index.php/serie/' . str_replace('%3A', ':', rawurlencode($slug));
 }
 
-// L'URL est-elle une fiche SÉRIE ? (celle que Babengas sait traiter)
-function babelio_is_serie_url(string $url): bool {
-    return babelio_serie_id_from_url($url) !== null;
+// L'URL est-elle une fiche série exploitable ?
+function manganews_url_is_valid(string $url): bool {
+    return manganews_serie_slug_from_url($url) !== null;
 }
 
-// L'URL est-elle une fiche TOME ? (one-shot, traité localement)
-function babelio_is_livre_url(string $url): bool {
-    return babelio_livre_id_from_url($url) !== null;
-}
-
-// L'URL est-elle exploitable, quelle que soit sa forme (série OU tome) ?
-// C'est le contrôle à utiliser partout où l'on valide une saisie utilisateur.
-function babelio_url_is_valid(string $url): bool {
-    return babelio_is_serie_url($url) || babelio_is_livre_url($url);
+// Ramène une URL valide à sa forme canonique (fiche principale, sans
+// paramètres ni sous-page). null si l'URL n'est pas valide.
+function manganews_normalize_url(string $url): ?string {
+    $slug = manganews_serie_slug_from_url($url);
+    return $slug === null ? null : manganews_url_from_slug($slug);
 }
 
 // ── Requête cURL vers Babengas ────────────────────────────────────────────────
@@ -257,38 +257,53 @@ function babengas_cancel_campaign(string $campagne_id): array {
     return ['ok' => $res['ok'], 'error' => $res['error']];
 }
 
-// ── Cache SQLite des décomptes Babelio ────────────────────────────────────────
+// ── Cache SQLite des décomptes Manga News ─────────────────────────────────────
 // TTL de 30 jours, aligné sur le seuil de rafraîchissement des campagnes.
 // Les échecs ne sont JAMAIS mis en cache : la série sera retentée à la campagne
-// suivante, et l'ancienne valeur est conservée.
+// suivante, et l'ancienne valeur est conservée. De même, un statut absent
+// (null) n'écrase jamais un statut déjà connu.
+// La clé du cache est le slug Manga News de la série (texte).
 
-if (!defined('BABELIO_CACHE_TTL')) {
-    define('BABELIO_CACHE_TTL', 30 * 24 * 3600); // 30 jours
+if (!defined('BABENGAS_CACHE_TTL')) {
+    define('BABENGAS_CACHE_TTL', 30 * 24 * 3600); // 30 jours
 }
 
 // Écriture d'un décompte validé. $nb_tomes null → on n'écrase rien.
-function babelio_cache_store(string $serie_id, string $url, ?int $nb_tomes, ?int $nb_reference, bool $incertain = false): void {
+function babengas_cache_store(string $serie_id, string $url, ?int $nb_tomes, ?int $nb_reference, ?string $statut_vf = null, ?string $statut_vo = null, bool $incertain = false): void {
     $serie_id = trim($serie_id);
     if ($serie_id === '') return;
 
     // Un décompte non fiable ne doit jamais écraser une valeur existante.
     if ($nb_tomes === null || $incertain) return;
 
+    $statut_vf = ($statut_vf !== null && trim($statut_vf) !== '') ? trim($statut_vf) : null;
+    $statut_vo = ($statut_vo !== null && trim($statut_vo) !== '') ? trim($statut_vo) : null;
+
     get_db()->prepare("
-        INSERT OR REPLACE INTO babelio_cache
-            (serie_id, url, nb_tomes, nb_reference, incertain, erreur, timestamp)
-        VALUES (?, ?, ?, ?, 0, NULL, ?)
-    ")->execute([$serie_id, $url, $nb_tomes, $nb_reference, time()]);
+        INSERT INTO babengas_cache
+            (serie_id, url, nb_tomes, nb_reference, statut_vf, statut_vo, incertain, erreur, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, 0, NULL, ?)
+        ON CONFLICT(serie_id) DO UPDATE SET
+            url          = excluded.url,
+            nb_tomes     = excluded.nb_tomes,
+            nb_reference = excluded.nb_reference,
+            statut_vf    = COALESCE(excluded.statut_vf, babengas_cache.statut_vf),
+            statut_vo    = COALESCE(excluded.statut_vo, babengas_cache.statut_vo),
+            incertain    = 0,
+            erreur       = NULL,
+            timestamp    = excluded.timestamp
+    ")->execute([$serie_id, $url, $nb_tomes, $nb_reference, $statut_vf, $statut_vo, time()]);
 }
 
 // Lecture du cache. $max_age = 0 → ignore l'âge.
-// Retourne ['nb_tomes'=>int,'nb_reference'=>int|null,'timestamp'=>int] ou null.
-function babelio_get_cached(string $serie_id, int $max_age = 0): ?array {
+// Retourne ['nb_tomes'=>int,'nb_reference'=>int|null,'statut_vf'=>string|null,
+//           'statut_vo'=>string|null,'timestamp'=>int] ou null.
+function babengas_get_cached(string $serie_id, int $max_age = 0): ?array {
     $serie_id = trim($serie_id);
     if ($serie_id === '') return null;
 
     $stmt = get_db()->prepare(
-        "SELECT nb_tomes, nb_reference, incertain, timestamp FROM babelio_cache WHERE serie_id = ?"
+        "SELECT nb_tomes, nb_reference, statut_vf, statut_vo, incertain, timestamp FROM babengas_cache WHERE serie_id = ?"
     );
     $stmt->execute([$serie_id]);
     $row = $stmt->fetch();
@@ -300,33 +315,50 @@ function babelio_get_cached(string $serie_id, int $max_age = 0): ?array {
     return [
         'nb_tomes'     => (int)$row['nb_tomes'],
         'nb_reference' => $row['nb_reference'] !== null ? (int)$row['nb_reference'] : null,
+        'statut_vf'    => $row['statut_vf'] !== null && $row['statut_vf'] !== '' ? (string)$row['statut_vf'] : null,
+        'statut_vo'    => $row['statut_vo'] !== null && $row['statut_vo'] !== '' ? (string)$row['statut_vo'] : null,
         'timestamp'    => (int)$row['timestamp'],
     ];
 }
 
-// Décompte Babelio d'une série de la collection, depuis son URL (cache seul —
+// Décompte Manga News d'une série de la collection, depuis son URL (cache seul —
 // aucun appel réseau : les données viennent des campagnes Babengas).
-function babelio_get_volumes_for_url(string $url, int $max_age = BABELIO_CACHE_TTL): ?array {
-    $sid = babelio_serie_id_from_url($url);
+function manganews_get_volumes_for_url(string $url, int $max_age = BABENGAS_CACHE_TTL): ?array {
+    $sid = manganews_serie_slug_from_url($url);
     if ($sid === null) return null;
-    return babelio_get_cached($sid, $max_age);
+    return babengas_get_cached($sid, $max_age);
 }
+
+// Libellé lisible d'un statut de publication renvoyé par Babengas.
+// Valeurs connues : en_cours, termine ; toute autre valeur (ex. « arrete »)
+// est affichée telle quelle, sans accent ni majuscule, plutôt que masquée.
+function babengas_statut_label(?string $statut): string {
+    if ($statut === null || $statut === '') return '';
+    switch ($statut) {
+        case 'en_cours': return 'En cours';
+        case 'termine':  return 'Terminé';
+        case 'arrete':   return 'Arrêté';
+        default:         return ucfirst(str_replace('_', ' ', $statut));
+    }
+}
+
 
 // ── Ciblage des séries à rafraîchir ───────────────────────────────────────────
 // Critères :
-//   • URL Babelio de SÉRIE renseignée et valide (les fiches de tome — one-shots
-//     — sont traitées localement, pas par Babengas : voir babengas_local_oneshots)
-//   • EXCLURE les séries possédant un tome tagué « dernier tome ». C'est le SEUL
-//     critère d'exclusion : le statut de publication n'entre PAS en compte.
-//     Une série peut être terminée de publier tout en étant incomplète dans la
-//     collection ; on veut justement savoir ce qu'il manque pour la finaliser.
+//   • URL Manga News de série renseignée et valide
+//   • EXCLURE les séries possédant un tome tagué « dernier tome » : elles n'ont
+//     plus rien à apprendre de Manga News.
 //   • EXCLURE celles vérifiées il y a moins d'un mois ET sans tome ajouté depuis
+//   • EXCLURE celles dont le dernier statut VF connu est « terminé » ET qui sont
+//     complètes dans la collection (autant de tomes que le décompte en cache,
+//     voire plus) : inutile de les réinterroger. Un tome ajouté depuis ne change
+//     rien à cette règle : la série est déjà complète.
 //
-// $all = true → ignore les critères d'ancienneté (mais garde l'exclusion du
-// « dernier tome », seule série n'ayant plus rien à apprendre de Babelio).
+// $all = true → ignore les critères d'ancienneté et de statut (mais garde
+// l'exclusion du « dernier tome »).
 //
 // $force = true → vérifie VRAIMENT toutes les séries sans exception : ignore
-// à la fois l'ancienneté ET l'exclusion du « dernier tome ». Utilisé par le
+// l'ancienneté, le statut ET l'exclusion du « dernier tome ». Utilisé par le
 // bouton « Forcer toutes les séries ». Implique $all.
 
 function babengas_targets(array $data, bool $all = false, bool $force = false): array {
@@ -334,19 +366,18 @@ function babengas_targets(array $data, bool $all = false, bool $force = false): 
     $targets = [];
 
     foreach ($data as $series) {
-        $url = trim((string)($series['babelio_url'] ?? ''));
+        $url = trim((string)($series['manganews_url'] ?? ''));
         if ($url === '') continue;
 
-        // Seules les fiches SÉRIE partent à Babengas. Une fiche de tome
-        // (one-shot) ne serait pas exploitable par le service.
-        if (!babelio_is_serie_url($url)) continue;
+        // Seules les fiches série valides partent à Babengas (il refuserait le
+        // reste en « url_invalide »).
+        if (!manganews_url_is_valid($url)) continue;
 
-        // Exclusion : un tome est tagué « dernier tome ». C'est le SEUL critère
-        // qui écarte une série. Le statut de publication n'entre pas en compte :
-        // une série peut être « terminée » côté publication mais incomplète dans
-        // la collection, et l'on veut alors savoir ce qu'il manque pour la finir.
-        // En mode $force, on lève même cette exclusion : toutes les séries avec
-        // une URL Babelio de série valide sont envoyées, sans aucune exception.
+        // Exclusion : un tome est tagué « dernier tome ». Le statut de
+        // publication n'entre pas en compte ici : une série peut être
+        // « terminée » côté publication mais incomplète dans la collection, et
+        // l'on veut alors savoir ce qu'il manque pour la finir. En mode $force,
+        // on lève même cette exclusion.
         if (!$force) {
             $has_last = false;
             foreach ($series['volumes'] ?? [] as $v) {
@@ -356,14 +387,20 @@ function babengas_targets(array $data, bool $all = false, bool $force = false): 
         }
 
         if (!$all) {
-            $sid    = babelio_serie_id_from_url($url);
-            $cached = $sid !== null ? babelio_get_cached($sid, 0) : null;
+            $sid    = manganews_serie_slug_from_url($url);
+            $cached = $sid !== null ? babengas_get_cached($sid, 0) : null;
 
             if ($cached !== null) {
+                // Terminée côté VF et complète chez soi : rien de plus à apprendre.
+                if ($cached['statut_vf'] === 'termine'
+                    && count($series['volumes'] ?? []) >= (int)$cached['nb_tomes']) {
+                    continue;
+                }
+
                 $age = time() - (int)$cached['timestamp'];
                 // Vérifiée il y a moins d'un mois : on passe, sauf si un tome a
                 // été ajouté depuis la dernière vérification.
-                if ($age < BABELIO_CACHE_TTL && !babengas_volume_added_since($series, (int)$cached['timestamp'])) {
+                if ($age < BABENGAS_CACHE_TTL && !babengas_volume_added_since($series, (int)$cached['timestamp'])) {
                     continue;
                 }
             }
@@ -391,7 +428,7 @@ function babengas_volume_added_since(array $series, int $since): bool {
     return false;
 }
 
-// ── Séries incomplètes connues via le cache Babelio ───────────────────────────
+// ── Séries incomplètes connues via le cache Manga News ────────────────────────
 // Une campagne ne renvoie QUE les séries qu'elle a (re)vérifiées. Les séries
 // déjà connues comme incomplètes, mais vérifiées récemment (donc écartées du
 // ciblage), disparaîtraient sinon du rapport, donnant une vue partielle de ce
@@ -420,37 +457,36 @@ function babengas_cached_incomplete(array $data, array $exclude_ids = []): array
         $series['author']    = series_contributors_names_text($series, 'auteur');
         $series['publisher'] = series_contributors_names_text($series, 'editeur');
 
-        $url = trim((string)($series['babelio_url'] ?? ''));
+        $url = trim((string)($series['manganews_url'] ?? ''));
         if ($url === '') continue;
-
-        // Seules les fiches SÉRIE ont un décompte en cache (les one-shots sont
-        // résolus localement, voir babengas_local_oneshots).
-        if (!babelio_is_serie_url($url)) continue;
+        if (!manganews_url_is_valid($url)) continue;
 
         // Même exclusion que le ciblage : un « dernier tome » posé → série
-        // considérée finalisée, rien à signaler. Le statut n'entre pas en compte.
+        // considérée finalisée, rien à signaler.
         $has_last = false;
         foreach ($series['volumes'] ?? [] as $v) {
             if (!empty($v['last'])) { $has_last = true; break; }
         }
         if ($has_last) continue;
 
-        $sid = babelio_serie_id_from_url($url);
+        $sid = manganews_serie_slug_from_url($url);
         if ($sid === null) continue;
 
         // Cache seul (aucun appel réseau). $max_age = 0 → on accepte toute
         // valeur en cache, quelle que soit son ancienneté : c'est justement le
         // décompte déjà connu que l'on veut réafficher.
-        $cached = babelio_get_cached($sid, 0);
+        $cached = babengas_get_cached($sid, 0);
         if ($cached === null) continue;
 
         $nb_tomes = (int)$cached['nb_tomes'];
         $nb_ref   = $cached['nb_reference'];
         $owned    = count($series['volumes'] ?? []);
 
-        $series['ref_volumes_source'] = 'babelio';
+        $series['ref_volumes_source'] = 'manganews';
         $series['ref_volumes']        = $nb_tomes;
         $series['ref_reference']      = $nb_ref;
+        $series['statut_vf']          = $cached['statut_vf'];
+        $series['statut_vo']          = $cached['statut_vo'];
         $series['from_cache']         = true;
 
         if ($owned < $nb_tomes) {
@@ -469,10 +505,14 @@ function babengas_cached_incomplete(array $data, array $exclude_ids = []): array
     return ['incomplete' => $incomplete];
 }
 
+
 // ── Intégration des résultats d'une campagne ──────────────────────────────────
-// Écrit en cache les décomptes fiables, laisse les échecs intacts (l'ancienne
-// valeur et l'ancien timestamp sont conservés) et retourne un rapport prêt à
-// être affiché : séries incomplètes, en surplus, en échec.
+// Écrit en cache les décomptes fiables (et les statuts VF/VO), laisse les échecs
+// intacts (l'ancienne valeur et l'ancien timestamp sont conservés) et retourne
+// un rapport prêt à être affiché : séries incomplètes, en surplus, en échec.
+//
+// Règle de traitement : mise à jour seulement si statut = « fait » ET
+// incertain = false ; sinon on n'écrase rien et on affiche le motif.
 //
 // $resultats = tableau renvoyé par GET /campagne/{id} (clé « resultats »).
 function babengas_integrate_results(array $data, array $resultats): array {
@@ -504,36 +544,40 @@ function babengas_integrate_results(array $data, array $resultats): array {
 
         $nb_tomes  = isset($r['nb_tomes'])  && $r['nb_tomes']  !== null ? (int)$r['nb_tomes']  : null;
         $nb_ref    = isset($r['nb_reference']) && $r['nb_reference'] !== null ? (int)$r['nb_reference'] : null;
+        $statut_vf = isset($r['statut_vf']) && $r['statut_vf'] !== null && $r['statut_vf'] !== '' ? (string)$r['statut_vf'] : null;
+        $statut_vo = isset($r['statut_vo']) && $r['statut_vo'] !== null && $r['statut_vo'] !== '' ? (string)$r['statut_vo'] : null;
         $incertain = !empty($r['incertain']);
         $erreur    = $r['erreur'] ?? null;
 
         // ── Échec ou décompte non fiable : on n'écrase rien ────────────────────
         if ($statut === 'echec' || $nb_tomes === null || $incertain) {
             $failed[] = [
-                'id'          => $series['id'],
-                'name'        => $series['name'],
-                'author'      => series_contributors_names_text($series, 'auteur'),
-                'ref'         => 'babelio',
-                'reason'      => babengas_error_message($erreur !== null ? (string)$erreur : ($incertain ? 'incertain' : '')),
-                'erreur'      => $erreur,
-                'babelio_url' => $series['babelio_url'] ?? '',
+                'id'            => $series['id'],
+                'name'          => $series['name'],
+                'author'        => series_contributors_names_text($series, 'auteur'),
+                'ref'           => 'manganews',
+                'reason'        => babengas_error_message($erreur !== null ? (string)$erreur : ($incertain ? 'incertain' : '')),
+                'erreur'        => $erreur,
+                'manganews_url' => $series['manganews_url'] ?? '',
                 'read_elsewhere' => !empty($series['read_elsewhere']),
             ];
             continue;
         }
 
-        // ── Succès : mise en cache du décompte ────────────────────────────────
-        $sid = babelio_serie_id_from_url((string)($series['babelio_url'] ?? ''));
+        // ── Succès : mise en cache du décompte et des statuts ─────────────────
+        $sid = manganews_serie_slug_from_url((string)($series['manganews_url'] ?? ''));
         if ($sid !== null) {
-            babelio_cache_store($sid, (string)$series['babelio_url'], $nb_tomes, $nb_ref, false);
+            babengas_cache_store($sid, (string)$series['manganews_url'], $nb_tomes, $nb_ref, $statut_vf, $statut_vo, false);
         }
         $ok_count++;
 
         $owned = count($series['volumes'] ?? []);
-        $series['ref_volumes_source'] = 'babelio';
+        $series['ref_volumes_source'] = 'manganews';
         $series['ref_volumes']        = $nb_tomes;
         $series['ref_reference']      = $nb_ref;
-        $series['babelio_title']      = (string)($r['message'] ?? '');
+        $series['statut_vf']          = $statut_vf;
+        $series['statut_vo']          = $statut_vo;
+        $series['manganews_title']    = (string)($r['message'] ?? '');
 
         if ($owned < $nb_tomes) {
             $missing = [];
@@ -555,89 +599,19 @@ function babengas_integrate_results(array $data, array $resultats): array {
     ];
 }
 
-// ── One-shots (fiche de TOME) : décompte local, sans Babengas ─────────────────
-// Un one-shot n'a pas de fiche série sur Babelio, seulement la fiche de son
-// unique tome. Babengas ne saurait rien en faire. On tranche donc localement :
-// une fiche de tome vaut un tome paru. La règle est simple et sûre — un one-shot,
-// par définition, ne comporte qu'un volume.
-//
-// On ne met rien en cache : il n'y a pas de serie_id, et le « décompte » (1)
-// est une constante, pas une donnée à rafraîchir. On applique les mêmes
-// exclusions de statut que pour les séries : une série figée n'a rien à signaler.
-//
-// Retourne les mêmes structures que babengas_integrate_results (incomplete +
-// ok_count), pour un affichage homogène.
-function babengas_local_oneshots(array $data): array {
-    $incomplete = [];
-    $ok_count   = 0;
-
-    foreach ($data as $series) {
-        $url = trim((string)($series['babelio_url'] ?? ''));
-
-        // On ne traite ici QUE les fiches de tome ; les fiches série passent
-        // par Babengas.
-        if ($url === '' || !babelio_is_livre_url($url)) continue;
-
-        // Auteur/éditeur dérivés, mêmes raisons que babengas_cached_incomplete()
-        // plus haut dans ce fichier — $series est ensuite poussée telle
-        // quelle dans $incomplete plus bas.
-        $series['author']    = series_contributors_names_text($series, 'auteur');
-        $series['publisher'] = series_contributors_names_text($series, 'editeur');
-
-        // Même critère que le ciblage Babengas : un « dernier tome » posé →
-        // rien à signaler. Le statut de publication n'entre pas en compte.
-        //
-        // NB : pour un one-shot, l'unique tome est par définition le dernier ;
-        // s'il est possédé et tagué « dernier », la série est déjà finalisée et
-        // ne remonte pas. Le cas utile ici est celui du one-shot manquant.
-        $has_last = false;
-        foreach ($series['volumes'] ?? [] as $v) {
-            if (!empty($v['last'])) { $has_last = true; break; }
-        }
-        if ($has_last) continue;
-
-        $owned    = count($series['volumes'] ?? []);
-        $expected = 1; // un one-shot = un tome
-
-        $ok_count++;
-
-        if ($owned < $expected) {
-            $series['ref_volumes_source'] = 'babelio-oneshot';
-            $series['ref_volumes']        = $expected;
-            $series['ref_reference']      = $expected;
-            $series['missing_volumes']    = [1];
-            $incomplete[] = $series;
-        } elseif ($owned > $expected) {
-            // Plus d'un tome alors que l'URL pointe un one-shot : sans doute une
-            // URL de tome collée sur une vraie série. On le signale.
-            $series['ref_volumes_source'] = 'babelio-oneshot';
-            $series['ref_volumes']        = $expected;
-            $series['ref_reference']      = $expected;
-            $series['has_more_volumes']   = true;
-            $series['missing_volumes']    = [];
-            $incomplete[] = $series;
-        }
-        // else : le one-shot est possédé → rien à signaler
-    }
-
-    return [
-        'incomplete' => $incomplete,
-        'ok_count'   => $ok_count,
-    ];
-}
-
 // Traduit un code d'erreur Babengas en message lisible.
 function babengas_error_message(string $code): string {
     switch ($code) {
-        case 'url_absente':    return 'Aucune fiche Babelio associée';
-        case 'url_invalide':   return 'URL Babelio invalide (attendu : /serie/…)';
-        case 'introuvable':    return 'Fiche introuvable sur Babelio (supprimée ?)';
-        case 'inaccessible':   return 'Babelio inaccessible, réessai à la prochaine campagne';
-        case 'parsing_echoue': return 'Structure de page inattendue — à signaler';
+        case 'url_absente':    return 'Aucune fiche Manga News associée';
+        case 'url_invalide':   return 'URL Manga News invalide (attendu : …/serie/Nom-de-la-serie)';
+        case 'introuvable':    return 'Fiche introuvable sur Manga News (renommée ou supprimée ?)';
+        case 'inaccessible':   return 'Manga News inaccessible, réessai à la prochaine campagne';
+        case 'parsing_echoue': return 'Structure de page inattendue, ou série sans édition VF';
         case 'incertain':      return 'Décompte incertain, vérification manuelle conseillée';
         default:               return $code !== '' ? $code : 'Erreur inconnue';
     }
 }
+
 
 // ── Suivi de la campagne en cours (persisté dans les options) ─────────────────
 // Une seule campagne active à la fois : on stocke son ID pour pouvoir reprendre

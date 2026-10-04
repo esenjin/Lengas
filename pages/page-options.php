@@ -619,11 +619,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
                 <p class="hint">La page <code>historique.php</code>, qui liste jour après jour les tomes lus et épisodes vus (Mangathèque et Animethèque confondues), ne sera pas accessible publiquement. Son lien disparaît aussi du menu latéral public.</p>
 
                 <!-- ══ BABENGAS ══════════════════════════════════════════ -->
-                <h3 class="options-section-title">Babengas (Babelio)</h3>
+                <h3 class="options-section-title">Babengas (Manga News)</h3>
                 <p class="hint">
                     Babengas est un microservice à héberger chez vous (Docker, IP résidentielle)
-                    qui interroge Babelio pour connaître le nombre de tomes <strong>réellement
-                    parus en France</strong>. Il complète MangaUpdates, dont le décompte VF est
+                    qui interroge Manga News pour connaître le nombre de tomes <strong>réellement
+                    parus en France</strong> et le statut de publication de l'édition française
+                    (Babengas 2.0 minimum). Il complète MangaUpdates, dont le décompte VF est
                     souvent absent. Laissez ces champs vides pour désactiver la fonctionnalité :
                     Lengas reste 100 % fonctionnel.
                 </p>

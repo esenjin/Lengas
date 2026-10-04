@@ -131,15 +131,15 @@ function renderCoherences(issues) {
             header.appendChild(muBadge);
         }
 
-        if (item.babelio_url) {
-            const babelioBadge = document.createElement('a');
-            babelioBadge.href = item.babelio_url;
-            babelioBadge.target = '_blank';
-            babelioBadge.rel = 'noopener';
-            babelioBadge.className = 'babelio-badge';
-            babelioBadge.title = 'Voir sur Babelio';
-            babelioBadge.innerHTML = '<img src="../../assets/img/babelogo.png" alt="Babelio" class="babelio-logo">';
-            header.appendChild(babelioBadge);
+        if (item.manganews_url) {
+            const manganewsBadge = document.createElement('a');
+            manganewsBadge.href = item.manganews_url;
+            manganewsBadge.target = '_blank';
+            manganewsBadge.rel = 'noopener';
+            manganewsBadge.className = 'manganews-badge';
+            manganewsBadge.title = 'Voir sur Manga News';
+            manganewsBadge.innerHTML = '<img src="../../assets/img/mnlogo.png" alt="Manga News" class="manganews-logo">';
+            header.appendChild(manganewsBadge);
         }
 
         if (item.series_id) {

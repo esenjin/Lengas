@@ -130,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'detail'           => $is_anime_series ? series_studios_text($found) : series_contributors_names_text($found, 'auteur'),
             'categories'       => $categories,
             'mangaupdates_url' => (string)($found['mangaupdates_url'] ?? ''),
-            'babelio_url'      => (string)($found['babelio_url'] ?? ''),
+            'manganews_url'      => (string)($found['manganews_url'] ?? ''),
             'anilist_url'      => (string)($found['anilist_url'] ?? ''),
             'license_name'     => $license['license_name'] ?? null,
         ],

@@ -295,8 +295,6 @@ function syngasApplyFieldsToAddForm(fields, syngasUid, thumbnailPath, volumesCou
     }
     const muField = document.querySelector('#add-series-modal input[name="mangaupdates_url"]');
     if (muField && fields.mangaupdates_url) muField.value = fields.mangaupdates_url;
-    const babelioField = document.querySelector('#add-series-modal input[name="babelio_url"]');
-    if (babelioField && fields.babelio_url) babelioField.value = fields.babelio_url;
     if (typeof fields.mature === 'boolean') {
         const matureField = document.querySelector('#add-series-modal input[name="mature"]');
         if (matureField) matureField.checked = fields.mature;

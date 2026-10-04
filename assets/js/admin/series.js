@@ -34,8 +34,8 @@ document.addEventListener('click', function(e) {
             document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
             document.getElementById('edit-series-genres').value = series.genres ? series.genres.join(', ') : '';
             document.getElementById('edit-series-mangaupdates-url').value = series.mangaupdates_url || '';
-            const babelioField = document.getElementById('edit-series-babelio-url');
-            if (babelioField) babelioField.value = series.babelio_url || '';
+            const manganewsField = document.getElementById('edit-series-manganews-url');
+            if (manganewsField) manganewsField.value = series.manganews_url || '';
             const editSyngasUid = document.getElementById('edit-series-syngas-uid');
             if (editSyngasUid) editSyngasUid.value = series.syngas_uid || '';
             document.getElementById('edit-series-new-volumes-count').value = 0;

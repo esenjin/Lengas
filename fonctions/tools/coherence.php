@@ -68,14 +68,11 @@ function generate_notifications(array $volumes, ?int $ref_volumes = null): array
 //      la plus haute pour une série liée : c'est la source la plus
 //      spécifiquement pensée pour le suivi VF (section 6.4 du cahier des
 //      charges Syngas).
-//   2. Babengas (décompte VF réellement paru, lu dans le cache Babelio — aucun
-//      appel réseau : les données proviennent des campagnes Babengas).
+//   2. Babengas (décompte VF réellement paru, lu dans le cache Manga News —
+//      aucun appel réseau : les données proviennent des campagnes Babengas).
 //   3. Fallback MangaUpdates (décompte souvent VO), issu du cache pré-chargé.
 //
-// Un one-shot (fiche de TOME Babelio, /livres/…) n'a pas de décompte en cache
-// mais vaut par définition un tome ; on le renseigne localement.
-//
-// Retourne ['volumes'=>int, 'source'=>'syngas'|'babelio'|'babelio-oneshot'|'mangaupdates',
+// Retourne ['volumes'=>int, 'source'=>'syngas'|'manganews'|'mangaupdates',
 //           'source_label'=>string] ou null si aucune référence exploitable.
 function coherence_reference_volumes(array $series, array $mu_cache_map = []): ?array {
     // 1) Syngas (VF mutualisée) — prioritaire, si la série y est liée et
@@ -88,32 +85,24 @@ function coherence_reference_volumes(array $series, array $mu_cache_map = []): ?
         ];
     }
 
-    // 2) Babengas / Babelio (VF) — s'il est configuré et disponible.
+    // 2) Babengas / Manga News (VF) — s'il est configuré et disponible.
     if (!function_exists('babengas_enabled') || babengas_enabled()) {
-        $burl = trim((string)($series['babelio_url'] ?? ''));
+        $burl = trim((string)($series['manganews_url'] ?? ''));
         if ($burl !== '') {
-            // Fiche SÉRIE : décompte VF issu du cache Babelio (campagnes Babengas).
+            // Décompte VF issu du cache Manga News (campagnes Babengas).
             // max_age = 0 → on accepte tout décompte déjà connu, quelle que soit
             // son ancienneté (comme babengas_cached_incomplete) : mieux vaut un
             // décompte VF un peu ancien qu'un fallback VO. Le rafraîchissement
             // reste du ressort des campagnes Babengas.
-            if (function_exists('babelio_get_volumes_for_url')) {
-                $cached = babelio_get_volumes_for_url($burl, 0);
+            if (function_exists('manganews_get_volumes_for_url')) {
+                $cached = manganews_get_volumes_for_url($burl, 0);
                 if ($cached !== null && (int)$cached['nb_tomes'] > 0) {
                     return [
                         'volumes'      => (int)$cached['nb_tomes'],
-                        'source'       => 'babelio',
-                        'source_label' => 'Babelio (VF, via Babengas)',
+                        'source'       => 'manganews',
+                        'source_label' => 'Manga News (VF, via Babengas)',
                     ];
                 }
-            }
-            // Fiche de TOME : one-shot, résolu localement (un tome paru).
-            if (function_exists('babelio_is_livre_url') && babelio_is_livre_url($burl)) {
-                return [
-                    'volumes'      => 1,
-                    'source'       => 'babelio-oneshot',
-                    'source_label' => 'Babelio (one-shot)',
-                ];
             }
         }
     }
@@ -270,12 +259,12 @@ function check_manga_coherence(array $data): array {
         // lecture seule si la série n'y figure pas (URL invalide, échec réseau…).
         //
         // ⚠️ Deux natures de contrôle, deux sources :
-        //   • Le STATUT de publication (en cours / terminé) vient TOUJOURS de
-        //     MangaUpdates : Babengas ne remonte pas le statut (Babelio affiche
-        //     « En cours » même sur des séries terminées).
+        //   • Le STATUT de publication (en cours / terminé) est contrôlé ici
+        //     d'après MangaUpdates (statut_vf de Manga News, bien que fiable pour
+        //     l'édition française, n'est pas encore rapproché du statut saisi).
         //   • Le NOMBRE DE TOMES de référence privilégie Babengas (décompte VF
-        //     réellement paru, via le cache Babelio) et se rabat sur MangaUpdates
-        //     quand Babengas n'a pas de décompte pour cette série.
+        //     réellement paru, via le cache Manga News) et se rabat sur
+        //     MangaUpdates quand Babengas n'a pas de décompte pour cette série.
         if (!empty($series['mangaupdates_url']) && function_exists('mangaupdates_get_id_from_url')) {
             $mu_id = mangaupdates_get_id_from_url($series['mangaupdates_url']);
             if ($mu_id !== null) {
@@ -307,7 +296,7 @@ function check_manga_coherence(array $data): array {
 
         // ── Nombre de tomes de référence : Babengas (VF) prioritaire, sinon MU ──
         // On centralise le décompte de référence via coherence_reference_volumes(),
-        // qui privilégie le cache Babelio (données Babengas, VF réellement parue)
+        // qui privilégie le cache Manga News (données Babengas, VF réellement parue)
         // et se rabat sur MangaUpdates. Le contrôle « vous possédez plus de tomes
         // que la référence » s'appuie ensuite sur cette source, en le mentionnant
         // dans le message pour lever toute ambiguïté.
@@ -330,7 +319,7 @@ function check_manga_coherence(array $data): array {
                 'series'           => $name,
                 'series_id'        => $series['id'],
                 'mangaupdates_url' => $series['mangaupdates_url'] ?? '',
-                'babelio_url'      => $series['babelio_url'] ?? '',
+                'manganews_url'      => $series['manganews_url'] ?? '',
                 'problems'         => $series_issues,
             ];
         }

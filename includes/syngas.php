@@ -548,7 +548,6 @@ function syngas_map_to_lengas_fields(array $syngas_series, $local_categories = [
     // faux changement à chaque comparaison (outil de synchronisation).
     $set_if_not_empty('status', syngas_status_to_lengas((string)($syngas_series['status'] ?? '')));
     $set_if_not_empty('mangaupdates_url', $syngas_series['mangaupdates_url'] ?? null);
-    $set_if_not_empty('babelio_url', $syngas_series['babelio_url'] ?? null);
 
     if (isset($syngas_series['mature'])) {
         $fields['mature'] = (bool)$syngas_series['mature'];
@@ -771,7 +770,6 @@ function syngas_submit_series(array $series, int $timeout = 15): array {
                                   : (string)($series['genres'] ?? ''),
         'status'             => syngas_status_from_lengas((string)($series['status'] ?? '')),
         'mangaupdates_url'   => (string)($series['mangaupdates_url'] ?? ''),
-        'babelio_url'        => (string)($series['babelio_url'] ?? ''),
         'mature'             => (bool)($series['mature'] ?? false),
     ];
 
@@ -837,7 +835,7 @@ function syngas_submit_series(array $series, int $timeout = 15): array {
 // fiche Syngas actuelle (le diff est calculé par l'appelant — voir
 // syngas_sync_send_updates_targets() dans fonctions/tools/syngas.php —
 // jamais recalculé ici) ; mêmes clés que syngas_submit_series() (name,
-// contributors, genres, status, mangaupdates_url, babelio_url, mature,
+// contributors, genres, status, mangaupdates_url, mature,
 // volumes_count). $thumbnail_changed : si true, la vignette locale actuelle est jointe en tant que thumbnail_source_url (même
 // principe et mêmes contraintes que syngas_submit_series() — voir sa note
 // détaillée sur og_absolute_url()).

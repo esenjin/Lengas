@@ -467,7 +467,7 @@ function renderSeriesDetailBody(s) {
 
     const badges = [];
     if (s.mangaupdates_url) badges.push(`<a href="${grpEscAttr(s.mangaupdates_url)}" target="_blank" rel="noopener" class="mu-badge" title="Voir la fiche sur MangaUpdates"><img src="../../assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>`);
-    if (s.babelio_url) badges.push(`<a href="${grpEscAttr(s.babelio_url)}" target="_blank" rel="noopener" class="babelio-badge" title="Voir la fiche sur Babelio"><img src="../../assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>`);
+    if (s.manganews_url) badges.push(`<a href="${grpEscAttr(s.manganews_url)}" target="_blank" rel="noopener" class="manganews-badge" title="Voir la fiche sur Manga News"><img src="../../assets/img/mnlogo.png" alt="Manga News" class="manganews-logo"></a>`);
     if (s.anilist_url) badges.push(`<a href="${grpEscAttr(s.anilist_url)}" target="_blank" rel="noopener" class="anilist-badge" title="Voir la fiche sur Anilist"><img src="../../assets/img/anilogo.png" alt="Anilist" class="anilist-logo"></a>`);
     if (badges.length) {
         html += `<div class="grouping-series-detail-badges">${badges.join('')}</div>`;

@@ -4,12 +4,13 @@
 //
 // Second mode de l'outil « Séries incomplètes » : au lieu d'interroger
 // MangaUpdates (décompte VO, souvent sans édition française), on délègue à
-// Babengas — microservice qui lit Babelio et retourne le nombre de tomes VF
-// réellement parus.
+// Babengas — microservice qui lit Manga News et retourne le nombre de tomes VF
+// réellement parus, ainsi que le statut de publication.
 //
-// Le traitement est ASYNCHRONE : Babengas interroge Babelio à raison d'une
-// série toutes les cinq minutes. Lengas crée une campagne, puis en suit
-// l'avancement (sondage de l'interface + webhook horaire du service).
+// Le traitement est ASYNCHRONE : Babengas interroge Manga News à raison d'une
+// série toutes les 30 secondes environ (≈ 120 séries par heure). Lengas crée
+// une campagne, puis en suit l'avancement (sondage de l'interface + webhook
+// horaire du service).
 //
 // Ce fichier ne contient que les helpers de l'outil ; le client HTTP et le
 // cache SQLite vivent dans includes/babengas.php.
@@ -25,9 +26,9 @@ if (!function_exists('babengas_enabled')) {
 //   aussi l'exclusion du « dernier tome »). Implique $all.
 // Retourne ['success'=>bool, 'message'=>string, 'campagne_id'=>…, 'total'=>…].
 function babengas_launch_campaign(array $data, bool $all = false, bool $force = false): array {
-    // Périmètre V4 : Babelio ne référence que la Mangathèque. Filtrage sur la
+    // Périmètre V4 : Manga News ne référence que la Mangathèque. Filtrage sur la
     // copie locale uniquement ($data est reçu par valeur), tout le ciblage en
-    // aval — cibles, one-shots, cache — hérite donc de cette restriction.
+    // aval — cibles, cache — hérite donc de cette restriction.
     $data = series_of_type($data, 'manga');
 
     if ($force) $all = true;
@@ -40,8 +41,8 @@ function babengas_launch_campaign(array $data, bool $all = false, bool $force = 
     // En cas de doute, on refuse AUSSI. Si le service est momentanément
     // injoignable (redémarrage du conteneur, hoquet du reverse proxy), on ne
     // peut pas savoir si la campagne précédente tourne encore : lancer par
-    // défaut doublerait les requêtes vers Babelio, précisément ce qu'il faut
-    // éviter face à un site qui filtre déjà les robots. L'utilisateur peut
+    // défaut doublerait les requêtes vers Manga News, précisément ce qu'il faut
+    // éviter par courtoisie envers le site. L'utilisateur peut
     // toujours annuler explicitement la campagne pour débloquer la situation.
     $current = babengas_get_current_campaign();
     if ($current !== null) {
@@ -73,44 +74,33 @@ function babengas_launch_campaign(array $data, bool $all = false, bool $force = 
 
     $targets = babengas_targets($data, $all, $force);
     if ($targets === []) {
-        // Aucune fiche série à envoyer à Babengas. Peut-être reste-t-il des
-        // one-shots (fiches de tome), qui se résolvent localement sans campagne.
-        $oneshots = babengas_local_oneshots($data);
+        // Aucune série à envoyer à Babengas. On affiche tout de même la vue
+        // complète des séries déjà connues comme incomplètes via le cache
+        // (aucune n'était à rafraîchir, mais leur décompte connu doit rester
+        // visible), sans créer de campagne.
+        $from_cache = babengas_cached_incomplete($data);
+        $incomplete = $from_cache['incomplete'];
 
-        // Vue complète : on complète avec les séries déjà connues comme
-        // incomplètes via le cache Babelio (aucune n'était à rafraîchir, mais
-        // leur décompte connu doit rester visible). On exclut les one-shots
-        // déjà listés pour éviter les doublons.
-        $seen = [];
-        foreach ($oneshots['incomplete'] as $s) $seen[] = (string)$s['id'];
-        $from_cache = babengas_cached_incomplete($data, $seen);
-        $incomplete = array_merge($oneshots['incomplete'], $from_cache['incomplete']);
-
-        if ($incomplete !== [] || $oneshots['ok_count'] > 0) {
+        if ($incomplete !== []) {
             return [
                 'success'           => true,
                 'local_only'        => true,
                 'termine'           => true,
                 'incomplete_series' => $incomplete,
                 'failed_series'     => [],
-                'ok_count'          => $oneshots['ok_count'],
+                'ok_count'          => count($incomplete),
                 'no_reference_series' => babengas_series_without_url($data),
-                'message'           => sprintf(
-                    '%d one-shot%s vérifié%s localement (aucune fiche série à envoyer à Babengas).',
-                    $oneshots['ok_count'],
-                    $oneshots['ok_count'] > 1 ? 's' : '',
-                    $oneshots['ok_count'] > 1 ? 's' : ''
-                ),
+                'message'           => 'Aucune série à rafraîchir : voici ce que le cache connaît déjà (aucune campagne lancée).',
             ];
         }
 
         return [
             'success' => false,
             'message' => $force
-                ? "Aucune série à vérifier : renseignez des URL de fiche série Babelio (/serie/…)."
+                ? "Aucune série à vérifier : renseignez des URL Manga News (…/serie/Nom-de-la-serie)."
                 : ($all
-                    ? "Aucune série éligible : renseignez des URL Babelio (les séries avec un « dernier tome » sont exclues)."
-                    : "Aucune série à rafraîchir. Toutes les séries éligibles ont été vérifiées il y a moins de 30 jours."),
+                    ? "Aucune série éligible : renseignez des URL Manga News (les séries avec un « dernier tome » sont exclues)."
+                    : "Aucune série à rafraîchir. Toutes les séries éligibles ont été vérifiées il y a moins de 30 jours, ou sont terminées et complètes."),
         ];
     }
 
@@ -163,7 +153,7 @@ function babengas_callback_url(): ?string {
 // ── Suivi de la campagne en cours ───────────────────────────────────────────
 // Retourne l'état + les résultats intégrés si la campagne est terminée.
 function babengas_campaign_status(array $data, ?string $campagne_id = null): array {
-    // Périmètre V4 : Babelio ne référence que la Mangathèque. Filtrage sur la
+    // Périmètre V4 : Manga News ne référence que la Mangathèque. Filtrage sur la
     // copie locale uniquement ($data est reçu par valeur) — même restriction
     // que babengas_launch_campaign() et babengas_series_without_url().
     $data = series_of_type($data, 'manga');
@@ -192,19 +182,12 @@ function babengas_campaign_status(array $data, ?string $campagne_id = null): arr
         babengas_clear_current_campaign();
     }
 
-    // Les one-shots (fiche de tome) ne passent pas par Babengas : on les résout
-    // localement et on les fusionne dans le rapport, mais seulement une fois la
-    // campagne terminée, pour ne pas les afficher en boucle pendant le suivi.
     $incomplete = $report['incomplete'];
     $ok_count   = $report['ok_count'];
     if ($done) {
-        $oneshots = babengas_local_oneshots($data);
-        $incomplete = array_merge($incomplete, $oneshots['incomplete']);
-        $ok_count  += $oneshots['ok_count'];
-
         // Vue complète : une campagne ne renvoie que les séries qu'elle a
         // (re)vérifiées. On complète avec les séries déjà connues comme
-        // incomplètes via le cache Babelio (vérifiées récemment, donc hors
+        // incomplètes via le cache Manga News (vérifiées récemment, donc hors
         // ciblage), afin d'afficher TOUT ce qui manque réellement — pas
         // seulement le delta de cette campagne. On exclut les séries déjà
         // présentes dans le rapport (traitées ou en échec) pour éviter les
@@ -247,7 +230,7 @@ function babengas_cancel_current(): array {
         : ['success' => false, 'message' => "L'annulation a échoué : " . $res['error']];
 }
 
-// ── Séries dépourvues d'URL Babelio (affichées dans le récapitulatif) ────────
+// ── Séries dépourvues d'URL Manga News (affichées dans le récapitulatif) ─────
 function babengas_series_without_url(array $data): array {
     // Périmètre V4 : ces vérifications ne concernent que la Mangathèque.
     // $data est reçu PAR VALEUR : le filtrage ne touche que cette copie locale,
@@ -258,8 +241,8 @@ function babengas_series_without_url(array $data): array {
 
     $out = [];
     foreach ($data as $series) {
-        $url = trim((string)($series['babelio_url'] ?? ''));
-        if ($url !== '' && babelio_url_is_valid($url)) continue;
+        $url = trim((string)($series['manganews_url'] ?? ''));
+        if ($url !== '' && manganews_url_is_valid($url)) continue;
 
         $out[] = [
             'id'             => $series['id'],
@@ -272,16 +255,16 @@ function babengas_series_without_url(array $data): array {
     return $out;
 }
 
-// ── Enregistrement d'URL Babelio validées ───────────────────────────────────
+// ── Enregistrement d'URL Manga News validées ─────────────────────────────────
 // Format attendu : $associations[series_id] = url  (même contrat que MangaUpdates)
 //
-// Écriture ciblée : upsert_series_row() sur chaque série dont l'URL Babelio a
-// effectivement changé (association ou retrait), au fil de la boucle — jamais
-// de resynchronisation de la collection complète. Le nombre de tomes VF
-// lui-même (babelio_cache) reste dans son propre cache, distinct de la table
-// `series` : il ne transite ni par cette fonction ni par aucune écriture sur
-// `series`.
-function babelio_save_associations(array &$data, array $associations): array {
+// Les URL sont normalisées vers la fiche série principale. Écriture ciblée :
+// upsert_series_row() sur chaque série dont l'URL a effectivement changé
+// (association ou retrait), au fil de la boucle — jamais de resynchronisation
+// de la collection complète. Le décompte VF lui-même (babengas_cache) reste
+// dans son propre cache, distinct de la table `series` : il ne transite ni par
+// cette fonction ni par aucune écriture sur `series`.
+function manganews_save_associations(array &$data, array $associations): array {
     $saved = 0;
 
     foreach ($data as &$series) {
@@ -291,14 +274,15 @@ function babelio_save_associations(array &$data, array $associations): array {
 
         // Chaîne vide : on autorise le retrait de l'association
         if ($url === '') {
-            $series['babelio_url'] = '';
+            $series['manganews_url'] = '';
             upsert_series_row($series);
             $saved++;
             continue;
         }
 
-        if (babelio_url_is_valid($url)) {
-            $series['babelio_url'] = $url;
+        $normalized = manganews_normalize_url($url);
+        if ($normalized !== null) {
+            $series['manganews_url'] = $normalized;
             upsert_series_row($series);
             $saved++;
         }

@@ -69,7 +69,7 @@ function build_light_series(array $series, array $review_series_ids, array $loan
         'status' => $status,
         'reading_status' => $reading_status,
         'mangaupdates_url'           => $series['mangaupdates_url'] ?? '',
-        'babelio_url'                => $series['babelio_url'] ?? '',
+        'manganews_url'                => $series['manganews_url'] ?? '',
         'read_elsewhere'             => (bool)($series['read_elsewhere'] ?? false),
         'reading_abandoned'          => (bool)($series['reading_abandoned'] ?? false),
         'rating'                     => $series['rating'] ?? '',
@@ -126,7 +126,7 @@ function build_light_series(array $series, array $review_series_ids, array $loan
 // pour que $new_series (renvoyé dans $result['data'], notamment relu par le
 // cache syngas_volumes_count juste après add_series()) reflète déjà l'état
 // définitif.
-function add_series($data, $name, $contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours', $read_elsewhere = false, $reading_abandoned = false, $rating = '', $type = 'manga', $reread_count = 0, $syngas_uid = '') {
+function add_series($data, $name, $contributors, $categories, $genres, $mangaupdates_url, $manganews_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status = 'en cours', $read_elsewhere = false, $reading_abandoned = false, $rating = '', $type = 'manga', $reread_count = 0, $syngas_uid = '') {
     $volumes = [];
     for ($i = 1; $i <= $volumes_count; $i++) {
         $volumes[] = [
@@ -175,7 +175,7 @@ function add_series($data, $name, $contributors, $categories, $genres, $mangaupd
         'genres' => explode(',', $genres),
         'image' => $image ?? '',
         'mangaupdates_url' => $mangaupdates_url,
-        'babelio_url' => $babelio_url,
+        'manganews_url' => $manganews_url,
         'mature' => $mature,
         'favorite' => $favorite,
         'status' => $status,
@@ -233,7 +233,7 @@ function find_series_by_syngas_uid($data, string $syngas_uid, string $exclude_se
 // autoritaire).
 // $contributors : liste déjà normalisée de ['name'=>string,'role'=>string,
 // 'role_custom'=>string], voir add_series() ci-dessus.
-function update_series($data, $series_id, $name, $contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null, $new_status = null, $read_elsewhere = null, $reading_abandoned = null, $rating = null, $reread_count = null, $syngas_uid = null) {
+function update_series($data, $series_id, $name, $contributors, $categories, $genres, $mangaupdates_url, $manganews_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image = null, $new_status = null, $read_elsewhere = null, $reading_abandoned = null, $rating = null, $reread_count = null, $syngas_uid = null) {
     $series = find_series_by_id($data, $series_id);
     if (!$series) {
         return ['success' => false, 'message' => "Série introuvable."];
@@ -283,7 +283,7 @@ function update_series($data, $series_id, $name, $contributors, $categories, $ge
     $data[$series_key]['categories'] = explode(',', clean_comma_separated($categories));
     $data[$series_key]['genres'] = explode(',', clean_comma_separated($genres));
     $data[$series_key]['mangaupdates_url'] = $mangaupdates_url;
-    $data[$series_key]['babelio_url'] = $babelio_url;
+    $data[$series_key]['manganews_url'] = $manganews_url;
     $data[$series_key]['mature'] = $mature;
     $data[$series_key]['favorite'] = $favorite;
     if ($read_elsewhere !== null) {

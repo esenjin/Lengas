@@ -16,7 +16,6 @@ const SYNGAS_DIFF_LABELS = {
     categories: 'Catégories',
     status: 'Statut de publication',
     mangaupdates_url: 'URL MangaUpdates',
-    babelio_url: 'URL Babelio',
     mature: 'Contenu mature',
     thumbnail: 'Vignette',
     volumes_count: 'Nombre de tomes VF (Syngas)',

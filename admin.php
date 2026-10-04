@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $categories = trim($_POST['categories'] ?? '');
     $genres = trim($_POST['genres'] ?? '');
     $mangaupdates_url = trim($_POST['mangaupdates_url'] ?? '');
-    $babelio_url = trim($_POST['babelio_url'] ?? '');
+    $manganews_url = trim($_POST['manganews_url'] ?? '');
     $mature = !empty($_POST['mature']);
     $favorite = !empty($_POST['favorite']);
     $volumes_count = (int)($_POST['volumes_count'] ?? 1);
@@ -104,6 +104,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
         exit;
     }
 
+    // URL Manga News facultative : si renseignée, elle doit pointer une fiche
+    // série (/serie/Nom). Normalisée vers la fiche principale (les sous-pages
+    // /serie/critique/… ou /serie/editions/… sont ramenées à la fiche).
+    if ($manganews_url !== '') {
+        $mn_norm = manganews_normalize_url($manganews_url);
+        if ($mn_norm === null) {
+            $_SESSION['error_message'] = "URL Manga News invalide (attendu : https://www.manga-news.com/index.php/serie/Nom-de-la-serie).";
+            header("Location: " . $_SERVER['REQUEST_URI']);
+            exit;
+        }
+        $manganews_url = $mn_norm;
+    }
+
     // Appeler add_series avec $image (qui peut être null)
     // Cette modale ne crée que des mangas et light-novels (cf. registre de types).
     //
@@ -111,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     // (upsert_series_row() + replace_series_volumes()) au moment de
     // l'appel. $result['data'] ne sert qu'à réafficher la collection à
     // jour côté admin.
-    $result = add_series($data, $name, $contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned, $rating, 'manga', $reread_count, $syngas_uid);
+    $result = add_series($data, $name, $contributors, $categories, $genres, $mangaupdates_url, $manganews_url, $mature, $favorite, $volumes_count, $volumes_status, $all_collector, $last_volume, $image, $status, $read_elsewhere, $reading_abandoned, $rating, 'manga', $reread_count, $syngas_uid);
 
     if ($result['success'] && $syngas_volumes_count !== null) {
         // Cache local pour coherence_reference_volumes() (section 6.4) : la
@@ -826,7 +839,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $categories = trim($_POST['edit_categories'] ?? '');
     $genres = trim($_POST['edit_genres'] ?? '');
     $mangaupdates_url = trim($_POST['edit_mangaupdates_url'] ?? '');
-    $babelio_url = trim($_POST['edit_babelio_url'] ?? '');
+    $manganews_url = trim($_POST['edit_manganews_url'] ?? '');
     $mature = !empty($_POST['edit_mature']);
     $favorite = !empty($_POST['edit_favorite']);
     $remove_image = !empty($_POST['remove_image']);
@@ -884,11 +897,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         exit;
     }
 
+    // URL Manga News facultative : validée et normalisée vers la fiche série
+    // (voir la même vérification dans l'ajout de série ci-dessus).
+    if ($manganews_url !== '') {
+        $mn_norm = manganews_normalize_url($manganews_url);
+        if ($mn_norm === null) {
+            $message = "URL Manga News invalide (attendu : https://www.manga-news.com/index.php/serie/Nom-de-la-serie).";
+            if ($is_ajax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $message]);
+                exit;
+            }
+            $_SESSION['error_message'] = $message;
+            header("Location: " . $_SERVER['REQUEST_URI']);
+            exit;
+        }
+        $manganews_url = $mn_norm;
+    }
+
     // Écriture ciblée : update_series() écrit directement en base
     // (upsert_series_row() + replace_series_volumes()) au moment de
     // l'appel. $result['data'] ne sert qu'à réafficher la collection à
     // jour côté admin.
-    $result = update_series($data, $series_id, $name, $contributors, $categories, $genres, $mangaupdates_url, $babelio_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned, $edit_rating, $edit_reread_count, $edit_syngas_uid);
+    $result = update_series($data, $series_id, $name, $contributors, $categories, $genres, $mangaupdates_url, $manganews_url, $mature, $favorite, $remove_image, $new_volumes_count, $new_volumes_status, $new_volumes_collector, $new_volumes_last, $new_image, $new_status, $edit_read_elsewhere, $edit_reading_abandoned, $edit_rating, $edit_reread_count, $edit_syngas_uid);
     if ($result['success']) {
         // Réchauffer le cache MangaUpdates pour la série modifiée
         if ($mangaupdates_url !== '') {
@@ -1373,9 +1404,9 @@ if ($current_type === 'anime') {
                     <p>URL MangaUpdates :</p>
                     <input type="text" name="mangaupdates_url" placeholder="https://www.mangaupdates.com/series/xxxxxxx/nom-de-la-serie (facultatif)" autocomplete="off">
                     <p class="hint"><a tabindex="0" data-hint="L'URL MangaUpdates sert à détecter les tomes manquants des séries terminées (outil « Séries incomplètes »). Sur mangaupdates.com, ouvrez la fiche de votre série puis copiez l'URL complète. L'outil « Associer MangaUpdates » (modale Outils) peut aussi remplir ce champ automatiquement.">À quoi ça sert ? Où la trouver ?</a></p>
-                    <p>URL Babelio :</p>
-                    <input type="text" name="babelio_url" placeholder="https://www.babelio.com/serie/… (ou …/livres/… pour un one-shot)" autocomplete="off">
-                    <p class="hint"><a tabindex="0" data-hint="L'URL Babelio permet de connaître le nombre de tomes réellement parus en France, via le service Babengas (onglet « Vérification Babelio » de la page Outils). Sur babelio.com, ouvrez la fiche SÉRIE (adresse en /serie/…) et copiez l'URL complète. Pour un one-shot (un seul tome, sans fiche série), collez l'adresse de la fiche du tome (/livres/…).">À quoi ça sert ? Où la trouver ?</a></p>
+                    <p>URL Manga News :</p>
+                    <input type="text" name="manganews_url" placeholder="https://www.manga-news.com/index.php/serie/Nom-de-la-serie" autocomplete="off">
+                    <p class="hint"><a tabindex="0" data-hint="L'URL Manga News permet de connaître le nombre de tomes réellement parus en France et le statut de publication de l'édition française, via le service Babengas (outil « Vérification via Babengas » de la page Outils). Sur manga-news.com, ouvrez la fiche de la série (adresse en /serie/Nom-de-la-serie) et copiez l'URL complète.">À quoi ça sert ? Où la trouver ?</a></p>
                     <p>UID Syngas :</p>
                     <input type="text" name="syngas_uid" id="add-series-syngas-uid" placeholder="Identifiant de la fiche Syngas liée (facultatif)" autocomplete="off">
                     <p class="hint">Rempli automatiquement par la « Recherche Syngas » ci-dessus à la validation d'un résultat — modifiable ou effaçable à la main si besoin.</p>
@@ -1552,8 +1583,8 @@ if ($current_type === 'anime') {
                     <p class="hint">Les classifications comme Shonen, Seinen, Action, Romance… se saisissent ici, pas dans Catégories. <a tabindex="0" data-hint="<?= htmlspecialchars(syngas_accepted_genres_hint()) ?>">Genres reconnus par Syngas</a></p>
                     <p>URL MangaUpdates (facultatif) :</p>
                     <input type="text" name="edit_mangaupdates_url" id="edit-series-mangaupdates-url" placeholder="https://www.mangaupdates.com/series/xxxxxxx/nom-de-la-serie" autocomplete="off">
-                    <p>URL Babelio (facultatif) :</p>
-                    <input type="text" name="edit_babelio_url" id="edit-series-babelio-url" placeholder="https://www.babelio.com/serie/… (ou …/livres/… pour un one-shot)" autocomplete="off">
+                    <p>URL Manga News (facultatif) :</p>
+                    <input type="text" name="edit_manganews_url" id="edit-series-manganews-url" placeholder="https://www.manga-news.com/index.php/serie/Nom-de-la-serie" autocomplete="off">
                     <p>UID Syngas :</p>
                     <input type="text" name="edit_syngas_uid" id="edit-series-syngas-uid" placeholder="Identifiant de la fiche Syngas liée (facultatif)" autocomplete="off">
                     <p class="hint">Rempli automatiquement par la « Recherche Syngas » ci-dessus à la validation d'un résultat — modifiable ou effaçable à la main si besoin.</p>

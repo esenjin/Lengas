@@ -60,7 +60,7 @@ $tools = [
     [
         'icon'        => 'book-search-outline',
         'name'        => 'Vérification via Babengas',
-        'description' => "Nombre de tomes réellement parus en France, via Babelio — complète MangaUpdates sur l'édition VF.",
+        'description' => "Nombre de tomes réellement parus en France et statut de publication VF, via Manga News — complète MangaUpdates sur l'édition VF.",
         'href'        => 'outils/outil-babengas.php',
         'visible'     => $has_babengas,
         'color'       => 'pink',

@@ -214,7 +214,7 @@ function createLightSeriesCard(series) {
             <p><strong>Genres :</strong> ${formatListCollapsed(series.genres)}</p>
             <div class="series-badges series-badges--links">
                 ${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}
-                ${series.babelio_url ? `<a class="babelio-badge" href="${series.babelio_url}" target="_blank" rel="noopener" title="Voir sur Babelio"><img src="assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>` : ''}
+                ${series.manganews_url ? `<a class="manganews-badge" href="${series.manganews_url}" target="_blank" rel="noopener" title="Voir sur Manga News"><img src="assets/img/mnlogo.png" alt="Manga News" class="manganews-logo"></a>` : ''}
                 ${series.syngas_uid ? `<a class="syngas-badge" href="${syngasPublicUrl(series.syngas_uid)}" target="_blank" rel="noopener" title="Voir sur Syngas"><img src="assets/img/synlogo.png" alt="Syngas" class="syngas-logo"></a>` : ''}
             </div>
             <div class="series-badges series-badges--tags">
@@ -425,8 +425,8 @@ document.getElementById('series-list').addEventListener('click', (e) => {
                 document.getElementById('edit-series-categories').value = series.categories ? series.categories.join(', ') : '';
                 document.getElementById('edit-series-genres').value = series.genres ? series.genres.join(', ') : '';
                 document.getElementById('edit-series-mangaupdates-url').value = series.mangaupdates_url || '';
-                const babelioField = document.getElementById('edit-series-babelio-url');
-                if (babelioField) babelioField.value = series.babelio_url || '';
+                const manganewsField = document.getElementById('edit-series-manganews-url');
+                if (manganewsField) manganewsField.value = series.manganews_url || '';
                 document.getElementById('edit-series-new-volumes-count').value = 0;
                 document.getElementById('edit-series-new-volumes-status').value = 'à lire';
                 document.querySelector('#edit-series-form [name="new_volumes_collector"]').checked = false;

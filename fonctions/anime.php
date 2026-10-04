@@ -229,7 +229,7 @@ function add_anime_series(array $data, array $media, bool $download_cover = true
         'genres'             => $media['genres_fr'] ?? [],
         'image'              => '',
         'mangaupdates_url'   => '',
-        'babelio_url'        => '',
+        'manganews_url'        => '',
         // Coche « Contenu mature » posée d'après isAdult. L'utilisateur peut la
         // décocher : elle ne sera jamais recochée derrière lui.
         'mature'             => !empty($media['is_adult']),

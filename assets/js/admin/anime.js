@@ -43,7 +43,7 @@ function animeEditionsBadgeHtml(series) {
            `</span>`;
 }
 
-// Lien vers la fiche Anilist, sur le modèle des badges MangaUpdates et Babelio.
+// Lien vers la fiche Anilist, sur le modèle des badges MangaUpdates et Manga News.
 function animeAnilistBadgeHtml(series) {
     if (!series.anilist_url) return '';
     return `<a class="anilist-badge" href="${animeEscape(series.anilist_url)}" target="_blank" rel="noopener" title="Voir la fiche sur Anilist">` +
@@ -52,7 +52,7 @@ function animeAnilistBadgeHtml(series) {
 
 // ── Carte de série animée (admin) ───────────────────────────────────────────
 // Reprend le gabarit des mangas ; les champs sans objet (auteur, éditeur,
-// MangaUpdates, Babelio, lue ailleurs, collector) sont simplement absents.
+// MangaUpdates, Manga News, lue ailleurs, collector) sont simplement absents.
 function createAnimeSeriesCard(series) {
     const card = document.createElement('div');
     card.className = 'series-card series-card--anime' + (series.favorite ? ' favorite' : '');

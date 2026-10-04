@@ -1,9 +1,10 @@
 // ──────────────────────────────────────────────────────────────────────────
-// assets/js/admin/tools/babengas.js — Vérification via Babengas (Babelio)
+// assets/js/admin/tools/babengas.js — Vérification via Babengas (Manga News)
 //
 // Contrairement à MangaUpdates (réponse immédiate), Babengas travaille en
-// arrière-plan : il interroge Babelio toutes les cinq minutes pour rester
-// courtois. Une campagne de 50 séries prend donc plusieurs heures.
+// arrière-plan : il interroge Manga News à un rythme volontairement espacé
+// (≈ 120 séries par heure) pour rester courtois. Une campagne de 150 séries
+// prend donc un peu plus d'une heure.
 //
 // L'interface se contente donc de lancer la campagne puis d'en sonder
 // l'avancement. Le suivi survit à un rechargement de page : l'identifiant de
@@ -24,7 +25,7 @@
     let pollTimer = null;
 
     // Sondage toutes les 60 s : la campagne avance d'une série toutes les
-    // cinq minutes, inutile d'interroger plus souvent.
+    // 30 secondes environ, inutile d'interroger plus souvent.
     const POLL_INTERVAL = 60000;
 
     // ── Utilitaires ─────────────────────────────────────────────────────────
@@ -33,6 +34,16 @@
         return String(str ?? '').replace(/[&<>"']/g, c => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
         }[c]));
+    }
+
+    // Libellé d'un statut renvoyé par Babengas (en_cours, termine, arrete…).
+    // Une valeur inconnue reste affichée telle quelle, lisiblement.
+    function statutLabel(code) {
+        if (!code) return '';
+        const known = { en_cours: 'En cours', termine: 'Terminé', arrete: 'Arrêté' };
+        if (known[code]) return known[code];
+        const txt = String(code).replace(/_/g, ' ');
+        return txt.charAt(0).toUpperCase() + txt.slice(1);
     }
 
     function post(params) {
@@ -69,7 +80,7 @@
                 <div class="babengas-progress-bar">
                     <div class="babengas-progress-fill" style="width:${pct}%"></div>
                 </div>
-                <p class="hint">Babengas interroge Babelio toutes les cinq minutes pour rester courtois.
+                <p class="hint">Babengas interroge Manga News à un rythme espacé (environ 120 séries par heure) pour rester courtois.
                 Vous pouvez fermer cette page : la campagne continue et le suivi reprendra à votre retour.</p>
             </div>`;
     }
@@ -89,7 +100,7 @@
 
         let html = '';
 
-        // Récapitulatif : séries en échec et sans URL Babelio.
+        // Récapitulatif : séries en échec et sans URL Manga News.
         // Un échec ne met rien à jour en base : l'ancienne valeur est conservée
         // et la série sera retentée à la campagne suivante.
         if (failed.length > 0 || noRef.length > 0) {
@@ -101,12 +112,12 @@
                     <details class="summary-group" open>
                         <summary>
                             <span class="summary-badge summary-badge--warn">⚠ ${failed.length}</span>
-                            Non analysées — problème rencontré sur Babelio
+                            Non analysées — problème rencontré sur Manga News
                         </summary>
                         <ul class="summary-list">
                             ${failed.map(s => {
-                                const badge = s.babelio_url
-                                    ? ` <a class="babelio-badge" href="${esc(s.babelio_url)}" target="_blank" rel="noopener" title="Voir la fiche sur Babelio"><img src="../../assets/img/babelogo.png" alt="Babelio" class="babelio-logo"></a>`
+                                const badge = s.manganews_url
+                                    ? ` <a class="manganews-badge" href="${esc(s.manganews_url)}" target="_blank" rel="noopener" title="Voir la fiche sur Manga News"><img src="../../assets/img/mnlogo.png" alt="Manga News" class="manganews-logo"></a>`
                                     : '';
                                 return `<li><strong>${esc(s.name)}</strong>${s.read_elsewhere ? ' <span class="read-elsewhere-badge">Lue ailleurs</span>' : ''}${s.author ? ' — ' + esc(s.author) : ''} <span class="summary-reason">${esc(s.reason)}</span>${badge}</li>`;
                             }).join('')}
@@ -119,11 +130,11 @@
                     <details class="summary-group">
                         <summary>
                             <span class="summary-badge summary-badge--muted">— ${noRef.length}</span>
-                            Non analysées — aucune URL Babelio renseignée
+                            Non analysées — aucune URL Manga News renseignée
                         </summary>
                         <ul class="summary-list">
                             ${noRef.map(s =>
-                                `<li><strong>${esc(s.name)}</strong>${s.read_elsewhere ? ' <span class="read-elsewhere-badge">Lue ailleurs</span>' : ''}${s.author ? ' — ' + esc(s.author) : ''}${s.invalid_url ? ' <span class="summary-reason">URL Babelio invalide (attendu : /serie/… ou /livres/…)</span>' : ''}${s.id ? ` <button class="add-babelio-url-btn summary-edit-btn" data-series-id="${esc(s.id)}" data-series-name="${esc(s.name)}">Ajouter</button>` : ''}</li>`
+                                `<li><strong>${esc(s.name)}</strong>${s.read_elsewhere ? ' <span class="read-elsewhere-badge">Lue ailleurs</span>' : ''}${s.author ? ' — ' + esc(s.author) : ''}${s.invalid_url ? ' <span class="summary-reason">URL Manga News invalide (attendu : …/serie/Nom-de-la-serie)</span>' : ''}${s.id ? ` <button class="add-manganews-url-btn summary-edit-btn" data-series-id="${esc(s.id)}" data-series-name="${esc(s.name)}">Ajouter</button>` : ''}</li>`
                             ).join('')}
                         </ul>
                     </details>`;
@@ -134,7 +145,7 @@
 
         // Séries incomplètes
         if (incomplete.length === 0) {
-            html += '<p class="incomplete-empty-msg">Aucune série incomplète détectée par Babelio.</p>';
+            html += '<p class="incomplete-empty-msg">Aucune série incomplète détectée par Manga News.</p>';
         } else {
             incomplete.forEach(series => {
                 const ref     = series.ref_volumes ?? '?';
@@ -146,17 +157,20 @@
                     ? ' <span class="read-elsewhere-badge" title="Série marquée comme lue ailleurs">Lue ailleurs</span>'
                     : '';
 
-                // Écart entre tomes référencés et tomes parus : Babelio liste les
-                // tomes avant leur sortie, Babengas les a décomptés.
+                // Écart entre tomes référencés et tomes parus : Manga News annonce
+                // des tomes à paraître, que Babengas n'a pas décomptés.
                 const upcoming = (typeof nbRef === 'number' && nbRef > ref)
                     ? ` <small style="opacity:.6">(${nbRef - ref} tome${nbRef - ref > 1 ? 's' : ''} à paraître)</small>`
                     : '';
 
-                // Étiquette de source : Babelio (fiche série) ou one-shot (fiche
-                // de tome, décomptée localement à 1 exemplaire).
-                const srcLabel = series.ref_volumes_source === 'babelio-oneshot'
-                    ? '(one-shot)'
-                    : '(Babelio)';
+                const srcLabel = '(Manga News)';
+
+                // Statut de publication de l'édition française, tel que Manga News
+                // l'affiche. Valeur inconnue : libellé brut plutôt que masqué.
+                const statutVf = statutLabel(series.statut_vf);
+                const statutLine = statutVf
+                    ? `<p><strong>Statut de publication (VF) :</strong> ${esc(statutVf)}</p>`
+                    : '';
 
                 html += `
                     <div class="incomplete-series-item">
@@ -165,7 +179,8 @@
                         </div>
                         <p><strong>Auteur :</strong> ${esc(series.author)}</p>
                         <p><strong>Éditeur :</strong> ${esc(series.publisher)}</p>
-                        <p><strong>${series.read_elsewhere ? 'Tomes lus' : 'Tomes possédés'} :</strong> ${owned} / ${ref} <small style="opacity:.6">${srcLabel}</small>${upcoming}</p>`;
+                        <p><strong>${series.read_elsewhere ? 'Tomes lus' : 'Tomes possédés'} :</strong> ${owned} / ${ref} <small style="opacity:.6">${srcLabel}</small>${upcoming}</p>
+                        ${statutLine}`;
 
                 if (missing.length > 0) {
                     html += `<p><strong>Tomes manquants :</strong> ${missing.join(', ')}</p>`;
@@ -177,7 +192,7 @@
                     html += '</div>';
                 } else if (series.has_more_volumes) {
                     html += '<p><strong>Tomes manquants :</strong> Aucun</p>';
-                    html += '<p class="issues-list"><strong>Attention :</strong> Vous possédez plus de tomes que le décompte Babelio.</p>';
+                    html += '<p class="issues-list"><strong>Attention :</strong> Vous possédez plus de tomes que le décompte Manga News.</p>';
                 }
 
                 html += '</div>';
@@ -303,8 +318,8 @@
                     return;
                 }
 
-                // Cas « one-shots seulement » : le serveur a tout résolu
-                // localement, il n'y a pas de campagne à suivre.
+                // Cas « rien à rafraîchir » : le serveur a répondu depuis le
+                // cache, il n'y a pas de campagne à suivre.
                 if (d.local_only) {
                     clearProgress();
                     setBusy(false);
@@ -331,7 +346,7 @@
     launchForceBtn?.addEventListener('click', () => {
         showCustomConfirm(
             'Forcer toutes les séries',
-            'Vérifier l\'intégralité des séries ayant une URL de fiche série Babelio, sans aucune exception (y compris les séries terminées ou possédant un tome tagué « dernier ») ? La campagne peut être longue.'
+            'Vérifier l\'intégralité des séries ayant une URL Manga News, sans aucune exception (y compris les séries terminées ou possédant un tome tagué « dernier ») ? La campagne peut être longue.'
         ).then(ok => { if (ok) launch(false, true); });
     });
 
@@ -355,29 +370,29 @@
         if (d.success && !d.none && !d.termine) startPolling();
     }).catch(() => {});
 
-    // ── Modale « Ajouter une URL Babelio » ──────────────────────────────────
+    // ── Modale « Ajouter une URL Manga News » ──────────────────────────────────
 
     document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.add-babelio-url-btn');
+        const btn = e.target.closest('.add-manganews-url-btn');
         if (!btn) return;
 
-        const idField   = document.getElementById('add-babelio-url-series-id');
-        const nameField = document.getElementById('add-babelio-url-series-name');
-        const input     = document.getElementById('add-babelio-url-input');
-        const feedback  = document.getElementById('add-babelio-url-feedback');
+        const idField   = document.getElementById('add-manganews-url-series-id');
+        const nameField = document.getElementById('add-manganews-url-series-name');
+        const input     = document.getElementById('add-manganews-url-input');
+        const feedback  = document.getElementById('add-manganews-url-feedback');
 
         if (idField)   idField.value = btn.dataset.seriesId || '';
         if (nameField) nameField.textContent = btn.dataset.seriesName || '';
         if (input)     input.value = '';
         if (feedback)  { feedback.textContent = ''; feedback.className = 'add-mu-url-feedback'; }
 
-        document.getElementById('add-babelio-url-modal')?.classList.add('modal-active');
+        document.getElementById('add-manganews-url-modal')?.classList.add('modal-active');
     });
 
-    document.getElementById('save-add-babelio-url-btn')?.addEventListener('click', function () {
-        const id       = document.getElementById('add-babelio-url-series-id')?.value || '';
-        const url      = (document.getElementById('add-babelio-url-input')?.value || '').trim();
-        const feedback = document.getElementById('add-babelio-url-feedback');
+    document.getElementById('save-add-manganews-url-btn')?.addEventListener('click', function () {
+        const id       = document.getElementById('add-manganews-url-series-id')?.value || '';
+        const url      = (document.getElementById('add-manganews-url-input')?.value || '').trim();
+        const feedback = document.getElementById('add-manganews-url-feedback');
         if (!id) return;
 
         if (!url) {
@@ -389,7 +404,7 @@
         btn.disabled = true;
 
         const params = new URLSearchParams();
-        params.set('tool_action', 'babelio_associate_save');
+        params.set('tool_action', 'manganews_associate_save');
         params.append('associations[' + id + ']', url);
 
         fetch('outil-babengas.php', {
@@ -401,9 +416,9 @@
         .then(d => {
             if (d.success && d.saved > 0) {
                 if (feedback) { feedback.textContent = 'URL enregistrée ✅'; feedback.className = 'add-mu-url-feedback is-success'; }
-                setTimeout(() => document.getElementById('add-babelio-url-modal')?.classList.remove('modal-active'), 900);
+                setTimeout(() => document.getElementById('add-manganews-url-modal')?.classList.remove('modal-active'), 900);
             } else if (feedback) {
-                feedback.textContent = 'URL invalide. Attendu : une fiche série (/serie/…) ou, pour un one-shot, une fiche tome (/livres/…).';
+                feedback.textContent = 'URL invalide. Attendu : une fiche série Manga News (…/serie/Nom-de-la-serie).';
                 feedback.className = 'add-mu-url-feedback is-error';
             }
         })

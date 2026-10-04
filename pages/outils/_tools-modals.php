@@ -10,7 +10,7 @@
 //
 //   $tm_coherence_edit       (bool) modale « Corriger la série » (mangas)
 //   $tm_add_mu_url           (bool) modale « Ajouter une URL MangaUpdates »
-//   $tm_add_babelio_url      (bool) modale « Ajouter une URL Babelio »
+//   $tm_add_manganews_url    (bool) modale « Ajouter une URL Manga News »
 //
 // Les alertes/confirmations personnalisées (#custom-alert-modal et
 // #custom-confirm-modal) sont toujours incluses : page.js s'appuie dessus
@@ -18,7 +18,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 $tm_coherence_edit  = $tm_coherence_edit  ?? false;
 $tm_add_mu_url      = $tm_add_mu_url      ?? false;
-$tm_add_babelio_url = $tm_add_babelio_url ?? false;
+$tm_add_manganews_url = $tm_add_manganews_url ?? false;
 ?>
 
 <!-- Édition rapide depuis l'outil « Vérification des mangas » -->
@@ -117,20 +117,20 @@ $tm_add_babelio_url = $tm_add_babelio_url ?? false;
 </div>
 <?php endif; ?>
 
-<!-- Ajout d'une URL Babelio depuis le récapitulatif de campagne -->
-<?php if ($tm_add_babelio_url): ?>
-<div class="modal" id="add-babelio-url-modal">
+<!-- Ajout d'une URL Manga News depuis le récapitulatif de campagne -->
+<?php if ($tm_add_manganews_url): ?>
+<div class="modal" id="add-manganews-url-modal">
     <div class="modal-content modal-content--narrow">
-        <span class="close-modal" id="close-add-babelio-url-modal">&times;</span>
-        <h2>Ajouter une URL Babelio</h2>
-        <p id="add-babelio-url-series-name" class="add-mu-url-series-name"></p>
-        <input type="hidden" id="add-babelio-url-series-id">
-        <input type="text" id="add-babelio-url-input" placeholder="https://www.babelio.com/serie/… (ou …/livres/… pour un one-shot)" autocomplete="off">
-        <p class="hint">Collez l'URL de la fiche <strong>série</strong> (<code>/serie/…</code>). Pour un <strong>one-shot</strong> — un seul tome, sans fiche série sur Babelio — collez l'adresse de la fiche du tome (<code>/livres/…</code>).</p>
+        <span class="close-modal" id="close-add-manganews-url-modal">&times;</span>
+        <h2>Ajouter une URL Manga News</h2>
+        <p id="add-manganews-url-series-name" class="add-mu-url-series-name"></p>
+        <input type="hidden" id="add-manganews-url-series-id">
+        <input type="text" id="add-manganews-url-input" placeholder="https://www.manga-news.com/index.php/serie/Nom-de-la-serie" autocomplete="off">
+        <p class="hint">Collez l'URL de la fiche <strong>série</strong> de Manga News (<code>/serie/Nom-de-la-serie</code>). Les one-shots ont eux aussi une fiche série. Les fiches VO (<code>/serie-vo/…</code>) et les fiches de tome ne conviennent pas.</p>
         <div class="modal-actions">
-            <button id="save-add-babelio-url-btn" class="button button-ats">Enregistrer</button>
+            <button id="save-add-manganews-url-btn" class="button button-ats">Enregistrer</button>
         </div>
-        <p id="add-babelio-url-feedback" class="add-mu-url-feedback"></p>
+        <p id="add-manganews-url-feedback" class="add-mu-url-feedback"></p>
     </div>
 </div>
 <?php endif; ?>

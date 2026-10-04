@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '4.3.0');
+define('SITE_VERSION', '4.3.1');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Syngas — base commune des mangathèques Lengas (voir includes/syngas.php).
@@ -147,10 +147,31 @@ function init_db(PDO $pdo): void {
         $pdo->exec("ALTER TABLE series ADD COLUMN mangaupdates_url TEXT NOT NULL DEFAULT ''");
     } catch (Exception $e) { /* colonne déjà présente */ }
 
-    // ── Colonne babelio_url (fiche série Babelio, source du décompte VF) ──────
+    // ── Colonne manganews_url (fiche série Manga News, source du décompte VF) ──
     try {
-        $pdo->exec("ALTER TABLE series ADD COLUMN babelio_url TEXT NOT NULL DEFAULT ''");
+        $pdo->exec("ALTER TABLE series ADD COLUMN manganews_url TEXT NOT NULL DEFAULT ''");
     } catch (Exception $e) { /* colonne déjà présente */ }
+
+    // ── Migration 4.3.1 : Manga News remplace l'ancienne source de décompte VF ─
+    // L'ancienne colonne d'URL est supprimée (SQLite ≥ 3.35). Sur un SQLite plus
+    // ancien, le DROP COLUMN échoue : la colonne reste alors en place, inerte
+    // (valeur par défaut '' — plus aucune requête ne la lit ni ne l'écrit).
+    try {
+        $series_cols = [];
+        foreach ($pdo->query("PRAGMA table_info(series)")->fetchAll() as $col) {
+            $series_cols[] = $col['name'];
+        }
+        if (in_array('babelio_url', $series_cols, true)) {
+            $pdo->exec("ALTER TABLE series DROP COLUMN babelio_url");
+        }
+    } catch (Exception $e) { /* SQLite trop ancien : colonne laissée en place, inerte */ }
+
+    // L'ancien cache de décomptes était clé par identifiants numériques qui ne
+    // correspondent plus à rien : supprimé, il est remplacé par babengas_cache
+    // (créée plus bas), qui se remplit au fil des campagnes.
+    try {
+        $pdo->exec("DROP TABLE IF EXISTS babelio_cache");
+    } catch (Exception $e) { /* sans conséquence */ }
 
     // ── Colonne read_elsewhere (séries lues ailleurs intégrées à la biblio) ────
     try {
@@ -492,20 +513,21 @@ function init_db(PDO $pdo): void {
         )
     ");
 
-    // ── Cache des décomptes Babelio remontés par Babengas ─────────────────────
-    // nb_tomes = tomes RÉELLEMENT PARUS (après décrémentation des tomes à
-    // paraître) ; nb_reference = ce qu'annonce la fiche Babelio, conservé pour
-    // information. Les échecs ne sont jamais mis en cache.
-    //
-    // Pas de colonne « statut » : Babelio affiche « En cours » y compris sur des
-    // séries terminées depuis des années. Le statut reste géré par MangaUpdates
-    // ou saisi à la main.
+    // ── Cache des décomptes Manga News remontés par Babengas ──────────────────
+    // serie_id = slug Manga News de la série (texte). nb_tomes = tomes VF
+    // RÉELLEMENT PARUS ; nb_reference = parus + à paraître annoncés, conservé
+    // pour information. statut_vf / statut_vo = statut de publication de
+    // l'édition française / japonaise (en_cours, termine, ou libellé du site en
+    // minuscules sans accents) ; NULL tant que la fiche n'en affiche pas.
+    // Les échecs ne sont jamais mis en cache.
     $pdo->exec("
-        CREATE TABLE IF NOT EXISTS babelio_cache (
+        CREATE TABLE IF NOT EXISTS babengas_cache (
             serie_id     TEXT PRIMARY KEY,
             url          TEXT,
             nb_tomes     INTEGER,
             nb_reference INTEGER,
+            statut_vf    TEXT,
+            statut_vo    TEXT,
             incertain    INTEGER NOT NULL DEFAULT 0,
             erreur       TEXT,
             timestamp    INTEGER NOT NULL
@@ -577,7 +599,7 @@ function init_db(PDO $pdo): void {
             'stats_default_value'           => '7',
             'stats_default_value_collector' => '15',
             'stats_category_settings'       => '{}',
-            // ── Babengas (vérification du décompte VF via Babelio) ──
+            // ── Babengas (vérification du décompte VF via Manga News) ──
             // Vides = intégration inactive, exactement comme Vestikan.
             'babengas_url'                  => '',
             'babengas_key'                  => '',
@@ -903,7 +925,7 @@ function load_data(): array {
             'favorite'           => (bool)$s['favorite'],
             'status'                 => $s['status'],
             'mangaupdates_url'       => $s['mangaupdates_url'] ?? '',
-            'babelio_url'            => $s['babelio_url'] ?? '',
+            'manganews_url'          => $s['manganews_url'] ?? '',
             'read_elsewhere'         => (bool)($s['read_elsewhere'] ?? false),
             'reading_abandoned'      => (bool)($s['reading_abandoned'] ?? false),
             'rating'                 => $s['rating'] ?? '',
@@ -964,14 +986,14 @@ function load_data(): array {
 function upsert_series_row(array $series): void {
     $db = get_db();
     $stmt = $db->prepare("
-        INSERT INTO series (id, name, type, contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, babelio_url, read_elsewhere, reading_abandoned, rating, syngas_uid, syngas_volumes_count, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, rewatch_last_date, anilist_synced_at, episode_duration, reread_count, reread_last_date)
-        VALUES (:id,:name,:type,:contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:babelio_url,:read_elsewhere,:reading_abandoned,:rating,:syngas_uid,:syngas_volumes_count,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:rewatch_last_date,:anilist_synced_at,:episode_duration,:reread_count,:reread_last_date)
+        INSERT INTO series (id, name, type, contributors, categories, genres, image, anilist_id, mature, favorite, status, mangaupdates_url, manganews_url, read_elsewhere, reading_abandoned, rating, syngas_uid, syngas_volumes_count, anilist_url, studios, anime_format, alt_titles, anilist_image, watching_abandoned, rewatch_count, rewatch_last_date, anilist_synced_at, episode_duration, reread_count, reread_last_date)
+        VALUES (:id,:name,:type,:contributors,:categories,:genres,:image,:anilist_id,:mature,:favorite,:status,:mangaupdates_url,:manganews_url,:read_elsewhere,:reading_abandoned,:rating,:syngas_uid,:syngas_volumes_count,:anilist_url,:studios,:anime_format,:alt_titles,:anilist_image,:watching_abandoned,:rewatch_count,:rewatch_last_date,:anilist_synced_at,:episode_duration,:reread_count,:reread_last_date)
         ON CONFLICT(id) DO UPDATE SET
             name=excluded.name, type=excluded.type,
             contributors=excluded.contributors, categories=excluded.categories,
             genres=excluded.genres, image=excluded.image, anilist_id=excluded.anilist_id,
             mature=excluded.mature, favorite=excluded.favorite, status=excluded.status,
-            mangaupdates_url=excluded.mangaupdates_url, babelio_url=excluded.babelio_url,
+            mangaupdates_url=excluded.mangaupdates_url, manganews_url=excluded.manganews_url,
             read_elsewhere=excluded.read_elsewhere,
             reading_abandoned=excluded.reading_abandoned,
             rating=excluded.rating,
@@ -1013,7 +1035,7 @@ function upsert_series_row(array $series): void {
         ':favorite'            => (int)($s['favorite'] ?? false),
         ':status'              => $s['status'] ?? 'en cours',
         ':mangaupdates_url'    => $s['mangaupdates_url'] ?? '',
-        ':babelio_url'         => $s['babelio_url'] ?? '',
+        ':manganews_url'       => $s['manganews_url'] ?? '',
         ':read_elsewhere'     => (int)($s['read_elsewhere'] ?? false),
         ':reading_abandoned'  => (int)($s['reading_abandoned'] ?? false),
         ':rating'             => $s['rating'] ?? '',

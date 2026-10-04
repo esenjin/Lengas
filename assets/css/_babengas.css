@@ -1,26 +1,26 @@
 /* ──────────────────────────────────────────────────────────────────────────
-   _babengas.css — Badge Babelio et outil « Vérification via Babengas »
+   _babengas.css — Badge Manga News et outil « Vérification via Babengas »
 
    Le badge reprend exactement le comportement de .mu-badge (défini dans
    _series.css) : il s'insère dans la même barre .series-badges et adopte la
-   même opacité au survol, afin que les deux sources de référence — Babelio
+   même opacité au survol, afin que les deux sources de référence — Manga News
    et MangaUpdates — soient visuellement cohérentes.
    ────────────────────────────────────────────────────────────────────────── */
 
-/* ── Badge Babelio ─────────────────────────────────────────────────────── */
+/* ── Badge Manga News ─────────────────────────────────────────────────────── */
 
-.babelio-badge {
+.manganews-badge {
     display: inline-flex;
     align-items: center;
     opacity: 0.65;
     transition: opacity 0.2s;
 }
 
-.babelio-badge:hover {
+.manganews-badge:hover {
     opacity: 1;
 }
 
-.babelio-logo {
+.manganews-logo {
     height: 16px;
     width: auto;
     display: block;
