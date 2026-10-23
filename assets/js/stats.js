@@ -386,7 +386,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 legend: { show: false },
                 tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
                     const g = top[dataPointIndex];
-                    return `<div class="apex-tip"><b>${g.name}</b><br>${fmtInt(g.volumes)} tome(s) · ${fmtInt(g.series)} série(s)</div>`;
+                    return `<div class="apex-tip"><b>${statsEscape(g.name)}</b><br>${fmtInt(g.volumes)} tome(s) · ${fmtInt(g.series)} série(s)</div>`;
                 } }
             };
         }
@@ -430,7 +430,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 legend: { show: false },
                 tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
                     const c = cats[dataPointIndex];
-                    return `<div class="apex-tip"><b>${c.name}</b><br>${fmtInt(c.volumes)} tome(s) · ${fmtInt(c.series)} série(s)</div>`;
+                    return `<div class="apex-tip"><b>${statsEscape(c.name)}</b><br>${fmtInt(c.volumes)} tome(s) · ${fmtInt(c.series)} série(s)</div>`;
                 } }
             };
         }
@@ -463,7 +463,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 legend: { show: false },
                 tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
                     const c = charts._contribSource.slice().sort((a, b) => valOf(b) - valOf(a)).slice(0, 20)[dataPointIndex];
-                    return `<div class="apex-tip"><b>${c.name}</b><br>${fmtInt(c.volumes)} tome(s) · ${fmtInt(c.series)} série(s)</div>`;
+                    return `<div class="apex-tip"><b>${statsEscape(c.name)}</b><br>${fmtInt(c.volumes)} tome(s) · ${fmtInt(c.series)} série(s)</div>`;
                 } }
             };
         }
@@ -714,7 +714,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 legend: { show: false },
                 tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
                     const g = top[dataPointIndex];
-                    return `<div class="apex-tip"><b>${g.name}</b><br>${fmtInt(g.volumes)} épisode(s) · ${fmtInt(g.series)} série(s)</div>`;
+                    return `<div class="apex-tip"><b>${statsEscape(g.name)}</b><br>${fmtInt(g.volumes)} épisode(s) · ${fmtInt(g.series)} série(s)</div>`;
                 } }
             };
         }
@@ -758,7 +758,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 legend: { show: false },
                 tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
                     const f = fmts[dataPointIndex];
-                    return `<div class="apex-tip"><b>${f.name}</b><br>${fmtInt(f.volumes)} épisode(s) · ${fmtInt(f.series)} série(s)</div>`;
+                    return `<div class="apex-tip"><b>${statsEscape(f.name)}</b><br>${fmtInt(f.volumes)} épisode(s) · ${fmtInt(f.series)} série(s)</div>`;
                 } }
             };
         }
@@ -785,7 +785,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 legend: { show: false },
                 tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
                     const s = list[dataPointIndex];
-                    return `<div class="apex-tip"><b>${s.name}</b><br>${fmtInt(s.volumes)} épisode(s) · ${fmtInt(s.series)} série(s)</div>`;
+                    return `<div class="apex-tip"><b>${statsEscape(s.name)}</b><br>${fmtInt(s.volumes)} épisode(s) · ${fmtInt(s.series)} série(s)</div>`;
                 } }
             };
         }
@@ -858,7 +858,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     series: [{ name: metric === 'series' ? 'Séries' : 'Épisodes', data: list.map(valOf) }],
                     tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
                         const s = list[dataPointIndex];
-                        return `<div class="apex-tip"><b>${s.name}</b><br>${fmtInt(s.volumes)} épisode(s) · ${fmtInt(s.series)} série(s)</div>`;
+                        return `<div class="apex-tip"><b>${statsEscape(s.name)}</b><br>${fmtInt(s.volumes)} épisode(s) · ${fmtInt(s.series)} série(s)</div>`;
                     } }
                 });
             }
@@ -929,7 +929,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     series: [{ name: metric === 'series' ? 'Séries' : 'Tomes', data: list.map(valOf) }],
                     tooltip: { theme: 'dark', custom: function ({ dataPointIndex }) {
                         const c = list[dataPointIndex];
-                        return `<div class="apex-tip"><b>${c.name}</b><br>${fmtInt(c.volumes)} tome(s) · ${fmtInt(c.series)} série(s)</div>`;
+                        return `<div class="apex-tip"><b>${statsEscape(c.name)}</b><br>${fmtInt(c.volumes)} tome(s) · ${fmtInt(c.series)} série(s)</div>`;
                     } }
                 });
             }
@@ -1163,7 +1163,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const dim = (title, set, role) => {
                 const arr = [...set];
                 if (!arr.length) return;
-                html += `<h4>${title} (${arr.length})</h4>`;
+                html += `<h4>${esc(title)} (${arr.length})</h4>`;
                 arr.forEach(name => {
                     const inSeries = searchData.filter(s =>
                         (role === 'author'      && s.type !== 'anime' && norm(s.author) === norm(name)) ||
@@ -1235,3 +1235,12 @@ document.addEventListener('DOMContentLoaded', function () {
         syncScrollLock();
     });
 })();
+
+// Échappement HTML des libellés insérés dans les infobulles des graphiques
+// (genres, contributeurs, studios… éventuellement issus de sources externes
+// comme Anilist ou Syngas).
+function statsEscape(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}

@@ -120,8 +120,11 @@ $offset = ($page - 1) * $per_page_public;
 
 // Endpoint pour la pagination infinie
 if (isset($_GET['get_paginated_series'])) {
-    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 12;
+    // Bornes : une page < 1 produisait un décalage négatif (array_slice
+    // repartait alors de la fin de la liste) et un per_page démesuré
+    // renvoyait toute la collection d'un coup.
+    $page = max(1, isset($_GET['page']) ? (int)$_GET['page'] : 1);
+    $per_page = min(200, max(1, isset($_GET['per_page']) ? (int)$_GET['per_page'] : 12));
     $search_term = $_GET['search'] ?? '';
     $sort_by = $_GET['sort_by'] ?? 'name';
     $sort_order = $_GET['sort_order'] ?? 'asc';

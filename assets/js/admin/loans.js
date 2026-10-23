@@ -180,8 +180,8 @@ function displayLoanList(loans) {
             `;
         } else {
             html += `
-                <h4>${series.name}</h4>
-                <p><strong>Auteur :</strong> ${series.author}</p>
+                <h4>${loansEscape(series.name)}</h4>
+                <p><strong>Auteur :</strong> ${loansEscape(series.author)}</p>
             `;
         }
 
@@ -275,4 +275,12 @@ function displayLoanList(loans) {
             });
         });
     });
+}
+
+// Échappement HTML des valeurs insérées via innerHTML (noms de séries et
+// d'auteurs, éventuellement issus de sources externes comme Syngas).
+function loansEscape(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
 }

@@ -1162,7 +1162,7 @@ if (!function_exists('get_latest_version_from_gitea')) {
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
         curl_setopt($ch, CURLOPT_TIMEOUT, 3);
         $response = curl_exec($ch);
-        curl_close($ch);
+        unset($ch); // curl_close() : no-op depuis PHP 8.0, déprécié en PHP 8.5
         if ($response) {
             $decoded = json_decode($response, true);
             if (isset($decoded['tag_name'])) return ltrim($decoded['tag_name'], 'v');

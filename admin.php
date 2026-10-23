@@ -52,7 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_series'])) {
     $contributors = admin_read_contributors_from_post('contrib');
     $categories = trim($_POST['categories'] ?? '');
     $genres = trim($_POST['genres'] ?? '');
-    $mangaupdates_url = trim($_POST['mangaupdates_url'] ?? '');
+    // Seule une URL mangaupdates.com est conservée (affichée en lien public).
+    $mangaupdates_url = mangaupdates_sanitize_url(is_string($_POST['mangaupdates_url'] ?? null) ? $_POST['mangaupdates_url'] : '');
     $manganews_url = trim($_POST['manganews_url'] ?? '');
     $mature = !empty($_POST['mature']);
     $favorite = !empty($_POST['favorite']);
@@ -838,7 +839,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
     $contributors = admin_read_contributors_from_post('edit_contrib');
     $categories = trim($_POST['edit_categories'] ?? '');
     $genres = trim($_POST['edit_genres'] ?? '');
-    $mangaupdates_url = trim($_POST['edit_mangaupdates_url'] ?? '');
+    // Seule une URL mangaupdates.com est conservée (affichée en lien public).
+    $mangaupdates_url = mangaupdates_sanitize_url(is_string($_POST['edit_mangaupdates_url'] ?? null) ? $_POST['edit_mangaupdates_url'] : '');
     $manganews_url = trim($_POST['edit_manganews_url'] ?? '');
     $mature = !empty($_POST['edit_mature']);
     $favorite = !empty($_POST['edit_favorite']);
@@ -1036,8 +1038,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_action'])) {
 
 // Gestion de la pagination des séries
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_paginated_series'])) {
-    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 9;
+    // Bornes : une page < 1 produisait un décalage négatif (array_slice
+    // repartait alors de la fin de la liste) et un per_page démesuré
+    // renvoyait toute la collection d'un coup.
+    $page = max(1, isset($_GET['page']) ? (int)$_GET['page'] : 1);
+    $per_page = min(200, max(1, isset($_GET['per_page']) ? (int)$_GET['per_page'] : 9));
     $search_term = $_GET['search'] ?? '';
     $sort_by = $_GET['sort_by'] ?? 'name';
     $sort_order = $_GET['sort_order'] ?? 'asc';

@@ -1,7 +1,38 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '4.3.1');
+define('SITE_VERSION', '4.4.0');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
+
+// Version minimale de PHP requise par Lengas. config.php étant inclus en
+// premier par chaque point d'entrée du site (pages publiques, admin, outils,
+// webhook Babengas, SSO Vestikan…), le contrôle ci-dessous suffit à bloquer
+// proprement tout le site sur une version trop ancienne, avec un message
+// explicite plutôt qu'une erreur fatale obscure plus loin (le SDK Vestikan,
+// par exemple, refuse lui aussi de se charger sous PHP 8.5).
+// Ce fichier ne doit utiliser AUCUNE syntaxe propre à PHP 8.5 avant ce
+// contrôle, sans quoi l'analyse du fichier échouerait avant d'y arriver.
+define('LENGAS_MIN_PHP_VERSION', '8.5.0');
+define('LENGAS_MIN_PHP_VERSION_ID', 80500);
+
+if (PHP_VERSION_ID < LENGAS_MIN_PHP_VERSION_ID) {
+    if (PHP_SAPI !== 'cli' && !headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: text/html; charset=utf-8');
+        header('Cache-Control: no-store');
+    }
+    $__php_msg = 'Lengas ' . SITE_VERSION . ' requiert PHP ' . LENGAS_MIN_PHP_VERSION
+               . ' ou supérieur (version actuelle du serveur : ' . PHP_VERSION . ').';
+    error_log('[Lengas] ' . $__php_msg);
+    if (PHP_SAPI === 'cli') {
+        fwrite(STDERR, $__php_msg . PHP_EOL);
+    } else {
+        echo '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Lengas — version de PHP insuffisante</title></head>'
+           . '<body style="font-family:system-ui,sans-serif;max-width:40em;margin:4em auto;padding:0 1em;line-height:1.5">'
+           . '<h1>Version de PHP insuffisante</h1><p>' . htmlspecialchars($__php_msg, ENT_QUOTES, 'UTF-8') . '</p>'
+           . '<p>Mettez à jour PHP depuis le panneau de votre hébergeur, puis rechargez cette page.</p></body></html>';
+    }
+    exit(1);
+}
 
 // Syngas — base commune des mangathèques Lengas (voir includes/syngas.php).
 // URL fixe, codée en dur : il n'existe qu'un seul Syngas, centralisé, ce
@@ -139,6 +170,16 @@ function init_db(PDO $pdo): void {
             id          TEXT PRIMARY KEY,
             data        TEXT NOT NULL DEFAULT '',
             last_active INTEGER NOT NULL DEFAULT 0
+        )
+    ");
+
+    // Tentatives de connexion échouées (limitation anti force brute, voir
+    // login_is_throttled() plus bas). Purgée au fil de l'eau.
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS login_attempts (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip           TEXT NOT NULL,
+            attempted_at INTEGER NOT NULL
         )
     ");
 
@@ -656,7 +697,7 @@ function backfill_series_types(): void {
 // ──────────────────────────────────────────────────────────────────────────────
 // Gestionnaire de sessions SQLite
 // ──────────────────────────────────────────────────────────────────────────────
-class SqliteSessionHandler implements SessionHandlerInterface {
+class SqliteSessionHandler implements SessionHandlerInterface, SessionUpdateTimestampHandlerInterface {
     private PDO $db;
     private int $lifetime;
 
@@ -691,6 +732,26 @@ class SqliteSessionHandler implements SessionHandlerInterface {
                         ->execute([$id]);
     }
 
+    // Mode strict (session.use_strict_mode, activé dans
+    // register_session_handler()) : PHP refuse un identifiant de session qui
+    // n'existe pas déjà en base et en génère un nouveau. Sans cela, un
+    // identifiant imposé de l'extérieur (fixation de session) serait accepté
+    // tel quel.
+    public function validateId(string $id): bool {
+        $stmt = $this->db->prepare(
+            "SELECT 1 FROM sessions WHERE id = ? AND last_active >= ?"
+        );
+        $stmt->execute([$id, time() - $this->lifetime]);
+        return $stmt->fetchColumn() !== false;
+    }
+
+    // Données inchangées (session.lazy_write) : on prolonge simplement la
+    // session, comme write() le ferait, pour conserver la fenêtre glissante.
+    public function updateTimestamp(string $id, string $data): bool {
+        return $this->db->prepare("UPDATE sessions SET last_active = ? WHERE id = ?")
+                        ->execute([time(), $id]);
+    }
+
     public function gc(int $max_lifetime): int|false {
         $stmt = $this->db->prepare(
             "DELETE FROM sessions WHERE last_active < ?"
@@ -719,6 +780,10 @@ class SqliteSessionHandler implements SessionHandlerInterface {
 function register_session_handler(): void {
     $lifetime = 7 * 24 * 60 * 60; // 7 jours
     $handler  = new SqliteSessionHandler(get_db(), $lifetime);
+    // Refuse les identifiants de session inconnus (anti-fixation), et
+    // n'accepte l'identifiant que par cookie (jamais dans l'URL).
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
     session_set_save_handler($handler, true);
     session_name('LENGAS_SESSION');
     session_set_cookie_params([
@@ -824,6 +889,143 @@ function check_password(string $password): bool {
 function save_password_hash(string $hash): void {
     $db = get_db();
     $db->prepare("INSERT OR REPLACE INTO password (id, hash) VALUES (1, ?)")->execute([$hash]);
+}
+
+// Ferme toutes les sessions ouvertes, sauf (facultativement) la session
+// courante. Appelée après un changement de mot de passe : une session volée
+// ou oubliée sur un autre appareil ne survit pas au nouveau mot de passe.
+function invalidate_other_sessions(?string $keep_session_id = null): void {
+    try {
+        $db = get_db();
+        if ($keep_session_id !== null && $keep_session_id !== '') {
+            $db->prepare("DELETE FROM sessions WHERE id <> ?")->execute([$keep_session_id]);
+        } else {
+            $db->exec("DELETE FROM sessions");
+        }
+    } catch (Exception $e) { /* non bloquant */ }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Limitation des tentatives de connexion (anti force brute)
+// ──────────────────────────────────────────────────────────────────────────────
+// Au-delà de LOGIN_MAX_FAILURES échecs en LOGIN_WINDOW_SECONDS depuis une même
+// adresse IP, la connexion par mot de passe est refusée jusqu'à expiration de
+// la fenêtre. Seul REMOTE_ADDR fait foi (les en-têtes X-Forwarded-For sont
+// falsifiables par le client).
+const LOGIN_MAX_FAILURES   = 8;
+const LOGIN_WINDOW_SECONDS = 15 * 60;
+
+function login_client_ip(): string {
+    return substr((string)($_SERVER['REMOTE_ADDR'] ?? 'inconnue'), 0, 64);
+}
+
+function login_is_throttled(string $ip): bool {
+    try {
+        $db = get_db();
+        $db->prepare("DELETE FROM login_attempts WHERE attempted_at < ?")
+           ->execute([time() - LOGIN_WINDOW_SECONDS]);
+        $stmt = $db->prepare("SELECT COUNT(*) FROM login_attempts WHERE ip = ? AND attempted_at >= ?");
+        $stmt->execute([$ip, time() - LOGIN_WINDOW_SECONDS]);
+        return (int)$stmt->fetchColumn() >= LOGIN_MAX_FAILURES;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function login_record_failure(string $ip): void {
+    try {
+        get_db()->prepare("INSERT INTO login_attempts (ip, attempted_at) VALUES (?, ?)")
+                ->execute([$ip, time()]);
+    } catch (Exception $e) { /* non bloquant */ }
+}
+
+function login_clear_failures(string $ip): void {
+    try {
+        get_db()->prepare("DELETE FROM login_attempts WHERE ip = ?")->execute([$ip]);
+    } catch (Exception $e) { /* non bloquant */ }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Protection contre les requêtes intersites (CSRF)
+// ──────────────────────────────────────────────────────────────────────────────
+// Le cookie de session est en SameSite=Lax, ce qui empêche déjà un autre site
+// d'envoyer un formulaire POST authentifié. Restaient deux angles :
+//   - les nombreux endpoints GET qui ÉCRIVENT (flux SSE d'import Anilist,
+//     d'envoi Syngas…) : une simple navigation de premier niveau depuis un
+//     autre site, avec le cookie Lax, suffisait à les déclencher ;
+//   - les sous-domaines d'un même site (« same-site »), que Lax ne cloisonne
+//     pas.
+// lengas_request_site() qualifie la provenance de la requête à partir des en-
+// têtes Fetch Metadata (Sec-Fetch-Site, envoyés par tous les navigateurs
+// actuels), avec repli sur Origin puis Referer pour les navigateurs anciens.
+// Retour : 'same' (le site lui-même, ou une saisie directe / un favori),
+// 'cross' (un autre site, sous-domaine compris) ou 'unknown' (aucun indice :
+// client non navigateur, en-têtes supprimés par un proxy…).
+function lengas_request_site(): string {
+    $fetch_site = strtolower(trim((string)($_SERVER['HTTP_SEC_FETCH_SITE'] ?? '')));
+    if ($fetch_site !== '') {
+        return in_array($fetch_site, ['same-origin', 'none'], true) ? 'same' : 'cross';
+    }
+
+    $host = strtolower(trim((string)($_SERVER['HTTP_HOST'] ?? '')));
+    $host = preg_replace('/:\d+$/', '', $host);
+
+    foreach (['HTTP_ORIGIN', 'HTTP_REFERER'] as $header) {
+        $value = trim((string)($_SERVER[$header] ?? ''));
+        if ($value === '') continue;
+        if ($value === 'null') return 'cross';
+        $source = strtolower((string)(parse_url($value, PHP_URL_HOST) ?? ''));
+        if ($source === '') return 'cross';
+        return ($host !== '' && $source === $host) ? 'same' : 'cross';
+    }
+    return 'unknown';
+}
+
+// À appeler sur toute page réservée à l'administrateur (includes/auth.php).
+//   - requête d'écriture (POST, PUT, DELETE…) venue d'un autre site → 403 ;
+//   - navigation GET venue d'un autre site AVEC paramètres → redirection vers
+//     la même page sans paramètre : un lien externe vers l'administration
+//     reste utilisable, mais ne peut plus déclencher d'action.
+function lengas_enforce_same_origin(): void {
+    if (lengas_request_site() !== 'cross') {
+        return;
+    }
+
+    $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+    if (in_array($method, ['GET', 'HEAD'], true)) {
+        if ((string)($_SERVER['QUERY_STRING'] ?? '') === '') {
+            return;
+        }
+        $path = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+        if ($path === '' || $path[0] !== '/') {
+            $path = '/';
+        }
+        header('Location: ' . $path, true, 303);
+        exit;
+    }
+
+    http_response_code(403);
+    header('Cache-Control: no-store');
+    $accept = (string)($_SERVER['HTTP_ACCEPT'] ?? '');
+    if (str_contains($accept, 'application/json') || !empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['success' => false, 'message' => "Requête refusée : elle ne provient pas de ce site."]);
+    } else {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "Requête refusée : elle ne provient pas de ce site.";
+    }
+    exit;
+}
+
+// En-têtes de sécurité des pages d'administration : interdiction d'affichage
+// dans un cadre d'un autre site (clickjacking), pas de détection de type MIME
+// hasardeuse, et pas de fuite de l'URL d'administration vers les sites liés.
+function lengas_send_admin_security_headers(): void {
+    if (headers_sent()) return;
+    header('X-Frame-Options: SAMEORIGIN');
+    header("Content-Security-Policy: frame-ancestors 'self'");
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: same-origin');
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -1215,7 +1417,7 @@ function upload_image(array $file, &$error_message = null) {
         return false;
     }
     $detected_mime_type = finfo_file($finfo, $file['tmp_name']);
-    finfo_close($finfo);
+    unset($finfo); // finfo_close() : déprécié en PHP 8.5 (objet finfo libéré automatiquement)
 
     if ($detected_mime_type === false || !in_array($detected_mime_type, $allowed_mime_types, true)) {
         $error_message = "Type de fichier non autorisé.";

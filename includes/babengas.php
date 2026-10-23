@@ -127,7 +127,7 @@ function babengas_request(string $method, string $path, ?array $payload = null, 
     $body = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err  = curl_error($ch);
-    curl_close($ch);
+    unset($ch); // curl_close() : no-op depuis PHP 8.0, déprécié en PHP 8.5
 
     if ($err !== '') {
         return ['ok' => false, 'http' => $code, 'data' => null, 'error' => $err];
@@ -168,7 +168,7 @@ function babengas_check_service(): array {
     $body = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err  = curl_error($ch);
-    curl_close($ch);
+    unset($ch); // curl_close() : no-op depuis PHP 8.0, déprécié en PHP 8.5
 
     if ($err !== '' || $code !== 200) {
         return ['ok' => false, 'http' => $code, 'version' => '', 'actif' => false,

@@ -201,6 +201,16 @@ li.sidebar-separator {
 
 .sidebar-link:hover img { opacity: 1; }
 
+/* Les entrées de la sidebar rendues en <button> (Ajouter une série, Ajouter
+   des tomes, Ajouter une série animée, Qui suis-je ?, Légende…) héritent
+   sinon du halo coloré générique de button:hover (_base.css, box-shadow
+   --primary-glow), absent des entrées rendues en <a> : on le neutralise
+   pour que toutes les icônes du menu réagissent de la même façon au survol.
+   :not(.is-active) préserve le contour interne de l'état actif. */
+button.sidebar-link:hover:not(.is-active) {
+    box-shadow: none;
+}
+
 
 /* ── État actif (violet par défaut) ─────────────────────────────────────
    Un contour interne (box-shadow inset) plutôt qu'une barre latérale externe :

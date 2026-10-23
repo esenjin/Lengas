@@ -293,7 +293,7 @@ function displayIntegrityResults(results) {
     }
     html += `</ul>`;
     if (Object.values(results.external_access).some(i => i.ok === false)) {
-        html += `<p class="hint error">⚠️ Un ou plusieurs dossiers sensibles sont accessibles depuis l'extérieur. Vérifiez votre fichier <code>.htaccess</code>.</p>`;
+        html += `<p class="hint error">⚠️ Un ou plusieurs dossiers sensibles sont accessibles depuis l'extérieur. Vérifiez votre fichier <code>.htaccess</code> (Apache) ou la configuration de votre serveur (Nginx : voir la section « Prérequis » du README).</p>`;
     }
     html += `</div>`;
 
@@ -452,7 +452,8 @@ function displayIntegrityResults(results) {
             <ul>
                 <li>Architecture serveur : ${escHtml(results.site_info.server_info.server_architecture)}</li>
                 <li>Serveur web : ${escHtml(results.site_info.server_info.server_software)}</li>
-                <li>Version de PHP : ${escHtml(results.site_info.server_info.php_version)}</li>
+                <li>Version de PHP : <span class="${results.site_info.server_info.php_version_ok === false ? 'error' : 'ok'}">${escHtml(results.site_info.server_info.php_version)}</span>${results.site_info.server_info.php_min_version ? ` (minimum requis : ${escHtml(results.site_info.server_info.php_min_version)})` : ''}</li>
+                ${results.site_info.server_info.php_extensions ? `<li>Extensions PHP requises : ${Object.entries(results.site_info.server_info.php_extensions).map(([ext, ok]) => `<span class="${ok ? 'ok' : 'error'}">${escHtml(ext)} ${ok ? '✓' : '✗ absente'}</span>`).join(', ')}</li>` : ''}
                 <li>Limite d'exécution PHP : ${results.site_info.server_info.max_execution_time} secondes</li>
                 <li>Limite de mémoire PHP : ${results.site_info.server_info.memory_limit}</li>
             </ul>

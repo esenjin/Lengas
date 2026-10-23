@@ -199,22 +199,22 @@ function createLightSeriesCard(series) {
     }
 
     seriesCard.innerHTML = `
-        <img class="series-image" src="${imageSrc}" alt="${series.name}" loading="lazy">
+        <img class="series-image" src="${pgEscape(imageSrc)}" alt="${pgEscape(series.name)}" loading="lazy">
         <div class="series-actions">
-            <button class="edit-series-btn" data-series-id="${series.id}">Modifier</button>
-            <button class="review-series-btn" data-series-id="${series.id}">${series.has_review ? 'Éditer la critique' : 'Ajouter une critique'}</button>
-            <button class="delete-series-btn" data-series-id="${series.id}">Supprimer</button>
+            <button class="edit-series-btn" data-series-id="${pgEscape(series.id)}">Modifier</button>
+            <button class="review-series-btn" data-series-id="${pgEscape(series.id)}">${series.has_review ? 'Éditer la critique' : 'Ajouter une critique'}</button>
+            <button class="delete-series-btn" data-series-id="${pgEscape(series.id)}">Supprimer</button>
         </div>
         <div class="series-info">
-            <h2>${series.name}</h2>
+            <h2>${pgEscape(series.name)}</h2>
             <p><strong>Auteur :</strong> ${formatContributorsRoleCollapsed(series.contributors, 'auteur')}</p>
             <p><strong>Éditeur :</strong> ${formatContributorsRoleCollapsed(series.contributors, 'editeur')}</p>
             <p><strong>Autres contributeurs :</strong> ${formatContributorsCollapsed(series.contributors, ['auteur', 'editeur'])}</p>
-            <p><strong>Catégories :</strong> ${series.categories ? series.categories.join(', ') : ''}</p>
+            <p><strong>Catégories :</strong> ${series.categories ? pgEscape(series.categories.join(', ')) : ''}</p>
             <p><strong>Genres :</strong> ${formatListCollapsed(series.genres)}</p>
             <div class="series-badges series-badges--links">
-                ${series.mangaupdates_url ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}
-                ${series.manganews_url ? `<a class="manganews-badge" href="${series.manganews_url}" target="_blank" rel="noopener" title="Voir sur Manga News"><img src="assets/img/mnlogo.png" alt="Manga News" class="manganews-logo"></a>` : ''}
+                ${series.mangaupdates_url ? `<a class="mu-badge" href="${pgEscape(safeHttpUrl(series.mangaupdates_url))}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}
+                ${series.manganews_url ? `<a class="manganews-badge" href="${pgEscape(safeHttpUrl(series.manganews_url))}" target="_blank" rel="noopener" title="Voir sur Manga News"><img src="assets/img/mnlogo.png" alt="Manga News" class="manganews-logo"></a>` : ''}
                 ${series.syngas_uid ? `<a class="syngas-badge" href="${syngasPublicUrl(series.syngas_uid)}" target="_blank" rel="noopener" title="Voir sur Syngas"><img src="assets/img/synlogo.png" alt="Syngas" class="syngas-logo"></a>` : ''}
             </div>
             <div class="series-badges series-badges--tags">
@@ -704,3 +704,10 @@ document.addEventListener('DOMContentLoaded', () => {
     currentPage = 0;
     loadMoreSeries();
 });
+
+// N'accepte que des liens http(s) : une URL stockée venue de l'extérieur
+// (« javascript:… ») ne doit jamais devenir un lien cliquable exécutable.
+function safeHttpUrl(url) {
+    const value = String(url ?? '').trim();
+    return /^https?:\/\//i.test(value) ? value : '#';
+}

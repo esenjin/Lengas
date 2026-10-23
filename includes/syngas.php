@@ -299,7 +299,7 @@ function syngas_curl(string $method, string $path, ?array $payload = null, int $
     $body = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err  = curl_error($ch);
-    curl_close($ch);
+    unset($ch); // curl_close() : no-op depuis PHP 8.0, déprécié en PHP 8.5
 
     if ($err !== '') {
         // Préfixe explicite : un curl_error() brut ("Operation timed out
@@ -547,7 +547,11 @@ function syngas_map_to_lengas_fields(array $syngas_series, $local_categories = [
     // silencieusement ignorée côté formulaire (add), ou signalée comme un
     // faux changement à chaque comparaison (outil de synchronisation).
     $set_if_not_empty('status', syngas_status_to_lengas((string)($syngas_series['status'] ?? '')));
-    $set_if_not_empty('mangaupdates_url', $syngas_series['mangaupdates_url'] ?? null);
+    // URL venue de la base communautaire : assainie avant tout usage (elle
+    // est affichée en lien sur les pages publiques).
+    $set_if_not_empty('mangaupdates_url', function_exists('mangaupdates_sanitize_url')
+        ? mangaupdates_sanitize_url($syngas_series['mangaupdates_url'] ?? null)
+        : null);
 
     if (isset($syngas_series['mature'])) {
         $fields['mature'] = (bool)$syngas_series['mature'];
@@ -619,12 +623,17 @@ function syngas_download_thumbnail(string $url): array {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
+    // Redirections limitées au web (jamais file://, gopher://…).
+    if (defined('CURLOPT_PROTOCOLS_STR')) {
+        curl_setopt($ch, CURLOPT_PROTOCOLS_STR, 'http,https');
+        curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS_STR, 'http,https');
+    }
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
     curl_setopt($ch, CURLOPT_TIMEOUT, 20);
     curl_setopt($ch, CURLOPT_USERAGENT, 'Lengas (gestion de collection de mangas)');
     $body = curl_exec($ch);
     $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    unset($ch); // curl_close() : no-op depuis PHP 8.0, déprécié en PHP 8.5
 
     if ($body === false || $body === '' || $http < 200 || $http >= 300) {
         return $fail("Téléchargement de la vignette impossible (code $http).");
@@ -638,7 +647,7 @@ function syngas_download_thumbnail(string $url): array {
         return $fail('Impossible de vérifier le type de la vignette.');
     }
     $mime = finfo_buffer($finfo, $body);
-    finfo_close($finfo);
+    unset($finfo); // finfo_close() : déprécié en PHP 8.5 (objet finfo libéré automatiquement)
 
     $extensions = [
         'image/jpeg' => 'jpg',

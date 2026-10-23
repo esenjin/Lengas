@@ -20,6 +20,14 @@ if (!($_SESSION['logged_in'] ?? false)) {
     exit;
 }
 
+// Requêtes intersites (CSRF) : refus des écritures venues d'un autre site, et
+// neutralisation des liens externes porteurs de paramètres (voir
+// lengas_enforce_same_origin() dans config.php). Placé APRÈS le contrôle de
+// connexion : un visiteur non connecté est de toute façon renvoyé vers
+// login.php ci-dessus.
+lengas_enforce_same_origin();
+lengas_send_admin_security_headers();
+
 // Fenêtre « 7 jours glissants » côté CLIENT.
 // PHP n'émet le cookie de session qu'UNE seule fois (à la connexion) et ne le
 // prolonge jamais de lui-même : sans intervention, il expire donc 7 jours après

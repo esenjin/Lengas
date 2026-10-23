@@ -1084,3 +1084,185 @@
     font-size: 0.85rem;
     color: var(--text-gray);
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   Outil « Export vers Anilist » — pages/outils/outil-anilist-export.php
+   Réutilise .tools-section, .analysis-progress, .summary-badge et les blocs
+   .anilist-import-* (réglages, compteurs, retours) de l'outil d'import ; ce
+   qui suit ne couvre que la liste d'aperçu propre à l'export.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.anilist-export-hints {
+    margin: 10px 0 0;
+    padding-left: 18px;
+}
+.anilist-export-hints li { margin-bottom: 4px; }
+
+.anilist-export-howto {
+    margin: 0 0 8px;
+    padding-left: 20px;
+    color: var(--text-gray);
+    font-size: 0.9rem;
+}
+.anilist-export-howto li { margin-bottom: 4px; }
+
+.anilist-export-panel {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.anilist-export-panel-title {
+    font-size: 1rem;
+    color: var(--text-white);
+    margin: 0 0 4px;
+}
+.anilist-export-panel--anime .anilist-export-panel-title { color: #38bdf8; }
+.anilist-export-panel--manga .anilist-export-panel-title { color: #c94e93; }
+
+.anilist-export-dest-count--uncertain .anilist-import-dest-count-value { color: var(--warning-color); }
+
+.anilist-export-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.anilist-export-toolbar select,
+.anilist-export-toolbar input[type="text"] {
+    margin: 0;
+}
+.anilist-export-toolbar select {
+    width: auto;
+    min-width: 170px;
+}
+.anilist-export-toolbar input[type="text"] {
+    flex: 1;
+    min-width: 180px;
+}
+
+.anilist-export-panel .button-sm {
+    padding: 5px 10px;
+    font-size: 0.8em;
+}
+
+.anilist-export-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 560px;
+    overflow-y: auto;
+    border: var(--border-subtle);
+    border-radius: var(--border-radius);
+}
+.anilist-export-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.anilist-export-row:last-child { border-bottom: none; }
+.anilist-export-row.is-state-uncertain { background: rgba(251, 191, 36, 0.04); }
+.anilist-export-row.is-state-none,
+.anilist-export-row.is-state-no_mal,
+.anilist-export-row.is-state-pending { opacity: 0.75; }
+
+.anilist-export-check {
+    margin-top: 4px;
+    flex-shrink: 0;
+    accent-color: var(--primary-color);
+}
+.anilist-export-thumb {
+    width: 36px;
+    height: 52px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+    background: var(--background-medium);
+}
+.anilist-export-info {
+    flex: 1;
+    min-width: 0;
+}
+.anilist-export-name {
+    color: var(--text-color);
+    font-size: 0.92rem;
+    font-weight: 600;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+.anilist-export-meta {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 2px;
+}
+.anilist-export-match {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    font-size: 0.84rem;
+    color: var(--text-gray);
+    margin-top: 4px;
+}
+.anilist-export-match a,
+.anilist-export-candidates a {
+    color: #38bdf8;
+    text-decoration: none;
+}
+.anilist-export-match a:hover,
+.anilist-export-candidates a:hover { text-decoration: underline; }
+
+/* Lien discret plutôt qu'un vrai bouton : neutralise le style générique de
+   button (_base.css), halo compris. */
+.anilist-export-edit-btn,
+.anilist-export-edit-btn:hover {
+    background: none;
+    border: none;
+    box-shadow: none;
+    transform: none;
+    padding: 0;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.anilist-export-edit-btn:hover { color: var(--text-white); }
+
+.anilist-export-edit {
+    margin-top: 8px;
+    padding: 10px;
+    background: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius);
+}
+.anilist-export-edit .hint { margin: 0 0 6px; }
+.anilist-export-candidates {
+    list-style: none;
+    margin: 0 0 10px;
+    padding: 0;
+    font-size: 0.84rem;
+}
+.anilist-export-candidates li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 3px 0;
+}
+.anilist-export-edit-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+.anilist-export-edit-row input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+    margin: 0;
+}
+.anilist-export-empty { margin-top: 8px; }

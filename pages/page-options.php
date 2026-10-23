@@ -228,12 +228,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_options'])) {
     if (!empty($_FILES['default_logo']['name'])) {
         $uploaded_image = $_FILES['default_logo'];
         $allowed_types = ['image/png'];
-        $file_info = finfo_open(FILEINFO_MIME_TYPE);
-        $mime_type = finfo_file($file_info, $uploaded_image['tmp_name']);
+
+        // Téléversement en échec (fichier trop gros, partiel…) : tmp_name est
+        // alors vide, et finfo_file('') lèverait une erreur fatale.
+        $upload_ok = is_array($uploaded_image)
+            && ($uploaded_image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
+            && is_string($uploaded_image['tmp_name'] ?? null)
+            && is_uploaded_file($uploaded_image['tmp_name']);
+        $mime_type = false;
+        if ($upload_ok) {
+            $file_info = finfo_open(FILEINFO_MIME_TYPE);
+            $mime_type = $file_info !== false ? finfo_file($file_info, $uploaded_image['tmp_name']) : false;
+            unset($file_info);
+            if ($mime_type === 'image/png' && @getimagesize($uploaded_image['tmp_name']) === false) {
+                $mime_type = false;
+            }
+        }
 
         // Vérification du type MIME
-        if (!in_array($mime_type, $allowed_types)) {
-            $_SESSION['error_message'] = "Seuls le PNG est autorisés pour le logo.";
+        if (!$upload_ok) {
+            $_SESSION['error_message'] = "Le téléversement du logo a échoué (fichier trop volumineux ou incomplet).";
+        } elseif (!in_array($mime_type, $allowed_types, true)) {
+            $_SESSION['error_message'] = "Seul le format PNG est autorisé pour le logo.";
         } else {
             // Chemin absolu vers logo.png
             $logo_path = __DIR__ . '/../assets/img/logo.png';

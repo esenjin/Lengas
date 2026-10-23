@@ -37,6 +37,20 @@ function mangaupdates_decode_slug(string $slug): ?int {
     return $id > 0 ? $id : null;
 }
 
+// ── Assainissement d'une URL MangaUpdates ─────────────────────────────────────
+// N'accepte qu'une URL http(s) du domaine mangaupdates.com, sans espace ni
+// caractère susceptible de sortir d'un attribut HTML ; renvoie '' sinon.
+// Indispensable pour les valeurs venues de l'extérieur (Syngas, base
+// communautaire) : l'URL est ensuite affichée comme lien sur les pages
+// publiques, une valeur arbitraire (« javascript:… », guillemets…) y
+// deviendrait une faille XSS.
+function mangaupdates_sanitize_url(?string $url): string {
+    $url = trim((string)$url);
+    if ($url === '') return '';
+    if (!preg_match('#^https?://(?:www\.)?mangaupdates\.com/[^\s"\'<>`]*$#i', $url)) return '';
+    return $url;
+}
+
 // ── URL MangaUpdates → series_id numérique ────────────────────────────────────
 function mangaupdates_get_id_from_url(string $url): ?int {
     $slug = mangaupdates_get_slug_from_url($url);
@@ -69,7 +83,7 @@ function mangaupdates_curl(string $url, ?string $post_json = null): array {
     $resp = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err  = curl_error($ch);
-    curl_close($ch);
+    unset($ch); // curl_close() : no-op depuis PHP 8.0, déprécié en PHP 8.5
     return [$resp === false ? '' : $resp, $code, $err];
 }
 

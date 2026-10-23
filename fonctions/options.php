@@ -21,6 +21,16 @@ function update_options(array $options, ?string $admin_password = null, $default
         }
         $password_hash = password_hash($admin_password, PASSWORD_DEFAULT);
         save_password_hash($password_hash);
+
+        // Nouveau mot de passe : la session courante change d'identifiant et
+        // toutes les autres sessions ouvertes (autres appareils, session
+        // éventuellement volée) sont fermées.
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+            invalidate_other_sessions(session_id());
+        } else {
+            invalidate_other_sessions();
+        }
     }
 
     save_options($options);

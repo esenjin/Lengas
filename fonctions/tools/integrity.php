@@ -47,7 +47,7 @@ function gitea_api_get(string $endpoint): ?array {
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     $response  = curl_exec($ch);
     $http_code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    unset($ch); // curl_close() : no-op depuis PHP 8.0, déprécié en PHP 8.5
 
     if ($response === false || $http_code < 200 || $http_code >= 300) {
         return null;
@@ -432,7 +432,7 @@ function integrity_http_probe(string $url, int $timeout = 8): array {
     $http  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $errno = curl_errno($ch);
     $error = curl_error($ch);
-    curl_close($ch);
+    unset($ch); // curl_close() : no-op depuis PHP 8.0, déprécié en PHP 8.5
 
     // Toute réponse HTTP (même 4xx/5xx) prouve que le serveur est joignable.
     if ($errno === 0 && $http > 0) {
@@ -745,14 +745,31 @@ function check_site_integrity(array $data): array {
 // Accès externe aux dossiers sensibles (inchangé)
 // ────────────────────────────────────────────────────────────────────────────
 function check_external_access(): array {
+    // Racine WEB du projet, et non dossier du script appelant : depuis que cet
+    // outil vit dans pages/outils/, dirname(SCRIPT_NAME) visait
+    // « …/pages/outils/saves/ » — une URL qui n'existe pas, toujours en 404,
+    // donc toujours signalée « Bloqué » à tort, même sur un serveur exposant
+    // réellement la base.
     $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
-        . '://' . $_SERVER['HTTP_HOST']
-        . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+        . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
+        . rtrim(lengas_session_base_path(), '/');
 
     $targets = [
         'saves/' => $base_url . '/saves/',
         'bdd/'   => $base_url . '/bdd/',
+        // Le dossier peut renvoyer 403 (listage désactivé) alors que les
+        // fichiers eux-mêmes restent téléchargeables (Nginx sans règle
+        // dédiée) : on teste donc aussi directement la base SQLite…
+        'bdd/' . basename(DB_FILE) => $base_url . '/' . DB_FILE,
     ];
+    // … et la sauvegarde la plus récente, s'il y en a une.
+    $latest_backup = null;
+    foreach ((array)@glob('saves/save_*.zip') as $f) {
+        if ($latest_backup === null || filemtime($f) > filemtime($latest_backup)) $latest_backup = $f;
+    }
+    if ($latest_backup !== null) {
+        $targets['saves/' . basename($latest_backup)] = $base_url . '/saves/' . rawurlencode(basename($latest_backup));
+    }
 
     $results = [];
     foreach ($targets as $label => $url) {
@@ -766,7 +783,7 @@ function check_external_access(): array {
         curl_exec($ch);
         $http_code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error     = curl_errno($ch);
-        curl_close($ch);
+        unset($ch); // curl_close() : no-op depuis PHP 8.0, déprécié en PHP 8.5
 
         if ($error) {
             $results[$label] = ['status' => $http_code, 'ok' => null, 'label' => 'Indéterminé'];
@@ -830,10 +847,22 @@ function get_effective_max_upload_size(): int {
 }
 
 function get_server_info(): array {
+    // Extensions PHP requises (voir « Prérequis » dans le README) : leur
+    // absence n'empêche pas forcément le chargement du site, mais casse une
+    // partie des fonctionnalités (sauvegardes, Anilist, téléversements…).
+    $required_extensions = ['pdo_sqlite', 'curl', 'zip', 'fileinfo'];
+    $extensions = [];
+    foreach ($required_extensions as $ext) {
+        $extensions[$ext] = extension_loaded($ext);
+    }
+
     return [
         'server_architecture' => php_uname('m'),
-        'server_software'     => $_SERVER['SERVER_SOFTWARE'],
-        'php_version'         => phpversion(),
+        'server_software'     => (string)($_SERVER['SERVER_SOFTWARE'] ?? 'inconnu'),
+        'php_version'         => PHP_VERSION,
+        'php_min_version'     => LENGAS_MIN_PHP_VERSION,
+        'php_version_ok'      => PHP_VERSION_ID >= LENGAS_MIN_PHP_VERSION_ID,
+        'php_extensions'      => $extensions,
         'max_execution_time'  => ini_get('max_execution_time'),
         'memory_limit'        => ini_get('memory_limit'),
     ];

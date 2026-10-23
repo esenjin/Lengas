@@ -17,7 +17,7 @@ require __DIR__ . '/_bootstrap.php';
 // .htaccess (accès direct interdit). Le téléchargement passe donc par ce
 // endpoint authentifié, qui relit le fichier et le renvoie lui-même.
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['download_backup'])) {
-    $requested = $_GET['download_backup'];
+    $requested = is_string($_GET['download_backup']) ? $_GET['download_backup'] : '';
 
     // On ne garde que le nom de fichier : neutralise toute tentative de
     // traversée de répertoire (../, chemins absolus…).
@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['download_backup'])) {
     $path     = 'saves/' . $filename;
 
     // Le nom doit correspondre au format généré par create_backup()
-    if (!preg_match('/^save_\d+\.zip$/', $filename) || !is_file($path)) {
+    if (!is_valid_backup_name($filename) || !is_file($path)) {
         http_response_code(404);
         exit('Sauvegarde introuvable.');
     }
@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_action'])) {
             break;
 
         case 'delete_backup':
-            $response = delete_backup($_POST['backup_file'] ?? '');
+            $response = delete_backup(is_string($_POST['backup_file'] ?? null) ? $_POST['backup_file'] : '');
             break;
 
         case 'list_backups':

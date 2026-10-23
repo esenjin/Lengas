@@ -182,6 +182,7 @@ Tous les outils du site sont accessibles depuis `pages/page-outils.php`, accessi
 - **Sauvegardes** (`pages/outils/outil-sauvegardes.php`) : création et téléchargement d'archives de vos données, ainsi que l'export JSON complet (inclut les tables et les vignettes propres à l'Animethèque)
 - **Association MangaUpdates** (`pages/outils/outil-associations-mu.php`) : recherche automatique d'une fiche pour chaque série sans URL (corrélation titre + auteur), avec progression en direct et validation avant enregistrement ; un second outil récupère de la même façon les genres manquants
 - **Synchronisation Syngas** (`pages/outils/outil-syngas.php`) : envoie vos séries mangas/light-novels non encore liées à Syngas (après récapitulatif et confirmation) et récupère les mises à jour des séries déjà liées (comparaison champ par champ, validation sélective) — voir [Comment utiliser Syngas](#comment-utiliser-syngas)
+- **Export vers Anilist** (`pages/outils/outil-anilist-export.php`) : voir [Export vers Anilist](#export-vers-anilist)
 - **Groupage de licences** (`pages/outils/outil-groupage-licences.php`) : repère les séries sans licence qui semblent appartenir à la même œuvre (comparaison du nom et, pour les animés, des titres alternatifs Anilist, avec bonus si deux mangas partagent au moins un même auteur ou si deux animés partagent le même studio) et propose de les regrouper. Chaque suggestion se valide individuellement : création d'une nouvelle licence, rattachement à une licence existante détectée automatiquement (avec consultation de son contenu actuel avant de confirmer), rattachement à une autre licence choisie manuellement, ou ignorée. Seuil de similarité ajustable, avec un repère calculé sur le score moyen des licences déjà existantes. Analyse entièrement locale (aucun appel réseau)
 - **Vérification d'intégrité du site** (`pages/outils/outil-integrite.php`) : compare automatiquement votre instance au dépôt Gitea, **au tag correspondant à votre version installée** (si aucun tag ne correspond, la comparaison se fait avec la version la plus récente et le signale). Pour chaque fichier versionné, elle vérifie la **présence** ET le **contenu** (comparaison d'empreinte : « OK », « Modifié » ou « Manquant »). Elle repère aussi les **fichiers étrangers au dépôt** (présents sur l'instance mais absents du dépôt, hors données `uploads/` `saves/` `bdd/`, config Vestikan, thèmes personnalisés et photo de profil de l'admin), l'**état des modules facultatifs** Vestikan et Babengas (installés ? réellement activés ? service distant fonctionnel ?), l'**état de Syngas** (service joignable ? clé API provisionnée ? bannissement éventuel signalé), la **connectivité à l'API Anilist**, les permissions, les fichiers interdits, les doublons, les images orphelines (la photo de profil de l'admin et les vignettes Anilist actives ne sont jamais considérées comme orphelines), l'accès externe aux dossiers sensibles, la structure de la base de données (y compris les tables et colonnes propres à l'Animethèque), les thèmes personnalisés présents
 - **Vider le cache** (`pages/outils/outil-cache.php`) : force le renouvellement du cache navigateur sur les fichiers CSS/JS du site, pour que les changements d'une mise à jour s'affichent correctement sans avoir besoin d'un rechargement forcé (Ctrl+F5). Ne touche jamais à votre session ni à vos données. Repose sur un compteur de version stocké en base (option `cache_bust_version`), utilisé par `asset_url()` (`includes/helpers.php`) comme paramètre `?v=...` de chaque CSS/JS : ce mécanisme fonctionne même si le serveur web n'a aucun droit d'écriture sur `assets/` (cas courant en hébergement mutualisé). Un rafraîchissement de la date de modification des fichiers eux-mêmes est tenté en complément, à titre de bonus non bloquant si les droits le permettent
@@ -215,7 +216,11 @@ Toutes les options du site sont regroupées sur la page `pages/page-options.php`
 
 ### Sécurité
 - Mode privé pour cacher votre bibliothèque (réglable par collection)
-- Gestion des mots de passe et des sessions
+- Gestion des mots de passe et des sessions : nouvel identifiant de session à chaque connexion, identifiants de session inconnus refusés (mode strict), fermeture de toutes les autres sessions au changement de mot de passe
+- Limitation des tentatives de connexion : 8 échecs en 15 minutes depuis une même adresse IP bloquent temporairement la connexion par mot de passe
+- Protection contre les requêtes intersites (CSRF) sur toute l'administration : les écritures venues d'un autre site sont refusées, et un lien externe porteur de paramètres est ramené à la page nue (en-têtes `Sec-Fetch-Site`, avec repli sur `Origin`/`Referer`)
+- Pages d'administration non affichables dans un cadre d'un autre site (anti-clickjacking)
+- `generate_password.php` ne fonctionne que si aucun mot de passe n'est encore défini (ou sur demande explicite de réinitialisation, voir [Installation](#installation)) : oublié sur le serveur, il ne permet plus de prendre la main sur le site
 - Connexion SSO Vestikan facultative
 
 ---
@@ -244,6 +249,27 @@ Pour chaque animé : titres (romaji, anglais, natif, synonymes), studios, format
 ### Quota et robustesse
 Anilist autorise 90 requêtes par minute ; le connecteur applique une fenêtre glissante avec une temporisation intégrée pour rester en dessous de ce plafond en toute circonstance, et respecte un éventuel `Retry-After` en cas de dépassement. Toute indisponibilité de l'API (erreur réseau, délai dépassé, réponse malformée) se traduit par un message clair, jamais par une erreur fatale du site.
 
+### Export vers Anilist
+
+L'outil **Export vers Anilist** (page Outils, section Mutualisés) crée des fichiers à importer sur Anilist depuis **Paramètres → Import** ([anilist.co/settings/import](https://anilist.co/settings/import)). Anilist n'accepte en import que le format d'export **MyAnimeList** (XML) : l'outil produit donc un fichier pour les animés et un autre pour les mangas/light-novels. Ce format identifie chaque série par son identifiant MyAnimeList, et non par son identifiant Anilist, d'où un déroulement en deux temps :
+
+1. **Préparation** (progression en direct, reprise possible) : chaque série est associée à sa fiche Anilist.
+   - Animés : déjà liés à Anilist, l'association est exacte (récupération groupée de l'identifiant MyAnimeList, 50 fiches par requête).
+   - Mangas / light-novels : recherche par titre sur Anilist, avec un score de confiance (titre, auteur, catégorie light-novel). Sous 70 %, la correspondance est marquée « À vérifier » et décochée par défaut. Chaque association se corrige à la main : choix parmi les autres résultats, saisie d'une URL ou d'un identifiant Anilist, ou « Aucune correspondance ».
+   - Les associations sont **mémorisées** (option `anilist_export_matches`) : un export suivant ne refait que les recherches manquantes. « Relancer les recherches » retente les séries sans correspondance fiable ; « Oublier toutes les associations » repart de zéro.
+2. **Téléchargement** : aperçu par type (cases à cocher, filtres, recherche), puis un fichier XML par type. Les données sont relues dans la collection au moment du téléchargement :
+
+   | Lengas | Fichier exporté |
+   |---|---|
+   | Statut (À débuter / En cours / Terminée / Abandonnée, mêmes règles que les filtres du site) | Plan to Watch/Read, Watching/Reading, Completed, Dropped |
+   | Tomes lus / épisodes vus | Progression |
+   | Date de lecture/visionnage la plus ancienne / la plus récente | Date de début / de fin (si terminée) |
+   | Relectures / revisionnages | Nombre de relectures / revisionnages |
+   | Notation (facultatif) | ☺️ 8/10, 😑 5/10, 😠 3/10 |
+   | Liste d'envies (facultatif) | Plan to Watch / Plan to Read |
+
+Une fiche Anilist sans équivalent MyAnimeList ne peut pas passer par ce format : elle est signalée « non exportable ». L'outil ne modifie **jamais** la collection.
+
 ### Ce qui est automatique
 - **Synchronisation automatique** : les séries dont la diffusion **et** le visionnage sont tous deux « en cours » se tiennent à jour toutes seules. Déclenchée une seule fois par chargement de la page Animethèque : le front interroge un endpoint dédié (`get_anime_sync_due_ids`) pour connaître la liste des séries dues, indépendamment de ce qui est déjà affiché à l'écran ou chargé par le défilement infini — une série due mais triée loin dans la liste n'a donc pas besoin d'être scrollée jusqu'à l'écran pour être traitée. Verrou de 12 h par série par défaut (ramené à 4 h en cas d'échec de l'API), réglable dans les options du site (« Options » → « Synchronisation Anilist ») entre 1 h et 72 h pour la vérification et entre 30 min et 24 h pour le nouvel essai après échec, ce dernier restant toujours inférieur ou égal au délai de vérification ; se limite strictement aux **épisodes** (création des nouveaux épisodes diffusés, en statut « à voir ») et au **statut de diffusion**. S'exécute en arrière-plan (AJAX), série par série avec une pause d'1 à 2 secondes entre chaque appel par égard pour l'API Anilist, sans jamais bloquer l'affichage de la page ; un bandeau discret au-dessus de la liste indique l'avancée (nombre de séries actualisées / restantes). L'outil dédié « Synchronisation via Anilist » permet aussi de la déclencher ou de la forcer manuellement (tous verrous ignorés)
 - **Import de masse** : l'outil « Import Anilist » récupère la liste ANIME complète d'un compte, par pseudo public saisi à chaque campagne (jamais mémorisé). Il se déroule en deux temps : un écran d'aperçu complet (décompte par destination, sélection des séries favorites, des statuts et formats à importer, traitement des séries déjà présentes, exclusion des séries classées adultes, liste détaillée décochable série par série) puis, après validation explicite, l'écriture proprement dite. L'aiguillage suit le statut de liste Anilist de chaque entrée :
@@ -264,9 +290,17 @@ Anilist autorise 90 requêtes par minute ; le connecteur applique une fenêtre g
 
 ## Prérequis
 - Serveur web (Apache, Nginx)
-- PHP 8.0 ou supérieur
+- **PHP 8.5 ou supérieur** (le site refuse de démarrer sur une version plus ancienne et affiche un message explicite ; la version détectée est visible dans l'outil « Vérification d'intégrité du site »)
 - Extensions PHP : `pdo_sqlite` (base de données), `curl` (Anilist, MangaUpdates, Babengas, Vestikan), `zip` (sauvegardes), `fileinfo` (validation des images téléversées)
 - Droits d'écriture pour le serveur web sur les dossiers `bdd/`, `saves/` et `uploads/` (chmod 0774, voir [Structure des fichiers](#structure-des-fichiers))
+- **Accès web interdit aux dossiers `bdd/` et `saves/`** : sous Apache, le `.htaccess` fourni s'en charge. Sous **Nginx**, qui ignore les `.htaccess`, ajoutez impérativement une règle dans la configuration du site, sans quoi la base de données et les sauvegardes sont téléchargeables par n'importe qui :
+
+  ```nginx
+  location ~ ^/(chemin-de-lengas/)?(bdd|saves)/ { deny all; return 404; }
+  location ~ \.(db|db-shm|db-wal|zip)$         { deny all; return 404; }
+  ```
+
+  L'outil « Vérification d'intégrité du site » teste directement l'accès à la base et à la dernière sauvegarde.
 
 Facultatif, selon les fonctionnalités utilisées :
 - Un microservice [Babengas](https://git.crystalyx.net/Esenjin_Asakha/Babengas) (Docker) pour la vérification des sorties françaises via Manga News (version 2.0.0 minimum)
@@ -276,15 +310,19 @@ Facultatif, selon les fonctionnalités utilisées :
 
 ## Installation
 1. Télécharger la dernière publication
-2. Éditer le fichier `generate_password.php` en y indiquant le mdp souhaité
+2. Éditer le fichier `generate_password.php` en y indiquant le mdp souhaité (8 caractères minimum)
 3. Téléverser les fichiers sur votre serveur
 4. Exécuter le fichier `generate_password.php`
 5. SUPPRIMER LE FICHIER `generate_password.php`
 6. C'est tout bon ! Vous pouvez profiter.
 
+> **Mot de passe oublié ?** `generate_password.php` refuse de remplacer un mot de passe existant. Pour le réinitialiser : déposez un fichier vide nommé `RESET_PASSWORD` dans le dossier `bdd/` (par FTP, par exemple), puis suivez les étapes 2 à 5 ci-dessus. Le fichier `RESET_PASSWORD` est supprimé automatiquement et toutes les sessions ouvertes sont fermées. Pour changer un mot de passe connu, passez simplement par la page « Options ».
+
 ---
 
 ## Mise à jour classique
+> ⚠️ **Depuis la 4.4.0, Lengas requiert PHP 8.5 ou supérieur.** Vérifiez la version de PHP de votre hébergement (ou passez-la en 8.5) **avant** de mettre à jour : sur une version plus ancienne, le site affiche un message d'erreur à la place des pages.
+
 1. Télécharger la dernière publication
 2. Extraire l'archive téléchargée
 3. Y SUPPRIMER LE FICHIER `generate_password.php`
@@ -452,6 +490,7 @@ lengas/
 │       ├── outil-anilist-sync.php     # Synchronisation via Anilist
 │       ├── outil-anilist-import.php   # Import Anilist
 │       ├── outil-anilist-recheck.php  # Vérification des animés
+│       ├── outil-anilist-export.php   # Export vers Anilist (fichiers XML MyAnimeList)
 │       ├── outil-coherences.php       # Vérification des mangas
 │       ├── outil-sauvegardes.php      # Sauvegardes et export JSON
 │       ├── outil-associations-mu.php  # Association MangaUpdates (fiches + genres)
@@ -527,6 +566,7 @@ lengas/
 │       │       ├── anilist-import.js
 │       │       ├── anilist-sync.js
 │       │       ├── anilist-recheck.js
+│       │       ├── anilist-export.js
 │       │       ├── grouping.js
 │       │       └── cache.js
 │       ├── stats.js
@@ -573,6 +613,7 @@ lengas/
 │       ├── anilist_import.php     # Import de masse de la liste Anilist
 │       ├── anilist_sync.php       # Synchronisation automatique des animés en cours
 │       ├── anilist_recheck.php    # Vérification manuelle des animés
+│       ├── anilist_export.php     # Export vers Anilist (association + génération XML)
 │       ├── grouping.php           # Groupage de licences (suggestions de regroupement)
 │       └── cache.php              # Vider le cache (rafraîchissement des assets CSS/JS)
 ├── uploads/              # Images des séries, dont les vignettes Anilist téléchargées (chmod 0774)

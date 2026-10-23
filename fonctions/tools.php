@@ -16,6 +16,7 @@
 //   anilist_import.php     → Import de masse de la liste Anilist
 //   anilist_sync.php       → Synchronisation automatique Anilist
 //   anilist_recheck.php    → Vérification manuelle des animés
+//   anilist_export.php     → Export vers Anilist (fichiers XML MyAnimeList)
 //   grouping.php           → Groupage de licences (suggestions de regroupement)
 //   syngas.php              → Synchronisation Syngas (envoi/réception)
 //   cache.php               → Vider le cache (rafraîchissement des assets CSS/JS)
@@ -31,6 +32,7 @@ require_once __DIR__ . '/tools/coherence.php';
 require_once __DIR__ . '/tools/anilist_import.php';
 require_once __DIR__ . '/tools/anilist_sync.php';
 require_once __DIR__ . '/tools/anilist_recheck.php';
+require_once __DIR__ . '/tools/anilist_export.php';
 require_once __DIR__ . '/tools/grouping.php';
 require_once __DIR__ . '/tools/syngas.php';
 require_once __DIR__ . '/tools/cache.php';

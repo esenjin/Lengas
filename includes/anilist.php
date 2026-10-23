@@ -221,7 +221,7 @@ function anilist_graphql(string $query, array $variables = [], int $timeout = 20
     $code  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $errno = curl_errno($ch);
     $cerr  = curl_error($ch);
-    curl_close($ch);
+    unset($ch); // curl_close() : no-op depuis PHP 8.0, déprécié en PHP 8.5
 
     // ── Échec réseau (DNS, connexion, délai dépassé) ─────────────────────────
     if ($body === false || $errno !== 0) {

@@ -171,7 +171,7 @@ function syngasRenderResults(prefix, results) {
 
     let html = '';
     results.forEach(r => {
-        const thumb = r.thumbnail_url
+        const thumb = r.thumbnail_url && /^https?:\/\//i.test(String(r.thumbnail_url))
             ? `<img class="syngas-result-thumb" src="${syngasEscHtml(r.thumbnail_url)}" alt="" loading="lazy">`
             : `<div class="syngas-result-thumb syngas-result-thumb--empty"></div>`;
         // Aperçu texte des contributeurs : nouveau contrat Syngas → un seul
@@ -190,7 +190,7 @@ function syngasRenderResults(prefix, results) {
                     ${meta ? `<div class="syngas-result-meta">${meta}</div>` : ''}
                 </div>
                 <div class="syngas-result-actions">
-                    ${r.public_url ? `<a class="syngas-result-link" href="${syngasEscHtml(r.public_url)}" target="_blank" rel="noopener">Voir sur Syngas ↗</a>` : ''}
+                    ${r.public_url && /^https?:\/\//i.test(String(r.public_url)) ? `<a class="syngas-result-link" href="${syngasEscHtml(r.public_url)}" target="_blank" rel="noopener">Voir sur Syngas ↗</a>` : ''}
                     <button type="button" class="button button-ats syngas-result-validate"
                             data-syngas-validate data-syngas-prefix="${prefix}" data-syngas-id="${syngasEscHtml(r.id)}">
                         Valider

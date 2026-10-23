@@ -367,8 +367,8 @@ function fillSeriesDetailModal(series) {
     const linksHtml =
         (isAnime ? publicEditionsBadgeHtml(series) : '') +
         (isAnime ? publicAnilistBadgeHtml(series) : '') +
-        `${(!isAnime && series.mangaupdates_url) ? `<a class="mu-badge" href="${series.mangaupdates_url}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}` +
-        `${(!isAnime && series.manganews_url) ? `<a class="manganews-badge" href="${series.manganews_url}" target="_blank" rel="noopener" title="Voir sur Manga News"><img src="assets/img/mnlogo.png" alt="Manga News" class="manganews-logo"></a>` : ''}` +
+        `${(!isAnime && series.mangaupdates_url) ? `<a class="mu-badge" href="${publicEscape(safeHttpUrl(series.mangaupdates_url))}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="assets/img/mulogo.png" alt="MangaUpdates" class="mu-logo"></a>` : ''}` +
+        `${(!isAnime && series.manganews_url) ? `<a class="manganews-badge" href="${publicEscape(safeHttpUrl(series.manganews_url))}" target="_blank" rel="noopener" title="Voir sur Manga News"><img src="assets/img/mnlogo.png" alt="Manga News" class="manganews-logo"></a>` : ''}` +
         `${(!isAnime && series.syngas_uid) ? `<a class="syngas-badge" href="${syngasPublicUrl(series.syngas_uid)}" target="_blank" rel="noopener" title="Voir sur Syngas"><img src="assets/img/synlogo.png" alt="Syngas" class="syngas-logo"></a>` : ''}`;
     const tagsHtml =
         `${series.mature ? '<span class="mature-badge">🔞 mature</span>' : ''}` +
@@ -1249,3 +1249,10 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     });
 });
+
+// N'accepte que des liens http(s) : une URL stockée venue de l'extérieur
+// (« javascript:… ») ne doit jamais devenir un lien cliquable exécutable.
+function safeHttpUrl(url) {
+    const value = String(url ?? '').trim();
+    return /^https?:\/\//i.test(value) ? value : '#';
+}

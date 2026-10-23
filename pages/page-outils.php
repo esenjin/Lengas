@@ -121,6 +121,15 @@ $tools = [
         'section'     => 'anime',
     ],
     [
+        'icon'        => 'cloud-upload-outline',
+        'name'        => 'Export vers Anilist',
+        'description' => "Crée les fichiers à importer sur Anilist (animés et mangas) à partir de vos statuts, progressions et dates.",
+        'href'        => 'outils/outil-anilist-export.php',
+        'visible'     => !empty($data),
+        'color'       => 'brown',
+        'section'     => 'shared',
+    ],
+    [
         'icon'        => 'source-merge',
         'name'        => 'Groupage de licences',
         'description' => "Suggère des séries sans licence qui semblent appartenir à la même œuvre, à regrouper en un clic.",

@@ -6,16 +6,33 @@ require_once 'includes/opengraph.php';
 require 'vestikan/vestikan.php';
 $options = load_options();
 
+// Interdit l'affichage de la page de connexion dans un cadre d'un autre site.
+lengas_send_admin_security_headers();
+
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $password = $_POST['password'] ?? '';
-    if (check_password($password)) {
+    $password  = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
+    $client_ip = login_client_ip();
+
+    if (lengas_request_site() === 'cross') {
+        // Formulaire soumis depuis un autre site : refusé sans même vérifier
+        // le mot de passe.
+        $error = 'Requête refusée : elle ne provient pas de ce site.';
+    } elseif (login_is_throttled($client_ip)) {
+        $error = 'Trop de tentatives de connexion. Réessayez dans quelques minutes.';
+    } elseif ($password !== '' && check_password($password)) {
+        login_clear_failures($client_ip);
         register_session_handler();
         session_start();
+        // Nouvel identifiant de session à chaque connexion (anti-fixation).
+        session_regenerate_id(true);
         $_SESSION['logged_in'] = true;
         header('Location: admin.php');
         exit;
     } else {
+        login_record_failure($client_ip);
+        // Ralentit les essais en rafale sans gêner une faute de frappe.
+        usleep(random_int(300000, 700000));
         $error = 'Mot de passe incorrect.';
     }
 }
@@ -157,7 +174,7 @@ $sso_error = isset($_GET['sso_error']);
         <p style="color: orange; text-align: center;">Votre session a expiré. Veuillez vous reconnecter.</p>
     <?php endif; ?>
     <?php if ($error): ?>
-        <p style="color: red; text-align: center;"><?= $error ?></p>
+        <p style="color: red; text-align: center;"><?= htmlspecialchars($error) ?></p>
     <?php endif; ?>
     <?php if ($sso_error): ?>
         <p style="color: red; text-align: center;">Échec de la connexion avec Vestikan. Réessayez ou utilisez le mot de passe.</p>

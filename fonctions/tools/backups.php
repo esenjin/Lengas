@@ -33,8 +33,11 @@ function create_backup(): array {
         return ['success' => false, 'message' => "Le dossier 'saves/' n'est pas accessible en écriture."];
     }
 
+    // Suffixe aléatoire : sur un serveur qui n'applique pas le .htaccess
+    // (Nginx, par exemple), un nom de la forme save_<horodatage>.zip se
+    // devinait trop facilement — et l'archive contient toute la base.
     $timestamp   = time();
-    $backup_name = "save_$timestamp.zip";
+    $backup_name = "save_{$timestamp}_" . bin2hex(random_bytes(8)) . ".zip";
     $backup_path = "$backup_dir/$backup_name";
 
     $zip = new ZipArchive();
@@ -81,7 +84,7 @@ function list_backups(): array {
     if (file_exists($backup_dir)) {
         foreach (scandir($backup_dir) as $file) {
             if ($file !== '.' && $file !== '..' && pathinfo($file, PATHINFO_EXTENSION) === 'zip') {
-                $timestamp = (int)str_replace(['save_', '.zip'], '', $file);
+                $timestamp = preg_match('/^save_(\d+)/', $file, $m) ? (int)$m[1] : (int)@filemtime("$backup_dir/$file");
                 $date      = date('d/m/Y H:i', $timestamp);
                 $path      = "$backup_dir/$file";
 
@@ -120,8 +123,17 @@ function list_backups(): array {
 }
 
 // Supprimer une sauvegarde
+// Nom de fichier de sauvegarde valide (format produit par create_backup(),
+// ancien format sans suffixe compris). Neutralise toute traversée de
+// répertoire (« ../bdd/lengas.db », chemins absolus…).
+function is_valid_backup_name(string $name): bool {
+    return $name === basename($name)
+        && preg_match('/^save_\d+(?:_[a-f0-9]{16})?\.zip$/', $name) === 1;
+}
+
+// Supprimer une sauvegarde
 function delete_backup(string $backup_file): array {
-    if (!empty($backup_file) && file_exists("saves/$backup_file")) {
+    if (is_valid_backup_name($backup_file) && is_file("saves/$backup_file")) {
         unlink("saves/$backup_file");
         return ['success' => true, 'message' => 'Sauvegarde supprimée avec succès.'];
     }

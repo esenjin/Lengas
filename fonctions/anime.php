@@ -66,12 +66,17 @@ function anime_download_cover(string $url): array {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
+    // Redirections limitées au web (jamais file://, gopher://…).
+    if (defined('CURLOPT_PROTOCOLS_STR')) {
+        curl_setopt($ch, CURLOPT_PROTOCOLS_STR, 'http,https');
+        curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS_STR, 'http,https');
+    }
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
     curl_setopt($ch, CURLOPT_TIMEOUT, 20);
     curl_setopt($ch, CURLOPT_USERAGENT, function_exists('anilist_user_agent') ? anilist_user_agent() : 'Lengas');
     $body = curl_exec($ch);
     $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    unset($ch); // curl_close() : no-op depuis PHP 8.0, déprécié en PHP 8.5
 
     if ($body === false || $body === '' || $http < 200 || $http >= 300) {
         return $fail("Téléchargement de la vignette impossible (code " . $http . ").");
@@ -88,7 +93,7 @@ function anime_download_cover(string $url): array {
         return $fail("Impossible de vérifier le type de la vignette.");
     }
     $mime = finfo_buffer($finfo, $body);
-    finfo_close($finfo);
+    unset($finfo); // finfo_close() : déprécié en PHP 8.5 (objet finfo libéré automatiquement)
 
     $extensions = [
         'image/jpeg' => 'jpg',
