@@ -7,7 +7,7 @@ declare(strict_types=1);
  * ============================================================================
  *
  *  Ajoute « Se connecter avec Vestikan » à un site. Un seul fichier, aucune
- *  dépendance (PHP + curl). Compatible PHP 8.1+.
+ *  dépendance (PHP + curl). Requiert PHP 8.5+.
  *
  *  UTILISATION MINIMALE
  *  --------------------
@@ -49,6 +49,14 @@ declare(strict_types=1);
  * les détails techniques vont dans le log serveur du satellite.
  */
 class VestikanException extends \RuntimeException {}
+
+// Vestikan requiert PHP 8.5+ : on échoue dès l'inclusion du SDK, avec un
+// message explicite, plutôt que de laisser survenir des erreurs plus loin.
+if (\PHP_VERSION_ID < 80500) {
+    throw new VestikanException(
+        'Le SDK Vestikan requiert PHP 8.5.0 ou supérieur (version actuelle : ' . \PHP_VERSION . ').'
+    );
+}
 
 final class Vestikan
 {
@@ -230,7 +238,9 @@ final class Vestikan
         $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $errno  = curl_errno($ch);
         $errmsg = curl_error($ch);
-        curl_close($ch);
+        // Pas de curl_close() : no-op depuis PHP 8.0, déprécié en 8.5. Le
+        // handle est libéré automatiquement en sortie de portée.
+        unset($ch);
 
         if ($errno !== 0 || $body === false) {
             error_log("[Vestikan SDK] échec réseau /token : $errmsg");
