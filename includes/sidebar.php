@@ -23,19 +23,16 @@ $__sidebar_type = function_exists('sanitize_series_type')
 // Filtre de statuts actuellement appliqué (utilisé pour « Mangas à lire » et
 // « Animés à visionner », et pour détecter quand l'une des deux est active).
 //
-// Manga : un seul jeton — une série DÉBUTÉE mais pas encore terminée (ni « à
-// débuter », ni « terminée », ni « abandonnée »).
-//
-// Anime : DEUX jetons — en plus des animés en cours de visionnage, « Animés à
-// visionner » inclut désormais ceux pas encore commencés (« à voir »), pour
-// couvrir toute la file d'attente en un clic plutôt que le seul visionnage
-// déjà entamé.
+// Manga et anime : DEUX jetons — les séries en cours de lecture/visionnage ET
+// celles pas encore commencées (« à débuter » / « à voir »), pour couvrir
+// toute la file d'attente en un clic plutôt que la seule lecture déjà entamée
+// (ni « terminée », ni « abandonnée »).
 //
 // Les deux liens appliquent en plus un tri par date de lecture/visionnage
 // descendant (les plus récemment avancées en tête), pour retrouver en un
 // coup d'œil ce qu'on vient de commencer.
 $__sidebar_status_filter = trim((string)($_GET['status_filter'] ?? ''));
-$__sidebar_backlog_tokens_manga = 'reading_in_progress';
+$__sidebar_backlog_tokens_manga = 'reading_not_started,reading_in_progress';
 $__sidebar_backlog_tokens_anime = 'reading_not_started,reading_in_progress';
 $__sidebar_backlog_tokens = ($__sidebar_type === 'anime') ? $__sidebar_backlog_tokens_anime : $__sidebar_backlog_tokens_manga;
 $__sidebar_is_backlog = in_array($__sidebar_status_filter, [$__sidebar_backlog_tokens_manga, $__sidebar_backlog_tokens_anime], true);
@@ -99,7 +96,8 @@ $__c_orange = rawurlencode(sidebar_section_color('orange'));
                     </button>
                 </li>
 
-                <!-- Mangas à lire : lecture débutée, pas encore terminée —
+                <!-- Mangas à lire : à débuter OU lecture débutée (pas
+                     encore terminée) —
                      triés par date de lecture descendante (les plus
                      récemment avancés en tête). -->
                 <li>

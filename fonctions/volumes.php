@@ -341,6 +341,19 @@ function update_volume($data, $series_id, $volume_index, $status, $is_collector,
     return ['success' => true, 'data' => $data];
 }
 
+// Vrai si un tome tagué « dernier » (dans $after) est passé d'un statut autre
+// que « terminé » (dans $before) à « terminé » : la lecture de la série vient
+// de s'achever, c'est le moment de proposer de la noter (voir admin.php,
+// update_volume, et volumes.js). $before et $after sont les listes de tomes
+// de la même série avant/après modification, aux mêmes index.
+function last_volume_just_read(array $before, array $after): bool {
+    foreach ($after as $i => $volume) {
+        if (empty($volume['last']) || ($volume['status'] ?? '') !== 'terminé') continue;
+        if (($before[$i]['status'] ?? '') !== 'terminé') return true;
+    }
+    return false;
+}
+
 // Applique un statut de lecture (et sa date le cas échéant) à TOUS les tomes d'une série.
 // Ne touche pas aux tags collector / dernier tome ni aux numéros.
 //

@@ -129,6 +129,7 @@ Annuaire public des contributeurs de la Mangathèque (`personnalites.php`, lien 
 ### Notation
 - Note subjective facultative par série, au choix parmi trois valeurs : ☺️ « J'ai apprécié », 😑 « Mi-figue mi-raisin », 😠 « Je n'ai pas aimé »
 - Réglable à l'ajout et à la modification d'une série (menu déroulant « Notation »)
+- Proposée automatiquement à la fin d'une lecture : dès qu'un tome tagué « dernier » passe en « terminé » (édité directement, ou via « Appliquer ce statut de lecture à tous les tomes de la série »), une modale propose de noter la série en un clic (« Plus tard » pour ignorer)
 - Pour les animés importés depuis Anilist, la note de la fiche est traduite automatiquement (score 0-100 → note du site)
 - Affichée sous forme de badge emoji (texte au survol) : dans la carte de série côté administration, et dans la modale de détails côté public
 
@@ -211,7 +212,7 @@ Toutes les options du site sont regroupées sur la page `pages/page-options.php`
 - Modales pour les actions
 - Tri et filtrage des séries
 - Menu latéral organisé en sections thématiques (Mangathèque, Animethèque, Hors collection, Mutualisé, Divers, Gestion), avec titre de section et libellé au-dessus de chaque icône, y compris sur mobile
-- « Mangas à lire » et « Animés à visionner » (menu latéral admin) trient automatiquement par date de lecture/visionnage descendante ; « Animés à visionner » inclut en plus les animés pas encore commencés (« à voir »), en plus de ceux en cours
+- « Mangas à lire » et « Animés à visionner » (menu latéral admin) trient automatiquement par date de lecture/visionnage descendante et affichent à la fois les séries en cours et celles pas encore commencées (« à débuter » / « à voir »)
 - Pied du menu latéral admin : actualiser et se déconnecter côte à côte, puis numéro de version cliquable vers le dépôt Gitéa (même présentation que le menu latéral public)
 
 ### Sécurité

@@ -149,30 +149,18 @@ function series_matches_status_token($series, $token, $has_review) {
             return !empty($series['read_elsewhere']);
         case 'in_library':
             return empty($series['read_elsewhere']);
+        // Mangas : délégué à manga_reading_status() (includes/helpers.php),
+        // la même règle que les badges de carte et la modale « Qui suis-je ? ».
+        // L'ancienne règle locale excluait de « En cours » toute série dont un
+        // tome était tagué « dernier » (publication terminée) même si tous ses
+        // tomes n'étaient pas lus : une série entamée mais pas finie disparaissait
+        // alors des filtres « En cours » et « Mangas à lire ».
         case 'reading_not_started':
-            if (!empty($series['reading_abandoned'])) return false;
-            foreach ($series['volumes'] ?? [] as $volume) {
-                if ($volume['status'] === 'terminé') return false;
-            }
-            return true;
+            return manga_reading_status($series) === 'not_started';
         case 'reading_in_progress':
-            if (!empty($series['reading_abandoned'])) return false;
-            $has_read = false; $is_pub_finished = false;
-            foreach ($series['volumes'] ?? [] as $volume) {
-                if ($volume['status'] === 'terminé') $has_read = true;
-                if (!empty($volume['last'])) $is_pub_finished = true;
-            }
-            return $has_read && !$is_pub_finished;
+            return manga_reading_status($series) === 'in_progress';
         case 'reading_completed':
-            if (!empty($series['reading_abandoned'])) return false;
-            $volumes = $series['volumes'] ?? [];
-            if (empty($volumes)) return false;
-            $has_last = false;
-            foreach ($volumes as $volume) {
-                if ($volume['status'] !== 'terminé') return false;
-                if (!empty($volume['last'])) $has_last = true;
-            }
-            return $has_last;
+            return manga_reading_status($series) === 'completed';
         case 'reading_abandoned':
             return !empty($series['reading_abandoned']);
         case 'rating_apprecie':

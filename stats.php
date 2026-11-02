@@ -368,7 +368,7 @@ $anime_chart_payload = [
                 ];
                 foreach ($kpis as [$label, $val, $icon]): ?>
                     <div class="kpi-card">
-                        <img class="kpi-icon" src="https://api.iconify.design/<?= $icon ?>.svg?color=%23c084fc" width="22" height="22" alt="">
+                        <img class="kpi-icon" src="https://api.iconify.design/<?= str_replace(':', '/', $icon) ?>.svg?color=%23c084fc" width="22" height="22" alt="">
                         <div class="kpi-value"><?= number_format($val, 0, ',', ' ') ?></div>
                         <div class="kpi-label"><?= $label ?></div>
                     </div>
@@ -755,7 +755,7 @@ $anime_chart_payload = [
                 ];
                 foreach ($anime_kpis as [$label, $val, $icon]): ?>
                     <div class="kpi-card kpi-card--anime">
-                        <img class="kpi-icon" src="https://api.iconify.design/<?= $icon ?>.svg?color=%2338bdf8" width="22" height="22" alt="">
+                        <img class="kpi-icon" src="https://api.iconify.design/<?= str_replace(':', '/', $icon) ?>.svg?color=%2338bdf8" width="22" height="22" alt="">
                         <div class="kpi-value"><?= number_format($val, 0, ',', ' ') ?></div>
                         <div class="kpi-label"><?= $label ?></div>
                     </div>

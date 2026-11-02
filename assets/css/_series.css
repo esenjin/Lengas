@@ -589,3 +589,64 @@
     border-color: var(--primary-color, #c084fc);
     color: var(--text-white, #fff);
 }
+
+/* ── Proposition de notation (fin de lecture d'une série, voir volumes.js) ── */
+.rating-prompt {
+    max-width: 520px;
+    text-align: center;
+}
+
+.rating-prompt-choices {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 18px 0 8px;
+}
+
+.rating-prompt-choice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 8px;
+    background: var(--background-medium);
+    color: var(--text-color);
+    border: 1px solid var(--background-lighter);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.rating-prompt-choice:hover,
+.rating-prompt-choice:focus-visible {
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px var(--primary-glow);
+}
+
+.rating-prompt-choice.is-current {
+    border-color: var(--primary-color);
+}
+
+.rating-prompt-choice:disabled {
+    opacity: 0.5;
+    cursor: wait;
+    transform: none;
+}
+
+.rating-prompt-emoji {
+    font-size: 1.9em;
+    line-height: 1;
+}
+
+@media (max-width: 480px) {
+    .rating-prompt-choices {
+        grid-template-columns: 1fr;
+    }
+    .rating-prompt-choice {
+        flex-direction: row;
+        justify-content: center;
+    }
+}

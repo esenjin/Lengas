@@ -103,6 +103,12 @@ document.getElementById('delete-volume-btn').addEventListener('click', function(
             }
 
             document.getElementById('edit-volume-modal').classList.remove('modal-active');
+
+            // Un tome tagué « dernier » vient de passer en « terminé » : la
+            // série est finie, on propose de la noter dans la foulée.
+            if (result.prompt_rating) {
+                openRatingPrompt(result.series);
+            }
         } catch (error) {
             console.error('Erreur:', error);
             showCustomAlert('Erreur', "La mise à jour a échoué : le serveur n'a pas répondu.");
@@ -112,6 +118,93 @@ document.getElementById('delete-volume-btn').addEventListener('click', function(
                 submitBtn.textContent = originalLabel;
             }
         }
+    });
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Proposition de notation après la lecture du dernier tome. Le serveur
+// (admin.php, update_volume) renvoie prompt_rating=true quand un tome tagué
+// « dernier » passe en « terminé », y compris via « Appliquer ce statut de
+// lecture à tous les tomes ». Un clic sur une note l'enregistre seule
+// (set_series_rating) et remplace la carte ; « Plus tard » ou la croix
+// ferment sans rien changer.
+// ─────────────────────────────────────────────────────────────────────────────
+const RATING_PROMPT_LABELS = {
+    apprecie: "☺️ J'ai apprécié",
+    mitige:   '😑 Mi-figue mi-raisin',
+    deteste:  "😠 Je n'ai pas aimé"
+};
+
+function openRatingPrompt(series) {
+    const modal = document.getElementById('rating-prompt-modal');
+    if (!modal || !series) return;
+
+    modal.dataset.seriesId = series.id;
+    document.getElementById('rating-prompt-series-name').textContent = series.name || '';
+
+    const current = document.getElementById('rating-prompt-current');
+    if (series.rating && RATING_PROMPT_LABELS[series.rating]) {
+        current.textContent = 'Note actuelle : ' + RATING_PROMPT_LABELS[series.rating];
+        current.hidden = false;
+    } else {
+        current.textContent = '';
+        current.hidden = true;
+    }
+
+    modal.querySelectorAll('.rating-prompt-choice').forEach(btn => {
+        btn.disabled = false;
+        btn.classList.toggle('is-current', btn.dataset.rating === series.rating);
+    });
+
+    modal.classList.add('modal-active');
+}
+
+(function () {
+    const modal = document.getElementById('rating-prompt-modal');
+    if (!modal) return;
+
+    const close = () => modal.classList.remove('modal-active');
+    document.getElementById('close-rating-prompt-modal').addEventListener('click', close);
+    document.getElementById('rating-prompt-skip').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+    modal.querySelectorAll('.rating-prompt-choice').forEach(btn => {
+        btn.addEventListener('click', async function () {
+            const seriesId = modal.dataset.seriesId;
+            if (!seriesId) return;
+            modal.querySelectorAll('.rating-prompt-choice').forEach(b => { b.disabled = true; });
+
+            try {
+                const body = new URLSearchParams({
+                    set_series_rating: '1',
+                    series_id: seriesId,
+                    rating: btn.dataset.rating
+                });
+                const response = await fetch('admin.php', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body
+                });
+                const result = await response.json();
+                if (!result.success) {
+                    close();
+                    showCustomAlert('Erreur', result.message || "La note n'a pas pu être enregistrée.");
+                    return;
+                }
+
+                const oldCard = document.querySelector(`.series-card[data-series-id="${CSS.escape(seriesId)}"]`);
+                if (oldCard) oldCard.replaceWith(createLightSeriesCard(result.series));
+                if (Array.isArray(seriesData)) {
+                    const idx = seriesData.findIndex(s => s.id === seriesId);
+                    if (idx !== -1) seriesData[idx] = Object.assign({}, seriesData[idx], result.series);
+                }
+                close();
+            } catch (error) {
+                console.error('Erreur:', error);
+                close();
+                showCustomAlert('Erreur', "La note n'a pas pu être enregistrée : le serveur n'a pas répondu.");
+            }
+        });
     });
 })();
 
