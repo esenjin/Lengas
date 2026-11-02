@@ -81,7 +81,6 @@ function clear_site_cache(): array {
         $files = array_merge($files, cache_bust_collect_files($dir));
     }
 
-    $now         = time();
     $touched     = 0;
     $last_error  = '';
     foreach ($files as $path) {
@@ -93,7 +92,12 @@ function clear_site_cache(): array {
             $last_error = $errstr;
             return true;
         });
-        $ok = touch($path, $now);
+        // touch() SANS date explicite : le système pose l'heure actuelle, ce
+        // que le seul droit d'écriture autorise. Avec une date explicite
+        // (touch($path, time())), Linux exige d'être PROPRIÉTAIRE du fichier
+        // — échec systématique quand PHP tourne sous un autre utilisateur que
+        // celui du FTP, même en chmod 774.
+        $ok = touch($path);
         restore_error_handler();
 
         if ($ok) {
