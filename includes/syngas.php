@@ -475,6 +475,58 @@ function syngas_series_is_eligible(array $series): bool {
     return syngas_type_from_categories($series['categories'] ?? []) !== null;
 }
 
+// ── Normalisation des champs « liste » (genres, catégories) ────────────────
+//
+// Syngas stocke ses genres en texte comma-separated ("Action,Aventure") et
+// peut les renvoyer soit en chaîne, soit en tableau, avec ou sans espace
+// après les virgules ("Action, Aventure"). Côté Lengas, la colonne `genres`
+// est explosée sur ',' au chargement (config.php), ce qui laisse un espace
+// de tête sur les éléments saisis avant une normalisation plus stricte.
+//
+// Cette fonction ramène n'importe laquelle de ces formes à une liste propre :
+// chaque élément (y compris une chaîne contenant elle-même des virgules) est
+// redécoupé sur ',', trimé, et les éléments vides ou en double sont retirés.
+// L'ordre d'origine est conservé (utile pour l'affichage et l'envoi).
+function syngas_normalize_list($value): array {
+    if ($value === null) return [];
+    $items = is_array($value) ? $value : [$value];
+    $out = [];
+    foreach ($items as $item) {
+        if (!is_scalar($item)) continue;
+        foreach (explode(',', (string)$item) as $part) {
+            $part = trim($part);
+            if ($part !== '' && !in_array($part, $out, true)) $out[] = $part;
+        }
+    }
+    return $out;
+}
+
+// Deux listes sont-elles identiques, aux espaces, doublons et à l'ordre
+// près ? (Syngas n'a aucune obligation de renvoyer les genres dans l'ordre où
+// Lengas les a saisis : un simple réordonnancement n'est pas une différence.)
+function syngas_lists_equal($a, $b): bool {
+    $a = syngas_normalize_list($a);
+    $b = syngas_normalize_list($b);
+    sort($a, SORT_STRING);
+    sort($b, SORT_STRING);
+    return $a === $b;
+}
+
+// Nombre de tomes VF connu côté Lengas pour une série : le plus haut numéro
+// de tome possédé (un tome manquant au milieu de la collection ne doit pas
+// faire baisser le décompte), avec repli sur le simple nombre de tomes si
+// aucun numéro n'est exploitable. 0 si la série n'a aucun tome.
+function syngas_local_volumes_count(array $series): int {
+    $volumes = $series['volumes'] ?? [];
+    if (!is_array($volumes) || empty($volumes)) return 0;
+    $max = 0;
+    foreach ($volumes as $v) {
+        $n = (int)($v['number'] ?? 0);
+        if ($n > $max) $max = $n;
+    }
+    return max($max, count($volumes));
+}
+
 // Fusionne le type Syngas ('manga'|'light-novel') dans le champ `categories`
 // Lengas SANS écraser les autres catégories déjà saisies par l'utilisateur
 // (genres démographiques mal rangés y compris, on n'y touche pas). N'ajoute le
@@ -560,9 +612,13 @@ function syngas_map_to_lengas_fields(array $syngas_series, $local_categories = [
     // Genres : Syngas renvoie une liste déjà contrainte à la traduction
     // française connue de Lengas (mangaupdates_genre_translation_map()) —
     // aucune validation supplémentaire nécessaire à la réception (section 4).
-    $genres = $syngas_series['genres'] ?? null;
-    if ($genres !== null && $genres !== '') {
-        $fields['genres'] = is_array($genres) ? implode(',', $genres) : (string)$genres;
+    // Normalisée (syngas_normalize_list()) : "Action, Aventure" et
+    // "Action,Aventure" donnent la même valeur. Reste une chaîne
+    // comma-separated pour le pré-remplissage du formulaire d'ajout ; les
+    // chemins qui écrivent directement en base la reconvertissent en tableau.
+    $genres = syngas_normalize_list($syngas_series['genres'] ?? null);
+    if (!empty($genres)) {
+        $fields['genres'] = implode(',', $genres);
     }
 
     // Catégories : fusion du type Syngas (manga/light-novel) dans les
@@ -774,15 +830,13 @@ function syngas_submit_series(array $series, int $timeout = 15): array {
             ],
             array_filter($series['contributors'] ?? [], fn($c) => trim((string)($c['name'] ?? '')) !== '')
         )),
-        'genres'             => is_array($series['genres'] ?? null)
-                                  ? implode(',', array_filter($series['genres']))
-                                  : (string)($series['genres'] ?? ''),
+        'genres'             => implode(',', syngas_normalize_list($series['genres'] ?? null)),
         'status'             => syngas_status_from_lengas((string)($series['status'] ?? '')),
         'mangaupdates_url'   => (string)($series['mangaupdates_url'] ?? ''),
         'mature'             => (bool)($series['mature'] ?? false),
     ];
 
-    $volumes_count = count($series['volumes'] ?? []);
+    $volumes_count = syngas_local_volumes_count($series);
     if ($volumes_count > 0) {
         $payload['volumes_count'] = $volumes_count;
     }
@@ -886,8 +940,11 @@ function syngas_propose_edit(string $syngas_uid, array $fields, bool $thumbnail_
             continue;
         }
         if ($key === 'genres') {
-            $payload[$key] = is_array($value) ? implode(',', array_filter($value)) : (string)$value;
+            $payload[$key] = implode(',', syngas_normalize_list($value));
             continue;
+        }
+        if ($key === 'volumes_count') {
+            continue; // traité à part ci-dessous (entier, pas chaîne)
         }
         if ($key === 'mature') {
             $payload['mature'] = (bool)$value;

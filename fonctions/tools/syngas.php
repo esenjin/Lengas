@@ -321,6 +321,20 @@ function syngas_sync_compute_diff(array $series): ?array {
         // comparaison de chaînes détectait un "changement" purement
         // cosmétique (espace en trop) là où les deux valeurs, mot pour mot,
         // sont identiques — un faux positif systématique sur ces séries.
+        //
+        // Les champs "liste" (genres, categories) passent par
+        // syngas_lists_equal() : redécoupage sur ',', trim de chaque élément,
+        // comparaison indépendante de l'ordre — "Action, Aventure" (chaîne
+        // Syngas) et ['Action', ' Aventure'] (tableau Lengas) sont identiques.
+        if ($key === 'genres' || $key === 'categories') {
+            if (syngas_lists_equal($old_value, $new_value)) continue;
+            $diff[$key] = [
+                'old' => implode(', ', syngas_normalize_list($old_value)),
+                'new' => implode(', ', syngas_normalize_list($new_value)),
+            ];
+            continue;
+        }
+
         $old_cmp = is_array($old_value)
             ? implode(',', array_filter(array_map('trim', $old_value), fn($v) => $v !== ''))
             : trim((string)$old_value);
@@ -423,6 +437,10 @@ function syngas_sync_save_selected(array &$data, array $selections, array $diffs
 
         $key = $found['key'];
         foreach ($diff_info['fields'] as $field => $value) {
+            // genres : syngas_map_to_lengas_fields() renvoie une chaîne
+            // (pré-remplissage du formulaire), mais une série chargée porte
+            // un TABLEAU (upsert_series_row() fait un implode dessus).
+            if ($field === 'genres') $value = syngas_normalize_list($value);
             $data[$key][$field] = $value;
         }
         if (array_key_exists('volumes_count', $diff_info) && $diff_info['volumes_count'] !== null) {
@@ -523,27 +541,16 @@ function syngas_sync_compute_reverse_diff(array $series): ?array {
     // ailleurs dans cette intégration). Les contributeurs sont traités à part
     // ci-dessous (comparaison structurée, pas de simple chaîne).
     $comparable = [
-        'name'               => (string)($series['name'] ?? ''),
-        // array_map('trim', …) AVANT l'implode : même raison que
-        // syngas_sync_compute_diff() ci-dessus — un élément de la colonne
-        // `genres` peut porter un espace de tête résiduel selon l'origine de
-        // la donnée (saisie ancienne, import), ce qui produirait un faux
-        // "changement" purement cosmétique.
-        'genres'             => is_array($series['genres'] ?? null)
-                                  ? implode(',', array_filter(array_map('trim', $series['genres']), fn($v) => $v !== ''))
-                                  : trim((string)($series['genres'] ?? '')),
+        'name'               => trim((string)($series['name'] ?? '')),
         'status'             => syngas_status_from_lengas((string)($series['status'] ?? '')),
-        'mangaupdates_url'   => (string)($series['mangaupdates_url'] ?? ''),
+        'mangaupdates_url'   => trim((string)($series['mangaupdates_url'] ?? '')),
         'mature'             => (string)(int)(bool)($series['mature'] ?? false),
     ];
 
     $syngas_values = [
-        'name'               => (string)($syngas_series['name'] ?? ''),
-        'genres'             => is_array($syngas_series['genres'] ?? null)
-                                  ? implode(',', array_filter(array_map('trim', $syngas_series['genres']), fn($v) => $v !== ''))
-                                  : trim((string)($syngas_series['genres'] ?? '')),
+        'name'               => trim((string)($syngas_series['name'] ?? '')),
         'status'             => (string)($syngas_series['status'] ?? ''),
-        'mangaupdates_url'   => (string)($syngas_series['mangaupdates_url'] ?? ''),
+        'mangaupdates_url'   => trim((string)($syngas_series['mangaupdates_url'] ?? '')),
         'mature'             => (string)(int)(bool)($syngas_series['mature'] ?? false),
     ];
 
@@ -566,6 +573,22 @@ function syngas_sync_compute_reverse_diff(array $series): ?array {
         $fields['status'] = $series['status'] ?? '';
     }
 
+    // Genres : champ "liste", comparé élément par élément via
+    // syngas_lists_equal() — chaque valeur est redécoupée sur ',' et trimée,
+    // et l'ordre n'est pas pris en compte. Sans cela, "Action, Aventure"
+    // côté Syngas (espace après la virgule, ou chaîne au lieu de tableau)
+    // et ['Action', 'Aventure'] côté Lengas étaient signalés comme
+    // différents alors qu'ils sont identiques.
+    $local_genres  = syngas_normalize_list($series['genres'] ?? null);
+    $syngas_genres = syngas_normalize_list($syngas_series['genres'] ?? null);
+    if (!empty($local_genres) && !syngas_lists_equal($local_genres, $syngas_genres)) {
+        $diff['genres'] = [
+            'old' => implode(', ', $syngas_genres),
+            'new' => implode(', ', $local_genres),
+        ];
+        $fields['genres'] = $local_genres;
+    }
+
     // Contributeurs : comparaison structurée (liste de {name, role,
     // role_custom}), pas une simple chaîne — même logique que
     // syngas_contributors_differ() (fonctions/syngas.php), dupliquée ici en
@@ -584,10 +607,23 @@ function syngas_sync_compute_reverse_diff(array $series): ?array {
         }
     }
 
-    // Nombre de tomes VF : comparé à part, jamais dans $fields (n'a pas de
-    // sens de "proposer" un nombre de tomes sur la base du décompte de la
-    // collection Lengas — Syngas garde volumes_count comme une donnée qui
-    // lui est propre, alimentée par ses propres modérateurs).
+    // Nombre de tomes VF : proposé uniquement à la HAUSSE. Si la collection
+    // Lengas contient un tome plus récent que ce que Syngas connaît (nouveau
+    // tome acheté), c'est forcément qu'il est paru en VF — on le propose.
+    // L'inverse n'a pas de sens : une collection incomplète (ou en retard)
+    // ne doit jamais faire baisser le décompte Syngas. Même calcul que
+    // l'envoi d'une nouvelle série (syngas_local_volumes_count()).
+    $local_volumes  = syngas_local_volumes_count($series);
+    $syngas_volumes = isset($syngas_series['volumes_count']) && $syngas_series['volumes_count'] !== null && $syngas_series['volumes_count'] !== ''
+        ? (int)$syngas_series['volumes_count'] : null;
+    if ($local_volumes > 0 && ($syngas_volumes === null || $local_volumes > $syngas_volumes)) {
+        $diff['volumes_count'] = [
+            'old' => $syngas_volumes !== null ? (string)$syngas_volumes : '',
+            'new' => (string)$local_volumes,
+        ];
+        $fields['volumes_count'] = $local_volumes;
+    }
+
     // Vignette : signalée séparément, proposée seulement si Lengas a une
     // vignette personnalisée/Anilist ET que Syngas n'en a pas encore, ou si
     // les deux fichiers diffèrent visiblement (impossible à comparer

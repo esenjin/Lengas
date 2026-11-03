@@ -1,6 +1,6 @@
 <?php
 // Configuration du site
-define('SITE_VERSION', '4.4.2');
+define('SITE_VERSION', '4.4.3');
 define('URL_GITEA', 'https://git.crystalyx.net/Esenjin_Asakha/Lengas');
 
 // Version minimale de PHP requise par Lengas. config.php étant inclus en

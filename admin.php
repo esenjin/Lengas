@@ -383,6 +383,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['syngas_validate'])) {
     if ($target_key !== null) {
         // Série existante (modale d'édition) : écriture ciblée immédiate.
         foreach ($fields as $k => $v) {
+            // genres : chaîne côté mapping (pré-remplissage), tableau côté
+            // série chargée (upsert_series_row() fait un implode dessus).
+            if ($k === 'genres') $v = syngas_normalize_list($v);
             $data[$target_key][$k] = $v;
         }
         if ($thumbnail_path !== '') {
