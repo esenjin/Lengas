@@ -64,6 +64,12 @@ function build_light_series(array $series, array $review_series_ids, array $loan
         // le front affiche ce qu'on lui donne, il n'arbitre rien.
         'image' => series_thumbnail($series),
         'volumes_count' => count($series['volumes']),
+        // Données brutes des tomes/épisodes (statut, collector, dernier,
+        // date…) : le front s'en sert pour pré-remplir les modales d'édition
+        // d'un tome/épisode. Sans elles, après une édition AJAX, seriesData
+        // gardait l'ancienne liste (Object.assign ne remplaçait rien) et la
+        // modale rouverte affichait des cases collector/dernier périmées.
+        'volumes' => array_values($series['volumes'] ?? []),
         'favorite' => $series['favorite'] ?? false,
         'mature' => $series['mature'] ?? false,
         'status' => $status,

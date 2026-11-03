@@ -749,44 +749,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_episode'])) {
         echo json_encode([
             'success' => true,
             'series'  => build_light_series($updated['data'], $review_series_ids, $loaned_by_series[$series_id] ?? []),
-            // Proposer de noter la série si sa lecture vient de s'achever :
-            // un tome tagué « dernier » (après modification) est passé d'un
-            // autre statut à « terminé » — qu'il ait été édité directement ou
-            // via « Appliquer ce statut de lecture à tous les tomes ». Les
-            // tomes ne sont ni ajoutés ni retirés ici : les index avant/après
-            // désignent bien les mêmes tomes.
-            'prompt_rating' => last_volume_just_read($volumes_before, $updated['data']['volumes'] ?? []),
         ]);
         exit;
     }
 
     header("Location: " . $_SERVER['REQUEST_URI']);
-    exit;
-}
-
-// ── Noter une série (seule la note change) ──────────────────────────────────
-// Appelé par la proposition de notation qui suit la lecture du dernier tome
-// (volumes.js) : évite de rouvrir la modale d'édition complète de la série
-// juste pour poser sa note. AJAX uniquement, réponse JSON avec la carte
-// "light" à jour (badge de note). Mangas uniquement : la note d'un animé se
-// règle depuis sa propre fiche.
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['set_series_rating'])) {
-    header('Content-Type: application/json');
-    $series_id = $_POST['series_id'] ?? '';
-    $target = find_series_by_id($data, $series_id);
-    if (!$target || is_anime($target['data'])) {
-        echo json_encode(['success' => false, 'message' => "Série introuvable."]);
-        exit;
-    }
-    $idx = $target['index'];
-    $data[$idx]['rating'] = sanitize_rating($_POST['rating'] ?? '');
-    upsert_series_row($data[$idx]);
-
-    $loaned_by_series = loans_by_series(load_loans());
-    echo json_encode([
-        'success' => true,
-        'series'  => build_light_series($data[$idx], $review_series_ids, $loaned_by_series[$series_id] ?? []),
-    ]);
     exit;
 }
 
@@ -1015,44 +982,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_series'])) {
         echo json_encode([
             'success' => true,
             'series'  => build_light_series($updated['data'], $review_series_ids, $loaned_by_series[$series_id] ?? []),
-            // Proposer de noter la série si sa lecture vient de s'achever :
-            // un tome tagué « dernier » (après modification) est passé d'un
-            // autre statut à « terminé » — qu'il ait été édité directement ou
-            // via « Appliquer ce statut de lecture à tous les tomes ». Les
-            // tomes ne sont ni ajoutés ni retirés ici : les index avant/après
-            // désignent bien les mêmes tomes.
-            'prompt_rating' => last_volume_just_read($volumes_before, $updated['data']['volumes'] ?? []),
         ]);
         exit;
     }
 
     header("Location: " . $_SERVER['REQUEST_URI']);
-    exit;
-}
-
-// ── Noter une série (seule la note change) ──────────────────────────────────
-// Appelé par la proposition de notation qui suit la lecture du dernier tome
-// (volumes.js) : évite de rouvrir la modale d'édition complète de la série
-// juste pour poser sa note. AJAX uniquement, réponse JSON avec la carte
-// "light" à jour (badge de note). Mangas uniquement : la note d'un animé se
-// règle depuis sa propre fiche.
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['set_series_rating'])) {
-    header('Content-Type: application/json');
-    $series_id = $_POST['series_id'] ?? '';
-    $target = find_series_by_id($data, $series_id);
-    if (!$target || is_anime($target['data'])) {
-        echo json_encode(['success' => false, 'message' => "Série introuvable."]);
-        exit;
-    }
-    $idx = $target['index'];
-    $data[$idx]['rating'] = sanitize_rating($_POST['rating'] ?? '');
-    upsert_series_row($data[$idx]);
-
-    $loaned_by_series = loans_by_series(load_loans());
-    echo json_encode([
-        'success' => true,
-        'series'  => build_light_series($data[$idx], $review_series_ids, $loaned_by_series[$series_id] ?? []),
-    ]);
     exit;
 }
 
