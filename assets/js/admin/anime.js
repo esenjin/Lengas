@@ -66,6 +66,7 @@ function createAnimeSeriesCard(series) {
         <div class="series-actions">
             <button class="edit-series-btn" data-series-id="${series.id}">Modifier</button>
             <button class="review-series-btn" data-series-id="${series.id}">${series.has_review ? 'Éditer la critique' : 'Ajouter une critique'}</button>
+            <button class="license-series-btn" data-series-id="${series.id}">Licence</button>
             <button class="delete-series-btn" data-series-id="${series.id}">Supprimer</button>
         </div>
         <div class="series-info">

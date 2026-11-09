@@ -387,6 +387,18 @@ function get_series_license_map(): array {
     return $map;
 }
 
+// ── Licence d'une série donnée (bouton « Licence » des cartes admin) ────────
+// Renvoie l'identifiant de la licence à laquelle appartient la série, ou ''
+// si elle n'en a aucune (une série n'est jamais dans plus d'une licence).
+function get_series_license_id(string $series_id): string {
+    licenses_init_tables();
+    $db   = get_db();
+    $stmt = $db->prepare("SELECT license_id FROM license_series WHERE series_id = ?");
+    $stmt->execute([$series_id]);
+    $row = $stmt->fetch();
+    return $row ? (string)$row['license_id'] : '';
+}
+
 // ── Détail public d'une licence (endpoint index.php) ─────────────────────────
 // Version allégée de get_license_detail(), pensée pour le front public : pas
 // de champ superflu, respecte le mode privé / masquage mature de la

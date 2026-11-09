@@ -432,4 +432,9 @@
     sortBySelect?.addEventListener('change', loadList);
     sortOrderSelect?.addEventListener('change', loadList);
     loadList();
+
+    // Ouverture directe d'une licence via ?license=<id> (lien « Gérer la
+    // licence » de la modale « Licence » des cartes de la collection).
+    const licenseParam = new URLSearchParams(window.location.search).get('license');
+    if (licenseParam) openDetail(licenseParam);
 })();

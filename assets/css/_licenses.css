@@ -506,3 +506,144 @@
         max-height: 90vh;
     }
 }
+
+/* ── Modale « Licence » des cartes de la collection (admin.php) ─────────── */
+/* Ouverte par le bouton .license-series-btn (assets/js/admin/series-license.js). */
+#series-license-modal .modal-content {
+    max-width: 560px;
+}
+.series-license-subtitle {
+    margin: -6px 0 16px;
+    color: var(--text-gray);
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+.series-license-current-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: var(--border-subtle);
+}
+.series-license-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+}
+.series-license-current-name {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #fbbf24;
+}
+.series-license-current-count {
+    margin: 2px 0 0;
+    font-size: 0.8rem;
+    color: var(--text-gray);
+}
+.series-license-members,
+.series-license-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 42vh;
+    overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(192, 132, 252, 0.3) transparent;
+}
+.series-license-members .license-series-row.is-current {
+    border-color: rgba(251, 191, 36, 0.45);
+    background: rgba(251, 191, 36, 0.08);
+}
+.series-license-here {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #fbbf24;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(251, 191, 36, 0.35);
+}
+#series-license-modal .modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+}
+#series-license-modal .modal-actions a.button {
+    text-decoration: none;
+}
+.series-license-none {
+    margin: 0 0 16px;
+    color: var(--text-gray);
+    font-size: 0.9rem;
+}
+.series-license-section-title {
+    margin: 18px 0 8px;
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+.series-license-section-title:first-of-type { margin-top: 0; }
+.series-license-hint {
+    margin: 4px 0;
+    color: var(--text-gray);
+    font-size: 0.82rem;
+}
+.series-license-search,
+.series-license-create input[type="text"] {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--background-medium);
+    color: inherit;
+    border: var(--border-subtle);
+    border-radius: var(--border-radius-sm);
+    font-size: 0.88rem;
+    transition: var(--transition);
+}
+.series-license-search { margin-bottom: 8px; }
+.series-license-search:focus,
+.series-license-create input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+.series-license-choice {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    flex-shrink: 0;
+    min-height: 60px;
+    padding: 8px 10px;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    background: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+.series-license-choice .license-series-row-name,
+.series-license-choice .license-series-row-meta { display: block; }
+.series-license-choice:hover:not(:disabled) {
+    border-color: rgba(251, 191, 36, 0.45);
+    background: rgba(251, 191, 36, 0.08);
+}
+.series-license-choice:disabled { opacity: 0.5; cursor: wait; }
+.series-license-choice-add {
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #fbbf24;
+}
+.series-license-create {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+.series-license-create input[type="text"] { flex: 1; min-width: 0; }
+.series-license-create .button { flex-shrink: 0; white-space: nowrap; }
+@media (max-width: 520px) {
+    .series-license-create { flex-direction: column; }
+}

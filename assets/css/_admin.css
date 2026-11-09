@@ -23,7 +23,8 @@
 }
 
 .edit-series-btn,
-.review-series-btn {
+.review-series-btn,
+.license-series-btn {
     background-color: transparent;
     color: var(--primary-color);
     border: 1px solid rgba(192, 132, 252, 0.4) !important;
@@ -36,7 +37,8 @@
 }
 
 .edit-series-btn:hover,
-.review-series-btn:hover {
+.review-series-btn:hover,
+.license-series-btn:hover {
     background-color: var(--primary-subtle);
     border-color: var(--primary-color) !important;
     transform: translateY(-1px);
@@ -84,6 +86,7 @@
 .series-card > .series-actions .edit-series-btn,
 .series-card > .series-actions .delete-series-btn,
 .series-card > .series-actions .review-series-btn,
+.series-card > .series-actions .license-series-btn,
 .series-card > .series-actions .move-to-read-btn {
     width: 100%;
     text-align: center;

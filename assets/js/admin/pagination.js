@@ -203,6 +203,7 @@ function createLightSeriesCard(series) {
         <div class="series-actions">
             <button class="edit-series-btn" data-series-id="${pgEscape(series.id)}">Modifier</button>
             <button class="review-series-btn" data-series-id="${pgEscape(series.id)}">${series.has_review ? 'Éditer la critique' : 'Ajouter une critique'}</button>
+            <button class="license-series-btn" data-series-id="${pgEscape(series.id)}">Licence</button>
             <button class="delete-series-btn" data-series-id="${pgEscape(series.id)}">Supprimer</button>
         </div>
         <div class="series-info">

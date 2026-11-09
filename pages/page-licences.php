@@ -78,6 +78,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['license_action'])) {
             $response   = remove_series_from_license($license_id, $series_id);
             break;
 
+        case 'series_license':
+            // Utilisé par la modale « Licence » des cartes de la collection
+            // (admin.php, assets/js/admin/series-license.js) : licence
+            // actuelle de la série si elle en a une, sinon la liste de toutes
+            // les licences existantes (triées par nom) pour en choisir une.
+            $series_id  = $_POST['series_id'] ?? '';
+            $license_id = get_series_license_id($series_id);
+            $detail     = $license_id !== '' ? get_license_detail($data, $license_id) : null;
+            $response   = ['success' => true, 'license' => $detail];
+            if ($detail === null) {
+                $response['licenses'] = list_licenses($data, 'name', 'asc');
+            }
+            break;
+
+        case 'create_with_series':
+            // Crée une licence et y place directement une série (modale
+            // « Licence » des cartes de la collection).
+            $name      = $_POST['name'] ?? '';
+            $series_id = $_POST['series_id'] ?? '';
+            $created   = create_license($name);
+            if (!$created['success']) {
+                $response = $created;
+                break;
+            }
+            $added = add_series_to_license($data, $created['id'], $series_id);
+            if (!$added['success']) {
+                delete_license($created['id']); // pas de licence vide orpheline
+                $response = $added;
+                break;
+            }
+            $response = ['success' => true, 'message' => 'Licence créée.', 'id' => $created['id']];
+            break;
+
         case 'reorder':
             $license_id = $_POST['license_id'] ?? '';
             $order      = $_POST['order'] ?? [];

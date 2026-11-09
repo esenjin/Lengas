@@ -1821,6 +1821,19 @@ if ($current_type === 'anime') {
             </div>
         </div>
 
+        <!-- Modale « Licence » d'une série : licence actuelle, ou rattachement
+             à une licence existante / nouvelle (assets/js/admin/series-license.js) -->
+        <div class="modal" id="series-license-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-series-license-modal">&times;</span>
+                <h2>Licence</h2>
+                <p class="series-license-subtitle" id="series-license-series-name"></p>
+                <div id="series-license-body">
+                    <p class="license-series-empty">Chargement…</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Modale pour les alertes personnalisées -->
         <div class="modal" id="custom-alert-modal">
             <div class="modal-content">
@@ -1939,6 +1952,7 @@ if ($current_type === 'anime') {
     <?= asset_js_tag('assets/js/admin/volumes.js') ?>
     <?= asset_js_tag('assets/js/admin/episodes.js') ?>
     <?= asset_js_tag('assets/js/admin/pagination.js') ?>
+    <?= asset_js_tag('assets/js/admin/series-license.js') ?>
     <?= asset_js_tag('assets/js/admin/main.js') ?>
 
 </body>
