@@ -510,6 +510,29 @@ function init_db(PDO $pdo): void {
         $pdo->exec("ALTER TABLE wishlist ADD COLUMN studio TEXT NOT NULL DEFAULT ''");
     } catch (Exception $e) { /* colonne déjà présente */ }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // Liste d'envies enrichie (fiches mangas complètes + vignettes)
+    // ──────────────────────────────────────────────────────────────────────────
+    // `author` / `publisher` restent en place et toujours renseignés (résumé
+    // texte des contributeurs de rôle Auteur / Éditeur, recalculé à chaque
+    // écriture) : tri, recherche, export Anilist et nettoyage des doublons
+    // continuent de les lire sans modification. `contributors` (JSON, même
+    // format que series.contributors) fait foi dès qu'il est renseigné ; vide,
+    // il est reconstruit à la lecture depuis author/publisher (entrées créées
+    // avant cette version) — aucune migration de données nécessaire.
+    foreach ([
+        'contributors'     => "TEXT NOT NULL DEFAULT ''",
+        'image'            => "TEXT NOT NULL DEFAULT ''", // vignette locale (uploads/…)
+        'cover_url'        => "TEXT NOT NULL DEFAULT ''", // couverture Anilist distante (animés, affichage seul)
+        'mangaupdates_url' => "TEXT NOT NULL DEFAULT ''",
+        'manganews_url'    => "TEXT NOT NULL DEFAULT ''",
+        'syngas_uid'       => "TEXT NOT NULL DEFAULT ''",
+    ] as $__wl_col => $__wl_def) {
+        try {
+            $pdo->exec("ALTER TABLE wishlist ADD COLUMN {$__wl_col} {$__wl_def}");
+        } catch (Exception $e) { /* colonne déjà présente */ }
+    }
+
     // ── Éditions physiques d'une série animée (coffret DVD, Blu-ray…) ─────────
     // Un commentaire libre = une édition, 100 caractères maximum, 5 éditions au
     // plus par série (plafond appliqué côté PHP, cf. series_editions_max()).

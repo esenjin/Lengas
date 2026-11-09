@@ -12,7 +12,9 @@ form {
 #edit-series-modal input:required,
 #edit-series-modal select:required,
 #add-series-from-wishlist-modal input:required,
-#add-series-from-wishlist-modal select:required {
+#add-series-from-wishlist-modal select:required,
+#wishlist-entry-modal input:required,
+#wishlist-form-manga input:required {
     background-color: var(--input-bg-required, var(--input-bg));
     border-color: var(--input-border-required, var(--input-border));
 }

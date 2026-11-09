@@ -640,6 +640,11 @@ function check_site_integrity(array $data): array {
         // dans clean_orphaned_images(), fonctions/tools/cleanup.php).
         if (!empty($series['anilist_image'])) $used_images[] = $series['anilist_image'];
     }
+    // Vignettes des entrées de la liste d'envies (même règle que
+    // clean_orphaned_images(), fonctions/tools/cleanup.php).
+    if (function_exists('wishlist_used_images')) {
+        $used_images = array_merge($used_images, wishlist_used_images());
+    }
     // Ne jamais considérer la photo de profil de l'admin comme orpheline.
     if ($admin_avatar !== '') $used_images[] = $admin_avatar;
 

@@ -61,6 +61,12 @@ function clean_orphaned_images(): array {
         if (!empty($series['anilist_image'])) $used_images[] = $series['anilist_image'];
     }
 
+    // Vignettes des entrées de la liste d'envies : utilisées, jamais orphelines
+    // (cf. wishlist_used_images(), fonctions/wishlist.php).
+    if (function_exists('wishlist_used_images')) {
+        $used_images = array_merge($used_images, wishlist_used_images());
+    }
+
     // Ne jamais supprimer la photo de profil de l'admin.
     $options      = load_options();
     $admin_avatar = trim($options['admin_avatar'] ?? '');

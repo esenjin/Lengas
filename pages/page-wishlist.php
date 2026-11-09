@@ -12,6 +12,7 @@ require_once 'includes/opengraph.php';
 require_once 'includes/anilist.php';
 require 'includes/mangaupdates.php'; // pour le réchauffage de cache après « Ajouter à la collection » (manga)
 require_once 'includes/babengas.php'; // validation/normalisation de l'URL Manga News (manganews_normalize_url)
+require_once 'includes/syngas.php';   // lien public d'une fiche Syngas (syngas_site_url)
 require 'fonctions/series.php';
 require 'fonctions/volumes.php';
 require 'fonctions/anime.php';
@@ -23,9 +24,28 @@ require 'fonctions/loans.php'; // pour series_has_active_loans() (module « Dép
 $data    = load_data();
 $options = load_options();
 
+// Réponse JSON commune à toutes les actions AJAX de cette page. En cas de
+// succès, la liste d'envies renvoyée est TOUJOURS relue en base (et non le
+// tableau en mémoire de la fonction appelée) : le front reçoit ainsi les
+// vignettes, contributeurs et liens tels qu'effectivement enregistrés.
+function wishlist_page_json(array $payload): void {
+    if (!empty($payload['success'])) {
+        $payload['wishlist'] = load_wishlist();
+    } elseif (!isset($payload['wishlist'])) {
+        $payload['wishlist'] = load_wishlist();
+    }
+    header('Content-Type: application/json');
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 // ── Actions AJAX ─────────────────────────────────────────────────────────────
+// Les fonctions de fonctions/wishlist.php écrivent elles-mêmes en base, de
+// façon ciblée (INSERT / UPDATE / DELETE d'une seule ligne) : aucune action
+// ci-dessous ne réécrit plus la liste complète via save_wishlist().
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
+    // Ajout rapide : manga (nom / auteur / éditeur) ou animé (fiche Anilist).
     if (isset($_POST['add_to_wishlist'])) {
         $type       = sanitize_series_type($_POST['wishlist_type'] ?? '');
         $name       = trim($_POST['wishlist_name'] ?? '');
@@ -33,45 +53,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $publisher  = trim($_POST['wishlist_publisher'] ?? '');
         $studio     = trim($_POST['wishlist_studio'] ?? '');
         $anilist_id = trim($_POST['wishlist_anilist_id'] ?? '');
-        $wishlist   = load_wishlist();
-        $result     = add_to_wishlist($wishlist, $name, $author, $publisher, $type, $studio, $anilist_id);
-        if ($result['success']) save_wishlist($result['wishlist']);
-        header('Content-Type: application/json');
-        echo json_encode($result);
-        exit;
+        $extra      = [];
+        if ($type === 'anime') {
+            // Couverture Anilist distante : affichage seul (cf. fonctions/wishlist.php).
+            $extra['cover_url'] = trim($_POST['wishlist_cover_url'] ?? '');
+        }
+        wishlist_page_json(add_to_wishlist(load_wishlist(), $name, $author, $publisher, $type, $studio, $anilist_id, $extra));
+    }
+
+    // Fiche complète d'un manga (création si index vide, sinon mise à jour) :
+    // nom, tous les contributeurs, vignette, URL MangaUpdates / Manga News et
+    // identifiant Syngas. Formulaire multipart (upload de vignette).
+    if (isset($_POST['save_wishlist_entry'])) {
+        $raw_index = trim((string)($_POST['index'] ?? ''));
+        $index     = $raw_index === '' ? null : (int)$raw_index;
+
+        $links = wishlist_validate_links(
+            (string)($_POST['mangaupdates_url'] ?? ''),
+            (string)($_POST['manganews_url'] ?? ''),
+            (string)($_POST['syngas_uid'] ?? '')
+        );
+        if (!$links['ok']) {
+            wishlist_page_json(['success' => false, 'message' => $links['message']]);
+        }
+        [$mangaupdates_url, $manganews_url, $syngas_uid] = $links['values'];
+
+        // Vignette : contrairement à l'ajout d'une série, un échec de
+        // téléversement est bloquant ici (c'est souvent la raison même de
+        // l'édition) — message explicite plutôt qu'une vignette ignorée.
+        $new_image = null;
+        if (!empty($_FILES['image']['name'])) {
+            $upload_error = null;
+            $new_image = upload_image($_FILES['image'], $upload_error);
+            if ($new_image === false) {
+                wishlist_page_json(['success' => false, 'message' => $upload_error ?: "Le téléversement de la vignette a échoué."]);
+            }
+        }
+
+        wishlist_page_json(save_wishlist_manga_entry(load_wishlist(), $index, [
+            'name'             => trim((string)($_POST['name'] ?? '')),
+            'contributors'     => admin_read_contributors_from_post('wl_contrib'),
+            'mangaupdates_url' => $mangaupdates_url,
+            'manganews_url'    => $manganews_url,
+            'syngas_uid'       => $syngas_uid,
+            'new_image'        => $new_image,
+            'remove_image'     => !empty($_POST['remove_image']),
+        ]));
+    }
+
+    // Rattrapage des animés (vignette non téléchargée et/ou studio vide) :
+    // appelé par lots successifs depuis le front après l'affichage de la
+    // grille, voir wishlist_anime_backfill() (fonctions/wishlist.php).
+    if (isset($_POST['wishlist_anime_backfill'])) {
+        $skip   = array_map('intval', (array)($_POST['skip'] ?? []));
+        // Libère le verrou de session : les appels Anilist / téléchargements
+        // ne doivent pas bloquer les autres requêtes de la page.
+        if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+        $result = wishlist_anime_backfill(load_wishlist(), $skip, 10);
+        wishlist_page_json([
+            'success'   => $result['ok'],
+            'message'   => $result['error'],
+            'processed' => $result['processed'],
+            'remaining' => $result['remaining'],
+            'updated'   => $result['updated'],
+        ]);
     }
 
     if (isset($_POST['remove_from_wishlist'])) {
-        $index    = $_POST['index'] ?? 0;
-        $wishlist = load_wishlist();
-        $result   = remove_from_wishlist($wishlist, $index);
-        if ($result['success']) save_wishlist($result['wishlist']);
-        header('Content-Type: application/json');
-        echo json_encode($result);
-        exit;
+        $index = (int)($_POST['index'] ?? 0);
+        wishlist_page_json(remove_from_wishlist(load_wishlist(), $index));
     }
 
+    // Ancienne édition simple (nom / auteur / éditeur, ou studio d'un animé) :
+    // conservée pour compatibilité, la page passe désormais par
+    // save_wishlist_entry pour les mangas.
     if (isset($_POST['edit_wishlist'])) {
         $index     = (int)($_POST['index'] ?? 0);
         $name      = trim($_POST['name'] ?? '');
         $author    = trim($_POST['author'] ?? '');
         $publisher = trim($_POST['publisher'] ?? '');
         $studio    = trim($_POST['studio'] ?? '');
-        $wishlist  = load_wishlist();
-        $result    = edit_wishlist_item($wishlist, $index, $name, $author, $publisher, $studio);
-        if ($result['success']) save_wishlist($result['wishlist']);
-        header('Content-Type: application/json');
-        echo json_encode($result);
-        exit;
+        wishlist_page_json(edit_wishlist_item(load_wishlist(), $index, $name, $author, $publisher, $studio));
     }
 
-    // Passage en collection : la manière dont diverge selon le type.
+    // Passage en collection : la manière diverge selon le type.
     //   • manga : ouvre la modale d'ajout de série de CETTE page, préremplie
-    //     avec le nom/auteur/éditeur de l'entrée — rien n'est écrit en base
-    //     tant que ce formulaire n'est pas enregistré (cf. action
-    //     'add_series_from_wishlist' ci-dessous). L'entrée n'est donc jamais
-    //     retirée de la liste d'envies sur un simple clic sur « + » : cette
-    //     branche se contente de renvoyer l'item à afficher, sans écriture.
+    //     avec toute la fiche de l'entrée (contributeurs, liens, vignette) —
+    //     rien n'est écrit en base tant que ce formulaire n'est pas enregistré
+    //     (cf. action 'add_series_from_wishlist' ci-dessous). Cette branche se
+    //     contente de renvoyer l'item à afficher, sans écriture.
     //   • anime : import COMPLET et immédiat depuis Anilist, sans quitter
     //     cette page — on peut ainsi enchaîner plusieurs animés d'affilée
     //     sans aller-retour entre les deux pages.
@@ -81,55 +151,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $item     = $wishlist[$index] ?? null;
 
         if (!$item) {
-            header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Entrée introuvable.']);
-            exit;
+            wishlist_page_json(['success' => false, 'message' => 'Entrée introuvable.']);
         }
 
         if (sanitize_series_type($item['type'] ?? '') === 'anime') {
             // Écriture ciblée : add_anime_from_wishlist() délègue à
             // add_anime_series(), qui upserte elle-même la série (+ ses
-            // épisodes, + ses éditions si la clé est fournie) en base au
-            // moment de l'appel. $result['data'] ne sert plus qu'à renvoyer
-            // 'series_id' pour la redirection front, jamais à une
-            // resynchronisation globale.
+            // épisodes, + ses éditions si la clé est fournie) en base.
             $result = add_anime_from_wishlist($data, $wishlist, $index);
-            if ($result['success']) {
-                save_wishlist($result['wishlist']);
-            }
-            header('Content-Type: application/json');
-            echo json_encode([
+            wishlist_page_json([
                 'success'   => $result['success'],
                 'message'   => $result['message'] ?? '',
-                'wishlist'  => $result['wishlist'] ?? $wishlist,
                 'type'      => 'anime',
                 // Identifiant de la série fraîchement importée : permet au
                 // front de rediriger vers admin.php avec sa modale d'édition
                 // déjà ouverte (favoris, note, revisionnages… à compléter).
                 'series_id' => $result['series_id'] ?? '',
             ]);
-            exit;
         }
 
-        // Manga : aucune écriture ici. On renvoie simplement l'item pour que
-        // le front préremplisse la modale d'ajout de série locale ; c'est
-        // l'enregistrement de ce formulaire (action 'add_series_from_wishlist'
-        // ci-dessous) qui créera la série ET retirera l'entrée, en une seule
-        // opération atomique.
+        // Manga : aucune écriture ici, cf. commentaire ci-dessus.
         header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'type'    => 'manga',
-            'index'   => $index,
-            'item'    => $item,
-        ]);
+        echo json_encode(['success' => true, 'type' => 'manga', 'index' => $index, 'item' => $item], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
     // Enregistrement du formulaire d'ajout de série préouvert depuis la
     // liste d'envies (manga uniquement — les animés passent par la branche
     // ci-dessus, sans formulaire à remplir). Même jeu de champs que la
-    // modale d'ajout de series.php sur admin.php, upload d'image compris.
+    // modale d'ajout de series.php sur admin.php, upload d'image compris,
+    // plus l'identifiant Syngas et la reprise de la vignette de l'entrée.
     // add_series_from_wishlist() garantit que l'entrée de la wishlist n'est
     // retirée QUE si la série a effectivement été créée.
     if (isset($_POST['add_series_from_wishlist'])) {
@@ -139,8 +190,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $contributors       = admin_read_contributors_from_post('contrib');
         $categories         = trim($_POST['categories'] ?? '');
         $genres             = trim($_POST['genres'] ?? '');
-        $mangaupdates_url   = trim($_POST['mangaupdates_url'] ?? '');
-        $manganews_url        = trim($_POST['manganews_url'] ?? '');
         $mature             = !empty($_POST['mature']);
         $favorite           = !empty($_POST['favorite']);
         $volumes_count      = (int)($_POST['volumes_count'] ?? 1);
@@ -152,54 +201,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reading_abandoned  = !empty($_POST['reading_abandoned']);
         $rating             = sanitize_rating($_POST['rating'] ?? '');
         $reread_count       = max(0, (int)($_POST['reread_count'] ?? 0));
-
-        // Initialiser $image à null par défaut, même logique que admin.php :
-        // un échec de téléversement n'empêche pas l'ajout de la série.
-        $image         = null;
-        $error_message = null;
-        if (!empty($_FILES['image']['name'])) {
-            $image = upload_image($_FILES['image'], $error_message);
-            if ($image === false) {
-                $image = null;
-            }
-        }
+        $use_wishlist_image = !empty($_POST['use_wishlist_image']);
 
         $wishlist = load_wishlist();
         $item     = $wishlist[$index] ?? null;
 
         if (!$item || sanitize_series_type($item['type'] ?? '') !== 'manga') {
-            header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Entrée introuvable ou invalide.']);
-            exit;
+            wishlist_page_json(['success' => false, 'message' => 'Entrée introuvable ou invalide.']);
         }
 
         // Au moins un Auteur ET un Éditeur — même règle que admin.php.
         $has_author    = !empty(array_filter($contributors, fn($c) => $c['role'] === 'auteur' && trim($c['name']) !== ''));
         $has_publisher = !empty(array_filter($contributors, fn($c) => $c['role'] === 'editeur' && trim($c['name']) !== ''));
         if (!$has_author || !$has_publisher) {
-            header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Au moins un contributeur avec le rôle « Auteur » et un avec le rôle « Éditeur » sont requis.']);
-            exit;
+            wishlist_page_json(['success' => false, 'message' => 'Au moins un contributeur avec le rôle « Auteur » et un avec le rôle « Éditeur » sont requis.']);
         }
 
-        // URL Manga News facultative : validée et normalisée vers la fiche série.
-        if ($manganews_url !== '') {
-            $mn_norm = manganews_normalize_url($manganews_url);
-            if ($mn_norm === null) {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => 'URL Manga News invalide (attendu : https://www.manga-news.com/index.php/serie/Nom-de-la-serie).']);
-                exit;
+        // Liens facultatifs : mêmes validations que la fiche de la liste
+        // d'envies (URL MangaUpdates assainie, URL Manga News normalisée,
+        // identifiant Syngas au format UUID).
+        $links = wishlist_validate_links(
+            (string)($_POST['mangaupdates_url'] ?? ''),
+            (string)($_POST['manganews_url'] ?? ''),
+            (string)($_POST['syngas_uid'] ?? '')
+        );
+        if (!$links['ok']) {
+            wishlist_page_json(['success' => false, 'message' => $links['message']]);
+        }
+        [$mangaupdates_url, $manganews_url, $syngas_uid] = $links['values'];
+
+        // Un UID Syngas déjà porté par une autre série ferait échouer
+        // l'écriture (index unique idx_series_syngas_uid) : message clair
+        // plutôt qu'une PDOException brute.
+        if ($syngas_uid !== '' && ($dup = find_series_by_syngas_uid($data, $syngas_uid))) {
+            wishlist_page_json(['success' => false, 'message' => "Cet identifiant Syngas est déjà lié à la série « {$dup['name']} » de votre collection."]);
+        }
+
+        // Initialiser $image à null par défaut, même logique que admin.php :
+        // un échec de téléversement n'empêche pas l'ajout de la série.
+        $image = null;
+        if (!empty($_FILES['image']['name'])) {
+            $error_message = null;
+            $image = upload_image($_FILES['image'], $error_message);
+            if ($image === false) {
+                $image = null;
             }
-            $manganews_url = $mn_norm;
         }
 
-        $series_fields = [
+        $result = add_series_from_wishlist($data, $wishlist, $index, [
             'name'               => $name,
             'contributors'       => $contributors,
             'categories'         => $categories,
             'genres'             => $genres,
             'mangaupdates_url'   => $mangaupdates_url,
-            'manganews_url'        => $manganews_url,
+            'manganews_url'      => $manganews_url,
             'mature'             => $mature,
             'favorite'           => $favorite,
             'volumes_count'      => $volumes_count,
@@ -207,33 +262,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'all_collector'      => $all_collector,
             'last_volume'        => $last_volume,
             'image'              => $image,
+            'use_wishlist_image' => $use_wishlist_image,
             'status'             => $status,
             'read_elsewhere'     => $read_elsewhere,
             'reading_abandoned'  => $reading_abandoned,
             'rating'             => $rating,
             'reread_count'       => $reread_count,
-        ];
+            'syngas_uid'         => $syngas_uid,
+        ]);
 
-        $result = add_series_from_wishlist($data, $wishlist, $index, $series_fields);
-
-        if ($result['success']) {
-            save_wishlist($result['wishlist']);
-            // Réchauffer le cache MangaUpdates pour la nouvelle série,
-            // même geste que l'ajout classique depuis admin.php.
-            if ($mangaupdates_url !== '') {
-                $mu_id = mangaupdates_get_id_from_url($mangaupdates_url);
-                if ($mu_id !== null) @mangaupdates_get_volumes($mu_id, true);
-            }
+        // Réchauffer le cache MangaUpdates pour la nouvelle série, même
+        // geste que l'ajout classique depuis admin.php.
+        if ($result['success'] && $mangaupdates_url !== '') {
+            $mu_id = mangaupdates_get_id_from_url($mangaupdates_url);
+            if ($mu_id !== null) @mangaupdates_get_volumes($mu_id, true);
         }
 
-        header('Content-Type: application/json');
-        echo json_encode([
+        wishlist_page_json([
             'success'   => $result['success'],
             'message'   => $result['message'] ?? '',
-            'wishlist'  => $result['wishlist'] ?? $wishlist,
             'series_id' => $result['series_id'] ?? '',
         ]);
-        exit;
     }
 
     // ── Module « Déplacer dans la liste » ─────────────────────────────────────
@@ -248,18 +297,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Déplacement effectif : retire la série de la collection, l'ajoute à la
-    // liste d'envies avec les informations déjà connues.
+    // liste d'envies avec les informations déjà connues (vignette comprise).
     if (isset($_POST['move_to_wishlist'])) {
-        $series_id       = $_POST['series_id'] ?? '';
-        $current_wishlist = load_wishlist();
-        $result          = move_series_to_wishlist($data, $current_wishlist, $series_id);
-        header('Content-Type: application/json');
-        if ($result['success']) {
-            save_wishlist($result['wishlist']);
-            $data = $result['data'];
-        }
-        echo json_encode($result);
-        exit;
+        $series_id = $_POST['series_id'] ?? '';
+        $result    = move_series_to_wishlist($data, load_wishlist(), $series_id);
+        unset($result['data']); // inutile au front, potentiellement volumineux
+        wishlist_page_json($result);
     }
 }
 
@@ -275,13 +318,15 @@ $wishlist = load_wishlist();
 // type), et vignette déjà arbitrée par la cascade d'affichage habituelle.
 $move_candidates = array_map(function ($s) {
     $type = series_type($s);
+    $authors    = series_contributors_names_text($s, 'auteur');
+    $publishers = series_contributors_names_text($s, 'editeur');
     return [
         'id'     => $s['id'],
         'name'   => $s['name'],
         'type'   => $type,
         'meta'   => ($type === 'anime')
             ? series_studios_text($s)
-            : trim(($s['author'] ?? '') . (($s['publisher'] ?? '') !== '' ? ' · ' . $s['publisher'] : '')),
+            : trim($authors . ($publishers !== '' ? ' · ' . $publishers : '')),
         'thumb'  => series_thumbnail($s),
     ];
 }, $data);
@@ -331,10 +376,20 @@ $move_candidates = array_map(function ($s) {
 
                 <!-- Formulaire manga : saisie libre, inchangé depuis les versions antérieures. -->
                 <div class="wishlist-add-form" id="wishlist-form-manga" autocomplete="off">
-                    <input type="text" id="wishlist-name"      placeholder="Nom de la série"   autocomplete="off">
-                    <input type="text" id="wishlist-author"    placeholder="Auteur"             autocomplete="off">
-                    <input type="text" id="wishlist-publisher" placeholder="Éditeur"            autocomplete="off">
+                    <!-- Mêmes champs obligatoires que la fiche d'une série : nom,
+                         au moins un auteur et un éditeur (vérifiés aussi côté serveur). -->
+                    <input type="text" id="wishlist-name"      placeholder="Nom de la série (obligatoire)" autocomplete="off" required>
+                    <input type="text" id="wishlist-author"    placeholder="Auteur (obligatoire)"          autocomplete="off" required>
+                    <input type="text" id="wishlist-publisher" placeholder="Éditeur (obligatoire)"         autocomplete="off" required>
                     <button id="add-to-wishlist-btn" class="button button-ats">Ajouter</button>
+                    <!-- Fiche complète : ouvre la modale d'édition en mode création,
+                         préremplie avec ce qui a déjà été saisi ci-dessus (vignette,
+                         contributeurs supplémentaires, liens MangaUpdates / Manga News /
+                         Syngas). -->
+                    <button type="button" id="open-wishlist-entry-modal" class="button button-opt wishlist-full-entry-btn">
+                        <img src="https://api.iconify.design/mdi/card-account-details-outline.svg?color=currentColor" width="16" height="16" alt="">
+                        Fiche complète…
+                    </button>
                 </div>
 
                 <!-- Formulaire animé : recherche Anilist obligatoire (titre ou identifiant),
@@ -419,31 +474,56 @@ $move_candidates = array_map(function ($s) {
                     </select>
                 </div>
 
-                <div class="wishlist-list" id="wishlist-list">
-                    <!-- Rendu par JS au chargement -->
-                </div>
+                <!-- Grille de cartes, rendue par JS (applyFiltersAndSort()). -->
+                <div class="wishlist-grid" id="wishlist-list" aria-live="polite"></div>
             </section>
 
         </div>
 
-        <!-- Modale édition entrée (mangas uniquement : un animé n'a rien à y
-             faire, son studio étant fixé par Anilist et son titre également —
-             il n'a d'ailleurs plus de bouton « Modifier » du tout). -->
-        <div class="modal" id="edit-wishlist-modal">
-            <div class="modal-content modal-content--narrow">
-                <span class="close-modal" id="close-edit-wishlist-modal">&times;</span>
-                <h2>Modifier l'entrée</h2>
-                <form id="edit-wishlist-form" autocomplete="off">
-                    <input type="hidden" id="edit-wishlist-index">
+        <!-- Modale « fiche de la liste d'envies » (mangas uniquement) : création
+             d'une entrée complète OU édition d'une entrée existante. Un animé n'a
+             rien à y faire : son titre, son studio et sa couverture sont fixés
+             par Anilist (il n'a d'ailleurs pas de bouton « Modifier »). -->
+        <div class="modal" id="wishlist-entry-modal">
+            <div class="modal-content">
+                <span class="close-modal" id="close-wishlist-entry-modal">&times;</span>
+                <h2 id="wishlist-entry-title">Modifier l'envie</h2>
+                <form id="wishlist-entry-form" enctype="multipart/form-data" autocomplete="off">
+                    <input type="hidden" name="index" id="wle-index" value="">
+
+                    <div class="wishlist-entry-head">
+                        <div class="wishlist-entry-thumb" id="wle-thumb-preview" aria-hidden="true"></div>
+                        <div class="wishlist-entry-thumb-fields">
+                            <p>Vignette :</p>
+                            <input type="file" name="image" id="wle-image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp">
+                            <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
+                            <label id="wle-remove-image-wrap" hidden>
+                                <input type="checkbox" name="remove_image" id="wle-remove-image"> Retirer la vignette actuelle
+                            </label>
+                        </div>
+                    </div>
 
                     <p>Nom :</p>
-                    <input type="text" id="edit-wishlist-name"      placeholder="Nom de la série">
-                    <p>Auteur :</p>
-                    <input type="text" id="edit-wishlist-author"    placeholder="Auteur">
-                    <p>Éditeur :</p>
-                    <input type="text" id="edit-wishlist-publisher" placeholder="Éditeur">
+                    <input type="text" name="name" id="wle-name" placeholder="Nom de la série (obligatoire)" required>
 
-                    <button type="submit" class="button">Mettre à jour</button>
+                    <p>Contributeurs :</p>
+                    <p class="hint">Au moins un « Auteur » et un « Éditeur » sont requis. Une même personne peut apparaître sur plusieurs lignes avec des rôles différents.</p>
+                    <div class="contributors-field" id="wle-contributors" data-prefix="wl_contrib"></div>
+                    <button type="button" class="button button-opt contributors-add-btn" data-contributors-target="wle-contributors">+ Ajouter un contributeur</button>
+
+                    <p>URL MangaUpdates :</p>
+                    <input type="text" name="mangaupdates_url" id="wle-mangaupdates-url" placeholder="https://www.mangaupdates.com/series/xxxxxxx/nom-de-la-serie (facultatif)">
+                    <p>URL Manga News :</p>
+                    <input type="text" name="manganews_url" id="wle-manganews-url" placeholder="https://www.manga-news.com/index.php/serie/Nom-de-la-serie (facultatif)">
+                    <p>Identifiant Syngas :</p>
+                    <input type="text" name="syngas_uid" id="wle-syngas-uid" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (facultatif)" spellcheck="false">
+                    <p class="hint">
+                        Visible dans l'adresse d'une fiche Syngas (<code>serie.php?id=…</code>).
+                        <a href="<?= htmlspecialchars(syngas_site_url()) ?>" target="_blank" rel="noopener">Accéder à Syngas ↗</a>
+                    </p>
+                    <p class="hint">Toutes ces informations seront reprises dans le formulaire d'ajout le jour du passage en collection.</p>
+
+                    <button type="submit" class="button" id="wle-submit-btn">Enregistrer</button>
                 </form>
             </div>
         </div>
@@ -515,6 +595,8 @@ $move_candidates = array_map(function ($s) {
                     <p>URL Manga News :</p>
                     <input type="text" name="manganews_url" id="asfw-manganews-url" placeholder="https://www.manga-news.com/index.php/serie/Nom-de-la-serie" autocomplete="off">
                     <p class="hint"><a tabindex="0" data-hint="L'URL Manga News permet de connaître le nombre de tomes réellement parus en France et le statut de publication de l'édition française, via le service Babengas (outil « Vérification via Babengas » de la page Outils). Sur manga-news.com, ouvrez la fiche de la série (adresse en /serie/Nom-de-la-serie) et copiez l'URL complète.">À quoi ça sert ? Où la trouver ?</a></p>
+                    <p>Identifiant Syngas :</p>
+                    <input type="text" name="syngas_uid" id="asfw-syngas-uid" placeholder="Identifiant de la fiche Syngas liée (facultatif)" autocomplete="off" spellcheck="false">
                     <label>
                         <input type="checkbox" name="mature" id="asfw-mature"> Contenu mature 🔞
                     </label>
@@ -539,6 +621,16 @@ $move_candidates = array_map(function ($s) {
                     <p>Nombre de relectures (facultatif) :</p>
                     <input type="number" name="reread_count" id="asfw-reread-count" min="0" step="1" value="0" autocomplete="off">
                     <p>Vignette :</p>
+                    <!-- Vignette de l'entrée de la liste d'envies, reprise par défaut
+                         (affiché uniquement si l'entrée en a une). Un nouveau fichier
+                         choisi ci-dessous l'emporte toujours. -->
+                    <div class="asfw-wishlist-thumb" id="asfw-wishlist-thumb" hidden>
+                        <img src="" alt="" id="asfw-wishlist-thumb-img">
+                        <label>
+                            <input type="checkbox" name="use_wishlist_image" id="asfw-use-wishlist-image" value="1" checked>
+                            Utiliser la vignette de la liste d'envies
+                        </label>
+                    </div>
                     <input type="file" name="image" accept="image/jpeg, image/jpg, image/png, image/gif, image/webp">
                     <p class="hint">Extensions autorisées : jpeg, jpg, png, gif et webp. Poids maximum : 5 Mo.</p>
                     <p class="hint">Cette série sera ajoutée à votre collection et retirée de la liste d'envies dès l'enregistrement.</p>
@@ -608,10 +700,12 @@ $move_candidates = array_map(function ($s) {
         // Registre des rôles de contributeur, même source que admin.php —
         // voir includes/helpers.php, contributor_roles_for_js().
         window.contributorRoles = <?= json_encode(contributor_roles_for_js(), JSON_UNESCAPED_UNICODE) ?>;
+        // Racine publique de Syngas (lien « Voir sur Syngas » des cartes).
+        window.syngasSiteUrl = <?= json_encode(syngas_site_url(), JSON_UNESCAPED_SLASHES) ?>;
 
-        let wishlistData = <?= json_encode(array_values($wishlist)) ?>;
+        let wishlistData = <?= json_encode(array_values($wishlist), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         // Entrée animée en attente de confirmation d'import Anilist (modale
-        // #add-from-wishlist-modal). Les mangas n'utilisent plus cette
+        // #add-from-wishlist-modal). Les mangas n'utilisent pas cette
         // variable : voir pendingAddSeriesFromWishlistIndex plus bas.
         let pendingAddFromWishlist = null;
 
@@ -621,11 +715,25 @@ $move_candidates = array_map(function ($s) {
         window.moveCandidates = <?= json_encode(array_values($move_candidates), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
         function normalizeString(str) {
-            return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return String(str ?? '').toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
         }
 
         function htmlEscape(str) {
-            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        // Lien externe sûr : http(s) uniquement, sinon chaîne vide.
+        function safeHttpUrl(url) {
+            return /^https?:\/\//i.test(String(url || '')) ? String(url) : '';
+        }
+
+        // Source <img> d'une vignette de la liste d'envies : URL distante
+        // (couverture Anilist) telle quelle, chemin local préfixé par '../'
+        // (cette page vit dans pages/).
+        const WISHLIST_DEFAULT_THUMB = '../assets/img/logo.png';
+        function wishlistThumbSrc(thumb) {
+            if (!thumb) return '';
+            return /^https:\/\//i.test(thumb) ? thumb : '../' + thumb;
         }
 
         function showCustomConfirm(title, message) {
@@ -651,13 +759,22 @@ $move_candidates = array_map(function ($s) {
 
         window.alert = (msg) => showCustomAlert('Avertissement', msg);
 
+        async function postForm(body) {
+            const res = await fetch('page-wishlist.php', {
+                method: 'POST',
+                headers: body instanceof FormData ? undefined : { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body instanceof FormData ? body : (body instanceof URLSearchParams ? body : new URLSearchParams(body)).toString()
+            });
+            return res.json();
+        }
+
         // ─────────────────────────────────────────────────────────────────────
         // Bascule de type (manga / animé) du formulaire d'ajout
         // ─────────────────────────────────────────────────────────────────────
         let addFormType = 'manga';
         // Fiche Anilist sélectionnée en attente d'ajout (recherche animé) :
-        // { anilist_id, title, studios_text }. Vidée après ajout ou changement
-        // de type/recherche.
+        // { anilist_id, title, studios_text, cover_url }. Vidée après ajout ou
+        // changement de type/recherche.
         let pendingAnimeSelection = null;
 
         const typeToggle    = document.getElementById('wishlist-type-toggle');
@@ -767,10 +884,15 @@ $move_candidates = array_map(function ($s) {
                 // Lues depuis des attributs data-* dédiés (posés par
                 // animeResultHtml()), plutôt que reconstruites depuis le texte
                 // affiché : robuste face à un futur changement de gabarit.
+                // Couverture distante lue sur l'image du résultat (affichage
+                // seul dans la grille — jamais téléchargée à ce stade).
+                const coverImg = row.querySelector('.anime-result-cover');
+                const coverSrc = coverImg ? coverImg.getAttribute('src') || '' : '';
                 pendingAnimeSelection = {
                     anilist_id:   anilistId,
                     title:        row.dataset.title || '',
                     studios_text: row.dataset.studiosText || '',
+                    cover_url:    /^https:\/\//i.test(coverSrc) ? coverSrc : '',
                 };
 
                 results.querySelectorAll('.anime-result').forEach(r => r.classList.remove('is-selected'));
@@ -778,84 +900,25 @@ $move_candidates = array_map(function ($s) {
                 setFeedback('Sélectionné : ' + pendingAnimeSelection.title + '. Cliquez sur « Ajouter à la liste ».', '');
             });
         })();
-
-        // ─────────────────────────────────────────────────────────────────────
-        // Attacher les événements aux boutons de la liste
-        // ─────────────────────────────────────────────────────────────────────
-        function attachWishlistEvents() {
-            document.querySelectorAll('.add-from-wishlist-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const index = parseInt(this.dataset.index);
-                    const item  = wishlistData[index];
-
-                    if (item.type === 'anime') {
-                        // Animé : import Anilist direct, la modale ne sert
-                        // que de confirmation avant l'appel réseau.
-                        pendingAddFromWishlist = { index, item };
-                        document.getElementById('afw-anime-series-name').textContent = item.name;
-                        document.getElementById('add-from-wishlist-modal').classList.add('modal-active');
-                        return;
-                    }
-
-                    // Manga : ouverture directe de la modale d'ajout de
-                    // série, préremplie avec les infos déjà connues. Aucune
-                    // écriture n'a lieu tant que ce formulaire n'est pas
-                    // enregistré (cf. openAddSeriesFromWishlistModal()).
-                    openAddSeriesFromWishlistModal(index, item);
-                });
-            });
-
-            // Bouton absent pour les animés (cf. rendu ci-dessus) : ce
-            // gestionnaire ne concerne donc plus que des entrées manga.
-            document.querySelectorAll('.edit-wishlist-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const index = parseInt(this.dataset.index);
-                    const item  = wishlistData[index];
-                    document.getElementById('edit-wishlist-index').value = index;
-                    document.getElementById('edit-wishlist-name').value      = item.name;
-                    document.getElementById('edit-wishlist-author').value    = item.author;
-                    document.getElementById('edit-wishlist-publisher').value = item.publisher;
-                    document.getElementById('edit-wishlist-modal').classList.add('modal-active');
-                });
-            });
-
-            document.querySelectorAll('.remove-from-wishlist-btn').forEach(btn => {
-                btn.addEventListener('click', async function() {
-                    const confirmed = await showCustomConfirm('Confirmation', 'Supprimer cette entrée de la liste ?');
-                    if (!confirmed) return;
-                    const index = this.dataset.index;
-                    const res   = await fetch('page-wishlist.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `remove_from_wishlist=true&index=${index}`
-                    });
-                    const data = await res.json();
-                    if (data.success) renderWishlist(data.wishlist);
-                });
-            });
-        }
-
         // ── Mise à jour du DOM après changement de la wishlist ────────────────
         function renderWishlist(wishlist) {
-            wishlistData = wishlist;
+            if (Array.isArray(wishlist)) wishlistData = wishlist;
             applyFiltersAndSort();
         }
 
-        // ── Ajouter à la liste (manga ou animé selon la bascule active) ───────
+        // ── Ajout rapide manga (nom / auteur / éditeur) ───────────────────────
         document.getElementById('add-to-wishlist-btn').addEventListener('click', async function() {
             const name      = document.getElementById('wishlist-name').value.trim();
             const author    = document.getElementById('wishlist-author').value.trim();
             const publisher = document.getElementById('wishlist-publisher').value.trim();
             if (!name || !author || !publisher) {
-                showCustomAlert('Attention', 'Veuillez remplir les trois champs.');
+                showCustomAlert('Attention', 'Veuillez remplir les trois champs (ou passer par « Fiche complète… »).');
                 return;
             }
-            const res  = await fetch('page-wishlist.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `add_to_wishlist=true&wishlist_type=manga&wishlist_name=${encodeURIComponent(name)}&wishlist_author=${encodeURIComponent(author)}&wishlist_publisher=${encodeURIComponent(publisher)}`
+            const data = await postForm({
+                add_to_wishlist: 'true', wishlist_type: 'manga',
+                wishlist_name: name, wishlist_author: author, wishlist_publisher: publisher
             });
-            const data = await res.json();
             if (data.success) {
                 document.getElementById('wishlist-name').value      = '';
                 document.getElementById('wishlist-author').value    = '';
@@ -866,21 +929,20 @@ $move_candidates = array_map(function ($s) {
             }
         });
 
-        // Bouton d'ajout commun au formulaire animé : ajoute la fiche
-        // sélectionnée par la recherche (obligatoire — pas de saisie libre).
+        // Ajout d'un animé : la fiche sélectionnée par la recherche
+        // (obligatoire — pas de saisie libre).
         document.getElementById('wishlist-add-anime-btn').addEventListener('click', async function() {
             if (!pendingAnimeSelection) {
                 showCustomAlert('Attention', 'Sélectionnez une série dans les résultats de recherche.');
                 return;
             }
-            const res = await fetch('page-wishlist.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `add_to_wishlist=true&wishlist_type=anime&wishlist_name=${encodeURIComponent(pendingAnimeSelection.title)}`
-                    + `&wishlist_studio=${encodeURIComponent(pendingAnimeSelection.studios_text)}`
-                    + `&wishlist_anilist_id=${encodeURIComponent(pendingAnimeSelection.anilist_id)}`
+            const data = await postForm({
+                add_to_wishlist: 'true', wishlist_type: 'anime',
+                wishlist_name: pendingAnimeSelection.title,
+                wishlist_studio: pendingAnimeSelection.studios_text,
+                wishlist_anilist_id: pendingAnimeSelection.anilist_id,
+                wishlist_cover_url: pendingAnimeSelection.cover_url || ''
             });
-            const data = await res.json();
             if (data.success) {
                 document.getElementById('wishlist-anime-search-input').value = '';
                 document.getElementById('wishlist-anime-lookup-input').value = '';
@@ -893,44 +955,194 @@ $move_candidates = array_map(function ($s) {
             }
         });
 
-        // ── Modifier une entrée (mangas uniquement) ───────────────────────────
-        document.getElementById('edit-wishlist-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const index     = document.getElementById('edit-wishlist-index').value;
-            const name      = document.getElementById('edit-wishlist-name').value;
-            const author    = document.getElementById('edit-wishlist-author').value;
-            const publisher = document.getElementById('edit-wishlist-publisher').value;
-            const res = await fetch('page-wishlist.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `edit_wishlist=true&index=${index}&name=${encodeURIComponent(name)}&author=${encodeURIComponent(author)}&publisher=${encodeURIComponent(publisher)}`
+        // ─────────────────────────────────────────────────────────────────────
+        // Modale « fiche de la liste d'envies » (mangas) : création complète
+        // (index vide) ou édition d'une entrée existante.
+        // ─────────────────────────────────────────────────────────────────────
+        const entryModal   = document.getElementById('wishlist-entry-modal');
+        const entryForm    = document.getElementById('wishlist-entry-form');
+        const entryPreview = document.getElementById('wle-thumb-preview');
+        const entryFile    = document.getElementById('wle-image');
+        const entryRemove  = document.getElementById('wle-remove-image');
+        const entryRemoveWrap = document.getElementById('wle-remove-image-wrap');
+        let entryCurrentThumb = '';
+
+        function setEntryPreview(src) {
+            // Sans vignette : celle par défaut du site, comme partout ailleurs.
+            entryPreview.innerHTML = src
+                ? `<img src="${htmlEscape(src)}" alt="">`
+                : `<img src="${WISHLIST_DEFAULT_THUMB}" alt="" class="is-default">`;
+        }
+
+        // Champs obligatoires du bloc Contributeurs, comme sur la fiche d'une
+        // série : le nom de la première ligne « Auteur » et de la première
+        // ligne « Éditeur » est requis (réévalué à chaque changement de rôle,
+        // ajout ou suppression de ligne).
+        function markRequiredContributors(container) {
+            if (!container) return;
+            const rows = [...container.querySelectorAll('.contributor-row')];
+            rows.forEach(r => { r.querySelector('.contributor-name').required = false; });
+            ['auteur', 'editeur'].forEach(role => {
+                const row = rows.find(r => r.querySelector('.contributor-role').value === role);
+                if (row) row.querySelector('.contributor-name').required = true;
             });
-            const data = await res.json();
-            if (data.success) {
-                renderWishlist(data.wishlist);
-                document.getElementById('edit-wishlist-modal').classList.remove('modal-active');
+        }
+        // Au moins un Auteur ET un Éditeur nommés ? Sinon, message explicite.
+        function contributorsMissingRoles(container) {
+            const list = typeof contributorsReadList === 'function' ? contributorsReadList(container) : [];
+            const missing = [];
+            if (!list.some(c => c.role === 'auteur'))  missing.push('« Auteur »');
+            if (!list.some(c => c.role === 'editeur')) missing.push('« Éditeur »');
+            return missing;
+        }
+        ['wle-contributors', 'asfw-contributors'].forEach(id => {
+            const container = document.getElementById(id);
+            if (!container) return;
+            container.addEventListener('change', () => markRequiredContributors(container));
+            new MutationObserver(() => markRequiredContributors(container)).observe(container, { childList: true });
+        });
+
+        function openWishlistEntryModal(index, item) {
+            entryForm.reset();
+            const isNew = index === null;
+            document.getElementById('wishlist-entry-title').textContent = isNew ? 'Nouvelle envie' : 'Modifier l’envie';
+            document.getElementById('wle-index').value            = isNew ? '' : index;
+            document.getElementById('wle-name').value             = item.name || '';
+            document.getElementById('wle-mangaupdates-url').value = item.mangaupdates_url || '';
+            document.getElementById('wle-manganews-url').value    = item.manganews_url || '';
+            document.getElementById('wle-syngas-uid').value       = item.syngas_uid || '';
+
+            const container = document.getElementById('wle-contributors');
+            if (typeof contributorsRenderList === 'function') {
+                contributorsRenderList(container, Array.isArray(item.contributors) ? item.contributors : []);
+                markRequiredContributors(container);
+            }
+
+            entryCurrentThumb = item.thumb ? wishlistThumbSrc(item.thumb) : '';
+            setEntryPreview(entryCurrentThumb);
+            // « Retirer » n'a de sens que pour une vignette locale existante.
+            entryRemoveWrap.hidden = !(item.image && item.thumb && !/^https?:/i.test(item.thumb));
+            entryModal.classList.add('modal-active');
+            document.getElementById('wle-name').focus();
+        }
+
+        // Aperçu immédiat du fichier choisi (sans téléversement).
+        entryFile.addEventListener('change', () => {
+            const file = entryFile.files && entryFile.files[0];
+            if (file) {
+                entryRemove.checked = false;
+                setEntryPreview(URL.createObjectURL(file));
             } else {
-                showCustomAlert('Erreur', data.message || 'Erreur.');
+                setEntryPreview(entryCurrentThumb);
+            }
+        });
+        entryRemove.addEventListener('change', () => {
+            if (entryRemove.checked) {
+                entryFile.value = '';
+                setEntryPreview('');
+            } else {
+                setEntryPreview(entryCurrentThumb);
+            }
+        });
+
+        // Ouverture en mode création, préremplie avec l'ajout rapide.
+        document.getElementById('open-wishlist-entry-modal').addEventListener('click', () => {
+            const contributors = [];
+            const author    = document.getElementById('wishlist-author').value.trim();
+            const publisher = document.getElementById('wishlist-publisher').value.trim();
+            contributors.push({ name: author, role: 'auteur' });
+            contributors.push({ name: publisher, role: 'editeur' });
+            openWishlistEntryModal(null, {
+                name: document.getElementById('wishlist-name').value.trim(),
+                contributors
+            });
+        });
+
+        entryForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const missing = contributorsMissingRoles(document.getElementById('wle-contributors'));
+            if (!document.getElementById('wle-name').value.trim() || missing.length) {
+                showCustomAlert('Champs obligatoires', 'Le nom de la série, au moins un contributeur « Auteur » et au moins un contributeur « Éditeur » sont requis.');
+                return;
+            }
+            const submitBtn = document.getElementById('wle-submit-btn');
+            const originalLabel = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Enregistrement…';
+            try {
+                const formData = new FormData(this);
+                formData.set('save_wishlist_entry', 'true');
+                const data = await postForm(formData);
+                if (!data.success) {
+                    showCustomAlert('Erreur', data.message || "L'enregistrement a échoué.");
+                    return;
+                }
+                const wasNew = document.getElementById('wle-index').value === '';
+                entryModal.classList.remove('modal-active');
+                if (wasNew) {
+                    document.getElementById('wishlist-name').value      = '';
+                    document.getElementById('wishlist-author').value    = '';
+                    document.getElementById('wishlist-publisher').value = '';
+                }
+                renderWishlist(data.wishlist);
+            } catch (err) {
+                console.error('Erreur:', err);
+                showCustomAlert('Erreur', "Une erreur est survenue lors de l'enregistrement.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalLabel;
+            }
+        });
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Actions des cartes (délégation : un seul écouteur pour toute la
+        // grille, quel que soit le nombre de rendus).
+        // ─────────────────────────────────────────────────────────────────────
+        document.getElementById('wishlist-list').addEventListener('click', async function(e) {
+            const btn = e.target.closest('button[data-action]');
+            if (!btn) return;
+            const index = parseInt(btn.dataset.index, 10);
+            const item  = wishlistData[index];
+            if (!item) return;
+
+            if (btn.dataset.action === 'add') {
+                if (item.type === 'anime') {
+                    // Animé : import Anilist direct, la modale ne sert que de
+                    // confirmation avant l'appel réseau.
+                    pendingAddFromWishlist = { index, item };
+                    document.getElementById('afw-anime-series-name').textContent = item.name;
+                    document.getElementById('add-from-wishlist-modal').classList.add('modal-active');
+                    return;
+                }
+                // Manga : modale d'ajout de série préremplie avec toute la
+                // fiche. Aucune écriture tant que ce formulaire n'est pas
+                // enregistré.
+                openAddSeriesFromWishlistModal(index, item);
+                return;
+            }
+
+            if (btn.dataset.action === 'edit') {
+                openWishlistEntryModal(index, item);
+                return;
+            }
+
+            if (btn.dataset.action === 'remove') {
+                const confirmed = await showCustomConfirm('Retirer des envies', `Retirer « ${item.name} » de la liste d'envies ?`);
+                if (!confirmed) return;
+                const data = await postForm({ remove_from_wishlist: 'true', index });
+                if (data.success) renderWishlist(data.wishlist);
+                else showCustomAlert('Erreur', data.message || 'La suppression a échoué.');
             }
         });
 
         // ── Ajouter depuis wishlist → collection (animés uniquement) ──────────
-        // Les mangas passent désormais par #add-series-from-wishlist-modal
-        // (cf. plus bas), sans confirmation intermédiaire : le formulaire lui
-        // même sert de point de confirmation, et rien n'est écrit tant qu'il
-        // n'est pas soumis.
         document.getElementById('afw-confirm-btn').addEventListener('click', async function() {
             if (!pendingAddFromWishlist) return;
             const { index } = pendingAddFromWishlist;
             const confirmBtn = this;
             confirmBtn.disabled = true;
             try {
-                const res = await fetch('page-wishlist.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `add_from_wishlist=true&index=${index}`
-                });
-                const data = await res.json();
+                const data = await postForm({ add_from_wishlist: 'true', index });
                 document.getElementById('add-from-wishlist-modal').classList.remove('modal-active');
 
                 if (!data.success) {
@@ -941,8 +1153,7 @@ $move_candidates = array_map(function ($s) {
                 // Import déjà terminé côté serveur : direction admin.php,
                 // avec la modale d'édition de la série fraîchement importée
                 // déjà ouverte (pour le tag favori, la note, les
-                // revisionnages, etc.) — plutôt que de rester ici où il n'y
-                // a plus rien à faire pour cette série.
+                // revisionnages, etc.).
                 const params = new URLSearchParams({ type: 'anime' });
                 if (data.series_id) params.set('open_edit_anime', data.series_id);
                 window.location.href = '../admin.php?' + params.toString();
@@ -958,49 +1169,67 @@ $move_candidates = array_map(function ($s) {
         });
 
         // ── Ajouter une série depuis la wishlist (mangas) ──────────────────────
-        // Ouvre #add-series-from-wishlist-modal directement, préremplie avec
-        // les infos déjà connues de l'entrée. Rien n'est envoyé au serveur à
-        // l'ouverture : seule la soumission du formulaire (plus bas) crée la
-        // série et retire l'entrée, en une seule opération atomique côté PHP.
+        // Ouvre #add-series-from-wishlist-modal, préremplie avec TOUTE la
+        // fiche de l'entrée : contributeurs, liens, identifiant Syngas et
+        // vignette (reprise par défaut). Rien n'est envoyé au serveur à
+        // l'ouverture : seule la soumission du formulaire crée la série et
+        // retire l'entrée, en une seule opération côté PHP.
         let pendingAddSeriesFromWishlistIndex = null;
 
         function openAddSeriesFromWishlistModal(index, item) {
             pendingAddSeriesFromWishlistIndex = index;
             const form = document.getElementById('add-series-from-wishlist-form');
             form.reset();
-            document.getElementById('asfw-index').value       = index;
-            document.getElementById('asfw-name').value        = item.name || '';
+            document.getElementById('asfw-index').value            = index;
+            document.getElementById('asfw-name').value             = item.name || '';
+            document.getElementById('asfw-mangaupdates-url').value = item.mangaupdates_url || '';
+            document.getElementById('asfw-manganews-url').value    = item.manganews_url || '';
+            document.getElementById('asfw-syngas-uid').value       = item.syngas_uid || '';
+
             const asfwContribContainer = document.getElementById('asfw-contributors');
             if (asfwContribContainer && typeof contributorsRenderList === 'function') {
-                const prefill = [];
-                if (item.author)    prefill.push({ name: item.author, role: 'auteur' });
-                if (item.publisher) prefill.push({ name: item.publisher, role: 'editeur' });
+                let prefill = Array.isArray(item.contributors) ? item.contributors : [];
+                if (!prefill.length) {
+                    if (item.author)    prefill.push({ name: item.author, role: 'auteur' });
+                    if (item.publisher) prefill.push({ name: item.publisher, role: 'editeur' });
+                }
                 contributorsRenderList(asfwContribContainer, prefill);
+                markRequiredContributors(asfwContribContainer);
             }
+
+            // Vignette locale de l'entrée : proposée (et cochée) par défaut.
+            const thumbWrap = document.getElementById('asfw-wishlist-thumb');
+            const hasLocal  = !!(item.image && item.thumb && !/^https?:/i.test(item.thumb));
+            thumbWrap.hidden = !hasLocal;
+            document.getElementById('asfw-use-wishlist-image').checked = hasLocal;
+            document.getElementById('asfw-wishlist-thumb-img').src = hasLocal ? wishlistThumbSrc(item.thumb) : '';
+
             document.getElementById('add-series-from-wishlist-modal').classList.add('modal-active');
         }
 
         // Suggestions d'autocomplétion (assets/js/admin/autocomplete.js) sur
         // les champs de cette modale, identiques à celles de admin.php :
         // window.currentSeriesType n'est pas posé sur cette page, donc
-        // currentViewType() retombe sur 'manga' par défaut — cohérent, cette
-        // modale ne créant que des mangas. Les champs Auteur/Éditeur/Autres
-        // contributeurs sont désormais gérés par le bloc dynamique
-        // « Contributeurs » (assets/js/admin/contributors.js), qui gère sa
-        // propre autocomplétion par ligne.
+        // currentViewType() retombe sur 'manga' par défaut — cohérent, ces
+        // modales ne créant que des mangas. Les contributeurs sont gérés par
+        // le bloc dynamique « Contributeurs » (assets/js/admin/contributors.js),
+        // qui gère sa propre autocomplétion par ligne.
         setupAutocomplete('asfw-name', ['name']);
         setupMultiAutocomplete('asfw-categories', ['categories']);
         setupMultiAutocomplete('asfw-genres', ['genres']);
 
-        // Mêmes suggestions sur le formulaire d'ajout rapide manga en haut de
-        // page (déjà référencées par autocomplete.js, mais inertes tant que
-        // ce script n'était pas chargé ici).
+        // Mêmes suggestions sur le formulaire d'ajout rapide manga.
         setupAutocomplete('wishlist-author', ['contributors']);
         setupAutocomplete('wishlist-publisher', ['contributors']);
 
         document.getElementById('add-series-from-wishlist-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             if (pendingAddSeriesFromWishlistIndex === null) return;
+            const missingRoles = contributorsMissingRoles(document.getElementById('asfw-contributors'));
+            if (missingRoles.length) {
+                showCustomAlert('Champs obligatoires', 'Au moins un contributeur « Auteur » et au moins un contributeur « Éditeur » sont requis.');
+                return;
+            }
 
             const submitBtn = document.getElementById('asfw-submit-btn');
             submitBtn.disabled = true;
@@ -1012,11 +1241,7 @@ $move_candidates = array_map(function ($s) {
                 formData.set('add_series_from_wishlist', 'true');
                 formData.set('index', pendingAddSeriesFromWishlistIndex);
 
-                const res = await fetch('page-wishlist.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
+                const data = await postForm(formData);
 
                 if (!data.success) {
                     showCustomAlert('Erreur', data.message || "L'ajout à la collection a échoué.");
@@ -1037,8 +1262,8 @@ $move_candidates = array_map(function ($s) {
         });
 
         // ── Fermeture modales ─────────────────────────────────────────────────
-        document.getElementById('close-edit-wishlist-modal').addEventListener('click', () => {
-            document.getElementById('edit-wishlist-modal').classList.remove('modal-active');
+        document.getElementById('close-wishlist-entry-modal').addEventListener('click', () => {
+            entryModal.classList.remove('modal-active');
         });
         document.getElementById('close-add-from-wishlist-modal').addEventListener('click', () => {
             document.getElementById('add-from-wishlist-modal').classList.remove('modal-active');
@@ -1049,7 +1274,7 @@ $move_candidates = array_map(function ($s) {
         });
 
         window.addEventListener('click', e => {
-            ['edit-wishlist-modal','add-from-wishlist-modal','add-series-from-wishlist-modal','custom-confirm-modal','custom-alert-modal'].forEach(id => {
+            ['wishlist-entry-modal','add-from-wishlist-modal','add-series-from-wishlist-modal','custom-confirm-modal','custom-alert-modal'].forEach(id => {
                 const m = document.getElementById(id);
                 if (e.target === m) {
                     m.classList.remove('modal-active');
@@ -1058,14 +1283,92 @@ $move_candidates = array_map(function ($s) {
             });
         });
 
-        // ── Filtre de type + recherche + tri ──────────────────────────────────
+        // ─────────────────────────────────────────────────────────────────────
+        // Grille de cartes : filtre de type + recherche + tri
+        // ─────────────────────────────────────────────────────────────────────
         // Réinitialisé à « les deux » à chaque visite (pas de mémorisation),
         // à l'image du filtre de type de la page « Critiques ».
+        const ICON = (name, color) => `<img src="https://api.iconify.design/mdi/${name}.svg?color=${encodeURIComponent(color)}" width="18" height="18" alt="">`;
+
+        // Libellé « auteur / studio » d'une carte.
+        function wishlistCardMeta(item) {
+            if (item.type === 'anime') return item.studio || '';
+            return item.author || '';
+        }
+
+        function wishlistCardHtml(item, index) {
+            const isAnime = item.type === 'anime';
+            const typeDef = (window.seriesTypes && window.seriesTypes[item.type || 'manga']) || null;
+            const typeColor = typeDef ? typeDef.color : 'var(--primary-color)';
+            const thumb = wishlistThumbSrc(item.thumb);
+            const meta  = wishlistCardMeta(item);
+
+            // Sans vignette (ou vignette cassée) : vignette par défaut du site,
+            // comme sur les cartes de la collection.
+            const cover = thumb
+                ? `<img class="wishlist-card-img" src="${htmlEscape(thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer"
+                        onerror="this.onerror=null;this.src='${WISHLIST_DEFAULT_THUMB}';this.classList.add('is-default')">`
+                : `<img class="wishlist-card-img is-default" src="${WISHLIST_DEFAULT_THUMB}" alt="" loading="lazy">`;
+
+            // Liens externes (mangas) : mêmes logos que les cartes de la collection.
+            const links = [];
+            if (!isAnime && safeHttpUrl(item.mangaupdates_url)) {
+                links.push(`<a href="${htmlEscape(safeHttpUrl(item.mangaupdates_url))}" target="_blank" rel="noopener" title="Voir sur MangaUpdates"><img src="../assets/img/mulogo.png" alt="MangaUpdates"></a>`);
+            }
+            if (!isAnime && safeHttpUrl(item.manganews_url)) {
+                links.push(`<a href="${htmlEscape(safeHttpUrl(item.manganews_url))}" target="_blank" rel="noopener" title="Voir sur Manga News"><img src="../assets/img/mnlogo.png" alt="Manga News"></a>`);
+            }
+            if (!isAnime && item.syngas_uid && window.syngasSiteUrl) {
+                links.push(`<a href="${htmlEscape(window.syngasSiteUrl + 'serie.php?id=' + encodeURIComponent(item.syngas_uid))}" target="_blank" rel="noopener" title="Voir sur Syngas"><img src="../assets/img/synlogo.png" alt="Syngas"></a>`);
+            }
+            if (isAnime && item.anilist_id) {
+                links.push(`<a href="https://anilist.co/anime/${encodeURIComponent(item.anilist_id)}" target="_blank" rel="noopener" title="Voir sur Anilist"><img src="../assets/img/anilogo.png" alt="Anilist"></a>`);
+            }
+
+            // Info-bulle : tous les contributeurs (manga) ou le studio (animé).
+            const tooltip = isAnime
+                ? [item.name, item.studio].filter(Boolean).join('\n')
+                : [item.name, ...(item.contributors || []).map(c => {
+                      const role = c.role === 'autre' ? (c.role_custom || 'Autre') : ((window.contributorRoles || {})[c.role] || 'Rôle non précisé');
+                      return `${c.name} — ${role}`;
+                  })].join('\n');
+
+            return `
+                <article class="wishlist-card" data-index="${index}" style="--type-color:${htmlEscape(typeColor)}" title="${htmlEscape(tooltip)}">
+                    <!-- Vignette carrée à gauche (même format que les cartes de la
+                         collection), informations et actions à droite. -->
+                    <div class="wishlist-card-cover">${cover}</div>
+                    <div class="wishlist-card-main">
+                    <div class="wishlist-card-body">
+                        <div class="wishlist-card-top">
+                            ${typeDef ? `<span class="wishlist-card-type">${htmlEscape(typeDef.label)}</span>` : ''}
+                            ${links.length ? `<div class="wishlist-card-links">${links.join('')}</div>` : ''}
+                        </div>
+                        <h3 class="wishlist-card-title">${htmlEscape(item.name)}</h3>
+                        <p class="wishlist-card-meta">${meta ? htmlEscape(meta) : `<em>${isAnime ? 'studio non annoncé' : 'auteur inconnu'}</em>`}</p>
+                    </div>
+                    <div class="wishlist-card-actions">
+                        <button type="button" class="wishlist-card-btn is-add" data-action="add" data-index="${index}" title="Ajouter à la collection" aria-label="Ajouter « ${htmlEscape(item.name)} » à la collection">
+                            ${ICON('bookshelf', '#4ade80')}
+                        </button>
+                        ${isAnime ? '' : `
+                        <button type="button" class="wishlist-card-btn is-edit" data-action="edit" data-index="${index}" title="Modifier la fiche" aria-label="Modifier « ${htmlEscape(item.name)} »">
+                            ${ICON('pencil', '#c084fc')}
+                        </button>`}
+                        <button type="button" class="wishlist-card-btn is-remove" data-action="remove" data-index="${index}" title="Retirer des envies" aria-label="Retirer « ${htmlEscape(item.name)} » des envies">
+                            ${ICON('heart-off', '#f87171')}
+                        </button>
+                    </div>
+                    </div>
+                </article>
+            `;
+        }
+
         function applyFiltersAndSort() {
-            const term      = normalizeString(document.getElementById('wishlist-search').value);
+            const term       = normalizeString(document.getElementById('wishlist-search').value);
             const typeFilter = document.getElementById('wishlist-type-filter').value;
-            const sortField = document.getElementById('wishlist-sort-field').value;
-            const sortOrder = document.getElementById('wishlist-sort-order').value;
+            const sortField  = document.getElementById('wishlist-sort-field').value;
+            const sortOrder  = document.getElementById('wishlist-sort-order').value;
 
             // Filtrage
             let filtered = wishlistData.map((item, originalIndex) => ({ ...item, _originalIndex: originalIndex }));
@@ -1075,9 +1378,10 @@ $move_candidates = array_map(function ($s) {
             if (term) {
                 filtered = filtered.filter(item =>
                     normalizeString(item.name).includes(term) ||
-                    normalizeString(item.author || '').includes(term) ||
-                    normalizeString(item.publisher || '').includes(term) ||
-                    normalizeString(item.studio || '').includes(term)
+                    normalizeString(item.author).includes(term) ||
+                    normalizeString(item.publisher).includes(term) ||
+                    normalizeString(item.studio).includes(term) ||
+                    (item.contributors || []).some(c => normalizeString(c.name).includes(term))
                 );
             }
 
@@ -1085,62 +1389,22 @@ $move_candidates = array_map(function ($s) {
             filtered.sort((a, b) => {
                 const fieldA = sortField === 'author' && a.type === 'anime' ? (a.studio || '') : (a[sortField] || '');
                 const fieldB = sortField === 'author' && b.type === 'anime' ? (b.studio || '') : (b[sortField] || '');
-                const valA = normalizeString(fieldA);
-                const valB = normalizeString(fieldB);
-                const cmp  = valA.localeCompare(valB, 'fr');
+                const cmp = normalizeString(fieldA).localeCompare(normalizeString(fieldB), 'fr')
+                         || normalizeString(a.name).localeCompare(normalizeString(b.name), 'fr');
                 return sortOrder === 'asc' ? cmp : -cmp;
             });
 
-            // Rendre uniquement les éléments filtrés/triés
             const container = document.getElementById('wishlist-list');
             document.getElementById('wishlist-count').textContent = wishlistData.length;
 
             if (filtered.length === 0) {
                 container.innerHTML = wishlistData.length === 0
-                    ? '<p class="loans-empty">Votre liste d\'envies est vide. ✨</p>'
-                    : '<p class="loans-empty">Aucun résultat pour ces filtres.</p>';
+                    ? '<p class="loans-empty wishlist-empty">Votre liste d\'envies est vide. ✨</p>'
+                    : '<p class="loans-empty wishlist-empty">Aucun résultat pour ces filtres.</p>';
                 return;
             }
 
-            container.innerHTML = '';
-            filtered.forEach(item => {
-                const index   = item._originalIndex;
-                const isAnime = item.type === 'anime';
-                const typeDef = (window.seriesTypes && window.seriesTypes[item.type || 'manga']) || null;
-                const div     = document.createElement('div');
-                div.className   = 'wishlist-item';
-                div.dataset.index = index;
-
-                const meta = isAnime
-                    ? (item.studio ? htmlEscape(item.studio) : '<em>studio inconnu</em>')
-                    : `${htmlEscape(item.author)}${item.publisher ? ' · ' + htmlEscape(item.publisher) : ''}`;
-
-                const typeBadge = typeDef
-                    ? `<span class="suggestion-type-badge wishlist-type-badge" style="--type-color:${typeDef.color}">${htmlEscape(typeDef.label)}</span>`
-                    : '';
-
-                div.innerHTML = `
-                    <div class="wishlist-item-info">
-                        <span class="wishlist-series-name">${htmlEscape(item.name)} ${typeBadge}</span>
-                        <span class="wishlist-series-meta">${meta}</span>
-                    </div>
-                    <div class="wishlist-item-actions">
-                        <button class="add-from-wishlist-btn button-icon" title="Ajouter à la collection" data-index="${index}">
-                            <img src="https://api.iconify.design/mdi/plus-circle.svg?color=%234ade80" width="18" height="18" alt="">
-                        </button>
-                        ${isAnime ? '' : `
-                        <button class="edit-wishlist-btn button-icon" title="Modifier" data-index="${index}">
-                            <img src="https://api.iconify.design/mdi/pencil.svg?color=%23c084fc" width="18" height="18" alt="">
-                        </button>`}
-                        <button class="remove-from-wishlist-btn button-icon" title="Supprimer" data-index="${index}">
-                            <img src="https://api.iconify.design/mdi/trash-can.svg?color=%23f87171" width="18" height="18" alt="">
-                        </button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-
-            attachWishlistEvents();
+            container.innerHTML = filtered.map(item => wishlistCardHtml(item, item._originalIndex)).join('');
         }
 
         document.getElementById('wishlist-search').addEventListener('input', applyFiltersAndSort);
@@ -1148,8 +1412,37 @@ $move_candidates = array_map(function ($s) {
         document.getElementById('wishlist-sort-field').addEventListener('change', applyFiltersAndSort);
         document.getElementById('wishlist-sort-order').addEventListener('change', applyFiltersAndSort);
 
-        // Rendu initial via JS (remplace le rendu PHP statique pour cohérence)
         applyFiltersAndSort();
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Rattrapage des animés ajoutés avant le téléchargement automatique
+        // des vignettes (ou sans studio) : lots de 10 fiches, l'un après
+        // l'autre, la grille se met à jour au fil de l'eau. S'arrête de
+        // lui-même quand il n'y a plus rien à traiter, ou à la première
+        // erreur (Anilist injoignable, quota atteint…) — retenté à la
+        // prochaine visite.
+        // ─────────────────────────────────────────────────────────────────────
+        (async function backfillAnimeEntries() {
+            const needs = it => it.type === 'anime' && parseInt(it.anilist_id, 10) > 0
+                && (!it.image || !it.thumb || /^https?:/i.test(it.thumb) || !it.studio);
+            if (!wishlistData.some(needs)) return;
+            const skip = [];
+            for (let guard = 0; guard < 50; guard++) {
+                let data;
+                try {
+                    const body = new URLSearchParams({ wishlist_anime_backfill: 'true' });
+                    skip.forEach(id => body.append('skip[]', id));
+                    data = await postForm(body);
+                } catch (err) {
+                    console.warn('Rattrapage des vignettes animées interrompu :', err);
+                    return;
+                }
+                if (Array.isArray(data.wishlist)) renderWishlist(data.wishlist);
+                if (!data.success) { console.warn('Rattrapage des vignettes animées :', data.message); return; }
+                (data.processed || []).forEach(id => skip.push(id));
+                if (!data.remaining || !(data.processed || []).length) return;
+            }
+        })();
 
         // ─────────────────────────────────────────────────────────────────────
         // Module « Déplacer dans la liste » : recherche instantanée dans la
@@ -1295,8 +1588,7 @@ $move_candidates = array_map(function ($s) {
                     // de le proposer à nouveau sans recharger la page), met à
                     // jour la liste d'envies affichée, et réinitialise le module.
                     window.moveCandidates = (window.moveCandidates || []).filter(c => c.id !== selected.id);
-                    wishlistData = data.wishlist;
-                    applyFiltersAndSort();
+                    renderWishlist(data.wishlist);
                     clearSelection();
                     showCustomAlert('Déplacée', data.message || 'Série déplacée vers la liste d\'envies.');
                 } finally {

@@ -122,7 +122,9 @@ function anilist_export_targets(array $data, array $wishlist, bool $include_wish
                 'series_id'    => '',
                 'name'         => $name,
                 'alt_titles'   => [],
-                'thumbnail'    => 'assets/img/logo.png',
+                // Vignette LOCALE de l'entrée si elle en a une (jamais la
+                // couverture Anilist distante, que le gabarit préfixerait).
+                'thumbnail'    => (trim((string)($item['image'] ?? '')) !== '' && file_exists($item['image'])) ? $item['image'] : 'assets/img/logo.png',
                 'anilist_id'   => (int)($item['anilist_id'] ?? 0),
                 'authors'      => $kind === 'manga' && trim((string)($item['author'] ?? '')) !== ''
                                     ? array_map('trim', explode(',', (string)$item['author']))

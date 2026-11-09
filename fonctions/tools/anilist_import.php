@@ -197,6 +197,9 @@ function anilist_import_build_preview(string $username, array $data, array $wish
             'title_native'      => $media['title_native'],
             'alt_titles'        => $media['alt_titles'],
             'cover'             => $media['cover'],
+            // Studio(s) : transmis à la liste d'envies (sans quoi les entrées
+            // importées y apparaissaient toutes « studio inconnu »).
+            'studios_text'      => $media['studios_text'] ?? '',
             'format'            => $media['format'],
             'format_label'      => $media['format_label'],
             'is_adult'          => $media['is_adult'],
@@ -554,8 +557,11 @@ function anilist_import_process_wishlist_entry(array $wishlist, array $entry): a
         '',
         '',
         'anime',
-        '',
-        (string)$entry['anilist_id']
+        (string)($entry['studios_text'] ?? ''),
+        (string)$entry['anilist_id'],
+        // Couverture Anilist : téléchargée par add_to_wishlist() comme
+        // vignette de l'entrée (cf. fonctions/wishlist.php).
+        ['cover_url' => (string)($entry['cover'] ?? '')]
     );
     if (!$result['success']) {
         // Déjà présente : ce n'est pas une erreur de campagne, juste rien à

@@ -134,12 +134,15 @@ Annuaire public des contributeurs de la Mangathèque (`personnalites.php`, lien 
 - Affichée sous forme de badge emoji (texte au survol) : dans la carte de série côté administration, et dans la modale de détails côté public
 
 ### Liste d'envies
-- Ajout et suppression de séries dans une liste d'envies, désormais typée (manga ou animé)
-- Pour un animé, une recherche Anilist préremplit et mémorise l'identifiant de la fiche ; un champ **studio** remplace le champ auteur, sans champ éditeur
+- Ajout et suppression de séries dans une liste d'envies, typée (manga ou animé)
+- Affichage en **grille de cartes** : une petite carte par série, avec sa vignette, son titre, son auteur (ou son studio pour un animé), un badge de type et les liens externes connus (MangaUpdates, Manga News, Syngas, Anilist). Sans vignette, la carte affiche la vignette par défaut du site. Chaque carte propose trois actions : **ajouter à la collection**, **modifier la fiche** (mangas uniquement) et **retirer des envies**. Recherche (titre et tous les contributeurs), filtre par type et tri (titre, auteur / studio, éditeur, croissant / décroissant) inchangés
+- **Fiche complète d'un manga** : en plus du nom, une entrée peut porter sa **vignette**, **tous ses contributeurs** (mêmes rôles que les fiches de la collection, au moins un « Auteur » et un « Éditeur »), son **URL MangaUpdates**, son **URL Manga News** et son **identifiant Syngas**. Comme pour une fiche de la collection, le nom, au moins un « Auteur » et au moins un « Éditeur » sont obligatoires. L'ajout rapide (nom / auteur / éditeur) reste disponible, et le bouton « Fiche complète… » ouvre directement la fiche détaillée
+- Au passage en collection d'un manga, le formulaire d'ajout est prérempli avec toute la fiche (contributeurs, liens, identifiant Syngas) et propose de reprendre la vignette de la liste d'envies
+- Pour un animé, une recherche Anilist préremplit et mémorise l'identifiant de la fiche ; un champ **studio** remplace le champ auteur, sans champ éditeur. La couverture Anilist est **téléchargée dès l'ajout** et devient la vignette Anilist de la série lors du passage en collection, sans nouveau téléchargement. Les entrées plus anciennes (sans vignette, ou importées sans studio) sont complétées automatiquement depuis Anilist à l'ouverture de la page, par lots de 10 fiches. L'outil d'import Anilist transmet désormais aussi le studio
 - Une série animée pas encore diffusée y est automatiquement dirigée depuis la modale d'ajout d'animé
 - Possibilité d'ajouter une série de la liste d'envies à votre collection ; pour un animé déjà associé à une fiche Anilist, l'import est immédiat, sans nouvelle recherche
-- La vignette Anilist n'est téléchargée qu'au moment du passage en collection, jamais tant que la série reste en liste d'envies
-- **Déplacer dans la liste** : mouvement inverse, retire une série de votre collection (manga ou animé) pour la replacer dans la liste d'envies, préremplie avec ses informations déjà connues (auteur/éditeur ou studio) ; si la série a des tomes actuellement prêtés, un avertissement bloquant est affiché avant de continuer
+- **Déplacer dans la liste** : mouvement inverse, retire une série de votre collection (manga ou animé) pour la replacer dans la liste d'envies, préremplie avec ses informations déjà connues (tous les contributeurs, liens et identifiant Syngas pour un manga, studio pour un animé, vignette dans les deux cas) ; si la série a des tomes actuellement prêtés, un avertissement bloquant est affiché avant de continuer
+- Les vignettes de la liste d'envies sont protégées du nettoyage des images orphelines et supprimées avec leur entrée
 
 ### Gestion des prêts
 - Prêt d'un tome unique ou d'une plage de tomes d'une même série

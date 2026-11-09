@@ -220,7 +220,6 @@ body.with-sidebar .logout-container {
     grid-template-columns: 320px 1fr;
     gap: 20px;
     align-items: start;
-    min-height: calc(100vh - 160px);
 }
 
 .wishlist-add-panel {
@@ -230,6 +229,10 @@ body.with-sidebar .logout-container {
     padding: 22px 24px;
     position: sticky;
     top: 24px;
+    /* Jamais plus haut que l'écran (résultats de recherche Anilist longs) :
+       défile alors dans son propre bloc, comme la liste. */
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
 }
 
 .wishlist-add-form {
@@ -305,7 +308,15 @@ body.with-sidebar .logout-container {
     border: var(--border-subtle);
     border-radius: var(--border-radius-lg);
     padding: 22px 24px;
-    min-height: calc(100vh - 180px);
+    /* Hauteur bornée à l'écran : c'est la grille de cartes qui défile À
+       L'INTÉRIEUR du bloc (cf. .wishlist-grid), pas la page — le bloc
+       « Ajouter à la liste » reste ainsi toujours visible à gauche. */
+    /* 180px ≈ en-tête de page (titre + sous-titre) + marges : le bloc tient
+       entier dans la fenêtre dès l'arrivée sur la page. */
+    position: sticky;
+    top: 24px;
+    height: calc(100vh - 180px);
+    min-height: 420px;
     display: flex;
     flex-direction: column;
 }
@@ -374,59 +385,246 @@ body.with-sidebar .logout-container {
 
 .wishlist-sort-select:focus { border-color: var(--input-border-focus); }
 
-.wishlist-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+/* ── Grille de cartes de la liste d'envies ──────────────────────────────────
+   Une petite carte par série : vignette (format couverture 2:3), titre,
+   auteur / studio, et trois actions (ajouter à la collection, modifier —
+   mangas uniquement —, retirer des envies). --type-color est posée par carte
+   depuis le registre des types (window.seriesTypes), jamais en dur ici. */
+.wishlist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 12px;
+    align-content: start;
     flex: 1;
-    min-height: calc(100vh - 360px);
+    min-height: 0;
     margin-top: 16px;
+    /* Défilement interne au bloc « Ma liste ». Le léger retrait évite que
+       l'effet de survol (translation + ombre) des cartes soit rogné. */
     overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px 6px 4px 2px;
+    margin-right: -6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--background-lighter) transparent;
 }
 
-.wishlist-item {
+.wishlist-grid::-webkit-scrollbar { width: 8px; }
+.wishlist-grid::-webkit-scrollbar-thumb {
+    background: var(--background-lighter);
+    border-radius: 4px;
+}
+
+.wishlist-empty { grid-column: 1 / -1; }
+
+/* Carte horizontale : vignette carrée à gauche (format des cartes de la
+   collection, cf. .series-image dans _series.css), infos + actions à droite. */
+.wishlist-card {
+    display: flex;
+    gap: 12px;
+    min-width: 0;
+    padding: 10px;
+    background: var(--background-medium);
+    border: var(--border-subtle);
+    border-radius: var(--border-radius-lg);
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wishlist-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--type-color, var(--primary-color));
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.wishlist-card-cover {
+    position: relative;
+    width: 104px;
+    height: 104px;
+    flex-shrink: 0;
+    border-radius: var(--border-radius-lg);
+    background: var(--background-darker);
+    overflow: hidden;
+}
+
+.wishlist-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Vignette par défaut du site (aucune vignette, ou vignette cassée) : occupe
+   tout l'espace, comme une vignette normale (même rendu que les cartes de la
+   collection). */
+.wishlist-card-img.is-default,
+.wishlist-entry-thumb img.is-default {
+    object-fit: cover;
+}
+
+.wishlist-card-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.wishlist-card-body { min-width: 0; }
+
+.wishlist-card-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 12px 14px;
-    background: var(--background-medium);
-    border: var(--border-subtle);
-    border-radius: var(--border-radius);
-    transition: var(--transition);
+    gap: 6px;
+    margin-bottom: 5px;
+    min-height: 18px;
 }
 
-.wishlist-item:hover {
-    border-color: rgba(56, 189, 248, 0.12);
-    background: var(--background-lighter);
+.wishlist-card-type {
+    padding: 3px 7px;
+    border-radius: var(--border-radius-sm);
+    color: var(--type-color, var(--text-gray));
+    border: 1px solid currentColor;
+    font-size: 0.66rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
 }
 
-.wishlist-item-info {
+.wishlist-card-links {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
+    gap: 5px;
+    margin-left: auto;
 }
 
-.wishlist-series-name {
-    font-size: 0.9rem;
+.wishlist-card-links a {
+    display: inline-flex;
+    opacity: 0.65;
+    transition: opacity 0.15s ease;
+}
+
+.wishlist-card-links a:hover { opacity: 1; }
+
+.wishlist-card-links img {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: block;
+}
+
+.wishlist-card-title {
+    margin: 0 0 2px;
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 0.92rem;
     font-weight: 600;
+    line-height: 1.25;
     color: var(--text-white);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.wishlist-card-meta {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-gray);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.wishlist-series-meta {
-    font-size: 0.78rem;
-    color: var(--text-muted);
+.wishlist-card-meta em { color: var(--text-muted); }
+
+.wishlist-card-actions {
+    display: flex;
+    gap: 4px;
 }
 
-.wishlist-item-actions {
+.wishlist-card-btn {
+    flex: 1;
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
+    height: 30px;
+    padding: 0;
+    margin: 0;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius-sm);
+    background: var(--background-darker);
+    cursor: pointer;
+    box-shadow: none;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.wishlist-card-btn img { opacity: 0.75; transition: opacity 0.15s ease; }
+.wishlist-card-btn:hover img,
+.wishlist-card-btn:focus-visible img { opacity: 1; }
+
+.wishlist-card-btn:hover,
+.wishlist-card-btn:focus-visible { background: var(--background-lighter); transform: none; box-shadow: none; }
+.wishlist-card-btn.is-add:hover    { border-color: rgba(74, 222, 128, 0.45); }
+.wishlist-card-btn.is-edit:hover   { border-color: rgba(192, 132, 252, 0.45); }
+.wishlist-card-btn.is-remove:hover { border-color: rgba(248, 113, 113, 0.45); }
+
+/* Bouton « Fiche complète… » du formulaire d'ajout rapide manga. */
+.wishlist-full-entry-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* ── Modale « fiche de la liste d'envies » ──────────────────────────────── */
+.wishlist-entry-head {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 6px;
+}
+
+.wishlist-entry-thumb {
+    width: 104px;
+    aspect-ratio: 1 / 1;
     flex-shrink: 0;
+    border-radius: var(--border-radius-sm);
+    background: var(--background-darker);
+    border: var(--border-subtle);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wishlist-entry-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.wishlist-entry-thumb-fields { flex: 1; min-width: 0; }
+.wishlist-entry-thumb-fields p:first-child { margin-top: 0; }
+.wishlist-entry-thumb-fields label[hidden] { display: none; }
+
+/* Vignette de l'entrée reprise dans la modale d'ajout à la collection. */
+.asfw-wishlist-thumb {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.asfw-wishlist-thumb[hidden] { display: none; }
+
+.asfw-wishlist-thumb img {
+    width: 48px;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: var(--border-radius-sm);
+    background: var(--background-darker);
 }
 
 .button-icon {
@@ -571,8 +769,10 @@ body.with-sidebar .logout-container {
     .loans-page-layout { grid-template-columns: 1fr; }
     .loans-panel--full { grid-column: auto; }
     .wishlist-page-layout { grid-template-columns: 1fr; }
-    .wishlist-add-panel { position: static; }
-    .wishlist-list-panel { min-height: 300px; }
+    /* Mise en page empilée : la page défile normalement, sans bloc borné. */
+    .wishlist-add-panel { position: static; max-height: none; overflow: visible; }
+    .wishlist-list-panel { position: static; height: auto; min-height: 300px; }
+    .wishlist-grid { overflow: visible; margin-right: 0; padding: 0; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -657,26 +857,19 @@ body.with-sidebar .logout-container {
         /* Supprimer le min-width fixe pour permettre le retour à la ligne */
     }
 
-    /* Nom de série dans la liste wishlist : autoriser le wrap */
-    .wishlist-series-name {
-        white-space: normal;
-        word-break: break-word;
-    }
-
-    .wishlist-list {
-        min-height: 150px;
+    /* Grille wishlist : cartes un peu plus étroites, 2 colonnes minimum */
+    .wishlist-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
         margin-top: 12px;
     }
 
-    /* Item wishlist : empiler les actions sur mobile */
-    .wishlist-item {
-        gap: 10px;
-        padding: 10px 12px;
-    }
+    .wishlist-card-cover { width: 88px; height: 88px; }
 
-    .wishlist-item-actions {
-        gap: 6px;
-    }
+    .wishlist-card-btn { height: 36px; }
+
+    .wishlist-entry-head { flex-direction: column; align-items: center; }
+    .wishlist-entry-thumb-fields { width: 100%; }
 
     .button-icon {
         width: 36px;
