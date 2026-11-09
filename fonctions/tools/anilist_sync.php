@@ -2,8 +2,9 @@
 // ────────────────────────────────────────────────────────────────────────────
 // fonctions/tools/anilist_sync.php — Synchronisation automatique
 //
-// Tient à jour, sans intervention, les séries animées dont la diffusion ET le
-// visionnage sont tous deux « en cours ». Périmètre volontairement étroit et
+// Tient à jour, sans intervention, les séries animées dont la diffusion est
+// « en cours » et dont le visionnage n'est pas abandonné (« à débuter » ou
+// « en cours »). Périmètre volontairement étroit et
 // strictement disjoint de l'outil de revérification (fonctions/tools/
 // anilist_recheck.php) :
 //
@@ -120,21 +121,26 @@ function anilist_sync_retry_lock_seconds(): int {
 // dont le sync_due n'était pas correctement propagé pouvait rester bloquée
 // à 'skipped' sans jamais avancer) pour un bénéfice nul en pratique : une
 // collection compte rarement, voire jamais, des centaines de séries à la
-// fois en diffusion ET en visionnage « en cours ».
+// fois en diffusion « en cours » avec un visionnage non abandonné.
 
 // ────────────────────────────────────────────────────────────────────────────
 // 3. Éligibilité
 // ────────────────────────────────────────────────────────────────────────────
 
-// Une série est éligible à la synchro automatique si diffusion ET visionnage
-// sont tous deux « en cours ». Diffusion terminée / en pause / abandonnée, ou
-// visionnage terminé / abandonné / pas commencé : la série ne bouge plus
-// (ou plus vite qu'une fois par jour ne change rien), inutile de la traiter.
+// Une série est éligible à la synchro automatique si sa diffusion est « en
+// cours » et que son visionnage n'a pas été abandonné. Le visionnage peut
+// être « à débuter » (aucun épisode vu) ou « en cours » : une série suivie en
+// simulcast mais dont on n'a encore vu aucun épisode doit elle aussi recevoir
+// ses nouveaux épisodes diffusés. (Auparavant, seul le visionnage « en cours »
+// — au moins un épisode vu — était retenu : une série dont tous les épisodes
+// étaient « à voir » n'était donc jamais synchronisée, même en forçant.)
+// Diffusion terminée / en pause / annulée, ou visionnage abandonné : la série
+// ne bouge plus, inutile de la traiter.
 function anilist_sync_is_eligible(array $series): bool {
     if (!is_anime($series)) return false;
     if (empty($series['anilist_id'])) return false;
     if (($series['status'] ?? '') !== 'en cours') return false;
-    return anime_watching_status($series) === 'in_progress';
+    return anime_watching_status($series) !== 'abandoned';
 }
 
 // La série peut-elle être (re)synchronisée MAINTENANT, verrou compris ?

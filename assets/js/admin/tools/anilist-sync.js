@@ -2,8 +2,8 @@
 // assets/js/admin/tools/anilist-sync.js — Sous-onglet « Vérification via
 // Anilist »
 //
-// Synchronisation en flux (SSE) des séries animées dont la diffusion et le
-// visionnage sont tous deux « en cours » : nouveaux épisodes diffusés et
+// Synchronisation en flux (SSE) des séries animées dont la diffusion est
+// « en cours » et dont le visionnage n'est pas abandonné : nouveaux épisodes diffusés et
 // statut de diffusion. Réutilise exactement le moteur qui tourne aussi en
 // arrière-plan à l'affichage de l'Animethèque (fonctions/tools/
 // anilist_sync.php) — cet outil ne fait qu'offrir un déclenchement explicite,

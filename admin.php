@@ -797,8 +797,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get_anime_sync_due_ids'
 }
 
 // ── Endpoint AJAX : synchronisation automatique d'une carte animée ──────────
-// Déclenché par le front à l'affichage d'une carte éligible (diffusion ET
-// visionnage « en cours »), une par une, espacées d'1 à 2 secondes (voir
+// Déclenché par le front à l'affichage d'une carte éligible (diffusion « en
+// cours », visionnage non abandonné), une par une, espacées d'1 à 2 secondes (voir
 // assets/js/admin/anime.js). La page s'affiche donc immédiatement, la
 // synchro part ensuite en arrière-plan.
 //
